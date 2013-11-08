@@ -67,7 +67,7 @@ define(["require", "exports", './camera', '../libs/glmatrix'], function(require,
             return false;
         };
 
-        Controller2D.prototype.setScale = function (scale) {
+        Controller2D.prototype.setUnitsPerPixel = function (scale) {
             this.scale = scale;
         };
 

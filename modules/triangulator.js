@@ -33,4 +33,3 @@ define(["require", "exports", '../libs/poly2tri'], function(require, exports, __
     }
     exports.triangulate = triangulate;
 });
-//# sourceMappingURL=triangulator.js.map

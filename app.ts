@@ -4,9 +4,11 @@ import shaders = require('./modules/shader');
 import mb = require('./modules/meshbuilder');
 import GLM = require('./libs/glmatrix');
 import build = require('./modules/buildloader');
+import buildstructs = require('./libs/buildstructs')
 import data = require('./libs/dataviewstream');
 import getter = require('./libs/getter');
 import controller = require('./modules/controller2d');
+import triangulator = require('./modules/triangulator');
 
 var w = 800;
 var h = 600;
@@ -44,27 +46,63 @@ var gl = setupGl();
 
 var board = build.loadBuildMap(new data.DataViewStream(getter.get('./tests/RCPD.map'), true));
 
+var maxsector:buildstructs.Sector;
+var maxsectorwalls = 0;
+var sectors = board.sectors;
+for (var i = 0; i < sectors.length; i++) {
+  var sec = sectors[i];
+  if (sec.wallnum > maxsectorwalls) {
+    maxsector = sec;
+    maxsectorwalls = sec.wallnum;
+  }
+}
+
+function getContourAndHoles(sector:buildstructs.Sector, walls:buildstructs.Wall[]) {
+  var i = 0;
+  var pairs = [];
+  while (i < sector.wallnum) {
+    var firstwallIdx = i + sector.wallptr;
+    var wall = walls[sector.wallptr + i];
+    while (wall.point2 != firstwallIdx){
+      wall = walls[wall.point2];
+      i++;
+    }
+    pairs.push([firstwallIdx, sector.wallptr+i]);
+  }
+  
+  var holes = [];
+  for (var i = 0; i < pairs.length - 1; i++) {
+    var hole = [];
+    var pair = pairs[i];
+    for (var j = pair[0]; j < pair[1]+1; j++) {
+      hole.push([walls[j].x, walls[j].y]);
+    }
+    holes.push(hole);
+  }
+  var contour = [];
+  var lastpair = pairs[pair.length-1];
+  for (var k = lastpair[0]; k < lastpair[1]+1; k++) {
+    contour.push([walls[k].x, walls[k].y]);
+  }
+  return {contour:contour, holes:holes};
+}
+
+
+
 var builder = new mb.WireBuilder();
-var minx = 0xFFFF;
-var maxx = 0;
-var miny = 0xFFFF;
-var maxy = 0;
 var walls = board.walls;
-for (var i = 0; i < walls.length; i++) {
+console.log(getContourAndHoles(maxsector, walls));
+for (var i = maxsector.wallptr; i < maxsector.wallptr+maxsector.wallnum; i++) {
   var wall = walls[i];
-  if (wall.x > maxx) maxx = wall.x;
-  if (wall.x < minx) minx = wall.x;
-  if (wall.y > maxy) maxy = wall.y;
-  if (wall.y < miny) miny = wall.y;
   var nwall = walls[wall.point2];
   builder.addLine([wall.x, wall.y], [nwall.x, nwall.y]);
 }
-console.log('parsed ' + walls.length + ' walls');
+console.log('parsed ' + maxsector.wallnum + ' walls');
 
 var model = builder.build(gl);
 var shader = shaders.createShader(gl, load('shaders/s.vsh'), load('shaders/s.fsh'));
 var control = new controller.Controller2D(gl);
-control.setScale(100);
+control.setUnitsPerPixel(100);
 
 function draw(gl:WebGLRenderingContext, model:mb.DrawData, shader:shaders.Shader) {
   var attributes = model.getAttributes();

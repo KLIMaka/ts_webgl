@@ -63,7 +63,7 @@ export class Controller2D {
     return false;
   }
 
-  public setScale(scale:number) {
+  public setUnitsPerPixel(scale:number) {
     this.scale = scale;
   }
 
