@@ -1,0 +1,51 @@
+<component name="libraryTable">
+  <library name="Generated files" type="javaScript">
+    <properties>
+      <sourceFilesUrls>
+        <item url="file://$PROJECT_DIR$/modules/camera.js" />
+        <item url="file://$PROJECT_DIR$/tests/buildloader.js" />
+        <item url="file://$PROJECT_DIR$/libs/bufferwraper.js" />
+        <item url="file://$PROJECT_DIR$/modules/matrixstack.js" />
+        <item url="file://$PROJECT_DIR$/app.js" />
+        <item url="file://$PROJECT_DIR$/libs/glmatrix.js" />
+        <item url="file://$PROJECT_DIR$/libs/mathutils.js" />
+        <item url="file://$PROJECT_DIR$/tests/pool.js" />
+        <item url="file://$PROJECT_DIR$/libs/pool.js" />
+        <item url="file://$PROJECT_DIR$/modules/buildloader.js" />
+        <item url="file://$PROJECT_DIR$/libs/dataviewstream.js" />
+        <item url="file://$PROJECT_DIR$/libs/getter.js" />
+        <item url="file://$PROJECT_DIR$/modules/shader.js" />
+        <item url="file://$PROJECT_DIR$/modules/meshbuilder.js" />
+        <item url="file://$PROJECT_DIR$/libs/buildstructs.js" />
+        <item url="file://$PROJECT_DIR$/modules/triangulator.js" />
+        <item url="file://$PROJECT_DIR$/tests/poly2tri.js" />
+      </sourceFilesUrls>
+    </properties>
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/tests/test2.js" />
+      <root url="file://$PROJECT_DIR$/tests/test2.js" />
+      <root url="file://$PROJECT_DIR$/lib.js" />
+      <root url="file://$PROJECT_DIR$/libs/glamtrix.js" />
+      <root url="file://$PROJECT_DIR$/tests/camera_test.js" />
+      <root url="file://$PROJECT_DIR$/libs/bufferwraper.js" />
+      <root url="file://$PROJECT_DIR$/modules/camera.js" />
+      <root url="file://$PROJECT_DIR$/modules/matrixstack.js" />
+      <root url="file://$PROJECT_DIR$/libs/bufferwraper.js" />
+      <root url="file://$PROJECT_DIR$/tests/buildloader.js" />
+      <root url="file://$PROJECT_DIR$/app.js" />
+      <root url="file://$PROJECT_DIR$/libs/glmatrix.js" />
+      <root url="file://$PROJECT_DIR$/libs/mathutils.js" />
+      <root url="file://$PROJECT_DIR$/tests/pool.js" />
+      <root url="file://$PROJECT_DIR$/libs/pool.js" />
+      <root url="file://$PROJECT_DIR$/modules/buildloader.js" />
+      <root url="file://$PROJECT_DIR$/libs/dataviewstream.js" />
+      <root url="file://$PROJECT_DIR$/modules/shader.js" />
+      <root url="file://$PROJECT_DIR$/libs/getter.js" />
+      <root url="file://$PROJECT_DIR$/modules/meshbuilder.js" />
+      <root url="file://$PROJECT_DIR$/modules/triangulator.js" />
+      <root url="file://$PROJECT_DIR$/libs/buildstructs.js" />
+      <root url="file://$PROJECT_DIR$/tests/poly2tri.js" />
+    </CLASSES>
+    <SOURCES />
+  </library>
+</component>
