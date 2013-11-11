@@ -1,5 +1,5 @@
 
-import GLM = require('./glmatrix.d');
+import GLM = require('../libs_js/glmatrix.d');
 
 var radsInDeg = 180 / Math.PI;
 var degInRad = Math.PI / 180;

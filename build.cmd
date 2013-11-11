@@ -1,0 +1,1 @@
+tsc src/app -outDir distr --module amd

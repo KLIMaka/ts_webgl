@@ -2,7 +2,7 @@
 
 import shaders = require('./modules/shader');
 import mb = require('./modules/meshbuilder');
-import GLM = require('./libs/glmatrix');
+import GLM = require('./libs_js/glmatrix');
 import build = require('./modules/buildloader');
 import buildstructs = require('./libs/buildstructs')
 import data = require('./libs/dataviewstream');
@@ -44,7 +44,7 @@ function load(file:string):string {
 
 var gl = setupGl();
 
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('./tests/RCPD.map'), true));
+var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/RCPD.map'), true));
 
 var maxsector:buildstructs.Sector;
 var maxsectorwalls = 0;
@@ -57,7 +57,30 @@ for (var i = 0; i < sectors.length; i++) {
   }
 }
 
-function getContourAndHoles(sector:buildstructs.Sector, walls:buildstructs.Wall[]) {
+class TriangulationContext {
+  private contour:number[][];
+  private holes = [];
+  private i = 0;
+
+  public addContour(contour:number[][]) {
+    if (this.i == 1) {
+      this.contour = contour;
+    } else {
+      this.holes.push(contour);
+    }
+    this.i++;
+  }
+
+  public getContour():number[][] {
+    return this.contour;
+  }
+
+  public getHoles():number[][][] {
+    return this.holes;
+  }
+}
+
+function getContours(sector:buildstructs.Sector, walls:buildstructs.Wall[]):TriangulationContext {
   var i = 0;
   var pairs = [];
   while (i < sector.wallnum) {
@@ -67,40 +90,43 @@ function getContourAndHoles(sector:buildstructs.Sector, walls:buildstructs.Wall[
       wall = walls[wall.point2];
       i++;
     }
+    i++;
     pairs.push([firstwallIdx, sector.wallptr+i]);
   }
   
-  var holes = [];
-  for (var i = 0; i < pairs.length - 1; i++) {
-    var hole = [];
+  var ctx = new TriangulationContext();
+  for (var i = 0; i < pairs.length; i++) {
+    var contour = [];
     var pair = pairs[i];
-    for (var j = pair[0]; j < pair[1]+1; j++) {
-      hole.push([walls[j].x, walls[j].y]);
+    for (var j = pair[0]; j < pair[1]; j++) {
+      contour.push([walls[j].x, walls[j].y]);
     }
-    holes.push(hole);
+    ctx.addContour(contour);
   }
-  var contour = [];
-  var lastpair = pairs[pair.length-1];
-  for (var k = lastpair[0]; k < lastpair[1]+1; k++) {
-    contour.push([walls[k].x, walls[k].y]);
-  }
-  return {contour:contour, holes:holes};
+  return ctx;
 }
 
 
 
-var builder = new mb.WireBuilder();
+// var builder = new mb.WireBuilder();
+var builder = new mb.MeshBuilder();
 var walls = board.walls;
-console.log(getContourAndHoles(maxsector, walls));
-for (var i = maxsector.wallptr; i < maxsector.wallptr+maxsector.wallnum; i++) {
-  var wall = walls[i];
-  var nwall = walls[wall.point2];
-  builder.addLine([wall.x, wall.y], [nwall.x, nwall.y]);
+var contour = getContours(maxsector, walls);
+var tris = triangulator.triangulate(contour.getContour(), []);//contour.getHoles());
+for (var i = 0; i < tris.length; i+=3) {
+  builder.addTriangle([[tris[i][0], tris[i][1], 0], [tris[i+1][0], tris[i+1][1], 0], [tris[i+2][0], tris[i+2][1], 0]]);
 }
-console.log('parsed ' + maxsector.wallnum + ' walls');
+
+// for (var i = maxsector.wallptr; i < maxsector.wallptr+maxsector.wallnum; i++) {
+// // for (var i = 0; i < walls.length; i++) {
+//   var wall = walls[i];
+//   var nwall = walls[wall.point2];
+//   builder.addLine([wall.x, wall.y], [nwall.x, nwall.y]);
+// }
+// console.log('parsed ' + maxsector.wallnum + ' walls');
 
 var model = builder.build(gl);
-var shader = shaders.createShader(gl, load('shaders/s.vsh'), load('shaders/s.fsh'));
+var shader = shaders.createShader(gl, load('resources/shaders/s.vsh'), load('resources/shaders/s.fsh'));
 var control = new controller.Controller2D(gl);
 control.setUnitsPerPixel(100);
 

@@ -31,6 +31,8 @@
 
 //Namespace('js.poly2tri');
 
+define(["require", "exports"], function(require, exports) {
+
 var alert = function(msg) {
   console.log(msg);
 }
@@ -1753,3 +1755,4 @@ js.poly2tri.sweep.FlipScanEdgeEvent = function(tcx, ep, eq, flip_triangle, t, p)
 //Namespace.provide('js.poly2tri.sweep');
 
 exports.js = js;
+});

@@ -1,7 +1,7 @@
 /// <reference path="../defs/webgl.d.ts"/>
 
 import camera = require('./camera');
-import GLM = require('../libs/glmatrix');
+import GLM = require('../libs_js/glmatrix');
 
 export class Controller2D {
 
