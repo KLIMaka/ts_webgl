@@ -63,7 +63,7 @@ class TriangulationContext {
   private i = 0;
 
   public addContour(contour:number[][]) {
-    if (this.i == 1) {
+    if (this.i == 0) {
       this.contour = contour;
     } else {
       this.holes.push(contour);
@@ -105,18 +105,21 @@ function getContours(sector:buildstructs.Sector, walls:buildstructs.Wall[]):Tria
   }
   return ctx;
 }
-
-
-
-// var builder = new mb.WireBuilder();
-var builder = new mb.MeshBuilder();
 var walls = board.walls;
-var contour = getContours(maxsector, walls);
-var tris = triangulator.triangulate(contour.getContour(), []);//contour.getHoles());
-for (var i = 0; i < tris.length; i+=3) {
-  builder.addTriangle([[tris[i][0], tris[i][1], 0], [tris[i+1][0], tris[i+1][1], 0], [tris[i+2][0], tris[i+2][1], 0]]);
+
+
+
+var builder = new mb.MeshBuilder();
+var sectors = board.sectors;
+for (var secnum in sectors) {
+  var contour = getContours(sectors[secnum], walls);
+  var tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
+  for (var i = 0; i < tris.length; i+=3) {
+    builder.addTriangle([[tris[i][0], tris[i][1], 0], [tris[i+1][0], tris[i+1][1], 0], [tris[i+2][0], tris[i+2][1], 0]]);
+  }
 }
 
+// var builder = new mb.WireBuilder();
 // for (var i = maxsector.wallptr; i < maxsector.wallptr+maxsector.wallnum; i++) {
 // // for (var i = 0; i < walls.length; i++) {
 //   var wall = walls[i];
