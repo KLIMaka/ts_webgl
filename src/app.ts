@@ -9,6 +9,11 @@ import data = require('./libs/dataviewstream');
 import getter = require('./libs/getter');
 import controller = require('./modules/controller2d');
 import triangulator = require('./modules/triangulator');
+import MU = require('./libs/mathutils');
+
+var a = [0, 0], b = [1, 0], c = [1, 1], d = [0, 1];
+console.log(MU.isCW([a,b,c,d]));
+console.log(MU.isCW([d,c,b,a]));
 
 var w = 800;
 var h = 600;
@@ -60,15 +65,13 @@ for (var i = 0; i < sectors.length; i++) {
 class TriangulationContext {
   private contour:number[][];
   private holes = [];
-  private i = 0;
 
   public addContour(contour:number[][]) {
-    if (this.i == 0) {
+    if (!MU.isCW(contour)) {
       this.contour = contour;
     } else {
       this.holes.push(contour);
     }
-    this.i++;
   }
 
   public getContour():number[][] {
@@ -113,7 +116,14 @@ var builder = new mb.MeshBuilder();
 var sectors = board.sectors;
 for (var secnum in sectors) {
   var contour = getContours(sectors[secnum], walls);
-  var tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
+  var tris = null;
+  try{
+    tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
+  } catch(e) {
+    console.log(e);
+  }
+  if (tris == null)
+    continue;
   for (var i = 0; i < tris.length; i+=3) {
     builder.addTriangle([[tris[i][0], tris[i][1], 0], [tris[i+1][0], tris[i+1][1], 0], [tris[i+2][0], tris[i+2][1], 0]]);
   }

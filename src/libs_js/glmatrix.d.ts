@@ -25,6 +25,7 @@ export interface vec2 {
   copy(out:Vec2Array, a:Vec2Array): Vec2Array;
   set(out:Vec2Array, x:number, y:number): Vec2Array;
   sub(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
+  sub(out:Vec2Array, a:number[], b:number[]): Vec2Array;
   subtract(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
   mul(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
   multiply(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
