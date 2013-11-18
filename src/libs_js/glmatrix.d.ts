@@ -1,20 +1,20 @@
-export interface Vec2Array extends Float32Array {
+export interface Vec2Array extends Array<number> {
 }
 
-export interface Vec3Array extends Float32Array {
+export interface Vec3Array extends Array<number> {
 }
 
-export interface Vec4Array extends Float32Array {
+export interface Vec4Array extends Array<number> {
 }
 
-export interface Mat2Array extends Float32Array {
+export interface Mat2Array extends Array<number> {
 }
 
-export interface Mat3Array extends Float32Array {
+export interface Mat3Array extends Array<number> {
 }
 
 
-export interface Mat4Array extends Float32Array {
+export interface Mat4Array extends Array<number> {
 }
 
 export interface vec2 {
@@ -60,6 +60,7 @@ export interface vec3 {
   copy(out:Vec3Array, a:Vec3Array): Vec3Array;
   set(out:Vec3Array, x:number, y:number, z:number): Vec3Array;
   sub(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
+  sub(out:Vec3Array, a:number[], b:number[]): Vec3Array;
   subtract(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
   mul(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
   multiply(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;

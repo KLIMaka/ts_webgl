@@ -6,7 +6,7 @@ import GLM = require('../libs_js/glmatrix');
 export class Controller2D {
 
   private gl:WebGLRenderingContext;
-  private camera = new camera.Camera(0, 0, 0, 0, 0);
+  private camera = new camera.Camera(0, 0, 0, 15, 15);
   private drag = false;
   private dragStartX = 0;
   private dragStartY = 0;
@@ -71,7 +71,7 @@ export class Controller2D {
     var projection = this.projection;
     var wscale = this.gl.drawingBufferWidth/2 * this.scale;
     var hscale = this.gl.drawingBufferHeight/2 * this.scale;
-    GLM.mat4.ortho(projection, -wscale, wscale, hscale, -hscale, 0, 1000);
+    GLM.mat4.ortho(projection, -wscale, wscale, hscale, -hscale, -0xFFFF, 0xFFFF);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }

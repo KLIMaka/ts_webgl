@@ -43,13 +43,17 @@ function load(file:string):string {
 }
 
 var gl = setupGl();
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/649.map'), true));
+gl.enable(gl.CULL_FACE);
+gl.enable(gl.DEPTH_TEST);
+
+var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/doly.map'), true));
 var walls = board.walls;
 var sectors = board.sectors;
 
 var builder = new mb.MeshBuilder();
 for (var secnum in sectors) {
-  var contour = buildutils.getContours(sectors[secnum], walls);
+  var sector = sectors[secnum];
+  var contour = buildutils.getContours(sector, walls);
   var tris:number[][] = null;
   try{
     tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
@@ -58,8 +62,41 @@ for (var secnum in sectors) {
   }
   if (tris == null)
     continue;
+
+  var i = 0;
+  var quads = [];
+  while (i < sector.wallnum) {
+    var wall = walls[sector.wallptr + i];
+    var wall2 = walls[wall.point2];
+    if (wall.nextwall == -1) {
+      var a = [wall.x, wall.y, sector.ceilingz];
+      var b = [wall2.x, wall2.y, sector.ceilingz];
+      var c = [wall2.x, wall2.y, sector.floorz];
+      var d = [wall.x, wall.y, sector.floorz];
+      quads.push([a,b,c,d]);
+    } else {
+      var nextsector = sectors[wall.nextsector];
+      var a = [wall.x, wall.y, sector.floorz];
+      var b = [wall2.x, wall2.y, sector.floorz];
+      var c = [wall2.x, wall2.y, nextsector.floorz];
+      var d = [wall.x, wall.y, nextsector.floorz];
+      quads.push([a,b,c,d], [d,c,b,a]);
+      a = [wall.x, wall.y, sector.ceilingz];
+      b = [wall2.x, wall2.y, sector.ceilingz];
+      c = [wall2.x, wall2.y, nextsector.ceilingz];
+      d = [wall.x, wall.y, nextsector.ceilingz];
+      quads.push([a,b,c,d], [d,c,b,a]);
+    }
+    i++;
+  }
+
+  for (var i = 0; i < quads.length; i++) {
+    builder.addQuad(quads[i]);
+  }
+
   for (var i = 0; i < tris.length; i+=3) {
-    builder.addTriangle([[tris[i][0], tris[i][1], 0], [tris[i+1][0], tris[i+1][1], 0], [tris[i+2][0], tris[i+2][1], 0]]);
+    var z = sector.floorz;
+    builder.addTriangle([[tris[i][0], tris[i][1], z], [tris[i+1][0], tris[i+1][1], z], [tris[i+2][0], tris[i+2][1], z]]);
   }
 }
 

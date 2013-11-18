@@ -1,5 +1,7 @@
 /// <reference path="../defs/webgl.d.ts" />
 
+import GLM = require('../libs_js/glmatrix');
+
 export interface VertexBuffer {
 
   getBuffer(): WebGLBuffer;
@@ -93,14 +95,13 @@ class IndexBufferImpl implements IndexBuffer {
 
 export class Mesh implements DrawData {
 
-  private pos:VertexBuffer;
   private idx:IndexBuffer;
   private mode:number;
   private length:number;
-  private attributes = ['pos'];
+  private vtxBuffers:{[index: string]:VertexBuffer};
 
-  constructor(pos:VertexBuffer, idx:IndexBuffer, mode:number, length:number) {
-    this.pos = pos;
+  constructor(vtxBuffers:{[index: string]:VertexBuffer}, idx:IndexBuffer, mode:number, length:number) {
+    this.vtxBuffers = vtxBuffers;
     this.idx = idx;
     this.mode = mode;
     this.length = length;
@@ -111,11 +112,11 @@ export class Mesh implements DrawData {
   }
 
   getVertexBuffer(attribute:string):VertexBuffer {
-    return this.pos;
+    return this.vtxBuffers[attribute];
   }
 
   getAttributes():string[] {
-    return this.attributes;
+    return Object.keys(this.vtxBuffers);
   }
 
   getIndexBuffer():IndexBuffer {
@@ -166,11 +167,16 @@ export class WireBuilder {
   }
 }
 
+var a = GLM.vec3.create();
+var b = GLM.vec3.create();
+var normal = GLM.vec3.create();
+
 export class MeshBuilder {
 
-  private positions = [];
-  private indices = [];
-  private lastIdx:number = 0;
+  private positions:number[] = [];
+  private normals:number[] = [];
+  private indices:number[] = [];
+  private lastIdx = 0;
 
   private addVertex(vtx:number[]) {
     this.positions.push(vtx[0]);
@@ -178,10 +184,23 @@ export class MeshBuilder {
     this.positions.push(vtx[2]);
   }
 
+  private addNormal(norm:number[]) {
+    this.normals.push(norm[0]);
+    this.normals.push(norm[1]);
+    this.normals.push(norm[2]);
+  }
+
   addTriangle(verts:number[][]):void {
     this.addVertex(verts[0]);
     this.addVertex(verts[1]);
     this.addVertex(verts[2]);
+    GLM.vec3.sub(a, verts[1], verts[0]);
+    GLM.vec3.sub(b, verts[2], verts[0]);
+    GLM.vec3.cross(normal, a, b);
+    GLM.vec3.normalize(normal, normal);
+    this.addNormal(normal);
+    this.addNormal(normal);
+    this.addNormal(normal);
     var idx = this.lastIdx;
     this.indices.push(idx, idx + 1, idx + 2)
     this.lastIdx += 3;
@@ -192,8 +211,16 @@ export class MeshBuilder {
     this.addVertex(verts[1]);
     this.addVertex(verts[2]);
     this.addVertex(verts[3]);
+    GLM.vec3.sub(a, verts[1], verts[0]);
+    GLM.vec3.sub(b, verts[2], verts[0]);
+    GLM.vec3.cross(normal, a, b);
+    GLM.vec3.normalize(normal, normal);
+    this.addNormal(normal);
+    this.addNormal(normal);
+    this.addNormal(normal);
+    this.addNormal(normal);
     var idx = this.lastIdx;
-    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
+    this.indices.push(idx, idx + 1, idx + 2, idx, idx + 2, idx + 3);
     this.lastIdx += 4;
   }
 
@@ -204,12 +231,18 @@ export class MeshBuilder {
     gl.bufferData(gl.ARRAY_BUFFER, posData, gl.STATIC_DRAW);
     var pos = new VertexBufferImpl(posBuffer, gl.FLOAT);
 
+    var normalBuffer = gl.createBuffer();
+    var normalData = new Float32Array(this.normals);
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, normalData, gl.STATIC_DRAW);
+    var norm = new VertexBufferImpl(normalBuffer, gl.FLOAT);    
+
     var idxBuffer = gl.createBuffer();
     var idxData = new Uint16Array(this.indices);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idxData, gl.STATIC_DRAW);
     var idx = new IndexBufferImpl(idxBuffer, gl.UNSIGNED_SHORT);
 
-    return new Mesh(pos, idx, gl.TRIANGLES, idxData.length);
+    return new Mesh({pos:pos, norm:norm}, idx, gl.TRIANGLES, idxData.length);
   }
 }
