@@ -4,19 +4,14 @@ import shaders = require('./modules/shader');
 import mb = require('./modules/meshbuilder');
 import GLM = require('./libs_js/glmatrix');
 import build = require('./modules/buildloader');
-import buildstructs = require('./libs/buildstructs')
 import data = require('./libs/dataviewstream');
 import getter = require('./libs/getter');
 import controller = require('./modules/controller2d');
 import triangulator = require('./modules/triangulator');
-import MU = require('./libs/mathutils');
+import buildutils = require('./modules/buildutils');
 
-var a = [0, 0], b = [1, 0], c = [1, 1], d = [0, 1];
-console.log(MU.isCW([a,b,c,d]));
-console.log(MU.isCW([d,c,b,a]));
-
-var w = 800;
-var h = 600;
+var w = 1024;
+var h = 768;
 
 function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -48,75 +43,14 @@ function load(file:string):string {
 }
 
 var gl = setupGl();
-
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/RCPD.map'), true));
-
-var maxsector:buildstructs.Sector;
-var maxsectorwalls = 0;
-var sectors = board.sectors;
-for (var i = 0; i < sectors.length; i++) {
-  var sec = sectors[i];
-  if (sec.wallnum > maxsectorwalls) {
-    maxsector = sec;
-    maxsectorwalls = sec.wallnum;
-  }
-}
-
-class TriangulationContext {
-  private contour:number[][];
-  private holes = [];
-
-  public addContour(contour:number[][]) {
-    if (!MU.isCW(contour)) {
-      this.contour = contour;
-    } else {
-      this.holes.push(contour);
-    }
-  }
-
-  public getContour():number[][] {
-    return this.contour;
-  }
-
-  public getHoles():number[][][] {
-    return this.holes;
-  }
-}
-
-function getContours(sector:buildstructs.Sector, walls:buildstructs.Wall[]):TriangulationContext {
-  var i = 0;
-  var pairs = [];
-  while (i < sector.wallnum) {
-    var firstwallIdx = i + sector.wallptr;
-    var wall = walls[sector.wallptr + i];
-    while (wall.point2 != firstwallIdx){
-      wall = walls[wall.point2];
-      i++;
-    }
-    i++;
-    pairs.push([firstwallIdx, sector.wallptr+i]);
-  }
-  
-  var ctx = new TriangulationContext();
-  for (var i = 0; i < pairs.length; i++) {
-    var contour = [];
-    var pair = pairs[i];
-    for (var j = pair[0]; j < pair[1]; j++) {
-      contour.push([walls[j].x, walls[j].y]);
-    }
-    ctx.addContour(contour);
-  }
-  return ctx;
-}
+var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/649.map'), true));
 var walls = board.walls;
-
-
+var sectors = board.sectors;
 
 var builder = new mb.MeshBuilder();
-var sectors = board.sectors;
 for (var secnum in sectors) {
-  var contour = getContours(sectors[secnum], walls);
-  var tris = null;
+  var contour = buildutils.getContours(sectors[secnum], walls);
+  var tris:number[][] = null;
   try{
     tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
   } catch(e) {
