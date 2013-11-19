@@ -10,8 +10,8 @@ import controller = require('./modules/controller3d');
 import triangulator = require('./modules/triangulator');
 import buildutils = require('./modules/buildutils');
 
-var w = 600;
-var h = 400;
+var w = 1000;
+var h = 1000;
 
 function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -46,7 +46,7 @@ var gl = setupGl();
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/doly.map'), true));
+var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/googol.map'), true));
 var walls = board.walls;
 var sectors = board.sectors;
 
@@ -59,8 +59,10 @@ sectors.forEach((sector) => {
   } catch (e) {
     console.log(e);
   }
-  if (tris == null)
+  if (tris == null){
+    console.log(sector);
     return;
+  }
 
   var i = 0;
   var scale = -16;
@@ -83,14 +85,16 @@ sectors.forEach((sector) => {
         var c = [wall2.x, nextsector.floorz / scale, wall2.y];
         var d = [wall.x, nextsector.floorz / scale, wall.y];
         quads.push([d, c, b, a]);
+        quads.push([a, b, c, d]);
       }
-      
+
       if (sector.ceilingz < nextsector.ceilingz){
         var a = [wall.x, sector.ceilingz / scale, wall.y];
         var b = [wall2.x, sector.ceilingz / scale, wall2.y];
         var c = [wall2.x, nextsector.ceilingz / scale, wall2.y];
         var d = [wall.x, nextsector.ceilingz / scale, wall.y];
         quads.push([d, c, b, a]);
+        quads.push([a, b, c, d]);
       }
     }
     i++;

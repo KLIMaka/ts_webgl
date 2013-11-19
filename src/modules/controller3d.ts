@@ -29,7 +29,7 @@ export class Controller3D {
   private oldX = 0;
   private oldY = 0;
   private keys = {};
-  private fow = 45;
+  private fow = 90;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -39,8 +39,8 @@ export class Controller3D {
     this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
     this.gl.canvas.addEventListener('mousewheel', (e:MouseWheelEvent) => self.mousewheel(e));
 
-    window.document.addEventListener('keyup', (e) => self.keyup(e));
-    window.document.addEventListener('keydown', (e) => self.keydown(e));
+    document.addEventListener('keyup', (e) => self.keyup(e));
+    document.addEventListener('keydown', (e) => self.keydown(e));
   }
 
   private mousemove(e:MouseEvent):boolean {
