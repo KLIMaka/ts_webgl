@@ -6,7 +6,7 @@ import GLM = require('./libs_js/glmatrix');
 import build = require('./modules/buildloader');
 import data = require('./libs/dataviewstream');
 import getter = require('./libs/getter');
-import controller = require('./modules/controller2d');
+import controller = require('./modules/controller3d');
 import triangulator = require('./modules/triangulator');
 import buildutils = require('./modules/buildutils');
 
@@ -17,7 +17,7 @@ function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
-  var gl = canvas.getContext('webgl', {antialias:true});
+  var gl = canvas.getContext('webgl', {antialias: true});
 
   document.body.appendChild(gl.canvas);
   document.body.style.overflow = 'hidden';
@@ -36,7 +36,7 @@ function animate(gl:WebGLRenderingContext, callback) {
   }
 
   update();
-};
+}
 
 function load(file:string):string {
   return getter.getString(file);
@@ -51,17 +51,16 @@ var walls = board.walls;
 var sectors = board.sectors;
 
 var builder = new mb.MeshBuilder();
-for (var secnum in sectors) {
-  var sector = sectors[secnum];
+sectors.forEach((sector) => {
   var contour = buildutils.getContours(sector, walls);
   var tris:number[][] = null;
-  try{
+  try {
     tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
-  } catch(e) {
+  } catch (e) {
     console.log(e);
   }
   if (tris == null)
-    continue;
+    return;
 
   var i = 0;
   var quads = [];
@@ -73,19 +72,19 @@ for (var secnum in sectors) {
       var b = [wall2.x, wall2.y, sector.ceilingz];
       var c = [wall2.x, wall2.y, sector.floorz];
       var d = [wall.x, wall.y, sector.floorz];
-      quads.push([a,b,c,d]);
+      quads.push([a, b, c, d]);
     } else {
       var nextsector = sectors[wall.nextsector];
       var a = [wall.x, wall.y, sector.floorz];
       var b = [wall2.x, wall2.y, sector.floorz];
       var c = [wall2.x, wall2.y, nextsector.floorz];
       var d = [wall.x, wall.y, nextsector.floorz];
-      quads.push([a,b,c,d], [d,c,b,a]);
+      quads.push([a, b, c, d], [d, c, b, a]);
       a = [wall.x, wall.y, sector.ceilingz];
       b = [wall2.x, wall2.y, sector.ceilingz];
       c = [wall2.x, wall2.y, nextsector.ceilingz];
       d = [wall.x, wall.y, nextsector.ceilingz];
-      quads.push([a,b,c,d], [d,c,b,a]);
+      quads.push([a, b, c, d], [d, c, b, a]);
     }
     i++;
   }
@@ -94,11 +93,15 @@ for (var secnum in sectors) {
     builder.addQuad(quads[i]);
   }
 
-  for (var i = 0; i < tris.length; i+=3) {
+  for (var i = 0; i < tris.length; i += 3) {
     var z = sector.floorz;
-    builder.addTriangle([[tris[i][0], tris[i][1], z], [tris[i+1][0], tris[i+1][1], z], [tris[i+2][0], tris[i+2][1], z]]);
+    builder.addTriangle([
+      [tris[i + 0][0], tris[i + 0][1], z],
+      [tris[i + 1][0], tris[i + 1][1], z],
+      [tris[i + 2][0], tris[i + 2][1], z]
+    ]);
   }
-}
+});
 
 // var builder = new mb.WireBuilder();
 // for (var i = maxsector.wallptr; i < maxsector.wallptr+maxsector.wallnum; i++) {
@@ -111,8 +114,8 @@ for (var secnum in sectors) {
 
 var model = builder.build(gl);
 var shader = shaders.createShader(gl, load('resources/shaders/s.vsh'), load('resources/shaders/s.fsh'));
-var control = new controller.Controller2D(gl);
-control.setUnitsPerPixel(100);
+var control = new controller.Controller3D(gl);
+//control.setUnitsPerPixel(100);
 
 function draw(gl:WebGLRenderingContext, model:mb.DrawData, shader:shaders.Shader) {
   var attributes = model.getAttributes();
@@ -136,6 +139,7 @@ function draw(gl:WebGLRenderingContext, model:mb.DrawData, shader:shaders.Shader
 
 animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
+  control.move(time);
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 

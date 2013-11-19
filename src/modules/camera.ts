@@ -26,7 +26,7 @@ export class Camera {
     this.needUpdate = true;
   }
 
-  getPos():GLM.Mat4Array {
+  getPos():GLM.Vec3Array {
     return this.pos;
   }
 

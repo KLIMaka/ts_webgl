@@ -6,7 +6,7 @@ import GLM = require('../libs_js/glmatrix');
 export class Controller2D {
 
   private gl:WebGLRenderingContext;
-  private camera = new camera.Camera(0, 0, 0, 15, 15);
+  private camera = new camera.Camera(0, 0, 0, 0, 0);
   private drag = false;
   private dragStartX = 0;
   private dragStartY = 0;
@@ -18,10 +18,10 @@ export class Controller2D {
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
     var self = this;
-    this.gl.canvas.addEventListener('mousemove', (e) => self.mousemove(e));
-    this.gl.canvas.addEventListener('mouseup', (e) => self.mouseup(e));
-    this.gl.canvas.addEventListener('mousedown', (e) => self.mousedown(e));
-    this.gl.canvas.addEventListener('mousewheel', (e) => self.mousewheel(e));
+    this.gl.canvas.addEventListener('mousemove', (e:MouseEvent) => self.mousemove(e));
+    this.gl.canvas.addEventListener('mouseup', (e:MouseEvent) => self.mouseup(e));
+    this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
+    this.gl.canvas.addEventListener('mousewheel', (e:MouseWheelEvent) => self.mousewheel(e));
   }
 
   private mousemove(e:MouseEvent):boolean {

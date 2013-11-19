@@ -202,7 +202,7 @@ export class MeshBuilder {
     this.addNormal(normal);
     this.addNormal(normal);
     var idx = this.lastIdx;
-    this.indices.push(idx, idx + 1, idx + 2)
+    this.indices.push(idx, idx + 2, idx + 1)
     this.lastIdx += 3;
   }
 
@@ -220,7 +220,7 @@ export class MeshBuilder {
     this.addNormal(normal);
     this.addNormal(normal);
     var idx = this.lastIdx;
-    this.indices.push(idx, idx + 1, idx + 2, idx, idx + 2, idx + 3);
+    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
     this.lastIdx += 4;
   }
 
