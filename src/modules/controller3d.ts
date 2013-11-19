@@ -23,12 +23,13 @@ function mapKeyCode(code) {
 export class Controller3D {
 
   private gl:WebGLRenderingContext;
-  private camera = new camera.Camera(0, 0, 0, 0, 0);
+  private camera = new camera.Camera(0, 0, 2, 0, 0);
   private projection = GLM.mat4.create();
   private drag = false;
   private oldX = 0;
   private oldY = 0;
   private keys = {};
+  private fow = 45;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -44,7 +45,7 @@ export class Controller3D {
 
   private mousemove(e:MouseEvent):boolean {
     if (this.drag) {
-      this.camera.updateAngles(e.x - this.oldX,/* e.y - this.oldY*/0);
+      this.camera.updateAngles(e.x - this.oldX, e.y - this.oldY);
     }
     this.oldX = e.x;
     this.oldY = e.y;
@@ -61,7 +62,8 @@ export class Controller3D {
     return false;
   }
 
-  private mousewheel(e:MouseEvent):boolean {
+  private mousewheel(e:MouseWheelEvent):boolean {
+    this.fow += e.wheelDelta / 120;
     return false;
   }
 
@@ -85,31 +87,19 @@ export class Controller3D {
 
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
-    GLM.mat4.perspective(projection, MU.deg2rad(30), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, -0xFFFF, 0xFFFF);
+    GLM.mat4.perspective(projection, MU.deg2rad(this.fow), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 0.01, 1000);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
 
-  public forward():GLM.Vec3Array {
-    var mat3 = MU.mat3FromMat4(GLM.mat3.create(), this.camera.getTransformMatrix())
-    return GLM.vec3.transformMat3(GLM.vec3.create(), GLM.vec3.fromValues(0, 0, -1), mat3);
-  }
-
-  public right():GLM.Vec3Array {
-    var mat3 = MU.mat3FromMat4(GLM.mat3.create(), this.camera.getTransformMatrix())
-    return GLM.vec3.transformMat3(GLM.vec3.create(), GLM.vec3.fromValues(1, 0, 0), mat3);
-  }
-
   public move(speed:number):void {
 
-    if (this.keys['P']) {
-      console.log(this.forward());
-    }
-    speed *= 80000;
+    // speed *= 80000;
     // Forward movement
     var up = this.keys['W'] | this.keys['UP'];
     var down = this.keys['S'] | this.keys['DOWN'];
-    var forward = this.forward();
+    var forward = this.camera.forward();
+    console.log(forward);
     GLM.vec3.scale(forward, forward, speed * (up - down));
     var campos = this.camera.getPos();
     GLM.vec3.add(campos, campos, forward);
@@ -117,10 +107,12 @@ export class Controller3D {
     // Sideways movement
     var left = this.keys['A'] | this.keys['LEFT'];
     var right = this.keys['D'] | this.keys['RIGHT'];
-    var sideways = this.right();
-    GLM.vec3.negate(sideways, sideways);
+    var sideways = this.camera.side();
     GLM.vec3.scale(sideways, sideways, speed * (right - left));
     GLM.vec3.add(campos, campos, sideways);
     this.camera.setPos(campos);
+
+    // this.camera.move(GLM.vec3.fromValues(speed * (right - left), 0, speed * (down - up)));
+    
   }
 }

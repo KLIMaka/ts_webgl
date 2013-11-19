@@ -16,40 +16,50 @@ export class Camera {
     this.angleY = ay;
   }
 
-  setPos(pos:GLM.Vec3Array):void {
+  public setPos(pos:GLM.Vec3Array):void {
     this.pos = pos;
     this.needUpdate = true;
   }
 
-  setPosXYZ(x:number, y:number, z:number):void {
+  public setPosXYZ(x:number, y:number, z:number):void {
     GLM.vec3.set(this.pos, x, y, z);
     this.needUpdate = true;
   }
 
-  getPos():GLM.Vec3Array {
+  public getPos():GLM.Vec3Array {
     return this.pos;
   }
 
-  move(delta:GLM.Vec3Array):void {
+  public move(delta:GLM.Vec3Array):void {
     var tmp = GLM.vec3.transformMat3(GLM.vec3.create(), delta, MU.mat3FromMat4(GLM.mat3.create(), this.getTransformMatrix()));
     GLM.vec3.add(this.pos, this.pos, tmp);
     this.needUpdate = true;
   }
 
-  updateAngles(dx:number, dy:number):void {
+  public forward():GLM.Vec3Array {
+    var mat3 = MU.mat3FromMat4(GLM.mat3.create(), this.getTransformMatrix())
+    return GLM.vec3.fromValues(mat3[6], mat3[7], -mat3[8]);
+  }
+
+  public side():GLM.Vec3Array {
+    var mat3 = MU.mat3FromMat4(GLM.mat3.create(), this.getTransformMatrix())
+    return GLM.vec3.fromValues(mat3[0], mat3[1], -mat3[2]);
+  }
+
+  public updateAngles(dx:number, dy:number):void {
     this.angleY -= dx;
     this.angleX -= dy;
     this.angleX = Math.max(-90, Math.min(90, this.angleX));
     this.needUpdate = true;
   }
 
-  setAngles(ax:number, ay:number):void {
+  public setAngles(ax:number, ay:number):void {
     this.angleX = ax;
     this.angleY = ay;
     this.needUpdate = true;
   }
 
-  getTransformMatrix():GLM.Mat4Array {
+  public getTransformMatrix():GLM.Mat4Array {
 
     var mat = this.transform;
     if (this.needUpdate) {

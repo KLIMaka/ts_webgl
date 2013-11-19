@@ -196,7 +196,7 @@ export class MeshBuilder {
     this.addVertex(verts[2]);
     GLM.vec3.sub(a, verts[1], verts[0]);
     GLM.vec3.sub(b, verts[2], verts[0]);
-    GLM.vec3.cross(normal, a, b);
+    GLM.vec3.cross(normal, b, a);
     GLM.vec3.normalize(normal, normal);
     this.addNormal(normal);
     this.addNormal(normal);
@@ -213,7 +213,7 @@ export class MeshBuilder {
     this.addVertex(verts[3]);
     GLM.vec3.sub(a, verts[1], verts[0]);
     GLM.vec3.sub(b, verts[2], verts[0]);
-    GLM.vec3.cross(normal, a, b);
+    GLM.vec3.cross(normal, b, a);
     GLM.vec3.normalize(normal, normal);
     this.addNormal(normal);
     this.addNormal(normal);

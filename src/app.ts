@@ -10,8 +10,8 @@ import controller = require('./modules/controller3d');
 import triangulator = require('./modules/triangulator');
 import buildutils = require('./modules/buildutils');
 
-var w = 1024;
-var h = 768;
+var w = 400;
+var h = 400;
 
 function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -51,58 +51,62 @@ var walls = board.walls;
 var sectors = board.sectors;
 
 var builder = new mb.MeshBuilder();
-sectors.forEach((sector) => {
-  var contour = buildutils.getContours(sector, walls);
-  var tris:number[][] = null;
-  try {
-    tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
-  } catch (e) {
-    console.log(e);
-  }
-  if (tris == null)
-    return;
+// sectors.forEach((sector) => {
+//   var contour = buildutils.getContours(sector, walls);
+//   var tris:number[][] = null;
+//   try {
+//     tris = triangulator.triangulate(contour.getContour(), contour.getHoles());
+//   } catch (e) {
+//     console.log(e);
+//   }
+//   if (tris == null)
+//     return;
 
-  var i = 0;
-  var quads = [];
-  while (i < sector.wallnum) {
-    var wall = walls[sector.wallptr + i];
-    var wall2 = walls[wall.point2];
-    if (wall.nextwall == -1) {
-      var a = [wall.x, wall.y, sector.ceilingz];
-      var b = [wall2.x, wall2.y, sector.ceilingz];
-      var c = [wall2.x, wall2.y, sector.floorz];
-      var d = [wall.x, wall.y, sector.floorz];
-      quads.push([a, b, c, d]);
-    } else {
-      var nextsector = sectors[wall.nextsector];
-      var a = [wall.x, wall.y, sector.floorz];
-      var b = [wall2.x, wall2.y, sector.floorz];
-      var c = [wall2.x, wall2.y, nextsector.floorz];
-      var d = [wall.x, wall.y, nextsector.floorz];
-      quads.push([a, b, c, d], [d, c, b, a]);
-      a = [wall.x, wall.y, sector.ceilingz];
-      b = [wall2.x, wall2.y, sector.ceilingz];
-      c = [wall2.x, wall2.y, nextsector.ceilingz];
-      d = [wall.x, wall.y, nextsector.ceilingz];
-      quads.push([a, b, c, d], [d, c, b, a]);
-    }
-    i++;
-  }
+//   var i = 0;
+//   var quads = [];
+//   while (i < sector.wallnum) {
+//     var wall = walls[sector.wallptr + i];
+//     var wall2 = walls[wall.point2];
+//     if (wall.nextwall == -1) {
+//       var a = [wall.x, wall.y, sector.ceilingz];
+//       var b = [wall2.x, wall2.y, sector.ceilingz];
+//       var c = [wall2.x, wall2.y, sector.floorz];
+//       var d = [wall.x, wall.y, sector.floorz];
+//       quads.push([a, b, c, d]);
+//     } else {
+//       var nextsector = sectors[wall.nextsector];
+//       var a = [wall.x, wall.y, sector.floorz];
+//       var b = [wall2.x, wall2.y, sector.floorz];
+//       var c = [wall2.x, wall2.y, nextsector.floorz];
+//       var d = [wall.x, wall.y, nextsector.floorz];
+//       quads.push([a, b, c, d], [d, c, b, a]);
+//       a = [wall.x, wall.y, sector.ceilingz];
+//       b = [wall2.x, wall2.y, sector.ceilingz];
+//       c = [wall2.x, wall2.y, nextsector.ceilingz];
+//       d = [wall.x, wall.y, nextsector.ceilingz];
+//       quads.push([a, b, c, d], [d, c, b, a]);
+//     }
+//     i++;
+//   }
 
-  for (var i = 0; i < quads.length; i++) {
-    builder.addQuad(quads[i]);
-  }
+//   for (var i = 0; i < quads.length; i++) {
+//     builder.addQuad(quads[i]);
+//   }
 
-  for (var i = 0; i < tris.length; i += 3) {
-    var z = sector.floorz;
-    builder.addTriangle([
-      [tris[i + 0][0], tris[i + 0][1], z],
-      [tris[i + 1][0], tris[i + 1][1], z],
-      [tris[i + 2][0], tris[i + 2][1], z]
-    ]);
-  }
-});
-
+//   for (var i = 0; i < tris.length; i += 3) {
+//     var z = sector.floorz;
+//     builder.addTriangle([
+//       [tris[i + 0][0], tris[i + 0][1], z],
+//       [tris[i + 1][0], tris[i + 1][1], z],
+//       [tris[i + 2][0], tris[i + 2][1], z]
+//     ]);
+//   }
+// });
+var s = 0.1;
+builder.addQuad([[-s, s, s], [s, s, s], [s, -s, s],[-s, -s, s]]);
+builder.addQuad([[-s, -s, -s], [s, -s, -s], [s, s, -s], [-s, s, -s]]);
+builder.addQuad([[-s, s, s], [-s, -s, s], [-s, -s, -s], [-s, s, -s]]);
+builder.addQuad([[s, s, -s], [s, -s, -s], [s, -s, s], [s, s, s]]);
 // var builder = new mb.WireBuilder();
 // for (var i = maxsector.wallptr; i < maxsector.wallptr+maxsector.wallnum; i++) {
 // // for (var i = 0; i < walls.length; i++) {
