@@ -43,7 +43,7 @@ function load(file:string):string {
 }
 
 var gl = setupGl();
-// gl.enable(gl.CULL_FACE);
+gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
 var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/doly.map'), true));
