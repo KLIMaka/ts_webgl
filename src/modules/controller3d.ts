@@ -87,21 +87,25 @@ export class Controller3D {
 
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
-    GLM.mat4.perspective(projection, MU.deg2rad(this.fow), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 0.01, 1000);
+    GLM.mat4.perspective(projection, MU.deg2rad(this.fow), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 0.01, 0xFFFF);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
 
+  public getCamera():camera.Camera {
+    return this.camera;
+  }
+
   public move(speed:number):void {
 
-    // speed *= 80000;
+    speed *= 8000;
     // Forward movement
     var up = this.keys['W'] | this.keys['UP'];
     var down = this.keys['S'] | this.keys['DOWN'];
     var forward = this.camera.forward();
-    console.log(forward);
     GLM.vec3.scale(forward, forward, speed * (up - down));
     var campos = this.camera.getPos();
+    var startY = campos[1];
     GLM.vec3.add(campos, campos, forward);
 
     // Sideways movement
@@ -110,6 +114,12 @@ export class Controller3D {
     var sideways = this.camera.side();
     GLM.vec3.scale(sideways, sideways, speed * (right - left));
     GLM.vec3.add(campos, campos, sideways);
+
+    var u = this.keys['F'] | 0;
+    var d = this.keys['V'] | 0;
+    campos[1] = startY + (speed * (u-d));
+    
+
     this.camera.setPos(campos);
 
     // this.camera.move(GLM.vec3.fromValues(speed * (right - left), 0, speed * (down - up)));
