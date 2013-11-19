@@ -43,10 +43,10 @@ function load(file:string):string {
 }
 
 var gl = setupGl();
-gl.enable(gl.CULL_FACE);
+// gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/rcpd.map'), true));
+var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/doly.map'), true));
 var walls = board.walls;
 var sectors = board.sectors;
 
@@ -76,21 +76,22 @@ sectors.forEach((sector) => {
       quads.push([a, b, c, d]);
     } else {
       var nextsector = sectors[wall.nextsector];
-      var a = [wall.x, sector.floorz / scale, wall.y];
-      var b = [wall2.x, sector.floorz / scale, wall2.y];
-      var c = [wall2.x, nextsector.floorz / scale, wall2.y];
-      var d = [wall.x, nextsector.floorz / scale, wall.y];
 
-      if (sector.floorz > nextsector.floorz)
+      if (sector.floorz > nextsector.floorz){
+        var a = [wall.x, sector.floorz / scale, wall.y];
+        var b = [wall2.x, sector.floorz / scale, wall2.y];
+        var c = [wall2.x, nextsector.floorz / scale, wall2.y];
+        var d = [wall.x, nextsector.floorz / scale, wall.y];
         quads.push([d, c, b, a]);
+      }
       
-      a = [wall.x, sector.ceilingz / scale, wall.y];
-      b = [wall2.x, sector.ceilingz / scale, wall2.y];
-      c = [wall2.x, nextsector.ceilingz / scale, wall2.y];
-      d = [wall.x, nextsector.ceilingz / scale, wall.y];
-
-      if (sector.ceilingz < nextsector.ceilingz)
+      if (sector.ceilingz < nextsector.ceilingz){
+        var a = [wall.x, sector.ceilingz / scale, wall.y];
+        var b = [wall2.x, sector.ceilingz / scale, wall2.y];
+        var c = [wall2.x, nextsector.ceilingz / scale, wall2.y];
+        var d = [wall.x, nextsector.ceilingz / scale, wall.y];
         quads.push([d, c, b, a]);
+      }
     }
     i++;
   }

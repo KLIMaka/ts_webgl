@@ -87,7 +87,7 @@ export class Controller3D {
 
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
-    GLM.mat4.perspective(projection, MU.deg2rad(this.fow), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 0.01, 0xFFFF);
+    GLM.mat4.perspective(projection, MU.deg2rad(this.fow), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
