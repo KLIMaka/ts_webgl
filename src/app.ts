@@ -6,8 +6,8 @@ import getter = require('./libs/getter');
 import controller = require('./modules/controller3d');
 import buildutils = require('./modules/buildutils');
 
-var w = 600;
-var h = 400;
+var w = 1000;
+var h = 1000;
 
 function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -42,7 +42,7 @@ var gl = setupGl();
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var model = buildutils.buildBoard('resources/buildmaps/doly.map', gl);
+var model = buildutils.buildBoard('resources/buildmaps/newboard.map', gl);
 var shader = shaders.createShader(gl, load('resources/shaders/s.vsh'), load('resources/shaders/s.fsh'));
 var control = new controller.Controller3D(gl);
 

@@ -61,7 +61,7 @@ function getContours(sector:buildstructs.Sector, walls:buildstructs.Wall[]):Tria
   return ctx;
 }
 
-function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wall[]) {
+function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wall[], scale:number) {
   var wall1 = walls[sector.wallptr];
   var wall2 = walls[wall1.point2];
 
@@ -71,7 +71,7 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
 
   var dh  = function(x:number, y:number, rotation:number):number {
     var dist = GLM.vec2.dot(normal, GLM.vec2.fromValues(x , y)) + w;
-    return -Math.tan(rotation * (45/4096)) * dist;
+    return -Math.tan(MU.deg2rad(rotation * (45/4096))) * dist * scale;
   }
   return dh;
 }
@@ -98,7 +98,7 @@ export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
 
     var i = 0;
     var scale = -16;
-    var slope = createSlopeCalculator(sector, walls);
+    var slope = createSlopeCalculator(sector, walls, scale);
     while (i < sector.wallnum) {
       var wall = walls[sector.wallptr + i];
       var wall2 = walls[wall.point2];
@@ -116,7 +116,7 @@ export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
         builder.addQuad([a, b, c, d]);
       } else {
         var nextsector = sectors[wall.nextsector];
-        var nextslope = createSlopeCalculator(nextsector, walls);
+        var nextslope = createSlopeCalculator(nextsector, walls, scale);
 
         if (sector.floorz > nextsector.floorz){
           var z1 = slope(wall.x, wall.y, sector.floorheinum) + sector.floorz;
