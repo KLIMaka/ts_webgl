@@ -23,13 +23,13 @@ function mapKeyCode(code) {
 export class Controller3D {
 
   private gl:WebGLRenderingContext;
-  private camera = new camera.Camera(0, 0, 2, 0, 0);
+  private camera = new camera.Camera(0, 0, 0, 0, 0);
   private projection = GLM.mat4.create();
   private drag = false;
   private oldX = 0;
   private oldY = 0;
   private keys = {};
-  private fow = 90;
+  private fov = 90;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -39,8 +39,8 @@ export class Controller3D {
     this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
     this.gl.canvas.addEventListener('mousewheel', (e:MouseWheelEvent) => self.mousewheel(e));
 
-    document.addEventListener('keyup', (e) => self.keyup(e));
-    document.addEventListener('keydown', (e) => self.keydown(e));
+    document.addEventListener('keyup', (e:KeyboardEvent) => self.keyup(e));
+    document.addEventListener('keydown', (e:KeyboardEvent) => self.keydown(e));
   }
 
   private mousemove(e:MouseEvent):boolean {
@@ -63,7 +63,7 @@ export class Controller3D {
   }
 
   private mousewheel(e:MouseWheelEvent):boolean {
-    this.fow += e.wheelDelta / 120;
+    this.fov += -e.wheelDelta / 60;
     return false;
   }
 
@@ -87,7 +87,7 @@ export class Controller3D {
 
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
-    GLM.mat4.perspective(projection, MU.deg2rad(this.fow), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
+    GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
@@ -120,9 +120,6 @@ export class Controller3D {
     campos[1] = startY + (speed * (u-d));
     
 
-    this.camera.setPos(campos);
-
-    // this.camera.move(GLM.vec3.fromValues(speed * (right - left), 0, speed * (down - up)));
-    
+    this.camera.setPos(campos);    
   }
 }

@@ -1,5 +1,6 @@
 uniform mat4 MVP;
 uniform vec3 eyepos;
+uniform vec3 eyedir;
 
 attribute vec3 norm;
 attribute vec3 pos;

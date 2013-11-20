@@ -54,7 +54,7 @@ export class Camera {
   }
 
   public setAngles(ax:number, ay:number):void {
-    this.angleX = ax;
+    this.angleX = Math.max(-90, Math.min(90, ax));
     this.angleY = ay;
     this.needUpdate = true;
   }
