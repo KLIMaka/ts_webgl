@@ -13,13 +13,13 @@ function readSectors(buf:data.DataViewStream, numsectors:number):build.Sector[] 
     sector.ceilingstat = buf.readUShort();
     sector.floorstat = buf.readUShort();
     sector.ceilingpicnum = buf.readUShort();
-    sector.ceilingheinum = buf.readUShort();
+    sector.ceilingheinum = buf.readShort();
     sector.ceilingshade = buf.readByte();
     sector.ceilingpal = buf.readUByte();
     sector.ceilingxpanning = buf.readUByte();
     sector.ceilingypanning = buf.readUByte();
     sector.floorpicnum = buf.readUShort();
-    sector.floorheinum = buf.readUShort();
+    sector.floorheinum = buf.readShort();
     sector.floorshade = buf.readByte();
     sector.floorpal = buf.readUByte();
     sector.floorxpanning = buf.readUByte();

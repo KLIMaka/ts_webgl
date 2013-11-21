@@ -9,6 +9,9 @@ import triangulator = require('./triangulator');
 import mb = require('./meshbuilder');
 import build = require('./buildloader');
 
+var SCALE = -16;
+var UNITS2DEG = (1 / 4096);
+
 interface TriangulatedSector {
   getContour():number[][];
   getHoles():number[][][]
@@ -61,17 +64,19 @@ function getContours(sector:buildstructs.Sector, walls:buildstructs.Wall[]):Tria
   return ctx;
 }
 
-function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wall[], scale:number) {
+function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wall[]) {
   var wall1 = walls[sector.wallptr];
   var wall2 = walls[wall1.point2];
 
   var normal = GLM.vec2.fromValues(-(wall2.y - wall1.y), wall2.x - wall1.x);
   GLM.vec2.normalize(normal, normal);
   var w = -GLM.vec2.dot(normal, GLM.vec2.fromValues(wall1.x , wall1.y));
+  var vec = GLM.vec2.create();
 
   var dh  = function(x:number, y:number, rotation:number):number {
-    var dist = GLM.vec2.dot(normal, GLM.vec2.fromValues(x , y)) + w;
-    return -Math.tan(MU.deg2rad(rotation * (45/4096))) * dist * scale;
+    GLM.vec2.set(vec, x ,y);
+    var dist = GLM.vec2.dot(normal, vec) + w;
+    return -(rotation * UNITS2DEG) * dist * SCALE;
   }
   return dh;
 }
@@ -96,52 +101,64 @@ export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
       continue;
     }
 
+    var slope = createSlopeCalculator(sector, walls);
+    var ceilingheinum = sector.ceilingheinum;
+    var ceilingz = sector.ceilingz;
+    var floorheinum = sector.floorheinum;
+    var floorz = sector.floorz;
+
     var i = 0;
-    var scale = -16;
-    var slope = createSlopeCalculator(sector, walls, scale);
     while (i < sector.wallnum) {
       var wall = walls[sector.wallptr + i];
       var wall2 = walls[wall.point2];
+      var x1 = wall.x;
+      var y1 = wall.y;
+      var x2 = wall2.x;
+      var y2 = wall2.y;
 
       if (wall.nextwall == -1) {
-        var z1 = slope(wall.x, wall.y, sector.ceilingheinum) + sector.ceilingz;
-        var z2 = slope(wall2.x, wall2.y, sector.ceilingheinum) + sector.ceilingz;
-        var z3 = slope(wall2.x, wall2.y, sector.floorheinum) + sector.floorz;
-        var z4 = slope(wall.x, wall.y, sector.floorheinum) + sector.floorz;
+        var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
+        var z2 = slope(x2, y2, ceilingheinum) + ceilingz;
+        var z3 = slope(x2, y2, floorheinum) + floorz;
+        var z4 = slope(x1, y1, floorheinum) + floorz;
 
-        var a = [wall.x, z1 / scale, wall.y];
-        var b = [wall2.x, z2 / scale, wall2.y];
-        var c = [wall2.x, z3 / scale, wall2.y];
-        var d = [wall.x, z4 / scale, wall.y];
+        var a = [x1, z1 / SCALE, y1];
+        var b = [x2, z2 / SCALE, y2];
+        var c = [x2, z3 / SCALE, y2];
+        var d = [x1, z4 / SCALE, y1];
         builder.addQuad([a, b, c, d]);
       } else {
         var nextsector = sectors[wall.nextsector];
-        var nextslope = createSlopeCalculator(nextsector, walls, scale);
+        var nextslope = createSlopeCalculator(nextsector, walls);
+        var nextfloorz = nextsector.floorz;
+        var nextfloorheinum = nextsector.floorheinum;
+        var nextceilingz = nextsector.ceilingz;
+        var nextceilingheinum = nextsector.ceilingheinum;
 
-        if (sector.floorz > nextsector.floorz){
-          var z1 = slope(wall.x, wall.y, sector.floorheinum) + sector.floorz;
-          var z2 = slope(wall2.x, wall2.y, sector.floorheinum) + sector.floorz;
-          var z3 = nextslope(wall2.x, wall2.y, nextsector.floorheinum) + nextsector.floorz;
-          var z4 = nextslope(wall.x, wall.y, nextsector.floorheinum) + nextsector.floorz;
+        if (floorz > nextfloorz){
+          var z1 = slope(x1, y1, floorheinum) + floorz;
+          var z2 = slope(x2, y2, floorheinum) + floorz;
+          var z3 = nextslope(x2, y2, nextfloorheinum) + nextfloorz;
+          var z4 = nextslope(x1, y1, nextfloorheinum) + nextfloorz;
 
-          var a = [wall.x, z1 / scale, wall.y];
-          var b = [wall2.x, z2 / scale, wall2.y];
-          var c = [wall2.x, z3 / scale, wall2.y];
-          var d = [wall.x, z4 / scale, wall.y];
+          var a = [x1, z1 / SCALE, y1];
+          var b = [x2, z2 / SCALE, y2];
+          var c = [x2, z3 / SCALE, y2];
+          var d = [x1, z4 / SCALE, y1];
           builder.addQuad([d, c, b, a]);
           builder.addQuad([a, b, c, d]);
         }
 
-        if (sector.ceilingz < nextsector.ceilingz){
-          var z1 = slope(wall.x, wall.y, sector.ceilingheinum) + sector.ceilingz;
-          var z2 = slope(wall2.x, wall2.y, sector.ceilingheinum) + sector.ceilingz;
-          var z3 = nextslope(wall2.x, wall2.y, nextsector.ceilingheinum) + nextsector.ceilingz;
-          var z4 = nextslope(wall.x, wall.y, nextsector.ceilingheinum) + nextsector.ceilingz;
+        if (ceilingz < nextceilingz){
+          var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
+          var z2 = slope(x2, y2, ceilingheinum) + ceilingz;
+          var z3 = nextslope(x2, y2, nextceilingheinum) + nextceilingz;
+          var z4 = nextslope(x1, y1, nextceilingheinum) + nextceilingz;
 
-          var a = [wall.x, z1 / scale, wall.y];
-          var b = [wall2.x, z2 / scale, wall2.y];
-          var c = [wall2.x, z3 / scale, wall2.y];
-          var d = [wall.x, z4 / scale, wall.y];
+          var a = [x1, z1 / SCALE, y1];
+          var b = [x2, z2 / SCALE, y2];
+          var c = [x2, z3 / SCALE, y2];
+          var d = [x1, z4 / SCALE, y1];
           builder.addQuad([d, c, b, a]);
           builder.addQuad([a, b, c, d]);
         }
@@ -150,24 +167,24 @@ export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
     }
 
     for (var i = 0; i < tris.length; i += 3) {
-      var z1 = slope(tris[i + 0][0], tris[i + 0][1], sector.floorheinum) + sector.floorz;
-      var z2 = slope(tris[i + 1][0], tris[i + 1][1], sector.floorheinum) + sector.floorz;
-      var z3 = slope(tris[i + 2][0], tris[i + 2][1], sector.floorheinum) + sector.floorz;
+      var z1 = slope(tris[i + 0][0], tris[i + 0][1], floorheinum) + floorz;
+      var z2 = slope(tris[i + 1][0], tris[i + 1][1], floorheinum) + floorz;
+      var z3 = slope(tris[i + 2][0], tris[i + 2][1], floorheinum) + floorz;
 
       builder.addTriangle([
-        [tris[i + 0][0], z1 / scale, tris[i + 0][1]],
-        [tris[i + 1][0], z2 / scale, tris[i + 1][1]],
-        [tris[i + 2][0], z3 / scale, tris[i + 2][1]]
+        [tris[i + 0][0], z1 / SCALE, tris[i + 0][1]],
+        [tris[i + 1][0], z2 / SCALE, tris[i + 1][1]],
+        [tris[i + 2][0], z3 / SCALE, tris[i + 2][1]]
       ]);
 
-      var z1 = slope(tris[i + 2][0], tris[i + 2][1], sector.ceilingheinum) + sector.ceilingz;
-      var z2 = slope(tris[i + 1][0], tris[i + 1][1], sector.ceilingheinum) + sector.ceilingz;
-      var z3 = slope(tris[i + 0][0], tris[i + 0][1], sector.ceilingheinum) + sector.ceilingz;
+      var z1 = slope(tris[i + 2][0], tris[i + 2][1], ceilingheinum) + ceilingz;
+      var z2 = slope(tris[i + 1][0], tris[i + 1][1], ceilingheinum) + ceilingz;
+      var z3 = slope(tris[i + 0][0], tris[i + 0][1], ceilingheinum) + ceilingz;
 
       builder.addTriangle([
-        [tris[i + 2][0], z1 / scale, tris[i + 2][1]],
-        [tris[i + 1][0], z2 / scale, tris[i + 1][1]],
-        [tris[i + 0][0], z3 / scale, tris[i + 0][1]]
+        [tris[i + 2][0], z1 / SCALE, tris[i + 2][1]],
+        [tris[i + 1][0], z2 / SCALE, tris[i + 1][1]],
+        [tris[i + 0][0], z3 / SCALE, tris[i + 0][1]]
       ]);
     }
   }

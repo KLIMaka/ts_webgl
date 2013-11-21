@@ -42,7 +42,7 @@ var gl = setupGl();
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var model = buildutils.buildBoard('resources/buildmaps/newboard.map', gl);
+var model = buildutils.buildBoard('resources/buildmaps/googol.map', gl);
 var shader = shaders.createShader(gl, load('resources/shaders/s.vsh'), load('resources/shaders/s.fsh'));
 var control = new controller.Controller3D(gl);
 
