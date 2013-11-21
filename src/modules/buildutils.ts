@@ -139,8 +139,8 @@ export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
           var z2 = slope(x2, y2, floorheinum) + floorz;
           var z3 = nextslope(x2, y2, nextfloorheinum) + nextfloorz;
           var z4 = nextslope(x1, y1, nextfloorheinum) + nextfloorz;
-          var a = [x1, z1 / SCALE, y1];
 
+          var a = [x1, z1 / SCALE, y1];
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
