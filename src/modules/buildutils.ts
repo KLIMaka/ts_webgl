@@ -3,11 +3,8 @@
 import buildstructs = require('../libs/buildstructs');
 import MU = require('../libs/mathutils');
 import GLM = require('../libs_js/glmatrix');
-import data = require('../libs/dataviewstream');
-import getter = require('../libs/getter');
 import triangulator = require('./triangulator');
 import mb = require('./meshbuilder');
-import build = require('./buildloader');
 
 var SCALE = -16;
 var UNITS2DEG = (1 / 4096);
@@ -81,8 +78,56 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   return dh;
 }
 
-export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
-  var board = build.loadBuildMap(new data.DataViewStream(getter.get(fname), true));
+function addWall(builder:mb.MeshBuilder, quad:number[][]) {
+  // a -> b
+  // ^    |
+  // |    v
+  // d <- c
+  var a = quad[0];
+  var b = quad[1];
+  var c = quad[2];
+  var d = quad[3];
+
+  if (a[1] == d[1]) {
+    builder.addTriangle([a,b,c]);
+    return;
+  }
+  if (b[1] == c[1]) {
+    builder.addTriangle([a,b,d]);
+    return;
+  }
+  if (a[1] < d[1] && b[1] < c[1]){
+    builder.addQuad([d, c , b , a]);
+    return;
+  }
+
+  var tmp = GLM.vec3.create();
+  GLM.vec3.sub(tmp, a, d);
+  var left = GLM.vec3.length(tmp);
+  GLM.vec3.sub(tmp, b, c);
+  var right = GLM.vec3.length(tmp);
+  var k = Math.atan(left / right) / (Math.PI/2);
+
+  if (a[1] < d[1]) {
+    GLM.vec3.sub(tmp, c, d);
+    GLM.vec3.scale(tmp, tmp, k);
+    var e = GLM.vec3.add(GLM.vec3.create(), d, tmp);
+    builder.addTriangle([d, e, a]);
+    builder.addTriangle([e, b, c]);
+    return;
+  }
+  if (b[1] < c[1]) {
+    GLM.vec3.sub(tmp, b, a);
+    GLM.vec3.scale(tmp, tmp, k);
+    var e = GLM.vec3.add(GLM.vec3.create(), a, tmp);
+    builder.addTriangle([a, e, d]);
+    builder.addTriangle([e, c, b]);
+    return; 
+  }
+  builder.addQuad(quad);
+}
+
+export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):mb.DrawData {
   var walls = board.walls;
   var sectors = board.sectors;
 
@@ -126,41 +171,37 @@ export function buildBoard(fname:string, gl:WebGLRenderingContext):mb.DrawData {
         var b = [x2, z2 / SCALE, y2];
         var c = [x2, z3 / SCALE, y2];
         var d = [x1, z4 / SCALE, y1];
-        builder.addQuad([a, b, c, d]);
+        addWall(builder, [a, b, c, d]);
       } else {
         var nextsector = sectors[wall.nextsector];
         var nextslope = createSlopeCalculator(nextsector, walls);
         var nextfloorz = nextsector.floorz;
         var nextceilingz = nextsector.ceilingz;
 
-        if (floorz > nextfloorz){
-          var nextfloorheinum = nextsector.floorheinum;
-          var z1 = slope(x1, y1, floorheinum) + floorz;
-          var z2 = slope(x2, y2, floorheinum) + floorz;
-          var z3 = nextslope(x2, y2, nextfloorheinum) + nextfloorz;
-          var z4 = nextslope(x1, y1, nextfloorheinum) + nextfloorz;
-
+        var nextfloorheinum = nextsector.floorheinum;
+        var z1 = nextslope(x1, y1, nextfloorheinum) + nextfloorz;
+        var z2 = nextslope(x2, y2, nextfloorheinum) + nextfloorz;
+        var z3 = slope(x2, y2, floorheinum) + floorz;
+        var z4 = slope(x1, y1, floorheinum) + floorz;
+        if (z4 > z1 || z3 > z2){
           var a = [x1, z1 / SCALE, y1];
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          builder.addQuad([d, c, b, a]);
-          builder.addQuad([a, b, c, d]);
+          addWall(builder, [a, b, c, d]);
         }
 
-        if (ceilingz < nextceilingz){
-          var nextceilingheinum = nextsector.ceilingheinum;
-          var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
-          var z2 = slope(x2, y2, ceilingheinum) + ceilingz;
-          var z3 = nextslope(x2, y2, nextceilingheinum) + nextceilingz;
-          var z4 = nextslope(x1, y1, nextceilingheinum) + nextceilingz;
-
+        var nextceilingheinum = nextsector.ceilingheinum;
+        var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
+        var z2 = slope(x2, y2, ceilingheinum) + ceilingz;
+        var z3 = nextslope(x2, y2, nextceilingheinum) + nextceilingz;
+        var z4 = nextslope(x1, y1, nextceilingheinum) + nextceilingz;
+        if (z1 < z4 || z2 < z3){
           var a = [x1, z1 / SCALE, y1];
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          builder.addQuad([d, c, b, a]);
-          builder.addQuad([a, b, c, d]);
+          addWall(builder, [a, b, c, d]);
         }
       }
       i++;
