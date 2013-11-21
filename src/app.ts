@@ -45,6 +45,7 @@ gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
 var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/newboard.map'), true));
+board.sectors[1].ceilingheinum = 20000;
 var model = buildutils.buildBoard(board, gl);
 var shader = shaders.createShader(gl, load('resources/shaders/s.vsh'), load('resources/shaders/s.fsh'));
 var control = new controller.Controller3D(gl);

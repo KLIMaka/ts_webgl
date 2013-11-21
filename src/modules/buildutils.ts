@@ -102,11 +102,9 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
   }
 
   var tmp = GLM.vec3.create();
-  GLM.vec3.sub(tmp, a, d);
-  var left = GLM.vec3.length(tmp);
-  GLM.vec3.sub(tmp, b, c);
-  var right = GLM.vec3.length(tmp);
-  var k = Math.atan(left / right) / (Math.PI/2);
+  var left = Math.abs(a[1] - d[1]);
+  var right = Math.abs(b[1] - c[1]);
+  var k = left < right ? (left/right)*0.5 : 1 - (right/left)*0.5
 
   if (a[1] < d[1]) {
     GLM.vec3.sub(tmp, c, d);
