@@ -8,8 +8,8 @@ import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
 import buildutils = require('./modules/buildutils');
 
-var w = 600;
-var h = 400;
+var w = 1000;
+var h = 1000;
 
 function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -44,7 +44,7 @@ var gl = setupGl();
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/newboard.map'), true));
+var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/rcpd.map'), true));
 board.sectors[1].ceilingheinum = 20000;
 var model = buildutils.buildBoard(board, gl);
 var shader = shaders.createShader(gl, load('resources/shaders/s.vsh'), load('resources/shaders/s.fsh'));

@@ -19,7 +19,7 @@ class TriangulationContext implements TriangulatedSector{
   private holes = [];
 
   public addContour(contour:number[][]) {
-    if (!MU.isCW(contour)) {
+    if (!this.contour && !MU.isCW(contour)) {
       this.contour = contour;
     } else {
       this.holes.push(contour);
