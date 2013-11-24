@@ -29,7 +29,7 @@ export class Controller3D {
   private oldX = 0;
   private oldY = 0;
   private keys = {};
-  private fov = 170;
+  private fov = 90;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -87,13 +87,13 @@ export class Controller3D {
 
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
-    GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, -0xFFFF);
+    GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
 
   public getProjectionMatrix():GLM.Mat4Array {
-    return GLM.mat4.perspective(this.projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, -0xFFFF);
+    return GLM.mat4.perspective(this.projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
   }
 
   public getModelViewMatrix():GLM.Mat4Array {

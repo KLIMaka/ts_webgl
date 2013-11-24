@@ -54,6 +54,7 @@ declare var vec2:vec2;
 
 export interface vec3 {
   add(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
+  add(out:Vec3Array, a:number[], b:number[]): Vec3Array;
   create(): Vec3Array;
   clone(a:Vec3Array): Vec3Array;
   fromValues(x:number, y:number, z:number): Vec3Array;

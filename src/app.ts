@@ -8,6 +8,10 @@ import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
 import buildutils = require('./modules/buildutils');
 import buildstructs = require('./libs/buildstructs');
+import GLM = require('libs_js/glmatrix');
+import tex = require('./modules/textures');
+import camera = require('./modules/camera');
+import MU = require('./libs/mathutils');
 
 var w = 1000;
 var h = 1000;
@@ -41,21 +45,13 @@ function load(file:string):string {
   return getter.getString(file);
 }
 
+var SCALE = -16;
 function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext):mb.DrawData {
   var builder = new mb.MeshBuilder();
-  var size = 1000;
-  var halfSize = size / 2;
-  var SCALE = -16;
   var x = sprite.x;
   var y = sprite.y;
   var z = sprite.z;
 
-//  builder.addQuad([
-//    [x - halfSize, z / SCALE, y + halfSize],
-//    [x + halfSize, z / SCALE, y + halfSize],
-//    [x + halfSize, z / SCALE, y - halfSize],
-//    [x - halfSize, z / SCALE, y - halfSize],
-//  ]);
   builder.addQuadWNormals([
     [x, z / SCALE, y],
     [x, z / SCALE, y],
@@ -103,9 +99,76 @@ function draw(gl:WebGLRenderingContext, model:mb.DrawData, shader:shaders.Shader
   }
 }
 
-animate(gl, function (gl:WebGLRenderingContext, time:number) {
+var sect = board.sectors[0];
+var wall1 = board.walls[sect.wallptr];
+var wall2 = board.walls[wall1.point2];
+var size = 16;
+var x = 0;
+var y = 0;
+var step = 4096 / size;
+var start = GLM.vec3.fromValues(wall1.x, sect.ceilingz / SCALE, wall1.y);
+var planeVec = GLM.vec3.normalize(GLM.vec3.create(),GLM.vec3.fromValues(wall2.x - wall1.x, 0, wall2.y - wall2.y));
+var dVec = GLM.vec3.fromValues(0, -1, 0);
+var dx = GLM.vec3.create();
+var dy = GLM.vec3.create();
+var npos = GLM.vec3.create();
+var RT = new tex.RenderTexture(size, size, new Uint8Array(4*size*size), gl);
+var cam = new camera.Camera(0, 0, 0, 0, 180);
+var trace_baseShader = shaders.createShader(gl, load('resources/shaders/trace_base.vsh'), load('resources/shaders/trace_base.fsh'));
+var trace_spriteShader = shaders.createShader(gl, load('resources/shaders/trace_sprite.vsh'), load('resources/shaders/trace_sprite.fsh'));
+var tmpMat = GLM.mat4.create();
+var fov = 120;
+
+function trace(gl:WebGLRenderingContext) {
+  GLM.vec3.scale(dx, planeVec, x);
+  GLM.vec3.scale(dy, dVec, y);
+  GLM.vec3.add(npos, start, dx);
+  GLM.vec3.add(npos, npos, dy);
+  cam.setPos(npos);
+
+  x += step;
+  if (x > 4096) {
+    x = 0;
+    y += step;
+    if (y > 4096){
+      y = 0;
+    }
+  }
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  GLM.mat4.perspective(tmpMat, MU.deg2rad(fov), 1, 1, 0xFFFF);
+  GLM.mat4.mul(tmpMat, tmpMat, cam.getTransformMatrix());
+
+  gl.useProgram(trace_baseShader.getProgram());
+  gl.uniformMatrix4fv(trace_baseShader.getUniformLocation('MVP', gl), false, tmpMat);
+  gl.uniform3fv(trace_baseShader.getUniformLocation('eyepos', gl), cam.getPos());
+  gl.uniform3fv(trace_baseShader.getUniformLocation('eyedir', gl), cam.forward());
+  draw(gl, model, trace_baseShader);
+
+  gl.useProgram(trace_spriteShader.getProgram());
+  gl.uniformMatrix4fv(trace_spriteShader.getUniformLocation('MVP', gl), false, tmpMat);
+  GLM.mat4.perspective(tmpMat, MU.deg2rad(fov), 1, 1, 0xFFFF);
+  gl.uniformMatrix4fv(trace_spriteShader.getUniformLocation('P', gl), false, tmpMat);
+  gl.uniformMatrix4fv(trace_spriteShader.getUniformLocation('MV', gl), false, cam.getTransformMatrix());
+  gl.uniform3fv(trace_spriteShader.getUniformLocation('eyepos', gl), cam.getPos());
+  gl.uniform3fv(trace_spriteShader.getUniformLocation('eyedir', gl), cam.forward());
+  gl.uniform1f(trace_spriteShader.getUniformLocation('size', gl), 10);
+  draw(gl, sprite, trace_spriteShader);
+}
+
+
+  animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   control.move(time);
+
+  var data = RT.drawTo(gl, trace);
+  var sum = 0;
+  for(var i = 0; i < 4*size*size; i++)
+    sum += data[i];
+  console.log(sum / (4*size*size));
+
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -119,6 +182,8 @@ animate(gl, function (gl:WebGLRenderingContext, time:number) {
   gl.uniformMatrix4fv(spriteShader.getUniformLocation('MVP', gl), false, control.getMatrix());
   gl.uniformMatrix4fv(spriteShader.getUniformLocation('P', gl), false, control.getProjectionMatrix());
   gl.uniformMatrix4fv(spriteShader.getUniformLocation('MV', gl), false, control.getModelViewMatrix());
+  gl.uniform3fv(spriteShader.getUniformLocation('eyepos', gl), control.getCamera().getPos());
+  gl.uniform3fv(spriteShader.getUniformLocation('eyedir', gl), control.getCamera().forward());
   gl.uniform1f(spriteShader.getUniformLocation('size', gl), 10);
   draw(gl, sprite, spriteShader);
 });
