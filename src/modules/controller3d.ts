@@ -29,7 +29,7 @@ export class Controller3D {
   private oldX = 0;
   private oldY = 0;
   private keys = {};
-  private fov = 90;
+  private fov = 170;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -87,9 +87,17 @@ export class Controller3D {
 
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
-    GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
+    GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, -0xFFFF);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
+  }
+
+  public getProjectionMatrix():GLM.Mat4Array {
+    return GLM.mat4.perspective(this.projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, -0xFFFF);
+  }
+
+  public getModelViewMatrix():GLM.Mat4Array {
+    return this.camera.getTransformMatrix();
   }
 
   public getCamera():camera.Camera {
@@ -105,7 +113,6 @@ export class Controller3D {
     var forward = this.camera.forward();
     GLM.vec3.scale(forward, forward, speed * (up - down));
     var campos = this.camera.getPos();
-    var startY = campos[1];
     GLM.vec3.add(campos, campos, forward);
 
     // Sideways movement
@@ -114,11 +121,6 @@ export class Controller3D {
     var sideways = this.camera.side();
     GLM.vec3.scale(sideways, sideways, speed * (right - left));
     GLM.vec3.add(campos, campos, sideways);
-
-    var u = this.keys['F'] | 0;
-    var d = this.keys['V'] | 0;
-    campos[1] = startY + (speed * (u-d));
-    
 
     this.camera.setPos(campos);    
   }

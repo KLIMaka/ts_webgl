@@ -30,20 +30,14 @@ export class Camera {
     return this.pos;
   }
 
-  public move(delta:GLM.Vec3Array):void {
-    var tmp = GLM.vec3.transformMat3(GLM.vec3.create(), delta, MU.mat3FromMat4(GLM.mat3.create(), this.getTransformMatrix()));
-    GLM.vec3.add(this.pos, this.pos, tmp);
-    this.needUpdate = true;
-  }
-
   public forward():GLM.Vec3Array {
-    var mat3 = MU.mat3FromMat4(GLM.mat3.create(), this.getTransformMatrix())
-    return GLM.vec3.fromValues(mat3[6], mat3[7], -mat3[8]);
+    var mat4 = this.getTransformMatrix()
+    return GLM.vec3.fromValues(-mat4[2], -mat4[6], -mat4[10]);
   }
 
   public side():GLM.Vec3Array {
-    var mat3 = MU.mat3FromMat4(GLM.mat3.create(), this.getTransformMatrix())
-    return GLM.vec3.fromValues(mat3[0], mat3[1], -mat3[2]);
+    var mat4 = this.getTransformMatrix()
+    return GLM.vec3.fromValues(mat4[0], mat4[4], mat4[8]);
   }
 
   public updateAngles(dx:number, dy:number):void {
@@ -62,11 +56,11 @@ export class Camera {
   public getTransformMatrix():GLM.Mat4Array {
 
     var mat = this.transform;
+    var pos = this.pos;
     if (this.needUpdate) {
       GLM.mat4.identity(mat);
       GLM.mat4.rotateX(mat, mat, MU.deg2rad(-this.angleX));
       GLM.mat4.rotateY(mat, mat, MU.deg2rad(-this.angleY));
-      var pos = this.pos;
       GLM.vec3.negate(pos, pos);
       GLM.mat4.translate(mat, mat, pos);
       GLM.vec3.negate(pos, pos);

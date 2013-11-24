@@ -224,6 +224,20 @@ export class MeshBuilder {
     this.lastIdx += 4;
   }
 
+  addQuadWNormals(verts:number[][], normals:number[][]):void {
+    this.addVertex(verts[0]);
+    this.addVertex(verts[1]);
+    this.addVertex(verts[2]);
+    this.addVertex(verts[3]);
+    this.addNormal(normals[0]);
+    this.addNormal(normals[1]);
+    this.addNormal(normals[2]);
+    this.addNormal(normals[3]);
+    var idx = this.lastIdx;
+    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
+    this.lastIdx += 4;
+  }
+
   build(gl:WebGLRenderingContext) {
     var posBuffer = gl.createBuffer();
     var posData = new Float32Array(this.positions);
