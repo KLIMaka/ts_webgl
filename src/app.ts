@@ -20,7 +20,7 @@ function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
-  var gl = canvas.getContext('webgl', {antialias: true, alpha:false});
+  var gl = canvas.getContext('webgl', {antialias: false, alpha: true});
 
   document.body.appendChild(gl.canvas);
   document.body.style.overflow = 'hidden';
@@ -56,13 +56,30 @@ function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext):mb.Dr
     [x, z / SCALE, y],
     [x, z / SCALE, y],
     [x, z / SCALE, y],
-    [x, z / SCALE, y]], [
+    [x, z / SCALE, y]
+  ], [
     [-1, 1, 0],
     [1, 1, 0],
     [1, -1, 0],
     [-1, -1, 0]
   ]);
 
+  return builder.build(gl);
+}
+
+function buildScreen(gl:WebGLRenderingContext) {
+  var builder = new mb.MeshBuilder();
+  builder.addQuadWNormals([
+    [0, 0, 0],
+    [100, 0, 0],
+    [100, 100, 0],
+    [0, 100, 0]
+  ], [
+    [0, 0, 0],
+    [1, 0, 0],
+    [1, 1, 0],
+    [0, 1, 0]
+  ]);
   return builder.build(gl);
 }
 
@@ -102,40 +119,36 @@ function draw(gl:WebGLRenderingContext, model:mb.DrawData, shader:shaders.Shader
 var sect = board.sectors[0];
 var wall1 = board.walls[sect.wallptr];
 var wall2 = board.walls[wall1.point2];
-var size = 16;
+var size = 32;
 var x = 0;
 var y = 0;
 var step = 4096 / size;
 var start = GLM.vec3.fromValues(wall1.x, sect.ceilingz / SCALE, wall1.y);
-var planeVec = GLM.vec3.normalize(GLM.vec3.create(),GLM.vec3.fromValues(wall2.x - wall1.x, 0, wall2.y - wall2.y));
+var planeVec = GLM.vec3.normalize(GLM.vec3.create(), GLM.vec3.fromValues(wall2.x - wall1.x, 0, wall2.y - wall2.y));
 var dVec = GLM.vec3.fromValues(0, -1, 0);
 var dx = GLM.vec3.create();
 var dy = GLM.vec3.create();
 var npos = GLM.vec3.create();
-var RT = new tex.RenderTexture(size, size, new Uint8Array(4*size*size), gl);
+var RT = new tex.RenderTexture(size, size, new Uint8Array(4 * size * size), gl);
+var tex1 = new tex.DrawTexture(size, size, new Uint8Array(4 * size * size), gl);
+var pixel = new Uint8Array(4);
 var cam = new camera.Camera(0, 0, 0, 0, 180);
 var trace_baseShader = shaders.createShader(gl, load('resources/shaders/trace_base.vsh'), load('resources/shaders/trace_base.fsh'));
 var trace_spriteShader = shaders.createShader(gl, load('resources/shaders/trace_sprite.vsh'), load('resources/shaders/trace_sprite.fsh'));
 var tmpMat = GLM.mat4.create();
-var fov = 120;
+var fov = 100;
+
+var texShader = shaders.createShader(gl, load('resources/shaders/base1.vsh'), load('resources/shaders/base1.fsh'));
+var screen = buildScreen(gl);
 
 function trace(gl:WebGLRenderingContext) {
-  GLM.vec3.scale(dx, planeVec, x);
-  GLM.vec3.scale(dy, dVec, y);
+  GLM.vec3.scale(dx, planeVec, x * step);
+  GLM.vec3.scale(dy, dVec, y * step);
   GLM.vec3.add(npos, start, dx);
   GLM.vec3.add(npos, npos, dy);
   cam.setPos(npos);
 
-  x += step;
-  if (x > 4096) {
-    x = 0;
-    y += step;
-    if (y > 4096){
-      y = 0;
-    }
-  }
-
-  gl.clearColor(0, 0, 0, 0);
+  gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   GLM.mat4.perspective(tmpMat, MU.deg2rad(fov), 1, 1, 0xFFFF);
@@ -154,20 +167,31 @@ function trace(gl:WebGLRenderingContext) {
   gl.uniformMatrix4fv(trace_spriteShader.getUniformLocation('MV', gl), false, cam.getTransformMatrix());
   gl.uniform3fv(trace_spriteShader.getUniformLocation('eyepos', gl), cam.getPos());
   gl.uniform3fv(trace_spriteShader.getUniformLocation('eyedir', gl), cam.forward());
-  gl.uniform1f(trace_spriteShader.getUniformLocation('size', gl), 10);
+  gl.uniform1f(trace_spriteShader.getUniformLocation('size', gl), 200);
   draw(gl, sprite, trace_spriteShader);
 }
 
 
-  animate(gl, function (gl:WebGLRenderingContext, time:number) {
+animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   control.move(time);
 
   var data = RT.drawTo(gl, trace);
   var sum = 0;
-  for(var i = 0; i < 4*size*size; i++)
+  for (var i = 0; i < 4 * size * size; i += 4)
     sum += data[i];
-  console.log(sum / (4*size*size));
+  pixel[0] = pixel[1] = pixel[2] = Math.min(sum / 10, 255);
+  pixel[3] = 0;
+  tex1.putPiexl(x, y, pixel, gl);
+
+  x++;
+  if (x == size) {
+    x = 0;
+    y++;
+    if (y == size) {
+      y = 0;
+    }
+  }
 
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -186,6 +210,16 @@ function trace(gl:WebGLRenderingContext) {
   gl.uniform3fv(spriteShader.getUniformLocation('eyedir', gl), control.getCamera().forward());
   gl.uniform1f(spriteShader.getUniformLocation('size', gl), 10);
   draw(gl, sprite, spriteShader);
+
+
+  gl.activeTexture(gl.TEXTURE0);
+  tex1.bind(gl);
+  gl.useProgram(texShader.getProgram());
+  GLM.mat4.ortho(tmpMat, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, -0xFFFF, 0xFFFF);
+  gl.uniformMatrix4fv(texShader.getUniformLocation('MVP', gl), false, tmpMat);
+  gl.uniform1i(texShader.getUniformLocation('texture', gl), 0);
+  draw(gl, screen, texShader);
+
 });
 
 gl.canvas.oncontextmenu = () => false;

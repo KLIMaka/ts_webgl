@@ -26,7 +26,7 @@ export class Texture {
     gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, img);
   }
 
-  public bing(gl:WebGLRenderingContext):void {
+  public bind(gl:WebGLRenderingContext):void {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
   }
 
@@ -36,6 +36,26 @@ export class Texture {
 
   public getHeight():number {
     return this.height;
+  }
+
+  public getFormat():number {
+    return this.format;
+  }
+
+  public getType():number {
+    return this.type;
+  }
+}
+
+export class DrawTexture extends Texture {
+
+  constructor(width:number, height:number, img:ArrayBufferView, gl:WebGLRenderingContext) {
+    super(width, height, img, gl);
+  }
+
+  public putPiexl(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext) {
+    gl.bindTexture(gl.TEXTURE_2D, this.id);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, 1, 1, this.getFormat(), this.getType(), pixel);
   }
 }
 
