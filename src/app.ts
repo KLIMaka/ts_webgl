@@ -13,8 +13,8 @@ import tex = require('./modules/textures');
 import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
 
-var w = 1000;
-var h = 1000;
+var w = 600;
+var h = 400;
 
 function setupGl():WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -129,7 +129,8 @@ var dVec = GLM.vec3.fromValues(0, -1, 0);
 var dx = GLM.vec3.create();
 var dy = GLM.vec3.create();
 var npos = GLM.vec3.create();
-var RT = new tex.RenderTexture(size, size, new Uint8Array(4 * size * size), gl);
+var RTSize = 128;
+var RT = new tex.RenderTexture(RTSize, RTSize, new Uint8Array(4 * RTSize * RTSize), gl);
 var tex1 = new tex.DrawTexture(size, size, new Uint8Array(4 * size * size), gl);
 var pixel = new Uint8Array(4);
 var cam = new camera.Camera(0, 0, 0, 0, 180);
@@ -167,26 +168,40 @@ function trace(gl:WebGLRenderingContext) {
   gl.uniformMatrix4fv(trace_spriteShader.getUniformLocation('MV', gl), false, cam.getTransformMatrix());
   gl.uniform3fv(trace_spriteShader.getUniformLocation('eyepos', gl), cam.getPos());
   gl.uniform3fv(trace_spriteShader.getUniformLocation('eyedir', gl), cam.forward());
-  gl.uniform1f(trace_spriteShader.getUniformLocation('size', gl), 200);
+  gl.uniform1f(trace_spriteShader.getUniformLocation('size', gl), 100);
   draw(gl, sprite, trace_spriteShader);
 }
 
-
+var last = null;
 animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   control.move(time);
 
   var data = RT.drawTo(gl, trace);
   var sum = 0;
-  for (var i = 0; i < 4 * size * size; i += 4)
+  var count = 0;
+  for (var i = 0; i < 4 * RTSize * RTSize; i += 4){
     sum += data[i];
-  pixel[0] = pixel[1] = pixel[2] = Math.min(sum / 10, 255);
+    if (data[i] != 0)
+      count++;
+  }
+  // if (last == null) {
+  //   last = sum;
+  // }  else {
+  //   var diff = last - sum;
+  //   if (Math.abs(diff / sum) < 0.8){
+  //     sum += diff / 2;
+  //   }
+  //   last = sum;
+  // }
+  pixel[0] = pixel[1] = pixel[2] = Math.min(sum / count, 255);
   pixel[3] = 0;
   tex1.putPiexl(x, y, pixel, gl);
 
   x++;
   if (x == size) {
     x = 0;
+    last = null;
     y++;
     if (y == size) {
       y = 0;
