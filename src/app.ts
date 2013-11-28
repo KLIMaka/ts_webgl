@@ -12,6 +12,14 @@ import GLM = require('libs_js/glmatrix');
 import tex = require('./modules/textures');
 import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
+import raster = require('./modules/rasterizer');
+
+var poly:raster.Segment[] = [
+  new raster.Segment(0, 0.5, 0.5, 1),
+  new raster.Segment(0.5, 1, 1, 0.5),
+  new raster.Segment(1, 0.5, 0, 0.5)
+];
+console.log(raster.rasterize(poly, 10, 10));
 
 var w = 600;
 var h = 400;
