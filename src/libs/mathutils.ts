@@ -13,6 +13,10 @@ export function rad2deg(rad:number):number {
   return rad * radsInDeg;
 }
 
+export function sign(x:number) { 
+  return x > 0 ? 1 : x < 0 ? -1 : 0; 
+}
+
 export function mat3FromMat4(out:GLM.Mat3Array, a:GLM.Mat4Array):GLM.Mat3Array {
   out[0] = a[0];
   out[1] = a[1];

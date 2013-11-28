@@ -1,8 +1,5 @@
 /// <reference path="../defs/webgl.d.ts"/>
 
-var framebuffer:WebGLFramebuffer;
-var renderbuffer:WebGLRenderbuffer;
-
 export class Texture {
 
   public id:WebGLTexture;
@@ -53,7 +50,7 @@ export class DrawTexture extends Texture {
     super(width, height, img, gl);
   }
 
-  public putPiexl(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext) {
+  public putPiexl(x:number, y:number, pixel:ArrayBufferView, gl:WebGLRenderingContext) {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, 1, 1, this.getFormat(), this.getType(), pixel);
   }
@@ -62,21 +59,25 @@ export class DrawTexture extends Texture {
 export class RenderTexture extends Texture {
 
   private data:ArrayBufferView;
+  private framebuffer:WebGLFramebuffer;
+  private renderbuffer:WebGLRenderbuffer;
 
   constructor(width:number, height:number, img:ArrayBufferView, gl:WebGLRenderingContext) {
     super(width, height, img, gl);
     this.data = img;
+    this.framebuffer = gl.createFramebuffer();
+    this.renderbuffer = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderbuffer);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this.getWidth(), this.getHeight());
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
   }
 
   public drawTo(gl:WebGLRenderingContext, callback:(WebGLRenderingContext)=>void):ArrayBufferView {
     var v = gl.getParameter(gl.VIEWPORT);
-    framebuffer = framebuffer || gl.createFramebuffer();
-    renderbuffer = renderbuffer || gl.createRenderbuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this.getWidth(), this.getHeight());
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderbuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.id, 0);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.renderbuffer);
     gl.viewport(0, 0, this.getWidth(), this.getHeight());
 
     callback(gl);
