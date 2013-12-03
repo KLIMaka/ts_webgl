@@ -14,12 +14,37 @@ import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
 import raster = require('./modules/rasterizer');
 
-var poly:raster.Segment[] = [
-  new raster.Segment(0, 0.5, 0.5, 1),
-  new raster.Segment(0.5, 1, 1, 0.5),
-  new raster.Segment(1, 0.5, 0, 0.5)
-];
-console.log(raster.rasterize(poly, 10, 10));
+function createCanvas(w:number, h:number) {
+  var canvas:HTMLCanvasElement = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  document.body.appendChild(canvas);
+
+  var poly:raster.Segment[] = [
+    new raster.Segment(0, 0.5, 0.5, 1),
+    new raster.Segment(0.5, 1, 1, 0.5),
+    new raster.Segment(1, 0.5, 0, 0.5),
+
+    new raster.Segment(0.5, 0.6, 0.7, 0.9),
+    new raster.Segment(0.7, 0.9, 0.3, 0.9),
+    new raster.Segment(0.3, 0.9, 0.5, 0.6)
+  ];
+
+  var pixels = raster.rasterize(poly, w, h);
+  var ctx = canvas.getContext('2d');
+  var id = ctx.createImageData(1,1);
+  var pixel = id.data;
+  pixel[0] = pixel[1] = pixel[2] = 128;
+  pixel[3] = 256;
+
+
+  for (var i = 0; i < pixels.length; i++) {
+    var p = pixels[i];
+    ctx.putImageData(id, p.xi, p.yi);
+  }
+}
+
+createCanvas(300, 300);
 
 var w = 600;
 var h = 400;

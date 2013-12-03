@@ -35,8 +35,8 @@ function getIntersections(y:number, polygon:Segment[]):Intersection[] {
         continue;
         
     if (MU.sign(dy1) != MU.sign(dy2)) {
-        var d = dy2 / (segment.y1 - segment.y2);
-        var x = segment.x1 + d*(segment.x1 - segment.x2);
+        var d = dy1 / (segment.y1 - segment.y2);
+        var x = segment.x1 + d * (segment.x1 - segment.x2);
         intersections.push(new Intersection(x, dy1 < 0));
     }
   }
@@ -125,23 +125,23 @@ export function rasterize(polygon:Segment[], xres:number, yres:number):Pixel[] {
   var sx = dx / 2;
   var sy = dy / 2;
   var bb = computeBoundingBox(polygon);
-  var yi = MU.int(bb.miny / dy);
-  var yf = sy + yi * dy;
+  var yi = MU.int(bb.maxy / dy);
+  var yf = yi * dy - sy;
 
-  while (yf < bb.maxy) {
+  while (yf > bb.miny) {
     var spans = computeSpansNonZeroWinding(getIntersections(yf, polygon));
     for (var i = 0; i < spans.length; i++) {
       var span = spans[i];
       var xi = MU.int(span.xl / dx);
       var xri = MU.int(span.xr / dx);
-      while (xi < xri) {
+      while (xi <= xri) {
         var xf = sx + xi * dy;
         pixels.push(new Pixel(xi, yi, xf, yf));
         xi++;
       }
     }
-    yi++;
-    yf += dx;
+    yi--;
+    yf -= dy;
   }
 
   return pixels;
