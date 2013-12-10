@@ -13,6 +13,7 @@ import tex = require('./modules/textures');
 import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
 import raster = require('./modules/rasterizer');
+import tcpack = require('./modules/texcoordpacker');
 
 function createCanvas(w:number, h:number) {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -23,11 +24,12 @@ function createCanvas(w:number, h:number) {
   var poly:raster.Segment[] = [
     new raster.Segment(0, 0.5, 0.5, 1, [[0, 0, 255]], [[255, 0, 0]]),
     new raster.Segment(0.5, 1, 1, 0.5, [[255, 0, 0]], [[0, 255, 0]]),
-    new raster.Segment(1, 0.5, 0, 0.5, [[0, 255, 0]], [[0, 0, 255]])/*,
+    new raster.Segment(1, 0.5, 0, 0.5, [[0, 255, 0]], [[0, 0, 255]]),
 
-    new raster.Segment(0.5, 0.6, 0.7, 0.9, [[0, 0, 0]], [[0, 0, 0]]),
-    new raster.Segment(0.7, 0.9, 0.3, 0.9, [[0, 0, 0]], [[0, 0, 0]]),
-    new raster.Segment(0.3, 0.9, 0.5, 0.6, [[0, 0, 0]], [[0, 0, 0]])*/
+    new raster.Segment(0.4, 0.55, 0.6, 0.55, [[0, 0, 0]], [[0, 0, 0]]),
+    new raster.Segment(0.6, 0.55, 0.6, 0.75, [[0, 0, 0]], [[0, 0, 0]]),
+    new raster.Segment(0.6, 0.75, 0.4, 0.75, [[0, 0, 0]], [[0, 0, 0]]),
+    new raster.Segment(0.4, 0.75, 0.4, 0.55, [[0, 0, 0]], [[0, 0, 0]])
   ];
 
   var pixels = raster.rasterize(poly, w, h);
@@ -35,7 +37,6 @@ function createCanvas(w:number, h:number) {
   var id = ctx.createImageData(1,1);
   var pixel = id.data;
   pixel[3] = 256;
-  ctx.putImageData(id, 0, 0);
 
   for (var i = 0; i < pixels.length; i++) {
     var p = pixels[i];
@@ -46,7 +47,7 @@ function createCanvas(w:number, h:number) {
   }
 }
 
-createCanvas(16, 16);
+createCanvas(100, 100);
 
 var w = 600;
 var h = 400;
