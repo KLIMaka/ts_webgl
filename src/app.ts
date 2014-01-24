@@ -33,9 +33,9 @@ function createCanvas(w:number, h:number, tex) {
   document.body.appendChild(canvas);
 
   var buffer = [
-    0, 0.5, 0, 0, 255, 255,
-    0.5, 1, 255, 0, 0, 255,
-    1, 0.5, 0, 255, 0, 255,
+    0, 0.5, 0.5, 0, 255, 255,
+    0.5, 1, 0, 1, 0, 255,
+    1, 0.5, 1, 1, 0, 255,
 
     0.5, 0, 255, 0, 255, 255,
     0.25, 0.5, 0, 255, 255, 255,
@@ -49,15 +49,15 @@ function createCanvas(w:number, h:number, tex) {
     // px[0] = p.attrs[2];
     // px[1] = p.attrs[3];
     // px[2] = p.attrs[4];
-    var dist = Math.sqrt(Math.pow((p.attrs[0] - 0.5), 2) + Math.pow((p.attrs[1] - 0.5), 2));
-    px[3] = dist < 0.3 ? 255 : ( (1-Math.pow((dist - 0.3), 0.3))*256 );
-    var x = MU.int(p.attrs[0] * tex.width);
-    var y = MU.int(p.attrs[1] * tex.height);
+    // var dist = Math.sqrt(Math.pow((p.attrs[0] - 0.5), 2) + Math.pow((p.attrs[1] - 0.5), 2));
+    // px[3] = dist < 0.3 ? 255 : ( (1-Math.pow((dist - 0.3), 0.3))*256 );
+    var x = MU.int(p.attrs[2] * tex.width);
+    var y = MU.int(p.attrs[3] * tex.height);
     var off = (y*tex.width + x)*4
     px[0] = imgData.data[off+0];
     px[1] = imgData.data[off+1];
     px[2] = imgData.data[off+2];
-    // px[3] = 255;
+    px[3] = 255;
     return px;
   });
   rast.bindAttribute(0, buffer, 0, 6);
