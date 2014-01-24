@@ -21,33 +21,37 @@ function createCanvas(w:number, h:number) {
   canvas.height = h;
   document.body.appendChild(canvas);
 
-  var poly:raster.Segment[] = [
-    new raster.Segment(0, 0.5, 0.5, 1, [[0, 0, 255]], [[255, 0, 0]]),
-    new raster.Segment(0.5, 1, 1, 0.5, [[255, 0, 0]], [[0, 255, 0]]),
-    new raster.Segment(1, 0.5, 0, 0.5, [[0, 255, 0]], [[0, 0, 255]]),
+  var buffer = [
+    0, 0.5, 0, 0, 255, 255,
+    0.5, 1, 255, 0, 0, 255,
+    1, 0.5, 0, 255, 0, 255,
 
-    new raster.Segment(0.4, 0.55, 0.6, 0.55, [[0, 0, 0]], [[0, 0, 0]]),
-    new raster.Segment(0.6, 0.55, 0.6, 0.75, [[0, 0, 0]], [[0, 0, 0]]),
-    new raster.Segment(0.6, 0.75, 0.4, 0.75, [[0, 0, 0]], [[0, 0, 0]]),
-    new raster.Segment(0.4, 0.75, 0.4, 0.55, [[0, 0, 0]], [[0, 0, 0]])
+    0.5, 0, 255, 0, 255, 255,
+    0.25, 0.5, 0, 255, 255, 255,
+    0.75, 0.5, 255, 255, 0, 255
   ];
 
-  var pixels = raster.rasterize(poly, w, h);
   var ctx = canvas.getContext('2d');
-  var id = ctx.createImageData(1,1);
-  var pixel = id.data;
-  pixel[3] = 256;
-
-  for (var i = 0; i < pixels.length; i++) {
-    var p = pixels[i];
-    pixel[0] = p.atrs[0][0];
-    pixel[1] = p.atrs[0][1];
-    pixel[2] = p.atrs[0][2];
-    ctx.putImageData(id, p.xi, p.yi);
-  }
+  var img = ctx.createImageData(w, h);
+  var px = [0,0,0,0];
+  var rast = new raster.Rasterizer(img, (p:raster.Pixel) => {
+    px[0] = p.attrs[2];
+    px[1] = p.attrs[3];
+    px[2] = p.attrs[4];
+    px[3] = 255;
+    return px;
+  });
+  rast.bindAttribute(0, buffer, 0, 6);
+  rast.bindAttribute(1, buffer, 1, 6);
+  rast.bindAttribute(2, buffer, 2, 6);
+  rast.bindAttribute(3, buffer, 3, 6);
+  rast.bindAttribute(4, buffer, 4, 6);
+  rast.bindAttribute(5, buffer, 5, 6);
+  rast.drawTriangles([0, 1, 2, 5, 4, 3]);
+  ctx.putImageData(img, 0, 0);
 }
 
-createCanvas(100, 100);
+createCanvas(300, 300);
 
 var w = 600;
 var h = 400;
