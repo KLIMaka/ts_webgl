@@ -15,7 +15,18 @@ import MU = require('./libs/mathutils');
 import raster = require('./modules/rasterizer');
 import tcpack = require('./modules/texcoordpacker');
 
-function createCanvas(w:number, h:number) {
+var img = new Image();
+img.src = 'resources/img/Desert.jpg';
+
+function createCanvas(w:number, h:number, tex) {
+  var imgcanvas = document.createElement('canvas');
+  imgcanvas.width = tex.width;
+  imgcanvas.height = tex.height;
+  var imgctx = imgcanvas.getContext("2d");
+  imgctx.drawImage(tex, 0, 0);
+  var imgData = imgctx.getImageData(0, 0, tex.width, tex.height);
+
+
   var canvas:HTMLCanvasElement = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -35,10 +46,18 @@ function createCanvas(w:number, h:number) {
   var img = ctx.createImageData(w, h);
   var px = [0,0,0,0];
   var rast = new raster.Rasterizer(img, (p:raster.Pixel) => {
-    px[0] = p.attrs[2];
-    px[1] = p.attrs[3];
-    px[2] = p.attrs[4];
-    px[3] = 255;
+    // px[0] = p.attrs[2];
+    // px[1] = p.attrs[3];
+    // px[2] = p.attrs[4];
+    var dist = Math.sqrt(Math.pow((p.attrs[0] - 0.5), 2) + Math.pow((p.attrs[1] - 0.5), 2));
+    px[3] = dist < 0.3 ? 255 : ( (1-Math.pow((dist - 0.3), 0.3))*256 );
+    var x = MU.int(p.attrs[0] * tex.width);
+    var y = MU.int(p.attrs[1] * tex.height);
+    var off = (y*tex.width + x)*4
+    px[0] = imgData.data[off+0];
+    px[1] = imgData.data[off+1];
+    px[2] = imgData.data[off+2];
+    // px[3] = 255;
     return px;
   });
   rast.bindAttribute(0, buffer, 0, 6);
@@ -51,7 +70,9 @@ function createCanvas(w:number, h:number) {
   ctx.putImageData(img, 0, 0);
 }
 
-createCanvas(300, 300);
+img.onload = () => {
+  createCanvas(300, 300, img);
+}
 
 var w = 600;
 var h = 400;
@@ -123,7 +144,7 @@ function buildScreen(gl:WebGLRenderingContext) {
   return builder.build(gl);
 }
 
-var gl = setupGl();
+// var gl = setupGl();
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 

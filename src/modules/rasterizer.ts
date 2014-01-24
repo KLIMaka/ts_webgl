@@ -291,6 +291,9 @@ export class Rasterizer {
 
     this.reg = this.allocateRegisters(3);
     var reg = this.reg;
+    var ratrs = new Array<number>(numattrs);
+    var latrs = new Array<number>(numattrs);
+    var atrs = new Array<number>(numattrs);
     var polygon = [[0, 1], [1, 2], [2, 0]];
 
     for (var i = 0; i < indices.length; i++) {
@@ -318,8 +321,7 @@ export class Rasterizer {
         
           var adyr = Math.abs((yf - r1[1]) / (r1[1] - r2[1]));
           var adyl = Math.abs((yf - l1[1]) / (l1[1] - l2[1]));
-          var ratrs = new Array<number>(numattrs);
-          var latrs = new Array<number>(numattrs);
+
           for(var a = 0; a < numattrs; a++) {
             ratrs[a] = r1[a] + (r2[a] - r1[a]) * adyr;
             latrs[a] = l1[a] + (l2[a] - l1[a]) * adyl;
@@ -329,13 +331,12 @@ export class Rasterizer {
           var xri = MU.int(intersect.xr / dx);
           while (xi <= xri) {
             var xf = sx + xi * dy;
-            if (xf < intersect.xl)
-              xf = intersect.xl;
             var adx = (xf - intersect.xl) / (intersect.xr - intersect.xl);
-            var atrs = new Array<number>(numattrs);
             for (var a = 0; a < ratrs.length; a++)
               atrs[a] = latrs[a] + (ratrs[a] - latrs[a]) * adx;
+
             var px = this.shader(new Pixel(xi, yi, xf, yf, atrs));
+            
             var off = (yi * this.w + xi)*4;
             this.img.data[off + 0] = px[0];
             this.img.data[off + 1] = px[1];
