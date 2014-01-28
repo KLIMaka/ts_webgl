@@ -8,6 +8,7 @@ export class Texture {
   private format:number;
   private type:number;
 
+  constructor(width:number, height:number, img:HTMLImageElement, gl:WebGLRenderingContext);
   constructor(width:number, height:number, img:ArrayBufferView, gl:WebGLRenderingContext) {
     this.id = gl.createTexture();
     this.width = width;
