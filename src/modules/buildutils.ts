@@ -14,7 +14,7 @@ interface TriangulatedSector {
   getHoles():number[][][]
 }
 
-class TriangulationContext implements TriangulatedSector{
+class TriangulationContext implements TriangulatedSector {
   private contour:number[][];
   private holes = [];
 
@@ -78,6 +78,22 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   return dh;
 }
 
+var max2d = (prev:number[], curr:number[], index:number, array:number[][]) => {
+  return [Math.max(prev[0], curr[0]), Math.max(prev[1], curr[1])];
+}
+
+var min2d = (prev:number[], curr:number[], index:number, array:number[][]) => {
+  return [Math.min(prev[0], curr[0]), Math.min(prev[1], curr[1])];
+}
+
+var size2d = (mins:number[], maxs:number[]) => {
+  return [maxs[0] - mins[0], maxs[1] - mins[1]];
+}
+
+function printSize(poly:number[][]) {
+  console.log(size2d(poly.reduce(min2d), poly.reduce(max2d)));
+}
+
 function addWall(builder:mb.MeshBuilder, quad:number[][]) {
   // a -> b
   // ^    |
@@ -90,14 +106,17 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
 
   if (a[1] == d[1]) {
     builder.addTriangle([a,b,c]);
+    printSize([a,b,c]);
     return;
   }
   if (b[1] == c[1]) {
     builder.addTriangle([a,b,d]);
+    printSize([a,b,d]);
     return;
   }
   if (a[1] < d[1] && b[1] < c[1]){
     builder.addQuad([d, c , b , a]);
+    printSize([d, c , b , a]);
     return;
   }
 
@@ -123,6 +142,7 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
     return; 
   }
   builder.addQuad(quad);
+  printSize(quad);
 }
 
 export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):mb.DrawData {
@@ -206,24 +226,31 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):m
     }
 
     for (var i = 0; i < tris.length; i += 3) {
-      var z1 = slope(tris[i + 0][0], tris[i + 0][1], floorheinum) + floorz;
-      var z2 = slope(tris[i + 1][0], tris[i + 1][1], floorheinum) + floorz;
-      var z3 = slope(tris[i + 2][0], tris[i + 2][1], floorheinum) + floorz;
+      var t0x = tris[i+0][0];
+      var t1x = tris[i+1][0];
+      var t2x = tris[i+2][0];
+      var t0y = tris[i+0][1];
+      var t1y = tris[i+1][1];
+      var t2y = tris[i+2][1];
+
+      var z1 = slope(t0x, t0y, floorheinum) + floorz;
+      var z2 = slope(t1x, t1y, floorheinum) + floorz;
+      var z3 = slope(t2x, t2y, floorheinum) + floorz;
 
       builder.addTriangle([
-        [tris[i + 0][0], z1 / SCALE, tris[i + 0][1]],
-        [tris[i + 1][0], z2 / SCALE, tris[i + 1][1]],
-        [tris[i + 2][0], z3 / SCALE, tris[i + 2][1]]
+        [t0x, z1 / SCALE, t0y],
+        [t1x, z2 / SCALE, t1y],
+        [t2x, z3 / SCALE, t2y]
       ]);
 
-      var z1 = slope(tris[i + 2][0], tris[i + 2][1], ceilingheinum) + ceilingz;
-      var z2 = slope(tris[i + 1][0], tris[i + 1][1], ceilingheinum) + ceilingz;
-      var z3 = slope(tris[i + 0][0], tris[i + 0][1], ceilingheinum) + ceilingz;
+      var z1 = slope(t2x, t2y, ceilingheinum) + ceilingz;
+      var z2 = slope(t1x, t1y, ceilingheinum) + ceilingz;
+      var z3 = slope(t0x, t0y, ceilingheinum) + ceilingz;
 
       builder.addTriangle([
-        [tris[i + 2][0], z1 / SCALE, tris[i + 2][1]],
-        [tris[i + 1][0], z2 / SCALE, tris[i + 1][1]],
-        [tris[i + 0][0], z3 / SCALE, tris[i + 0][1]]
+        [t2x, z1 / SCALE, t2y],
+        [t1x, z2 / SCALE, t1y],
+        [t0x, z3 / SCALE, t0y]
       ]);
     }
   }

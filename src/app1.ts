@@ -13,6 +13,10 @@ import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
 import tcpack = require('./modules/texcoordpacker');
 
+var atlas = new tcpack.Packer(128, 128);
+console.log(atlas.pack(110, 18));
+console.log(atlas.pack(12, 18));
+console.log(atlas.pack(30, 32));
 
 var w = 600;
 var h = 400;
@@ -106,8 +110,8 @@ var dx = GLM.vec3.create();
 var dy = GLM.vec3.create();
 var npos = GLM.vec3.create();
 var RTSize = 128;
-var RT = new tex.RenderTexture(RTSize, RTSize, new Uint8Array(4 * RTSize * RTSize), gl);
-var tex1 = new tex.DrawTexture(size, size, new Uint8Array(4 * size * size), gl);
+var RT = new tex.RenderTexture(RTSize, RTSize, gl);
+var tex1 = new tex.DrawTexture(size, size, gl);
 var pixel = new Uint8Array(4);
 var cam = new camera.Camera(0, 0, 0, 0, 180);
 var trace_baseShader = shaders.createShader(gl, load('resources/shaders/trace_base.vsh'), load('resources/shaders/trace_base.fsh'));

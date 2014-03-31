@@ -7,9 +7,9 @@ export class Texture {
   private height:number;
   private format:number;
   private type:number;
+  public data:ArrayBufferView;
 
-  constructor(width:number, height:number, img:HTMLImageElement, gl:WebGLRenderingContext);
-  constructor(width:number, height:number, img:ArrayBufferView, gl:WebGLRenderingContext) {
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:ArrayBufferView = null) {
     this.id = gl.createTexture();
     this.width = width;
     this.height = height;
@@ -17,11 +17,14 @@ export class Texture {
     this.type = gl.UNSIGNED_BYTE;
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, /*gl.NEAREST*/gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, /*gl.NEAREST*/gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST/*gl.LINEAR*/);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST/*gl.LINEAR*/);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, img);
+    if (img == null) 
+      img = new Uint8Array(width*height*4);
+    this.data = img;
+    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, this.data);
   }
 
   public bind(gl:WebGLRenderingContext):void {
@@ -47,8 +50,8 @@ export class Texture {
 
 export class DrawTexture extends Texture {
 
-  constructor(width:number, height:number, img:ArrayBufferView, gl:WebGLRenderingContext) {
-    super(width, height, img, gl);
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:ArrayBufferView = null) {
+    super(width, height, gl, img);
   }
 
   public putPiexl(x:number, y:number, pixel:ArrayBufferView, gl:WebGLRenderingContext) {
@@ -59,13 +62,11 @@ export class DrawTexture extends Texture {
 
 export class RenderTexture extends Texture {
 
-  private data:ArrayBufferView;
   private framebuffer:WebGLFramebuffer;
   private renderbuffer:WebGLRenderbuffer;
 
-  constructor(width:number, height:number, img:ArrayBufferView, gl:WebGLRenderingContext) {
-    super(width, height, img, gl);
-    this.data = img;
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:ArrayBufferView = null) {
+    super(width, height, gl, img);
     this.framebuffer = gl.createFramebuffer();
     this.renderbuffer = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderbuffer);

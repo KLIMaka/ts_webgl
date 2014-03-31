@@ -211,11 +211,65 @@ export class TexturePixelProvider {
   }
 
   public get(u:number, w:number):number[] {
-    var x = MU.int(w*this.h);
-    var y = MU.int(u*this.w);
-    var off = (x*this.w + y)*4;
-    var data = this.data;
-    return [data[off+0], data[off+1], data[off+2], data[off+3]];
+    var x = u * this.w;
+    var y = w * this.h
+    var xf = x % 1;
+    var yf = y % 1;
+    var xi = MU.int(x);
+    var yi = MU.int(y);
+
+    var x1 = xf < 0.5 ? xi - 1 : xi;
+    var x2 = xf < 0.5 ? xi : xi + 1;
+    var y1 = yf < 0.5 ? yi - 1 : yi;
+    var y2 = yf < 0.5 ? yi : yi + 1;
+
+    var off11 = this.getOffset(x1, y1);
+    var off12 = this.getOffset(x1, y2);
+    var off21 = this.getOffset(x2, y1);
+    var off22 = this.getOffset(x2, y2);
+
+    return this.calc(x, y, x1, x2, y1, y2, off11, off21, off12, off22);
+  }
+
+  private getOffset(x:number, y:number) {
+    x = this.fixX(x);
+    y = this.fixY(y);
+    return (x*this.w+y)*4;
+  }
+
+  private calc(x:number, y:number, x1:number, x2:number, y1:number, y2:number, v11:number, v21:number, v12:number, v22:number) {
+    var d = this.data;
+    var wx1 = (x2+0.5-x);
+    var wy1 = (y2+0.5-y);
+    var wx2 = 1-wx1;
+    var wy2 = 1-wy1;
+    var w11 = wx1*wy1;
+    var w12 = wx1*wy2;
+    var w21 = wx2*wy1;
+    var w22 = wx2*wy2;
+
+    return [
+      d[v11+0]*w11 + d[v21+0]*w21 + d[v12+0]*w12 + d[v22+0]*w22,
+      d[v11+1]*w11 + d[v21+1]*w21 + d[v12+1]*w12 + d[v22+1]*w22, 
+      d[v11+2]*w11 + d[v21+2]*w21 + d[v12+2]*w12 + d[v22+2]*w22, 
+      d[v11+3]*w11 + d[v21+3]*w21 + d[v12+3]*w12 + d[v22+3]*w22 
+    ];
+  }
+
+  private fixX(x:number):number {
+    if (x < 0)
+      return 0;
+    if (x >= this.w)
+      return this.w-1;
+    return x;
+  }
+
+  private fixY(y:number):number {
+    if (y < 0)
+      return 0;
+    if (y >= this.h)
+      return this.h-1;
+    return y;
   }
 }
 
