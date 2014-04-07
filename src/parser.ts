@@ -1,15 +1,16 @@
 import lex = require('./modules/lex/lexer');
+import pars = require('./modules/lex/parser');
 import getter = require('./libs/getter');
 
 var LR = lex.LexerRule;
-var SPR = lex.SimpleParserRule;
-var AND = (rules:any[]) => new lex.AndParserRule(rules);
-var BIND = (id:string, rule:lex.ParserRule) => new lex.BindingParserRule(id, rule);
-var OR = (rules:lex.ParserRule[]) => new lex.OrParserRule(rules);
-var COUNT = (rule:lex.ParserRule, from:number, to:number) => new lex.CountParserRule(rule, from, to);
-var PLUS = (rule:lex.ParserRule) => COUNT(rule, 1, 0);
-var STAR = (rule:lex.ParserRule) => COUNT(rule, 0, 0);
-var MAY = (rule:lex.ParserRule) => COUNT(rule, 0, 1);
+var SPR = pars.SimpleParserRule;
+var AND = (rules:any[]) => new pars.AndParserRule(rules);
+var BIND = (id:string, rule:pars.ParserRule) => new pars.BindingParserRule(id, rule);
+var OR = (rules:pars.ParserRule[]) => new pars.OrParserRule(rules);
+var COUNT = (rule:pars.ParserRule, from:number, to:number) => new pars.CountParserRule(rule, from, to);
+var PLUS = (rule:pars.ParserRule) => COUNT(rule, 1, 0);
+var STAR = (rule:pars.ParserRule) => COUNT(rule, 0, 0);
+var MAY = (rule:pars.ParserRule) => COUNT(rule, 0, 1);
 
 var lexer = new lex.Lexer();
 lexer.addRule(new LR(/^[_A-Za-z][_A-Za-z0-9]*/,      'ID'));
@@ -34,7 +35,7 @@ var skipper = (id:string) => {
   return false;
 }
 
-var p = new lex.Parser(lexer, skipper);
+var p = new pars.Parser(lexer, skipper);
 var FUNC = new SPR('function');
 var ID = new SPR('ID');
 var RULE = new SPR('RULE');

@@ -5,12 +5,14 @@ export class Shader {
   private program:WebGLProgram;
   private uniforms = {};
   private attribs = {};
+  private uniforms_names:string[]; 
 
-  constructor(prog:WebGLProgram) {
+  constructor(prog:WebGLProgram, uniforms:string[]) {
     this.program = prog;
+    this.uniforms_names = uniforms;
   }
 
-  getUniformLocation(name:string, gl:WebGLRenderingContext):WebGLUniformLocation {
+  public getUniformLocation(name:string, gl:WebGLRenderingContext):WebGLUniformLocation {
     var location = this.uniforms[name];
     if(location == undefined) {
       location = gl.getUniformLocation(this.program, name);
@@ -19,7 +21,7 @@ export class Shader {
     return location;
   }
 
-  getAttributeLocation(name:string, gl:WebGLRenderingContext):number {
+  public getAttributeLocation(name:string, gl:WebGLRenderingContext):number {
     var location = this.attribs[name];
     if(location == undefined) {
       location = gl.getAttribLocation(this.program, name);
@@ -28,12 +30,16 @@ export class Shader {
     return location;
   }
 
-  getProgram():WebGLProgram {
+  public getProgram():WebGLProgram {
     return this.program;
+  }
+
+  public getUniforms():string[] {
+    return this.uniforms_names;
   }
 }
 
-export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmentSrc:string):Shader {
+export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmentSrc:string, uniforms:string[]):Shader {
 
   function compileSource(type:number, source:string):WebGLShader {
     var shader = gl.createShader(type);
@@ -53,5 +59,5 @@ export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmen
     throw 'link error: ' + gl.getProgramInfoLog(program);
   }
 
-  return new Shader(program);
+  return new Shader(program, uniforms);
 }
