@@ -14,17 +14,24 @@ import MU = require('./libs/mathutils');
 
 var w = 600;
 var h = 400;
+var MAP = 'resources/buildmaps/doly.map';
 
 function load(file:string):string {
   return getter.getString(file);
 }
+
+getter.loader
+.load(MAP)
+.loadString('resources/shaders/base.vsh')
+.loadString('resources/shaders/base.fsh')
+.finish(() => {
 
 var SCALE = -16;
 var gl = GL.createContext(w, h);
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var board = build.loadBuildMap(new data.DataViewStream(getter.get('resources/buildmaps/doly.map'), true));
+var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
 var model = buildutils.buildBoard(board, gl);
 var baseShader = shaders.createShader(gl, load('resources/shaders/base.vsh'), load('resources/shaders/base.fsh'), ['MVP', 'eyedir', 'eyepos']);
 var control = new controller.Controller3D(gl);
@@ -68,3 +75,5 @@ GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 });
 
 gl.canvas.oncontextmenu = () => false;
+
+});

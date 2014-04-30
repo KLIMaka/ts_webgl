@@ -190,20 +190,38 @@ export class MeshBuilder {
     this.normals.push(norm[2]);
   }
 
-  addTriangle(verts:number[][]):void {
-    this.addVertex(verts[0]);
-    this.addVertex(verts[1]);
-    this.addVertex(verts[2]);
+  private genNormal(verts:number[][]):number[] {
     GLM.vec3.sub(a, verts[1], verts[0]);
     GLM.vec3.sub(b, verts[2], verts[0]);
     GLM.vec3.cross(normal, b, a);
     GLM.vec3.normalize(normal, normal);
-    this.addNormal(normal);
-    this.addNormal(normal);
-    this.addNormal(normal);
+    return normal;
+  }
+
+  private genIndexesQuad():void {
+    var idx = this.lastIdx;
+    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
+    this.lastIdx += 4;
+  }
+
+  private genIndexesTri():void {
     var idx = this.lastIdx;
     this.indices.push(idx, idx + 2, idx + 1)
     this.lastIdx += 3;
+  }
+ 
+  addTriangle(verts:number[][]):void {
+    this.addVertex(verts[0]);
+    this.addVertex(verts[1]);
+    this.addVertex(verts[2]);
+
+    normal = this.genNormal(verts);
+
+    this.addNormal(normal);
+    this.addNormal(normal);
+    this.addNormal(normal);
+
+    this.genIndexesTri();
   }
 
   addQuad(verts:number[][]):void {
@@ -211,17 +229,15 @@ export class MeshBuilder {
     this.addVertex(verts[1]);
     this.addVertex(verts[2]);
     this.addVertex(verts[3]);
-    GLM.vec3.sub(a, verts[1], verts[0]);
-    GLM.vec3.sub(b, verts[2], verts[0]);
-    GLM.vec3.cross(normal, b, a);
-    GLM.vec3.normalize(normal, normal);
+
+    normal = this.genNormal(verts);
+
     this.addNormal(normal);
     this.addNormal(normal);
     this.addNormal(normal);
     this.addNormal(normal);
-    var idx = this.lastIdx;
-    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
-    this.lastIdx += 4;
+
+    this.genIndexesQuad();
   }
 
   addQuadWNormals(verts:number[][], normals:number[][]):void {
@@ -229,13 +245,13 @@ export class MeshBuilder {
     this.addVertex(verts[1]);
     this.addVertex(verts[2]);
     this.addVertex(verts[3]);
+
     this.addNormal(normals[0]);
     this.addNormal(normals[1]);
     this.addNormal(normals[2]);
     this.addNormal(normals[3]);
-    var idx = this.lastIdx;
-    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
-    this.lastIdx += 4;
+
+    this.genIndexesQuad();
   }
 
   build(gl:WebGLRenderingContext) {
