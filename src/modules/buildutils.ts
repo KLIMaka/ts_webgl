@@ -78,7 +78,7 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   return dh;
 }
 
-function addWall(builder:mb.MeshBuilder, quad:number[][]) {
+function addWall(builder:mb.MeshBuilder1, quad:number[][]) {
   // a -> b
   // ^    |
   // |    v
@@ -129,7 +129,12 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):m
   var walls = board.walls;
   var sectors = board.sectors;
 
-  var builder = new mb.MeshBuilder();
+  var builder = new mb.MeshBuilderConstructor()
+    .buffer('pos', Float32Array, gl.FLOAT, 3)
+    .buffer('norm', Float32Array, gl.FLOAT, 3)
+    .index(Uint16Array, gl.UNSIGNED_SHORT)
+    .build();
+
   for (var s = 0; s < sectors.length; s++) {
     var sector = sectors[s];
     var contour = getContours(sector, walls);

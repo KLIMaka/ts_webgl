@@ -28,15 +28,42 @@ export interface DrawData {
   getOffset(): number;
 }
 
+class VertexBufferBuilder {
+
+  private buffer:number[] = [];
+
+  constructor(
+    private arrayType:any,
+    private type:number, 
+    private spacing:number, 
+    private normalized:boolean,
+    private stride:number,
+    private offset:number
+  ) {}
+
+  public push(data:number[]):void {
+    this.buffer = this.buffer.concat(data);
+  }
+
+  public build(gl:WebGLRenderingContext):VertexBuffer {
+    var bufIdx = gl.createBuffer();
+    var data = new this.arrayType(this.buffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    return new VertexBufferImpl(bufIdx, this.type, this.spacing, this.normalized, this.stride, this.offset);
+  }
+}
+
 class VertexBufferImpl implements VertexBuffer {
 
-  private buffer:WebGLBuffer;
-  private type:number;
-
-  constructor(buffer:WebGLBuffer, type:number) {
-    this.buffer = buffer;
-    this.type = type;
-  }
+  constructor(
+    private buffer:WebGLBuffer, 
+    private type:number, 
+    private spacing:number = 3, 
+    private normalized:boolean = false, 
+    private stride:number = 0, 
+    private offset:number = 0
+  ) {}
 
   getBuffer():WebGLBuffer {
     return this.buffer;
@@ -47,30 +74,86 @@ class VertexBufferImpl implements VertexBuffer {
   }
 
   getSpacing():number {
-    return 3;
+    return this.spacing;
   }
 
   getNormalized():boolean {
-    return false;
+    return this.normalized;
   }
 
   getStride():number {
-    return 0;
+    return this.stride;
   }
 
   getOffset():number {
-    return 0;
+    return this.offset;
   }
 }
 
 class VertexBufferImplLine extends  VertexBufferImpl {
 
   constructor(buffer:WebGLBuffer, type:number) {
-    super(buffer, type);
+    super(buffer, type, 2);
+  }
+}
+
+export var NONE = 0;
+export var TRIANGLES = 3;
+export var QUADS = 4;
+
+class IndexBufferBuilder {
+
+  private buffer:number[] = [];
+  private idx = 0;
+  private mode = NONE;
+  private vtxCounter = 0;
+
+  constructor(
+    private arrayType:any,
+    private type:number
+  ) {}
+
+  public setMode(mode:number):void {
+    if (this.vtxCounter != 0)
+      throw new Error('Incomplete primitive!');
+    this.mode = mode;
+    this.vtxCounter = 0;
   }
 
-  getSpacing():number {
-    return 2;
+  public vtx():void {
+    this.vtxCounter++;
+    if (this.mode == TRIANGLES && this.vtxCounter % 3 == 0) {
+      this.pushTriangle();
+      this.vtxCounter = 0;
+    }
+    if (this.mode == QUADS && this.vtxCounter % 4 == 0) {
+      this.pushQuad();
+      this.vtxCounter = 0;
+    }
+  }
+
+  private pushTriangle():void {
+    var idx = this.idx;
+    this.buffer.push(idx, idx + 2, idx + 1)
+    this.idx += 3;
+  }
+
+  private pushQuad():void {
+    var idx = this.idx;
+    this.buffer.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
+    this.idx += 4;
+  }
+
+  public length():number {
+    return this.idx;
+  }
+
+  public build(gl:WebGLRenderingContext):IndexBuffer {
+    var bufIdx = gl.createBuffer();
+    var data = new this.arrayType(this.buffer);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    return new IndexBufferImpl(bufIdx, this.type);
   }
 }
 
@@ -164,6 +247,68 @@ export class WireBuilder {
     var idx = new IndexBufferImpl(idxBuffer, gl.UNSIGNED_SHORT);
 
     return new Mesh(pos, idx, gl.LINES, idxData.length);
+  }
+}
+
+export class MeshBuilder1 {
+
+  private attrs = {};
+
+  constructor(
+    private buffers:any, 
+    private idx:IndexBufferBuilder
+  ) {}
+
+  public start(mode:number):MeshBuilder1 {
+    this.idx.setMode(mode);
+    return this;
+  }
+
+  public attr(attr:string, data:number[]):MeshBuilder1 {
+    this.attrs[attr] = data;
+    return this;
+  }
+
+  public vtx(vtxAttr:string, data:number[]):MeshBuilder1 {
+    this.attrs[vtxAttr] = data;
+    for (var attr in this.attrs) {
+      this.buffers[attr].push(this.attrs[attr]);
+    }
+    this.idx.vtx();
+  }
+
+  public end():void {
+    this.idx.setMode(NONE);
+    this.attrs = {};
+  }
+
+  public build(gl:WebGLRenderingContext):DrawData {
+    var bufs = {};
+    for (var bufName in this.buffers) {
+      bufs[bufName] = this.buffers[bufName].build(gl);
+    }
+    var idx = this.idx.build(gl);
+    return new Mesh(bufs, idx, gl.TRIANGLES, this.idx.length());
+  }
+}
+
+export class MeshBuilderConstructor {
+
+  private buffers = {};
+  private idx:IndexBufferBuilder;
+
+  public buffer(name:string, arrayType:any, type:number, spacing:number, normalized:boolean=false):MeshBuilderConstructor {
+    this.buffers[name] = new VertexBufferBuilder(arrayType, type, spacing, normalized, 0, 0);
+    return this;
+  }
+
+  public index(idxArrayType:any, idxType:number):MeshBuilderConstructor {
+    this.idx = new IndexBufferBuilder(idxArrayType, idxType);
+    return this;
+  }
+
+  public build():MeshBuilder1 {
+    return new MeshBuilder1(this.buffers, this.idx);
   }
 }
 
