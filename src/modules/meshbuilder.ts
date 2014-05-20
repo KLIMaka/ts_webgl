@@ -1,6 +1,7 @@
 /// <reference path="../defs/webgl.d.ts" />
 
 import GLM = require('../libs_js/glmatrix');
+import MU  = require('../libs/mathutils');
 
 export interface VertexBuffer {
 
@@ -42,7 +43,8 @@ class VertexBufferBuilder {
   ) {}
 
   public push(data:number[]):void {
-    this.buffer = this.buffer.concat(data);
+    for (var i = 0; i < data.length; i++)
+      this.buffer.push(data[i]);
   }
 
   public build(gl:WebGLRenderingContext):VertexBuffer {
@@ -101,7 +103,7 @@ export var NONE = 0;
 export var TRIANGLES = 3;
 export var QUADS = 4;
 
-class IndexBufferBuilder {
+export class IndexBufferBuilder {
 
   private buffer:number[] = [];
   private idx = 0;
@@ -122,11 +124,11 @@ class IndexBufferBuilder {
 
   public vtx():void {
     this.vtxCounter++;
-    if (this.mode == TRIANGLES && this.vtxCounter % 3 == 0) {
+    if (this.mode == TRIANGLES && this.vtxCounter % TRIANGLES == 0) {
       this.pushTriangle();
       this.vtxCounter = 0;
     }
-    if (this.mode == QUADS && this.vtxCounter % 4 == 0) {
+    if (this.mode == QUADS && this.vtxCounter % QUADS == 0) {
       this.pushQuad();
       this.vtxCounter = 0;
     }
@@ -145,7 +147,7 @@ class IndexBufferBuilder {
   }
 
   public length():number {
-    return this.idx;
+    return this.buffer.length;
   }
 
   public build(gl:WebGLRenderingContext):IndexBuffer {
@@ -250,7 +252,7 @@ export class WireBuilder {
   }
 }
 
-export class MeshBuilder1 {
+export class MeshBuilder {
 
   private attrs = {};
 
@@ -259,22 +261,23 @@ export class MeshBuilder1 {
     private idx:IndexBufferBuilder
   ) {}
 
-  public start(mode:number):MeshBuilder1 {
+  public start(mode:number):MeshBuilder {
     this.idx.setMode(mode);
     return this;
   }
 
-  public attr(attr:string, data:number[]):MeshBuilder1 {
+  public attr(attr:string, data:number[]):MeshBuilder {
     this.attrs[attr] = data;
     return this;
   }
 
-  public vtx(vtxAttr:string, data:number[]):MeshBuilder1 {
+  public vtx(vtxAttr:string, data:number[]):MeshBuilder {
     this.attrs[vtxAttr] = data;
     for (var attr in this.attrs) {
       this.buffers[attr].push(this.attrs[attr]);
     }
     this.idx.vtx();
+    return this;
   }
 
   public end():void {
@@ -307,117 +310,7 @@ export class MeshBuilderConstructor {
     return this;
   }
 
-  public build():MeshBuilder1 {
+  public build():MeshBuilder {
     return new MeshBuilder1(this.buffers, this.idx);
-  }
-}
-
-var a = GLM.vec3.create();
-var b = GLM.vec3.create();
-var normal = GLM.vec3.create();
-
-export class MeshBuilder {
-
-  private positions:number[] = [];
-  private normals:number[] = [];
-  private indices:number[] = [];
-  private lastIdx = 0;
-
-  private addVertex(vtx:number[]) {
-    this.positions.push(vtx[0]);
-    this.positions.push(vtx[1]);
-    this.positions.push(vtx[2]);
-  }
-
-  private addNormal(norm:number[]) {
-    this.normals.push(norm[0]);
-    this.normals.push(norm[1]);
-    this.normals.push(norm[2]);
-  }
-
-  private genNormal(verts:number[][]):number[] {
-    GLM.vec3.sub(a, verts[1], verts[0]);
-    GLM.vec3.sub(b, verts[2], verts[0]);
-    GLM.vec3.cross(normal, b, a);
-    GLM.vec3.normalize(normal, normal);
-    return normal;
-  }
-
-  private genIndexesQuad():void {
-    var idx = this.lastIdx;
-    this.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
-    this.lastIdx += 4;
-  }
-
-  private genIndexesTri():void {
-    var idx = this.lastIdx;
-    this.indices.push(idx, idx + 2, idx + 1)
-    this.lastIdx += 3;
-  }
- 
-  addTriangle(verts:number[][]):void {
-    this.addVertex(verts[0]);
-    this.addVertex(verts[1]);
-    this.addVertex(verts[2]);
-
-    normal = this.genNormal(verts);
-
-    this.addNormal(normal);
-    this.addNormal(normal);
-    this.addNormal(normal);
-
-    this.genIndexesTri();
-  }
-
-  addQuad(verts:number[][]):void {
-    this.addVertex(verts[0]);
-    this.addVertex(verts[1]);
-    this.addVertex(verts[2]);
-    this.addVertex(verts[3]);
-
-    normal = this.genNormal(verts);
-
-    this.addNormal(normal);
-    this.addNormal(normal);
-    this.addNormal(normal);
-    this.addNormal(normal);
-
-    this.genIndexesQuad();
-  }
-
-  addQuadWNormals(verts:number[][], normals:number[][]):void {
-    this.addVertex(verts[0]);
-    this.addVertex(verts[1]);
-    this.addVertex(verts[2]);
-    this.addVertex(verts[3]);
-
-    this.addNormal(normals[0]);
-    this.addNormal(normals[1]);
-    this.addNormal(normals[2]);
-    this.addNormal(normals[3]);
-
-    this.genIndexesQuad();
-  }
-
-  build(gl:WebGLRenderingContext) {
-    var posBuffer = gl.createBuffer();
-    var posData = new Float32Array(this.positions);
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, posData, gl.STATIC_DRAW);
-    var pos = new VertexBufferImpl(posBuffer, gl.FLOAT);
-
-    var normalBuffer = gl.createBuffer();
-    var normalData = new Float32Array(this.normals);
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, normalData, gl.STATIC_DRAW);
-    var norm = new VertexBufferImpl(normalBuffer, gl.FLOAT);    
-
-    var idxBuffer = gl.createBuffer();
-    var idxData = new Uint16Array(this.indices);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idxData, gl.STATIC_DRAW);
-    var idx = new IndexBufferImpl(idxBuffer, gl.UNSIGNED_SHORT);
-
-    return new Mesh({pos:pos, norm:norm}, idx, gl.TRIANGLES, idxData.length);
   }
 }

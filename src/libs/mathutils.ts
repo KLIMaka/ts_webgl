@@ -54,3 +54,15 @@ export function isCW(polygon:number[][]):boolean {
   }
   return rad2deg(angsum) == 180*(N-2);
 }
+
+var a = GLM.vec3.create();
+var b = GLM.vec3.create();
+
+export function normal(verts:number[][]) {
+  GLM.vec3.sub(a, verts[1], verts[0]);
+  GLM.vec3.sub(b, verts[2], verts[0]);
+  var res = GLM.vec3.create();
+  GLM.vec3.cross(res, b, a);
+  GLM.vec3.normalize(res, res);
+  return res;
+}

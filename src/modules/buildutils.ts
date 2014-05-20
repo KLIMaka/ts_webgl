@@ -78,7 +78,15 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   return dh;
 }
 
-function addWall(builder:mb.MeshBuilder1, quad:number[][]) {
+function addFace(builder:mb.MeshBuilder, type:number, verts:number[][]) {
+  builder.start(type)
+    .attr('norm', MU.normal(verts));
+  for (var i = 0; i < type; i++)
+    builder.vtx('pos', verts[i]);
+  builder.end();
+}
+
+function addWall(builder:mb.MeshBuilder, quad:number[][]) {
   // a -> b
   // ^    |
   // |    v
@@ -89,15 +97,15 @@ function addWall(builder:mb.MeshBuilder1, quad:number[][]) {
   var d = quad[3];
 
   if (a[1] == d[1]) {
-    builder.addTriangle([a,b,c]);
+    addFace(builder, mb.TRIANGLES, [a,b,c]);
     return;
   }
   if (b[1] == c[1]) {
-    builder.addTriangle([a,b,d]);
+   addFace(builder, mb.TRIANGLES, [a,b,d]);
     return;
   }
   if (a[1] < d[1] && b[1] < c[1]){
-    builder.addQuad([d, c , b , a]);
+    addFace(builder, mb.QUADS, [d,c,b,a]);
     return;
   }
 
@@ -110,19 +118,19 @@ function addWall(builder:mb.MeshBuilder1, quad:number[][]) {
     GLM.vec3.sub(tmp, c, d);
     GLM.vec3.scale(tmp, tmp, k);
     var e = GLM.vec3.add(GLM.vec3.create(), d, tmp);
-    builder.addTriangle([d, e, a]);
-    builder.addTriangle([e, b, c]);
+    addFace(builder, mb.TRIANGLES, [d,e,a]);
+    addFace(builder, mb.TRIANGLES, [e,b,c]);
     return;
   }
   if (b[1] < c[1]) {
     GLM.vec3.sub(tmp, b, a);
     GLM.vec3.scale(tmp, tmp, k);
     var e = GLM.vec3.add(GLM.vec3.create(), a, tmp);
-    builder.addTriangle([a, e, d]);
-    builder.addTriangle([e, c, b]);
+    addFace(builder, mb.TRIANGLES, [a,e,d]);
+    addFace(builder, mb.TRIANGLES, [e,c,b]);
     return; 
   }
-  builder.addQuad(quad);
+  addFace(builder, mb.QUADS, quad);
 }
 
 export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):mb.DrawData {
@@ -218,25 +226,24 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):m
       var t1y = tris[i+1][1];
       var t2y = tris[i+2][1];
 
-      var z1 = slope(t0x, t0y, floorheinum) + floorz;
-      var z2 = slope(t1x, t1y, floorheinum) + floorz;
-      var z3 = slope(t2x, t2y, floorheinum) + floorz;
+      var z1f = slope(t0x, t0y, floorheinum) + floorz;
+      var z2f = slope(t1x, t1y, floorheinum) + floorz;
+      var z3f = slope(t2x, t2y, floorheinum) + floorz;
 
-      builder.addTriangle([
-        [t0x, z1 / SCALE, t0y],
-        [t1x, z2 / SCALE, t1y],
-        [t2x, z3 / SCALE, t2y]
-      ]);
+      var z1c = slope(t2x, t2y, ceilingheinum) + ceilingz;
+      var z2c = slope(t1x, t1y, ceilingheinum) + ceilingz;
+      var z3c = slope(t0x, t0y, ceilingheinum) + ceilingz;
 
-      var z1 = slope(t2x, t2y, ceilingheinum) + ceilingz;
-      var z2 = slope(t1x, t1y, ceilingheinum) + ceilingz;
-      var z3 = slope(t0x, t0y, ceilingheinum) + ceilingz;
+      var v1f = [t0x, z1f / SCALE, t0y];
+      var v2f = [t1x, z2f / SCALE, t1y];
+      var v3f = [t2x, z3f / SCALE, t2y];
 
-      builder.addTriangle([
-        [t2x, z1 / SCALE, t2y],
-        [t1x, z2 / SCALE, t1y],
-        [t0x, z3 / SCALE, t0y]
-      ]);
+      var v1c = [t2x, z1c / SCALE, t2y];
+      var v2c = [t1x, z2c / SCALE, t1y];
+      var v3c = [t0x, z3c / SCALE, t0y];
+
+      addFace(builder, mb.TRIANGLES, [v1f,v2f,v3f]);
+      addFace(builder, mb.TRIANGLES, [v1c,v2c,v3c]);
     }
   }
 
