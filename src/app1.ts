@@ -26,7 +26,7 @@ function load(file:string):string {
 }
 
 var SCALE = -16;
-function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext):mb.DrawData {
+function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext):mb.DrawStruct {
   var builder = new mb.MeshBuilder();
   var x = sprite.x;
   var y = sprite.y;
@@ -74,7 +74,7 @@ var baseShader = shaders.createShader(gl, load('resources/shaders/base.vsh'), lo
 var spriteShader = shaders.createShader(gl, load('resources/shaders/sprite.vsh'), load('resources/shaders/sprite.fsh'));
 var control = new controller.Controller3D(gl);
 
-function draw(gl:WebGLRenderingContext, model:mb.DrawData, shader:shaders.Shader) {
+function draw(gl:WebGLRenderingContext, model:mb.DrawStruct, shader:shaders.Shader) {
   var attributes = model.getAttributes();
   for (var i in  attributes) {
     var attr = attributes[i];

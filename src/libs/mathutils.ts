@@ -66,3 +66,7 @@ export function normal(verts:number[][]) {
   GLM.vec3.normalize(res, res);
   return res;
 }
+
+export function int2vec4(int:number) {
+  return [(int&0xff), ((int>>>8)&0xff), ((int>>>16)&0xff), ((int>>>24)&0xff)];
+}

@@ -5,6 +5,7 @@ import MU = require('../libs/mathutils');
 import GLM = require('../libs_js/glmatrix');
 import triangulator = require('./triangulator');
 import mb = require('./meshbuilder');
+import DS = require('./drawstruct');
 
 var SCALE = -16;
 var UNITS2DEG = (1 / 4096);
@@ -70,19 +71,20 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   var w = -GLM.vec2.dot(normal, GLM.vec2.fromValues(wall1.x , wall1.y));
   var vec = GLM.vec2.create();
 
-  var dh  = function(x:number, y:number, rotation:number):number {
-    GLM.vec2.set(vec, x ,y);
+  return function (x:number, y:number, rotation:number):number {
+    GLM.vec2.set(vec, x, y);
     var dist = GLM.vec2.dot(normal, vec) + w;
     return -(rotation * UNITS2DEG) * dist * SCALE;
-  }
-  return dh;
+  };
 }
 
+var idx = 0;
 function addFace(builder:mb.MeshBuilder, type:number, verts:number[][]) {
   builder.start(type)
-    .attr('norm', MU.normal(verts));
+    .attr('aNorm', MU.normal(verts))
+    .attr('aIdx', MU.int2vec4(idx++));
   for (var i = 0; i < type; i++)
-    builder.vtx('pos', verts[i]);
+    builder.vtx('aPos', verts[i]);
   builder.end();
 }
 
@@ -112,7 +114,7 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
   var tmp = GLM.vec3.create();
   var left = Math.abs(a[1] - d[1]);
   var right = Math.abs(b[1] - c[1]);
-  var k = left < right ? (left/right)*0.5 : 1 - (right/left)*0.5
+  var k = left < right ? (left/right)*0.5 : 1 - (right/left)*0.5;
 
   if (a[1] < d[1]) {
     GLM.vec3.sub(tmp, c, d);
@@ -133,13 +135,14 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
   addFace(builder, mb.QUADS, quad);
 }
 
-export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):mb.DrawData {
+export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):DS.DrawStruct {
   var walls = board.walls;
   var sectors = board.sectors;
 
   var builder = new mb.MeshBuilderConstructor()
-    .buffer('pos', Float32Array, gl.FLOAT, 3)
-    .buffer('norm', Float32Array, gl.FLOAT, 3)
+    .buffer('aPos', Float32Array, gl.FLOAT, 3)
+    .buffer('aNorm', Float32Array, gl.FLOAT, 3)
+    .buffer('aIdx', Float32Array, gl.UNSIGNED_BYTE, 4, true)
     .index(Uint16Array, gl.UNSIGNED_SHORT)
     .build();
 

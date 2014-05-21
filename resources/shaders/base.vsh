@@ -1,15 +1,18 @@
 uniform mat4 MVP;
 uniform vec3 eyepos;
 
-attribute vec3 norm;
-attribute vec3 pos;
+attribute vec3 aNorm;
+attribute vec3 aPos;
+attribute vec4 aIdx;
 
 varying float att;
 varying vec3 toLight;
+varying vec4 idx;
 
 void main() {
-	vec3 toEye = eyepos - pos;
-	att = max(dot(norm, normalize(toEye)), 0.0);
+	vec3 toEye = eyepos - aPos;
+	att = max(dot(aNorm, normalize(toEye)), 0.0);
 	toLight = toEye;
-	gl_Position = MVP * vec4(pos, 1);
+	idx = aIdx;
+	gl_Position = MVP * vec4(aPos, 1);
 }

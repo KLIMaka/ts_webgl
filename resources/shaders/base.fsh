@@ -1,12 +1,14 @@
 precision mediump float;
 
 uniform vec3 eyedir;
+uniform vec4 activeIdx;
 
 varying float att;
 varying vec3 toLight;
+varying vec4 idx;
 
 void main() {
-	vec3 color = vec3(0.2,0.5,1) * att;/// pow(length(toLight) / 5000.0, 2.0);
+	vec3 color = (activeIdx==idx ? vec3(1,0.5,0.2) : vec3(0.2,0.5,1)) * att;
 	color *= dot(normalize(toLight), -normalize(eyedir));
 	gl_FragColor = vec4(color,1);
 }

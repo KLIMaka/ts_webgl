@@ -2,32 +2,8 @@
 
 import GLM = require('../libs_js/glmatrix');
 import MU  = require('../libs/mathutils');
+import DS = require('./drawstruct');
 
-export interface VertexBuffer {
-
-  getBuffer(): WebGLBuffer;
-  getType(): number;
-  getSpacing(): number;
-  getNormalized(): boolean;
-  getStride(): number;
-  getOffset(): number;
-}
-
-export interface IndexBuffer {
-
-  getBuffer(): WebGLBuffer;
-  getType(): number;
-}
-
-export interface DrawData {
-
-  getMode(): number;
-  getVertexBuffer(attribute:string): VertexBuffer;
-  getAttributes(): string[];
-  getIndexBuffer(): IndexBuffer;
-  getLength(): number;
-  getOffset(): number;
-}
 
 class VertexBufferBuilder {
 
@@ -47,16 +23,16 @@ class VertexBufferBuilder {
       this.buffer.push(data[i]);
   }
 
-  public build(gl:WebGLRenderingContext):VertexBuffer {
+  public build(gl:WebGLRenderingContext):DS.VertexBuffer {
     var bufIdx = gl.createBuffer();
     var data = new this.arrayType(this.buffer);
     gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, <ArrayBuffer>data, gl.STATIC_DRAW);
     return new VertexBufferImpl(bufIdx, this.type, this.spacing, this.normalized, this.stride, this.offset);
   }
 }
 
-class VertexBufferImpl implements VertexBuffer {
+class VertexBufferImpl implements DS.VertexBuffer {
 
   constructor(
     private buffer:WebGLBuffer, 
@@ -89,13 +65,6 @@ class VertexBufferImpl implements VertexBuffer {
 
   getOffset():number {
     return this.offset;
-  }
-}
-
-class VertexBufferImplLine extends  VertexBufferImpl {
-
-  constructor(buffer:WebGLBuffer, type:number) {
-    super(buffer, type, 2);
   }
 }
 
@@ -136,7 +105,7 @@ export class IndexBufferBuilder {
 
   private pushTriangle():void {
     var idx = this.idx;
-    this.buffer.push(idx, idx + 2, idx + 1)
+    this.buffer.push(idx, idx + 2, idx + 1);
     this.idx += 3;
   }
 
@@ -150,16 +119,16 @@ export class IndexBufferBuilder {
     return this.buffer.length;
   }
 
-  public build(gl:WebGLRenderingContext):IndexBuffer {
+  public build(gl:WebGLRenderingContext):DS.IndexBuffer {
     var bufIdx = gl.createBuffer();
     var data = new this.arrayType(this.buffer);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer> data, gl.STATIC_DRAW);
     return new IndexBufferImpl(bufIdx, this.type);
   }
 }
 
-class IndexBufferImpl implements IndexBuffer {
+class IndexBufferImpl implements DS.IndexBuffer {
 
   private buffer:WebGLBuffer;
   private type:number;
@@ -175,80 +144,6 @@ class IndexBufferImpl implements IndexBuffer {
   constructor(buffer:WebGLBuffer, type:number) {
     this.buffer = buffer;
     this.type = type;
-  }
-}
-
-export class Mesh implements DrawData {
-
-  private idx:IndexBuffer;
-  private mode:number;
-  private length:number;
-  private vtxBuffers:{[index: string]:VertexBuffer};
-
-  constructor(vtxBuffers:{[index: string]:VertexBuffer}, idx:IndexBuffer, mode:number, length:number) {
-    this.vtxBuffers = vtxBuffers;
-    this.idx = idx;
-    this.mode = mode;
-    this.length = length;
-  }
-
-  getMode():number {
-    return this.mode;
-  }
-
-  getVertexBuffer(attribute:string):VertexBuffer {
-    return this.vtxBuffers[attribute];
-  }
-
-  getAttributes():string[] {
-    return Object.keys(this.vtxBuffers);
-  }
-
-  getIndexBuffer():IndexBuffer {
-    return this.idx;
-  }
-
-  getLength():number {
-    return this.length;
-  }
-
-  getOffset():number {
-    return 0;
-  }
-}
-
-export class WireBuilder {
-
-  private points:number[] = [];
-  private indices:number[] = [];
-  private lasIndex:number = 0;
-
-  private addVertex(vtx:number[]):void {
-    this.points.push(vtx[0], vtx[1]);
-  }
-
-  addLine(start:number[], end:number[]) {
-    this.addVertex(start);
-    this.addVertex(end);
-    var idx = this.lasIndex;
-    this.indices.push(idx, idx + 1);
-    this.lasIndex += 2;
-  }
-
-  build(gl:WebGLRenderingContext) {
-    var posBuffer = gl.createBuffer();
-    var posData = new Float32Array(this.points);
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, posData, gl.STATIC_DRAW);
-    var pos = new VertexBufferImplLine(posBuffer, gl.FLOAT);
-
-    var idxBuffer = gl.createBuffer();
-    var idxData = new Uint16Array(this.indices);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idxData, gl.STATIC_DRAW);
-    var idx = new IndexBufferImpl(idxBuffer, gl.UNSIGNED_SHORT);
-
-    return new Mesh(pos, idx, gl.LINES, idxData.length);
   }
 }
 
@@ -274,6 +169,7 @@ export class MeshBuilder {
   public vtx(vtxAttr:string, data:number[]):MeshBuilder {
     this.attrs[vtxAttr] = data;
     for (var attr in this.attrs) {
+      //noinspection JSUnfilteredForInLoop
       this.buffers[attr].push(this.attrs[attr]);
     }
     this.idx.vtx();
@@ -285,13 +181,14 @@ export class MeshBuilder {
     this.attrs = {};
   }
 
-  public build(gl:WebGLRenderingContext):DrawData {
+  public build(gl:WebGLRenderingContext):DS.DrawStruct {
     var bufs = {};
     for (var bufName in this.buffers) {
+      //noinspection JSUnfilteredForInLoop
       bufs[bufName] = this.buffers[bufName].build(gl);
     }
     var idx = this.idx.build(gl);
-    return new Mesh(bufs, idx, gl.TRIANGLES, this.idx.length());
+    return new DS.Mesh(bufs, idx, gl.TRIANGLES, this.idx.length());
   }
 }
 
@@ -311,6 +208,6 @@ export class MeshBuilderConstructor {
   }
 
   public build():MeshBuilder {
-    return new MeshBuilder1(this.buffers, this.idx);
+    return new MeshBuilder(this.buffers, this.idx);
   }
 }

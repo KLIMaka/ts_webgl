@@ -1,5 +1,6 @@
 /// <reference path="../defs/webgl.d.ts"/>
 import shaders = require('shader');
+import DS = require('drawstruct');
 
 export function createContext(w:number, h:number, opts = {}):WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -44,6 +45,13 @@ export class Uniform3fvSetter {
 }
 export var vec3Setter = new Uniform3fvSetter();
 
+export class Uniform4fvSetter {
+  setUniform(gl:WebGLRenderingContext, location:WebGLUniformLocation, value:any):void {
+    gl.uniform4fv(location, value);
+  }
+}
+export var vec4Setter = new Uniform4fvSetter();
+
 export class UniformBinder {
 
   private resolvers:{[index:string]: ()=>any;} = {};
@@ -64,3 +72,32 @@ export class UniformBinder {
     this.resolvers[name] = resolver;
   }
 }
+
+export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, shader:shaders.Shader) {
+  var attributes = model.getAttributes();
+  for (var i in  attributes) {
+    var attr = attributes[i];
+    var buf = model.getVertexBuffer(attr);
+    var location = shader.getAttributeLocation(attr, gl);
+    if (location != -1) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
+    }
+  }
+
+  if (model.getIndexBuffer() == null) {
+    gl.drawArrays(model.getMode(), model.getOffset(), model.getLength());
+  } else {
+    var idxBuf = model.getIndexBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf.getBuffer());
+    gl.drawElements(model.getMode(), model.getLength(), idxBuf.getType(), model.getOffset());
+  }
+}
+
+var pixel = new Uint8Array(4);
+export function readId(gl:WebGLRenderingContext, x:number, y:number):number {
+  gl.readPixels(x ,gl.drawingBufferHeight-y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+  return pixel[0] | pixel[1]<<8 | pixel[2]<<16 | pixel[3]<<24;
+}
+
