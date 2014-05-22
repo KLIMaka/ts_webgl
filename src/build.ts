@@ -29,7 +29,7 @@ getter.loader
 .loadString('resources/shaders/select.fsh')
 .finish(() => {
 
-var gl = GL.createContext(w, h, {alpha:false});
+var gl = GL.createContext(w, h, {alpha:false, antialias:false});
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
@@ -58,15 +58,15 @@ GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
   GL.draw(gl, model, selectShader);
 
   var id = GL.readId(gl, control.getX(), control.getY());
-  console.log(id);
-  activeIdx = MU.int2vec4(id);
-//
-//  // actual draw
-//  gl.clearColor(0.1, 0.3, 0.1, 1.0);
-//
-//  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-//  binder.bind(gl, baseShader);
-//  GL.draw(gl, model, baseShader);
+  console.log( control.getX(),  control.getY());
+  activeIdx = MU.int2vec4norm(id);
+
+  // actual draw
+  gl.clearColor(0.1, 0.3, 0.1, 1.0);
+
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  binder.bind(gl, baseShader);
+  GL.draw(gl, model, baseShader);
 });
 
 gl.canvas.oncontextmenu = () => false;

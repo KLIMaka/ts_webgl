@@ -98,6 +98,6 @@ export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, shader:shade
 var pixel = new Uint8Array(4);
 export function readId(gl:WebGLRenderingContext, x:number, y:number):number {
   gl.readPixels(x ,gl.drawingBufferHeight-y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-  return pixel[0] | pixel[1]<<8 | pixel[2]<<16 | pixel[3]<<24;
+  return pixel[0] | pixel[1]<<8 | pixel[2]<<16 /*| pixel[3]<<24*/;
 }
 

@@ -142,7 +142,7 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
   var builder = new mb.MeshBuilderConstructor()
     .buffer('aPos', Float32Array, gl.FLOAT, 3)
     .buffer('aNorm', Float32Array, gl.FLOAT, 3)
-    .buffer('aIdx', Float32Array, gl.UNSIGNED_BYTE, 4, true)
+    .buffer('aIdx', Uint8Array, gl.UNSIGNED_BYTE, 4, true)
     .index(Uint16Array, gl.UNSIGNED_SHORT)
     .build();
 

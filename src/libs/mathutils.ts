@@ -70,3 +70,7 @@ export function normal(verts:number[][]) {
 export function int2vec4(int:number) {
   return [(int&0xff), ((int>>>8)&0xff), ((int>>>16)&0xff), ((int>>>24)&0xff)];
 }
+
+export function int2vec4norm(int:number) {
+  return [(int&0xff)/256, ((int>>>8)&0xff)/256, ((int>>>16)&0xff)/256, ((int>>>24)&0xff)/256];
+}
