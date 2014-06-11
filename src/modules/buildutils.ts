@@ -78,17 +78,16 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   };
 }
 
-var idx = 0;
-function addFace(builder:mb.MeshBuilder, type:number, verts:number[][]) {
+function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], idx:number) {
   builder.start(type)
     .attr('aNorm', MU.normal(verts))
-    .attr('aIdx', MU.int2vec4(idx++));
+    .attr('aIdx', MU.int2vec4(idx));
   for (var i = 0; i < type; i++)
     builder.vtx('aPos', verts[i]);
   builder.end();
 }
 
-function addWall(builder:mb.MeshBuilder, quad:number[][]) {
+function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number) {
   // a -> b
   // ^    |
   // |    v
@@ -99,15 +98,15 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
   var d = quad[3];
 
   if (a[1] == d[1]) {
-    addFace(builder, mb.TRIANGLES, [a,b,c]);
+    addFace(builder, mb.TRIANGLES, [a,b,c], idx);
     return;
   }
   if (b[1] == c[1]) {
-   addFace(builder, mb.TRIANGLES, [a,b,d]);
+   addFace(builder, mb.TRIANGLES, [a,b,d], idx);
     return;
   }
   if (a[1] < d[1] && b[1] < c[1]){
-    addFace(builder, mb.QUADS, [d,c,b,a]);
+    addFace(builder, mb.QUADS, [d,c,b,a], idx);
     return;
   }
 
@@ -120,24 +119,25 @@ function addWall(builder:mb.MeshBuilder, quad:number[][]) {
     GLM.vec3.sub(tmp, c, d);
     GLM.vec3.scale(tmp, tmp, k);
     var e = GLM.vec3.add(GLM.vec3.create(), d, tmp);
-    addFace(builder, mb.TRIANGLES, [d,e,a]);
-    addFace(builder, mb.TRIANGLES, [e,b,c]);
+    addFace(builder, mb.TRIANGLES, [d,e,a], idx);
+    addFace(builder, mb.TRIANGLES, [e,b,c], idx);
     return;
   }
   if (b[1] < c[1]) {
     GLM.vec3.sub(tmp, b, a);
     GLM.vec3.scale(tmp, tmp, k);
     var e = GLM.vec3.add(GLM.vec3.create(), a, tmp);
-    addFace(builder, mb.TRIANGLES, [a,e,d]);
-    addFace(builder, mb.TRIANGLES, [e,c,b]);
+    addFace(builder, mb.TRIANGLES, [a,e,d], idx);
+    addFace(builder, mb.TRIANGLES, [e,c,b], idx);
     return; 
   }
-  addFace(builder, mb.QUADS, quad);
+  addFace(builder, mb.QUADS, quad, idx);
 }
 
 export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):DS.DrawStruct {
   var walls = board.walls;
   var sectors = board.sectors;
+  var idx = 1;
 
   var builder = new mb.MeshBuilderConstructor()
     .buffer('aPos', Float32Array, gl.FLOAT, 3)
@@ -147,6 +147,7 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
     .build();
 
   for (var s = 0; s < sectors.length; s++) {
+    var sectIdx = idx++;
     var sector = sectors[s];
     var contour = getContours(sector, walls);
     var tris:number[][] = null;
@@ -168,7 +169,8 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
 
     var i = 0;
     while (i < sector.wallnum) {
-      var wall = walls[sector.wallptr + i];
+      var wallidx = sector.wallptr + i;
+      var wall = walls[wallidx];
       var wall2 = walls[wall.point2];
       var x1 = wall.x;
       var y1 = wall.y;
@@ -185,7 +187,7 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
         var b = [x2, z2 / SCALE, y2];
         var c = [x2, z3 / SCALE, y2];
         var d = [x1, z4 / SCALE, y1];
-        addWall(builder, [a, b, c, d]);
+        addWall(builder, [a, b, c, d], idx);
       } else {
         var nextsector = sectors[wall.nextsector];
         var nextslope = createSlopeCalculator(nextsector, walls);
@@ -202,7 +204,7 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          addWall(builder, [a, b, c, d]);
+          addWall(builder, [a, b, c, d], idx);
         }
 
         var nextceilingheinum = nextsector.ceilingheinum;
@@ -215,10 +217,11 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          addWall(builder, [a, b, c, d]);
+          addWall(builder, [a, b, c, d], idx);
         }
       }
       i++;
+      idx++;
     }
 
     for (var i = 0; i < tris.length; i += 3) {
@@ -245,10 +248,63 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
       var v2c = [t1x, z2c / SCALE, t1y];
       var v3c = [t0x, z3c / SCALE, t0y];
 
-      addFace(builder, mb.TRIANGLES, [v1f,v2f,v3f]);
-      addFace(builder, mb.TRIANGLES, [v1c,v2c,v3c]);
+      addFace(builder, mb.TRIANGLES, [v1f,v2f,v3f], sectIdx);
+      addFace(builder, mb.TRIANGLES, [v1c,v2c,v3c], sectIdx);
     }
   }
 
   return builder.build(gl);
+}
+
+export class MoveStruct {
+
+  public x:number;
+  public y:number;
+  public z:number;
+  public sec:number;
+}
+
+export function(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:number, dz:number):void {
+  if (dx == 0 && dy == 0 && dz == 0)
+    return;
+
+    var walls = board.walls;
+    var cursec = getSector(board, ms);
+    var nx = ms.x + dx;
+    var ny = ms.y + dy;
+    var nz = ms.z + dz;
+
+    var slope = createSlopeCalculator(sector, walls);
+    var ceilingheinum = sector.ceilingheinum;
+    var ceilingz = sector.ceilingz;
+    var floorheinum = sector.floorheinum;
+    var floorz = sector.floorz;
+
+    for (var w = 0; w < cursec.wallnum; w++) {
+      var wallidx = cursec.wallptr + w;
+      var wall = walls[wallidx];
+      var wall2 = walls[wall.point2];
+      var x1 = wall.x;
+      var y1 = wall.y;
+      var x2 = wall2.x;
+      var y2 = wall2.y;
+      var cz1 = slope(x1, y1, ceilingheinum) + ceilingz;
+      var fz1 = slope(x1, y1, floorheinum) + floorz;
+      var cz2 = slope(x2, y2, ceilingheinum) + ceilingz;
+      var fz2 = slope(x2, y2, floorheinum) + floorz;
+
+      var inter = MU.line2dIntersect(x1,y1,x2,y2,ms.x,ms.y,nx,ny);
+      if (inter == null)
+        continue;
+
+      var interf = slope(inter.x, inter.y, floorheinum) + floorz;
+      var interc = slope(inter.x, inter.y, ceilingheinum) + ceilingz;
+
+      
+
+    }
+}
+
+function getSector(board:buildstructs.Board, ms:MoveStruct):buildstructs.Sector {
+  return board.sectors[ms.sec];
 }

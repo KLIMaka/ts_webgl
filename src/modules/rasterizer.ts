@@ -107,49 +107,6 @@ function computeBoundingBox(polygon:Segment[]):BoundingBox {
   return bb;
 }
 
-// export function rasterize(polygon:Segment[], xres:number, yres:number):Pixel[] {
-//   // var pixels:Pixel[] = [];
-
-//   var dx = 1 / xres;
-//   var dy = 1 / yres;
-//   var sx = dx / 2;
-//   var sy = dy / 2;
-//   var bb = computeBoundingBox(polygon);
-//   var yi = MU.int(bb.miny / dy);
-//   var yf = sy + yi * dy;
-
-//   while (yf <= bb.maxy) {
-//     var spans = computeSpansNonZeroWinding(getIntersections(yf, polygon));
-//     for (var i = 0; i < spans.length; i++) {
-//       var span = spans[i];
-//       var adyr = Math.abs((yf - span.segr.y1) / (span.segr.y1 - span.segr.y2));
-//       var adyl = Math.abs((yf - span.segl.y1) / (span.segl.y1 - span.segl.y2));
-//       var ratrs:GLM.Vec3Array[] = [];
-//       var latrs:GLM.Vec3Array[] = [];
-//       for(var a = 0; a < span.segl.satrs.length; a++) {
-//         ratrs[a] = GLM.vec3.lerp(GLM.vec3.create(), span.segr.satrs[a], span.segr.eatrs[a], adyr);
-//         latrs[a] = GLM.vec3.lerp(GLM.vec3.create(), span.segl.satrs[a], span.segl.eatrs[a], adyl);
-//       }
-
-//       var xi = MU.int(span.xl / dx);
-//       var xri = MU.int(span.xr / dx);
-//       while (xi <= xri) {
-//         var xf = sx + xi * dy;
-//         var adx = (xf - span.xl) / (span.xr - span.xl);
-//         var atrs:GLM.Vec3Array[] = [];
-//         for (var a = 0; a < ratrs.length; a++)
-//           atrs[a] = GLM.vec3.lerp(GLM.vec3.create(), latrs[a], ratrs[a], adx);
-//         // pixels.push(new Pixel(xi, yi, xf, yf, atrs));
-//         xi++;
-//       }
-//     }
-//     yi++;
-//     yf += dy;
-//   }
-
-//   return pixels;
-// }
-
 class BufferParams {
   constructor(public offset:number, public stride:number) {}
 }
@@ -357,6 +314,16 @@ export class Rasterizer {
     return reg;
   }
 
+  public clear(color:number[]):void {
+    var data = this.img.data;
+    for (var i = 0; i < data.length; i+=4) {
+      data[i+0] = color[0];
+      data[i+1] = color[1];
+      data[i+2] = color[2];
+      data[i+3] = color[3];
+    }
+  }
+
   public drawTriangles(indices:number[]):void {
     var dx = this.dx;
     var dy = this.dy;
@@ -383,10 +350,12 @@ export class Rasterizer {
         continue;
 
       var bb = this.computeBoundingBox(polygon);
-      var yi = MU.int(bb.miny / dy);
+      var miny = bb.miny > 1.0 ? 1.0 : bb.miny < 0.0 ? 0.0 : bb.miny;
+      var maxy = bb.maxy > 1.0 ? 1.0 : bb.maxy < 0.0 ? 0.0 : bb.maxy;
+      var yi = MU.int((miny+sy) / dy);
       var yf = sy + yi * dy;
 
-      while (yf <= bb.maxy) {
+      while (yf <= maxy) {
         intersect.reset();
         intersect = this.getIntersectionsTri(yf, intersect);
         if (intersect.hasIntersections()) {
@@ -403,10 +372,14 @@ export class Rasterizer {
             latrs[a] = l1[a] + (l2[a] - l1[a]) * adyl;
           }
 
-          var xi = MU.int(intersect.xl / dx);
-          var xri = MU.int(intersect.xr / dx);
-          while (xi <= xri) {
-            var xf = sx + xi * dy;
+          var minx = intersect.xl;
+          var maxx = intersect.xr;
+          minx = minx > 1.0 ? 1.0 : minx < 0.0 ? 0.0 : minx;
+          maxx = maxx > 1.0 ? 1.0 : maxx < 0.0 ? 0.0 : maxx;
+
+          var xi = MU.int((minx+sx) / dx);
+          var xf = sx + xi * dy;
+          while (xf <= maxx) {
             var adx = (xf - intersect.xl) / (intersect.xr - intersect.xl);
             for (var a = 0; a < ratrs.length; a++)
               atrs[a] = latrs[a] + (ratrs[a] - latrs[a]) * adx;
@@ -419,6 +392,7 @@ export class Rasterizer {
             data[off + 2] = px[2];
             data[off + 3] = px[3];
             xi++;
+            xf += dx;
           }
         }
 

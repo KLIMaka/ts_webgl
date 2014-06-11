@@ -13,9 +13,9 @@ import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
 import DS = require('./modules/drawstruct');
 
-var w = 1024;
-var h = 768;
-var MAP = 'resources/buildmaps/cube.map';
+var w = 600;
+var h = 400;
+var MAP = 'resources/buildmaps/newboard.map';
 
 function load(file:string):string {
   return getter.getString(file);
@@ -46,6 +46,8 @@ binder.addResolver('eyepos', GL.vec3Setter, ()=>control.getCamera().getPos());
 binder.addResolver('eyedir', GL.vec3Setter, ()=>control.getCamera().forward());
 binder.addResolver('activeIdx', GL.vec4Setter, ()=>activeIdx);
 
+control.getCamera().setPosXYZ(board.posx, board.posz*-16, board.posy);
+
 GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
   control.move(time);
@@ -58,7 +60,6 @@ GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
   GL.draw(gl, model, selectShader);
 
   var id = GL.readId(gl, control.getX(), control.getY());
-  console.log( control.getX(),  control.getY());
   activeIdx = MU.int2vec4norm(id);
 
   // actual draw
