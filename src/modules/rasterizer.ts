@@ -314,17 +314,18 @@ export class Rasterizer {
     return reg;
   }
 
-  public clear(color:number[]):void {
+  public clear(color:number[], d:number):void {
+    var _d = 1 - d;
     var data = this.img.data;
     for (var i = 0; i < data.length; i+=4) {
-      data[i+0] = color[0];
-      data[i+1] = color[1];
-      data[i+2] = color[2];
-      data[i+3] = color[3];
+      data[i+0] = data[i+0]*d + color[0]*_d;
+      data[i+1] = data[i+1]*d + color[1]*_d;
+      data[i+2] = data[i+2]*d + color[2]*_d;
+      data[i+3] = data[i+3]*d + color[3]*_d;
     }
   }
 
-  public drawTriangles(indices:number[]):void {
+  public drawTriangles(indices:number[], start:number=0, length:number=indices.length):void {
     var dx = this.dx;
     var dy = this.dy;
     var sx = this.sx;
@@ -339,8 +340,9 @@ export class Rasterizer {
     var polygon = [[0, 1], [1, 2], [2, 0]];
     var data = this.img.data;
     var intersect = new TriIntersection();
+    var end = start + length;
 
-    for (var i = 0; i < indices.length; i++) {
+    for (var i = start; i < end; i++) {
 
       for (var a = 0; a < numattrs; a++) {
         var param = this.attrparams[a];
