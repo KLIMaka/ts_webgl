@@ -9,6 +9,7 @@ export class Particle {
   public size:number;
   public visible:boolean = false;
   public ttl:number;
+  public alpha:number;
 }
 
 export class ParticleSystem {
@@ -33,7 +34,8 @@ export class ParticleSystem {
       return;
 
     var node = this.active.first();
-    while (node != this.active.last().next) {
+    var term = this.active.last().next;
+    while (node != term) {
       var p = node.obj;
 
       p.ttl -= dt;

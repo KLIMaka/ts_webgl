@@ -230,6 +230,15 @@ export class TexturePixelProvider {
   }
 }
 
+function blend(src:number[], off:number, dst:number[]) {
+  var a = dst[3] / 256;
+  var b = 1 - a;
+  src[off+0] = src[off+0]*b + dst[0]*a;
+  src[off+1] = src[off+1]*b + dst[1]*a;
+  src[off+2] = src[off+2]*b + dst[2]*a;
+  src[off+3] = 255;
+}
+
 export class Rasterizer {
 
   private img:ImageData;
@@ -389,10 +398,7 @@ export class Rasterizer {
             var px = this.shader(atrs);
             
             var off = (yi * this.w + xi)*4;
-            data[off + 0] = px[0];
-            data[off + 1] = px[1];
-            data[off + 2] = px[2];
-            data[off + 3] = px[3];
+            blend(data, off, px);
             xi++;
             xf += dx;
           }

@@ -28,27 +28,28 @@ function createIdxs(n:number):number[] {
 }
 
 function init(p:P.Particle) {
-  p.size = (1/h) + (3/h) * Math.random();
+  p.size = (1/h) + (8/h) * Math.random();
   p.x = x;
   p.y = y;
   p.ttl = Math.random() * 4;
 
   var ang = Math.random() * Math.PI * 2;
   var acc = Math.random();
-  p.vx = Math.sin(ang) * acc;
-  p.vy = Math.cos(ang) * acc;
+  p.vx = (Math.random() - 0.5) * 0.01;
+  p.vy = -Math.random()*0.5;
 }
 
 function update(p:P.Particle, dt:number) {
   p.x += p.vx*dt; 
   p.y += p.vy*dt;
-  if (p.y > 1)
-    p.vy = -p.vy;
-  if (p.x > 1 || p.x < 0)
-    p.vx = -p.vx;
-  p.vx *= (1 - 0.95*dt);
-  p.vy *= (1 - 0.95*dt);
-  p.vy += dt * 4;
+  // if (p.y > 1)
+  //   p.vy = -p.vy;
+  // if (p.x > 1 || p.x < 0)
+  //   p.vx = -p.vx;
+  p.vx *= (1 - dt);
+  // p.vy *= (1 - dt);
+  p.vx += (Math.random()-0.5)*0.05;
+  p.vy -= dt*0.5;
 }
 
 function die(p:P.Particle):boolean {
@@ -73,7 +74,7 @@ document.body.appendChild(canvas);
 canvas.onmousemove = function(e) {
   x = e.x / w;
   y = e.y / h;
-  for (var i = 0; i < 10; i++)
+  for (var i = 0; i < 100; i++)
     particles.emit();
 }
 
@@ -85,6 +86,7 @@ var rast = new raster.Rasterizer(img, (attrs:number[]) => {
   return pixel;
 });
 rast.bindAttributes(0, buffer, 2);
+
 var time = new Date().getTime();
 
 function update_frame() {
