@@ -8,7 +8,6 @@ export class BitReader {
 
   constructor(private data:data.DataViewStream) {
     this.data = data;
-    this.mask = this.getMask(this.bitlength);
   }
 
   public read(bits:number):number {
@@ -17,7 +16,7 @@ export class BitReader {
       this.availBits += 8;
     }
 
-    var ret = this.getBits();
+    var ret = this.getBits(bits);
     this.availBits -= bits;
     return ret;
   }
@@ -27,7 +26,7 @@ export class BitReader {
   }
 
   private getBits(bits:number):number {
-    return (this.bits >> (this.availBits - this.bits)) & this.getMask(bits);
+    return (this.bits >> (this.availBits - bits)) & this.getMask(bits);
   }
 }
 

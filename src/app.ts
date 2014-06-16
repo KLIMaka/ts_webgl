@@ -8,14 +8,15 @@ function updateBuffers(ps:P.ParticleSystem, buffer:number[]):number {
   var idx = 0;
   for (var node = plist.first(); node != term; node = node.next) {
     var p = node.obj;
-    var hs = p.size/2;
-    buffer[idx+0] = p.x-hs; buffer[idx+1] = p.y-hs;
-    buffer[idx+2] = p.x-hs; buffer[idx+3] = p.y+hs;
-    buffer[idx+4] = p.x+hs; buffer[idx+5] = p.y+hs;
-    buffer[idx+6] = p.x+hs; buffer[idx+7] = p.y-hs;
-    idx+=8;
+    var hs = p.attr.size/2;
+    var id = p.id;
+    buffer[idx+0] = p.x-hs; buffer[idx+1] = p.y-hs; buffer[idx+2] = id;
+    buffer[idx+3] = p.x-hs; buffer[idx+4] = p.y+hs; buffer[idx+5] = id;
+    buffer[idx+6] = p.x+hs; buffer[idx+7] = p.y+hs; buffer[idx+8] = id;
+    buffer[idx+9] = p.x+hs; buffer[idx+10] = p.y-hs; buffer[idx+11] = id;
+    idx+=12;
   }
-  return 6 * idx/8;
+  return 6 * idx/12;
 }
 
 function createIdxs(n:number):number[] {
@@ -28,10 +29,11 @@ function createIdxs(n:number):number[] {
 }
 
 function init(p:P.Particle) {
-  p.size = (1/h) + (8/h) * Math.random();
   p.x = x;
   p.y = y;
   p.ttl = Math.random() * 4;
+
+  p.attr.size = (1/h) + (8/h) * Math.random();
 
   var ang = Math.random() * Math.PI * 2;
   var acc = Math.random();
@@ -40,14 +42,10 @@ function init(p:P.Particle) {
 }
 
 function update(p:P.Particle, dt:number) {
+  // p.attr.size += (4/h)*dt;
   p.x += p.vx*dt; 
   p.y += p.vy*dt;
-  // if (p.y > 1)
-  //   p.vy = -p.vy;
-  // if (p.x > 1 || p.x < 0)
-  //   p.vx = -p.vx;
   p.vx *= (1 - dt);
-  // p.vy *= (1 - dt);
   p.vx += (Math.random()-0.5)*0.05;
   p.vy -= dt*0.5;
 }
@@ -63,7 +61,7 @@ var x = 0.5;
 var y = 0.5;
 
 var particles = new P.ParticleSystem(count, init, update, die);
-var buffer = new Array<number>(count*8);
+var buffer = new Array<number>(count*12);
 var idxs = createIdxs(count);
 
 var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -83,9 +81,10 @@ var pixel = [255,255,255,255];
 var ctx = canvas.getContext('2d');
 var img = ctx.getImageData(0, 0, w, h);
 var rast = new raster.Rasterizer(img, (attrs:number[]) => {
+  pixel[3] = (1-particles.getById(attrs[2]).t)*256;
   return pixel;
 });
-rast.bindAttributes(0, buffer, 2);
+rast.bindAttributes(0, buffer, 3);
 
 var time = new Date().getTime();
 

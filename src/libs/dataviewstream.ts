@@ -13,6 +13,10 @@ export class DataViewStream {
     this.offset = off;
   }
 
+  public mark():number {
+    return this.offset;
+  }
+
   public readByte():number {
     return this.view.getInt8(this.offset++);
   }

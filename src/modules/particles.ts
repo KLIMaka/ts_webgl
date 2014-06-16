@@ -2,14 +2,14 @@
 import L = require('./list');
 
 export class Particle {
+  public id:number;
+  public t:number;
   public x:number;
   public y:number;
   public vx:number;
   public vy:number;
-  public size:number;
-  public visible:boolean = false;
   public ttl:number;
-  public alpha:number;
+  public attr:any = {};
 }
 
 export class ParticleSystem {
@@ -17,6 +17,7 @@ export class ParticleSystem {
   private pool:L.List<Particle> = new L.List<Particle>();
   private active:L.List<Particle> = new L.List<Particle>(); 
   private count:number;
+  private idMap = {};
 
   constructor(n:number, private initf:any, private updatef:any, private dief:any) {
     this.count = n;
@@ -25,7 +26,10 @@ export class ParticleSystem {
 
   private createPool(n:number) {
     for (var i = 0; i < n; i++) {
-      this.pool.insertAfter(new Particle());
+      var p = new Particle();
+      p.id = i;
+      this.idMap[i] = p;
+      this.pool.insertAfter(p);
     }
   }
 
@@ -38,8 +42,8 @@ export class ParticleSystem {
     while (node != term) {
       var p = node.obj;
 
-      p.ttl -= dt;
-      if (p.ttl <= 0) {
+      p.t += dt/p.ttl;
+      if (p.t >= 1) {
         var remove = this.dief(p);
         if (remove) {
           var next = node.next;
@@ -57,11 +61,16 @@ export class ParticleSystem {
     return this.active;
   }
 
+  public getById(id:number):Particle {
+    return this.idMap[id];
+  }
+
   public emit():void {
     if (this.pool.isEmpty())
       return;
     var node = this.pool.remove(this.pool.last());
     this.initf(node.obj);
+    node.obj.t = 0;
     this.active.insertNodeAfter(node);
   }
 
