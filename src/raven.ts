@@ -1,8 +1,26 @@
 import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 
-var P = 'resources/raven/COLORS';
-var R = 'resources/raven/RES0';
+function getQueryVariable(variable):any
+{
+  var query = window.location.search.substring(1);
+  var vars = query.split("&");
+  for (var i=0;i<vars.length;i++) {
+    var pair = vars[i].split("=");
+    if(pair[0] == variable){
+      return pair[1];
+    }
+  }
+  return(false);
+}
+var resnum = getQueryVariable('res');
+var prev = document.createElement('a');
+prev.href='?res='+((resnum|0)+1);
+prev.innerText = 'Next';
+document.body.appendChild(prev);
+
+var P = 'resources/raven2/COLORS';
+var R = 'resources/raven2/RES'+resnum;
 
 getter.loader
 .load(R)
@@ -77,7 +95,7 @@ function createImageData(w:number, h:number, data:number[], off:number, trans:nu
   var idata = new Array<number>(w*h*4);
   for (var i = 0; i < w*h; i++) {
     var idx = i * 4;
-    var col = data[off+i];
+    var col = data[off+i] * 3;
     idata[idx + 0] = pal[col+0];
     idata[idx + 1] = pal[col+1];
     idata[idx + 2] = pal[col+2];
@@ -96,6 +114,10 @@ function readFile(r:data.DataViewStream, pal:number[]) {
     case 1: { // sprite
       var imgnum = r.readUShort();
       var h = r.readUShort();
+      if (h == 1) {
+        h = imgnum;
+        imgnum = 1;
+      }
       var w = r.readUByte() * 8;
       var trans = r.readUByte();
       var mod = r.readUByte();
@@ -138,14 +160,14 @@ function readPal(r:data.DataViewStream, off:number):number[] {
   r.setOffset(off);
   var pal = new Array<number>(256*3);
   for (var i = 0; i < 256; i++){
+    pal[i*3+2] = r.readUByte() * 4;
     pal[i*3+0] = r.readUByte() * 4;
     pal[i*3+1] = r.readUByte() * 4;
-    pal[i*3+2] = r.readUByte() * 4;
   }
   return pal;
 }
 
-var pal = readPal(new data.DataViewStream(getter.get(P), true), 256*3 * 10 );
+var pal = readPal(new data.DataViewStream(getter.get(P), true), 256*3*getQueryVariable('pal') );
 var res = new data.DataViewStream(getter.get(R), true);
 var size = res.readUInt();
 console.log("size = " + size);
