@@ -24,23 +24,24 @@ var createTmpBuffer = function() {
   }
 }();
 
+var LZbuf = new Array<number>(0x1000);
 function LZ(r:data.DataViewStream, size:number):number[] {
-  var ret = [];
-  var buf = new Array<number>(0x1000);
+  var ret = createTmpBuffer(size);
+  var retoff = 0;
   for (var i = 0; i < 0x0fee; i++) {
-    buf[i] = 0xfe;
+    LZbuf[i] = 0xfe;
   }
   var off = 0x0fee;
 
 
-  while(ret.length < size) {
+  while(retoff < size) {
     var bits = r.readUByte();
     for (var i = 0; i < 8; i++) {
       var b = (bits >> i) & 1;
       if (b == 1) {
         var _ = r.readUByte();
-        ret.push(_);
-        buf[off] = _;
+        ret[retoff++] = _;
+        LZbuf[off] = _;
         off = (off + 1) % 0x1000;
       } else {
         var zt = r.readUByte();
@@ -52,9 +53,9 @@ function LZ(r:data.DataViewStream, size:number):number[] {
 
         var xzt = (x << 8) | (z << 4) | t; 
         for (var j = 0; j < y+3; j++) {
-          var _ = buf[(xzt+j) % 0x1000];
-          ret.push(_);
-          buf[off] = _;
+          var _ = LZbuf[(xzt+j) % 0x1000];
+          ret[retoff++] = _;
+          LZbuf[off] = _;
           off = (off + 1) % 0x1000;
         }
       }
