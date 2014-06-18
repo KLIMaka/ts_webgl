@@ -32,8 +32,6 @@ function LZ(r:data.DataViewStream, size:number):number[] {
     LZbuf[i] = 0xfe;
   }
   var off = 0x0fee;
-
-
   while(retoff < size) {
     var bits = r.readUByte();
     for (var i = 0; i < 8; i++) {
@@ -231,7 +229,7 @@ function readFile(r:data.DataViewStream, pal:number[]) {
 function readPal(r:data.DataViewStream, off:number):number[] {
   r.setOffset(off);
   var pal = new Array<number>(256*3);
-  for (var i = 0; i < 256; i++){
+  for (var i = 0; i < 255; i++){
     pal[i*3+2] = r.readUByte() * 4;
     pal[i*3+0] = r.readUByte() * 4;
     pal[i*3+1] = r.readUByte() * 4;
@@ -239,20 +237,24 @@ function readPal(r:data.DataViewStream, off:number):number[] {
   return pal;
 }
 
+var start = new Date().getTime();
+
 var palnum = browser.getQueryVariable('pal');
 var pal = readPal(new data.DataViewStream(getter.get(P), true), 256*3*palnum);
 var res = new data.DataViewStream(getter.get(R), true);
 var size = res.readUInt();
-console.log("size = " + size);
+// console.log("size = " + size);
 var offsets = new Array<number>(size);
 for (var i = 0; i < size; i++) {
   offsets[i] = res.readUInt();
 }
 
-for (var i = 0; i < size; i++){
+for (var i = 0; i < size-1; i++){
   res.setOffset(offsets[i]);
   readFile(res,pal);
-  console.log(i);
+  // console.log(i);
 }
+
+alert('elapsed '+ (((new Date).getTime() - start)/1000) + 's');
 
 });
