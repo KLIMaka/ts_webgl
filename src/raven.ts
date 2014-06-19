@@ -126,7 +126,7 @@ function read3dSprite(d:number[], pal:number[]) {
   var arr = new Uint8Array(d);
   var r = new data.DataViewStream(arr.buffer, true);
   var w = r.readUShort();
-  var left = r.readUShort();
+  var left = r.readUShort()-1;
   var right = r.readUShort();
   var up = r.readUShort();
   var h = r.readUShort();
