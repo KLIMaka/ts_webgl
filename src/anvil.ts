@@ -1,6 +1,7 @@
 import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import browser = require('./libs/browser');
+import imgutils = require('./libs/imgutils');
 
 var resnum = browser.getQueryVariable('res');
 

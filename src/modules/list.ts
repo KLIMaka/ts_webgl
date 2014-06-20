@@ -21,6 +21,12 @@ export class List<T> {
     return this.nil.prev;
   }
 
+  public pop():T {
+    var ret = this.last().obj;
+    this.remove(this.last());
+    return ret;
+  }
+
   public isEmpty():boolean {
     return this.nil.next == this.nil;
   }

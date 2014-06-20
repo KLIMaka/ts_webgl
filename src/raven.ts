@@ -1,9 +1,14 @@
 import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import browser = require('./libs/browser');
+import pixel = require('./modules/pixelprovider');
+import imgutils = require('./libs/imgutils');
+import pool = require('./libs/pool');
+import tmpbuffer = require('./libs/tmpbuffer');
+
+import TmpArray = tmpbuffer.TempByteArray;
 
 var resnum = browser.getQueryVariable('res');
-
 var P = 'resources/engines/raven1/COLORS';
 var R = 'resources/engines/raven1/RES'+resnum;
 
@@ -12,21 +17,12 @@ getter.loader
 .load(P)
 .finish(() => {
 
-var createTmpBuffer = function() {
-  var buffer = [];
-  return function(size:number) {
-    if(buffer.length < size){
-      buffer = new Array<number>(size);
-    }
-    for (var i = 0; i < size; i++)
-      buffer[i] = 0;
-    return buffer;
-  }
-}();
+var bufferPool = new pool.Pool<TmpArray>(10, ()=>new TmpArray());
 
-var LZbuf = new Array<number>(0x1000);
-function LZ(r:data.DataViewStream, size:number):number[] {
-  var ret = createTmpBuffer(size);
+var LZbuf = new Uint8Array(0x1000);
+function LZ(r:data.DataViewStream, size:number):TmpArray {
+  var arr = bufferPool.get();
+  var ret = arr.recreate(size);
   var retoff = 0;
   for (var i = 0; i < 0x0fee; i++) {
     LZbuf[i] = 0xfe;
@@ -59,72 +55,32 @@ function LZ(r:data.DataViewStream, size:number):number[] {
       }
     }
   }
-  return ret;
+  return arr;
 }
 
-function read(r:data.DataViewStream, size:number, mod:number):number[] {
+function read(r:data.DataViewStream, size:number, mod:number):TmpArray {
   if (mod == 3) {
     return LZ(r, size);
   } else {
-    var ret = createTmpBuffer(size);
+    var arr = bufferPool.get();
+    var ret = arr.recreate(size);
     for (var i = 0; i < size; i++)
       ret[i] = r.readUByte();
-    return ret;
+    return arr;
   }
 }
 
-function flip(data:number[], off:number, w:number, h:number):number[] {
-  var ret = new Array<number>(w*h);
-  var i = 0;
-  for (var x = 0; x < w; x++) {
-    for (var y = 0; y < h; y++) {
-      ret[x+y*w] = data[off + i++];
-    }
-  }
-  return ret;
+function createImage(w:number, h:number, data:Uint8Array, trans:number, pal:number[], dw:boolean=true, isFlip:boolean=false):void {
+  var provider:pixel.PixelProvider = new pixel.RGBPalPixelProvider(data, pal, w, h);
+  if (isFlip)
+    provider = pixel.axisSwap(provider);
+  if (dw)
+    provider = pixel.resize(provider, provider.getWidth()*2, provider.getHeight());
+  document.body.appendChild(imgutils.createCanvas(provider));
 }
 
-function createImage(w:number, h:number, data:number[], off:number, trans:number, pal:number[], dw:boolean=true, isFlip:boolean=false):void {
-  if (isFlip) {
-    var tmp = h;
-    h = w;
-    w = tmp;
-    data = flip(data, off, w, h);
-    off = 0;
-  }
-  var canvas:HTMLCanvasElement = document.createElement('canvas');
-  canvas.width = dw?w*2:w;
-  canvas.height = h;
-  var ctx = canvas.getContext('2d');
-  var id = ctx.getImageData(0, 0, dw?w*2:w, h);
-  var idata = id.data;
-  for (var i = 0; i < w*h; i++) {
-    var idx = i * 4 * (dw?2:1);
-    var col = data[off+i];
-    idata[idx + 0] = pal[col*3+0];
-    idata[idx + 1] = pal[col*3+1];
-    idata[idx + 2] = pal[col*3+2];
-    if (col == trans)
-      idata[idx + 3] = 0;
-    else
-      idata[idx + 3] = 255; 
-    if (dw) {
-      idata[idx + 4] = pal[col*3+0];
-      idata[idx + 5] = pal[col*3+1];
-      idata[idx + 6] = pal[col*3+2];
-      if (col == trans)
-        idata[idx + 7] = 0;
-      else
-        idata[idx + 7] = 255;
-    }
-  }
-  ctx.putImageData(id, 0, 0); 
-  document.body.appendChild(canvas);
-}
-
-function read3dSprite(d:number[], pal:number[]) {
-  var arr = new Uint8Array(d);
-  var r = new data.DataViewStream(arr.buffer, true);
+function read3dSprite(d:Uint8Array, pal:number[]) {
+  var r = new data.DataViewStream(d.buffer, true);
   var w = r.readUShort();
   var left = r.readUShort()-1;
   var right = r.readUShort();
@@ -133,7 +89,8 @@ function read3dSprite(d:number[], pal:number[]) {
   var colOffs = new Array<number>(right-left);
   for (var i = 0; i < colOffs.length; i++)
     colOffs[i] = r.readUShort();
-  var img = createTmpBuffer(w*h);
+  var arr = bufferPool.get();
+  var img = arr.recreate(w*h);
 
   var pixels = r.mark();
   for (var i = 0; i< colOffs.length; i++) {
@@ -156,7 +113,8 @@ function read3dSprite(d:number[], pal:number[]) {
     }
   }
 
-  createImage(w, h, img, 0, 0, pal);
+  createImage(w, h, img.subarray(0,w*h), 0, pal);
+  bufferPool.ret(arr);
 }
 
 function readFile(r:data.DataViewStream, pal:number[]) {
@@ -180,8 +138,8 @@ function readFile(r:data.DataViewStream, pal:number[]) {
 
       var data = read(r, imgnum*w*h, mod);
       for (var i = 0; i < imgnum; i++)
-        createImage(w, h, data, i*w*h, trans, pal);
-
+        createImage(w, h, data.get().subarray(i*w*h, i*w*h+w*h), trans, pal);
+      bufferPool.ret(data);
       console.log('sprite x'+imgnum + ' w:'+w+' h:'+h+' mod:'+mod);
       break;
     }
@@ -199,8 +157,8 @@ function readFile(r:data.DataViewStream, pal:number[]) {
 
       var data = read(r, imgnum*w*h, mod);
       for (var i = 0; i < imgnum; i++)
-        createImage(w, h, data, i*w*h, trans, pal);
-
+        createImage(w, h, data.get().subarray(i*w*h, i*w*h+w*h), trans, pal);
+      bufferPool.ret(data);
       console.log('font x'+imgnum + ' w:'+w+' h:'+h+' mod:'+mod);
       break;
     }
@@ -208,19 +166,20 @@ function readFile(r:data.DataViewStream, pal:number[]) {
     case 6: { //texture
       var len = r.readUShort();
       var data = LZ(r, len);
-      createImage(len/0x40, 0x40, data, 0, 0, pal, true, true);
+      createImage(len/0x40, 0x40, data.get().subarray(0, len), 0, pal, true, true);
+      bufferPool.ret(data);
       break;
     }
 
     case 7: { //3D sprite
       var len = r.readUShort();
       var data = LZ(r, len);
-      read3dSprite(data, pal);
+      read3dSprite(data.get(), pal);
+      bufferPool.ret(data);
       break;
     }
 
     default: {
-      // throw new Error('Wrong type');
       console.log('type = ' + type);
     }
   }
@@ -243,7 +202,6 @@ var palnum = browser.getQueryVariable('pal');
 var pal = readPal(new data.DataViewStream(getter.get(P), true), 256*3*palnum);
 var res = new data.DataViewStream(getter.get(R), true);
 var size = res.readUInt();
-// console.log("size = " + size);
 var offsets = new Array<number>(size);
 for (var i = 0; i < size; i++) {
   offsets[i] = res.readUInt();
@@ -252,9 +210,6 @@ for (var i = 0; i < size; i++) {
 for (var i = 0; i < size-1; i++){
   res.setOffset(offsets[i]);
   readFile(res,pal);
-  // console.log(i);
 }
-
-alert('elapsed '+ (((new Date).getTime() - start)/1000) + 's');
 
 });

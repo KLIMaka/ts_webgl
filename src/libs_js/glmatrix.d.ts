@@ -25,7 +25,7 @@ export interface vec2 {
   copy(out:Vec2Array, a:Vec2Array): Vec2Array;
   set(out:Vec2Array, x:number, y:number): Vec2Array;
   sub(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
-  sub(out:Vec2Array, a:number[], b:number[]): Vec2Array;
+  // sub(out:Vec2Array, a:number[], b:number[]): Vec2Array;
   subtract(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
   mul(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
   multiply(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
@@ -54,14 +54,14 @@ declare var vec2:vec2;
 
 export interface vec3 {
   add(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
-  add(out:Vec3Array, a:number[], b:number[]): Vec3Array;
+  // add(out:Vec3Array, a:number[], b:number[]): Vec3Array;
   create(): Vec3Array;
   clone(a:Vec3Array): Vec3Array;
   fromValues(x:number, y:number, z:number): Vec3Array;
   copy(out:Vec3Array, a:Vec3Array): Vec3Array;
   set(out:Vec3Array, x:number, y:number, z:number): Vec3Array;
   sub(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
-  sub(out:Vec3Array, a:number[], b:number[]): Vec3Array;
+  // sub(out:Vec3Array, a:number[], b:number[]): Vec3Array;
   subtract(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
   mul(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
   multiply(out:Vec3Array, a:Vec3Array, b:Vec3Array): Vec3Array;
