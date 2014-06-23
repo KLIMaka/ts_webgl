@@ -1,5 +1,3 @@
-/// <reference path="../defs/webgl.d.ts"/>
-
 import camera = require('./camera');
 import GLM = require('../libs_js/glmatrix');
 import MU = require('../libs/mathutils');

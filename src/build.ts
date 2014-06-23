@@ -15,7 +15,7 @@ import DS = require('./modules/drawstruct');
 
 var w = 600;
 var h = 400;
-var MAP = 'resources/buildmaps/newboard.map';
+var MAP = 'resources/buildmaps/newboard.MAP';
 
 function load(file:string):string {
   return getter.getString(file);

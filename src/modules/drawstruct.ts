@@ -1,4 +1,3 @@
-/// <reference path="../defs/webgl.d.ts" />
 
 export interface VertexBuffer {
 
@@ -31,9 +30,9 @@ export class Mesh implements DrawStruct {
   private idx:IndexBuffer;
   private mode:number;
   private length:number;
-  private vtxBuffers:{[index: string]:VertexBuffer};
+  private vtxBuffers;
 
-  constructor(vtxBuffers:{[index: string]:VertexBuffer}, idx:IndexBuffer, mode:number, length:number) {
+  constructor(vtxBuffers, idx:IndexBuffer, mode:number, length:number) {
     this.vtxBuffers = vtxBuffers;
     this.idx = idx;
     this.mode = mode;

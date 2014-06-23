@@ -1,5 +1,3 @@
-/// <reference path="../defs/webgl.d.ts"/>
-
 export class Texture {
 
   public id:WebGLTexture;

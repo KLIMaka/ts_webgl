@@ -1,4 +1,3 @@
-/// <reference path="../defs/webgl.d.ts" />
 
 export class Shader {
 

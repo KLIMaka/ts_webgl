@@ -1,4 +1,3 @@
-/// <reference path="../defs/webgl.d.ts"/>
 
 import buildstructs = require('../libs/buildstructs');
 import MU = require('../libs/mathutils');
@@ -256,55 +255,55 @@ export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):D
   return builder.build(gl);
 }
 
-export class MoveStruct {
+// export class MoveStruct {
 
-  public x:number;
-  public y:number;
-  public z:number;
-  public sec:number;
-}
+//   public x:number;
+//   public y:number;
+//   public z:number;
+//   public sec:number;
+// }
 
-export function(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:number, dz:number):void {
-  if (dx == 0 && dy == 0 && dz == 0)
-    return;
+// export function(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:number, dz:number):void {
+//   if (dx == 0 && dy == 0 && dz == 0)
+//     return;
 
-    var walls = board.walls;
-    var cursec = getSector(board, ms);
-    var nx = ms.x + dx;
-    var ny = ms.y + dy;
-    var nz = ms.z + dz;
+//     var walls = board.walls;
+//     var cursec = getSector(board, ms);
+//     var nx = ms.x + dx;
+//     var ny = ms.y + dy;
+//     var nz = ms.z + dz;
 
-    var slope = createSlopeCalculator(sector, walls);
-    var ceilingheinum = sector.ceilingheinum;
-    var ceilingz = sector.ceilingz;
-    var floorheinum = sector.floorheinum;
-    var floorz = sector.floorz;
+//     var slope = createSlopeCalculator(sector, walls);
+//     var ceilingheinum = sector.ceilingheinum;
+//     var ceilingz = sector.ceilingz;
+//     var floorheinum = sector.floorheinum;
+//     var floorz = sector.floorz;
 
-    for (var w = 0; w < cursec.wallnum; w++) {
-      var wallidx = cursec.wallptr + w;
-      var wall = walls[wallidx];
-      var wall2 = walls[wall.point2];
-      var x1 = wall.x;
-      var y1 = wall.y;
-      var x2 = wall2.x;
-      var y2 = wall2.y;
-      var cz1 = slope(x1, y1, ceilingheinum) + ceilingz;
-      var fz1 = slope(x1, y1, floorheinum) + floorz;
-      var cz2 = slope(x2, y2, ceilingheinum) + ceilingz;
-      var fz2 = slope(x2, y2, floorheinum) + floorz;
+//     for (var w = 0; w < cursec.wallnum; w++) {
+//       var wallidx = cursec.wallptr + w;
+//       var wall = walls[wallidx];
+//       var wall2 = walls[wall.point2];
+//       var x1 = wall.x;
+//       var y1 = wall.y;
+//       var x2 = wall2.x;
+//       var y2 = wall2.y;
+//       var cz1 = slope(x1, y1, ceilingheinum) + ceilingz;
+//       var fz1 = slope(x1, y1, floorheinum) + floorz;
+//       var cz2 = slope(x2, y2, ceilingheinum) + ceilingz;
+//       var fz2 = slope(x2, y2, floorheinum) + floorz;
 
-      var inter = MU.line2dIntersect(x1,y1,x2,y2,ms.x,ms.y,nx,ny);
-      if (inter == null)
-        continue;
+//       var inter = MU.line2dIntersect(x1,y1,x2,y2,ms.x,ms.y,nx,ny);
+//       if (inter == null)
+//         continue;
 
-      var interf = slope(inter.x, inter.y, floorheinum) + floorz;
-      var interc = slope(inter.x, inter.y, ceilingheinum) + ceilingz;
+//       var interf = slope(inter.x, inter.y, floorheinum) + floorz;
+//       var interc = slope(inter.x, inter.y, ceilingheinum) + ceilingz;
 
       
 
-    }
-}
+//     }
+// }
 
-function getSector(board:buildstructs.Board, ms:MoveStruct):buildstructs.Sector {
-  return board.sectors[ms.sec];
-}
+// function getSector(board:buildstructs.Board, ms:MoveStruct):buildstructs.Sector {
+//   return board.sectors[ms.sec];
+// }

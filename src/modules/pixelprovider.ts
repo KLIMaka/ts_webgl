@@ -62,7 +62,7 @@ export class RGBAArrayPixelProvider extends AbstractPixelProvider {
 
 export class RGBPalPixelProvider extends AbstractPixelProvider {
 
-  constructor(private arr:Uint8Array, private pal:number[], w:number, h:number, private alpha:number=255) {
+  constructor(private arr:Uint8Array, private pal:number[], w:number, h:number, private alpha:number=255, private transIdx:number=-1) {
     super(w, h);
     if (arr.length != w*h)
       throw new Error('Invalid array size');
@@ -70,10 +70,11 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
 
   public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
     var w = this.getWidth();
-    var palidx = this.arr[x+y*w]*3;
-    dst[dstoff] = this.pal[palidx];
-    dst[dstoff+1] = this.pal[palidx+1];
-    dst[dstoff+2] = this.pal[palidx+2];
+    var idx = this.arr[x+y*w];
+    var paloff = idx*3;
+    dst[dstoff] = this.pal[paloff];
+    dst[dstoff+1] = this.pal[paloff+1];
+    dst[dstoff+2] = this.pal[paloff+2];
     dst[dstoff+3] = this.alpha;
   }
 }

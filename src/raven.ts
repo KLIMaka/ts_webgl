@@ -9,8 +9,8 @@ import tmpbuffer = require('./libs/tmpbuffer');
 import TmpArray = tmpbuffer.TempByteArray;
 
 var resnum = browser.getQueryVariable('res');
-var P = 'resources/engines/raven1/COLORS';
-var R = 'resources/engines/raven1/RES'+resnum;
+var P = 'resources/engines/raven2/COLORS';
+var R = 'resources/engines/raven2/RES'+resnum;
 
 getter.loader
 .load(R)
@@ -71,22 +71,25 @@ function read(r:data.DataViewStream, size:number, mod:number):TmpArray {
 }
 
 function createImage(w:number, h:number, data:Uint8Array, trans:number, pal:number[], dw:boolean=true, isFlip:boolean=false):void {
-  var provider:pixel.PixelProvider = new pixel.RGBPalPixelProvider(data, pal, w, h);
+  var provider:pixel.PixelProvider = new pixel.RGBPalPixelProvider(data, pal, w, h, 255, trans);
   if (isFlip)
     provider = pixel.axisSwap(provider);
   if (dw)
     provider = pixel.resize(provider, provider.getWidth()*2, provider.getHeight());
+  // provider = pixel.resize(provider, provider.getWidth()/2, provider.getHeight()/2);
   document.body.appendChild(imgutils.createCanvas(provider));
 }
 
 function read3dSprite(d:Uint8Array, pal:number[]) {
   var r = new data.DataViewStream(d.buffer, true);
   var w = r.readUShort();
-  var left = r.readUShort()-1;
+  var left = r.readUShort();
   var right = r.readUShort();
   var up = r.readUShort();
   var h = r.readUShort();
   var colOffs = new Array<number>(right-left);
+  if (colOffs.length == 0)
+    return;
   for (var i = 0; i < colOffs.length; i++)
     colOffs[i] = r.readUShort();
   var arr = bufferPool.get();
@@ -113,7 +116,7 @@ function read3dSprite(d:Uint8Array, pal:number[]) {
     }
   }
 
-  createImage(w, h, img.subarray(0,w*h), 0, pal);
+  createImage(w, h, img.subarray(0,w*h), 254, pal);
   bufferPool.ret(arr);
 }
 
@@ -163,17 +166,20 @@ function readFile(r:data.DataViewStream, pal:number[]) {
       break;
     }
 
-    case 6: { //texture
-      var len = r.readUShort();
-      var data = LZ(r, len);
-      createImage(len/0x40, 0x40, data.get().subarray(0, len), 0, pal, true, true);
+    case 5: { //texture
+      var mod = r.readUByte();
+      var len = r.readUInt();
+      var data = read(r, len, mod);
+      var cols = data.get()[0] + (data.get()[1]*256);
+      createImage(cols, 0x40, data.get().subarray(2, len), 254, pal, true, true);
       bufferPool.ret(data);
       break;
     }
 
-    case 7: { //3D sprite
-      var len = r.readUShort();
-      var data = LZ(r, len);
+    case 6: { //3D sprite
+      var mod = r.readUByte();
+      var len = r.readUInt();
+      var data = read(r, len, mod);
       read3dSprite(data.get(), pal);
       bufferPool.ret(data);
       break;
@@ -186,20 +192,32 @@ function readFile(r:data.DataViewStream, pal:number[]) {
 }
 
 function readPal(r:data.DataViewStream, off:number):number[] {
-  r.setOffset(off);
+  r.setOffset(off+1);
   var pal = new Array<number>(256*3);
   for (var i = 0; i < 255; i++){
-    pal[i*3+2] = r.readUByte() * 4;
     pal[i*3+0] = r.readUByte() * 4;
     pal[i*3+1] = r.readUByte() * 4;
+    pal[i*3+2] = r.readUByte() * 4;
   }
   return pal;
 }
 
-var start = new Date().getTime();
+function drawPals(r:data.DataViewStream) {
+  var count = r.readUByte();
+  var palData = new Uint8Array(256);
+  for (var i = 0; i < 256; i++)
+    palData[i] = i;
+  for (var i = 0; i < count; i++) {
+    var pal = readPal(r, i*256*3+1);
+    createImage(16, 16, palData, 0, pal, false);
+  }
+}
+
 
 var palnum = browser.getQueryVariable('pal');
-var pal = readPal(new data.DataViewStream(getter.get(P), true), 256*3*palnum);
+var palfile = new data.DataViewStream(getter.get(P), true);
+// drawPals(palfile);
+var pal = readPal(palfile, 256*3*palnum);
 var res = new data.DataViewStream(getter.get(R), true);
 var size = res.readUInt();
 var offsets = new Array<number>(size);

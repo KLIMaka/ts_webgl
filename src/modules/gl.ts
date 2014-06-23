@@ -1,4 +1,3 @@
-/// <reference path="../defs/webgl.d.ts"/>
 import shaders = require('shader');
 import DS = require('drawstruct');
 

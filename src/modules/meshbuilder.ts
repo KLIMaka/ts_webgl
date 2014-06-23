@@ -1,4 +1,3 @@
-/// <reference path="../defs/webgl.d.ts" />
 
 import GLM = require('../libs_js/glmatrix');
 import MU  = require('../libs/mathutils');
@@ -13,9 +12,7 @@ class VertexBufferBuilder {
     private arrayType:any,
     private type:number, 
     private spacing:number, 
-    private normalized:boolean,
-    private stride:number,
-    private offset:number
+    private normalized:boolean
   ) {}
 
   public push(data:number[]):void {
@@ -25,10 +22,54 @@ class VertexBufferBuilder {
 
   public build(gl:WebGLRenderingContext):DS.VertexBuffer {
     var bufIdx = gl.createBuffer();
-    var data = new this.arrayType(this.buffer);
+    var data:ArrayBuffer = new this.arrayType(this.buffer);
     gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
-    gl.bufferData(gl.ARRAY_BUFFER, <ArrayBuffer>data, gl.STATIC_DRAW);
-    return new VertexBufferImpl(bufIdx, this.type, this.spacing, this.normalized, this.stride, this.offset);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    return new VertexBufferImpl(bufIdx, this.type, this.spacing, this.normalized);
+  }
+}
+
+class DynamicVertexBufferBuilder {
+
+  private buffer:ArrayBuffer;
+  private lastIdx = 0;
+  private bufIdx:WebGLBuffer;
+
+  constructor(
+    private maxSize:number,
+    private arrayType,
+    private type:number, 
+    private spacing:number, 
+    private normalized:boolean
+  ) {
+    this.buffer = new arrayType(maxSize*spacing);
+  }
+
+  public push(data:number[]):void {
+    var off = this.lastIdx*this.spacing;
+    for (var i = 0; i < this.spacing; i++)
+      this.buffer[off+i] = data[i];
+    this.lastIdx++;
+  }
+
+  public mark():number {
+    return this.lastIdx;
+  }
+
+  public goto(off:number):void {
+    this.lastIdx = off;
+  }
+
+  public refresh(gl:WebGLRenderingContext):void {
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bufIdx);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.buffer);
+  }
+
+  public build(gl:WebGLRenderingContext):DS.VertexBuffer {
+    this.bufIdx = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bufIdx);
+    gl.bufferData(gl.ARRAY_BUFFER, this.buffer, gl.STREAM_DRAW);
+    return new VertexBufferImpl(this.bufIdx, this.type, this.spacing, this.normalized);
   }
 }
 
@@ -198,7 +239,7 @@ export class MeshBuilderConstructor {
   private idx:IndexBufferBuilder;
 
   public buffer(name:string, arrayType:any, type:number, spacing:number, normalized:boolean=false):MeshBuilderConstructor {
-    this.buffers[name] = new VertexBufferBuilder(arrayType, type, spacing, normalized, 0, 0);
+    this.buffers[name] = new VertexBufferBuilder(arrayType, type, spacing, normalized);
     return this;
   }
 
