@@ -19,7 +19,7 @@ export class Pool<T> {
       return this.pool[this.holes.pop()];
     }
     if (this.pool.length == this.maxsize)
-      throw new Error("Pool owerflow");
+      throw new Error("Pool overflow");
     this.pool.push(this.allocator());
     return this.pool[this.pool.length-1];
   }

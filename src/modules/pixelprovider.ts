@@ -43,12 +43,26 @@ export class AbstractPixelProvider implements PixelProvider {
   }
 }
 
+export class ConstPixelProvider extends AbstractPixelProvider {
+
+  constructor(private color:number[], w:number, h:number) {
+    super(w, h);
+  }
+
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
+    dst[dstoff] = this.color[0];
+    dst[dstoff+1] = this.color[1];
+    dst[dstoff+2] = this.color[2];
+    dst[dstoff+3] = this.color[3];
+  }
+}
+
 export class RGBAArrayPixelProvider extends AbstractPixelProvider {
 
   constructor(private arr:Uint8Array, w:number, h:number) {
     super(w, h);
     if (arr.length != w*h*4)
-      throw new Error('Invalid array size');
+      throw new Error('Invalid array size. Need ' + (w*h*4) + ' but provided ' + arr.length);
   }
 
   public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
@@ -65,7 +79,7 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
   constructor(private arr:Uint8Array, private pal:number[], w:number, h:number, private alpha:number=255, private transIdx:number=-1) {
     super(w, h);
     if (arr.length != w*h)
-      throw new Error('Invalid array size');
+      throw new Error('Invalid array size. Need ' + (w*h*4) + ' but provided ' + arr.length);
   }
 
   public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {

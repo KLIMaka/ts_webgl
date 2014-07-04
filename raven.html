@@ -2,6 +2,24 @@
 <head>
 <title>Hello World!</title>
 <script data-main="distr/raven.js" src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.1/require.min.js"></script>
-</head>
+<style type="text/css">
+	.dropBox {
+		padding: 10px 20px;
+		font-weight: bold;
+		border: 1px solid red;
+		display: inline-block;
+	}
 
+	.dropBox.valid {
+		border: 1px solid green;
+	}
+</style>
+</head>
+	<body>
+		<div id='palLoader' class='dropBox'>Palette</div>
+		<div id='resLoader' class='dropBox'>Resource</div>
+		<canvas id='panel' width=800 height=600 class='panel'></canvas>
+		<input type='button' id='prev' value='Prev'>
+		<input type='button' id='next' value='Next'>
+	</body>
 </html>
