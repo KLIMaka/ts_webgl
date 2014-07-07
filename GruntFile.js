@@ -27,5 +27,4 @@ module.exports = function (grunt) {
 
     grunt.registerTask(module, ['typescript:' + module]);
   }
- 
 }

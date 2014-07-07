@@ -20,9 +20,10 @@ new files.DropFileReader(
 
 function render(palbuf:ArrayBuffer, resbuf:ArrayBuffer) {
 
-  var palnum = browser.getQueryVariable('pal');
-  var palres = new Raven.RavenPals(palbuf);
   var res = new Raven.RavenRes(resbuf);
+  
+  var palres = new Raven.RavenPals(palbuf);
+  var palnum = browser.getQueryVariable('pal');
   var pal = palres.get(palnum);
 
   var provider = new Panel.PixelDataProvider(res.size(), (i:number) => {

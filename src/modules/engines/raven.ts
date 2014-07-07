@@ -7,9 +7,9 @@ var LZbuf = new Uint8Array(0x1000);
 function LZ(r:data.DataViewStream, size:number):Uint8Array {
   var ret = new Uint8Array(size);
   var retoff = 0;
-  for (var i = 0; i < 0x0fee; i++) {
+  for (var i = 0; i < 0x0fee; i++)
     LZbuf[i] = 0xfe;
-  }
+
   var off = 0x0fee;
   while(retoff < size) {
     var bits = r.readUByte();
@@ -146,18 +146,31 @@ function readFile(r:data.DataViewStream, pal:number[]):pixel.PixelProvider {
       var data = read(r, len, mod);
       var cols = data[0] + (data[1]*256);
       return createImage(cols, 0x40, data.subarray(2, len), 254, pal, true);
-      break;
     }
 
     case 6: { //3D sprite
-      var mod = r.readUByte();
-      var len = r.readUInt();
-      var data = read(r, len, mod);
-      return read3dSprite(data, pal);
-      break;
+      if (headerSize == 0) {
+        var len = r.readShort();
+        var data = read(r, len, 3);
+        return createImage(len/0x40, 0x40, data, 254, pal, true);
+      } else {
+        var mod = r.readUByte();
+        var len = r.readUInt();
+        var data = read(r, len, mod);
+        return read3dSprite(data, pal);
+      }
+    }
+
+    case 7: {
+      if (headerSize == 0) {
+        var len = r.readUShort();
+        var data = read(r, len, 3);
+        return read3dSprite(data, pal);
+      }
     }
 
     default: {
+      console.log('type='+type);
       return blank;
     }
   }
