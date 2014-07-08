@@ -21,6 +21,23 @@ export class PixelDataProvider {
   }
 }
 
+var noneImg = new Uint8Array([
+  1, 1, 1, 1, 1, 1, 1, 1, 
+  1, 1, 0, 0, 0, 0, 1, 1, 
+  1, 0, 1, 0, 0, 1, 0, 1, 
+  1, 0, 0, 1, 1, 0, 0, 1, 
+  1, 0, 0, 1, 1, 0, 0, 1, 
+  1, 0, 1, 0, 0, 1, 0, 1, 
+  1, 1, 0, 0, 0, 0, 1, 1, 
+  1, 1, 1, 1, 1, 1, 1, 1, 
+]);
+
+var nonePal = [
+  255, 255, 255,
+  255,   0,   0
+]
+var noneProvider = new P.RGBPalPixelProvider(noneImg, nonePal, 8, 8);
+
 export class DrawPanel {
 
   private cellW:number;
@@ -73,7 +90,10 @@ export class DrawPanel {
     for (var i = firstId; i < lastId; i++) {
       var x = ((i-firstId) % wcells) * this.cellW;
       var y = MU.int((i-firstId) / wcells) * this.cellH;
-      var pixels = P.fit(this.cellW, this.cellH, provider.get(i), [255, 255, 255, 255]);
+      var img = provider.get(i);
+      if (img == null)
+        img = noneProvider;
+      var pixels = P.fit(this.cellW, this.cellH, img, [255, 255, 255, 255]);
       IU.drawToCanvas(pixels, canvas, x ,y);
     }
   }

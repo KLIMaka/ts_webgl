@@ -13,10 +13,10 @@ module.exports = function (grunt) {
     var module = modules[i];
 
     grunt.config(['typescript', module], {
-      src: ['src/' + module + '.js'],
+      src: ['src/' + module + '.ts'],
       dest: 'distr/',
       options: {
-        buildPath: 'src/',
+        basePath: 'src/',
         module: 'amd'
       }
     });

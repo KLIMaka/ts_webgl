@@ -9,6 +9,10 @@ export class DataViewStream {
     this.littleEndian = isLE;
   }
 
+  public eoi():boolean {
+    return this.offset >= this.view.byteLength;
+  }
+
   public setOffset(off:number):void {
     this.offset = off;
   }

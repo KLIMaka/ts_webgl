@@ -1,7 +1,6 @@
 import data = require('../../libs/dataviewstream');
 import pixel = require('../pixelprovider');
 
-var blank = new pixel.ConstPixelProvider([0,0,0,255], 1, 1);
 var LZbuf = new Uint8Array(0x1000);
 
 function LZ(r:data.DataViewStream, size:number):Uint8Array {
@@ -69,7 +68,7 @@ function read3dSprite(d:Uint8Array, pal:number[]):pixel.PixelProvider {
   var h = r.readUShort();
   var colOffs = new Array<number>(right-left);
   if (colOffs.length == 0)
-    return blank;
+    return null;
   for (var i = 0; i < colOffs.length; i++)
     colOffs[i] = r.readUShort();
   var img = new Uint8Array(w*h);
@@ -148,12 +147,14 @@ function readFile(r:data.DataViewStream, pal:number[]):pixel.PixelProvider {
       return createImage(cols, 0x40, data.subarray(2, len), 254, pal, true);
     }
 
-    case 6: { //3D sprite
+    case 6: { 
       if (headerSize == 0) {
+        //texture
         var len = r.readShort();
         var data = read(r, len, 3);
         return createImage(len/0x40, 0x40, data, 254, pal, true);
       } else {
+        // 3D sprite
         var mod = r.readUByte();
         var len = r.readUInt();
         var data = read(r, len, mod);
@@ -163,6 +164,7 @@ function readFile(r:data.DataViewStream, pal:number[]):pixel.PixelProvider {
 
     case 7: {
       if (headerSize == 0) {
+        // 3D sprite
         var len = r.readUShort();
         var data = read(r, len, 3);
         return read3dSprite(data, pal);
@@ -171,7 +173,7 @@ function readFile(r:data.DataViewStream, pal:number[]):pixel.PixelProvider {
 
     default: {
       console.log('type='+type);
-      return blank;
+      return null;
     }
   }
 }
