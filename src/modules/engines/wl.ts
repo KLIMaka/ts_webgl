@@ -676,11 +676,11 @@ export class Game {
 
 export class Pic {
 
-  public pixels:number[];
+  public pixels:Uint8Array;
 
   constructor(hs:HuffmanStream, w:number, h:number) {
     var vxor = new VerticalXorStream(hs, w);
-    this.pixels = new Array<number>(w*h);
+    this.pixels =new Uint8Array(w*h);
     for (var i = 0; i < w*h; i+=2){
       var b = vxor.read();
       this.pixels[i] = b >> 4;
