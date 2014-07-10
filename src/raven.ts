@@ -21,8 +21,8 @@ new files.DropFileReader(
 function render(palbuf:ArrayBuffer, resbuf:ArrayBuffer) {
 
   var res = new Raven.RavenRes(resbuf);
-  
-  var palres = new Raven.RavenPals(palbuf);
+ 
+   var palres = new Raven.RavenPals(palbuf);
   var palnum = browser.getQueryVariable('pal');
   var pal = palres.get(palnum);
 

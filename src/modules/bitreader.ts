@@ -3,40 +3,42 @@ import data = require('../libs/dataviewstream');
 
 export class BitReader {
   
-  private availBits = 0;
-  private bits = 0;
+  private currentBit = 7;
+  private currentByte = 0;
 
   constructor(private data:data.DataViewStream) {
     this.data = data;
   }
 
-  public read(bits:number):number {
-    while (this.availBits < bits) {
-      this.bits = ((this.bits & this.getMask(this.availBits)) << 8) | this.data.readUByte();
-      this.availBits += 8;
+  public readBit(reverse:boolean=false):number {
+    if (this.currentBit > 6) {
+      this.currentByte = this.read();
+      this.currentBit = 0;
+    } else {
+      this.currentBit++;
     }
 
-    var ret = this.getBits(bits);
-    this.availBits -= bits;
-    return ret;
+    if (reverse) {
+      return ((this.currentByte >> (this.currentBit)) & 1);
+    } else {
+      return ((this.currentByte >> (7 - this.currentBit)) & 1);
+    }
   }
 
-  private getMask(bits):number {
-    return (1 << bits) - 1;
+  public read():number {
+    return this.data.readUByte();
   }
 
-  private getBits(bits:number):number {
-    return (this.bits >> (this.availBits - bits)) & this.getMask(bits);
-  }
-}
-
-export class NibbleReader extends BitReader {
-
-  constructor(data:data.DataViewStream, private nibblesize:number) {
-    super(data);
-  }
-
-  public readNibble() {
-    return this.read(this.nibblesize);
+  public readBits(bits:number, reverse:boolean=false):number {
+    var value = 0;
+    for (var i = 0; i < bits; i++) {
+      var b = this.readBit(reverse);
+      if (reverse) {
+        value = value | (b << i);
+      } else {
+        value = (value << 1) | b;
+      }
+    }
+    return value;
   }
 }

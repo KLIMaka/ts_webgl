@@ -9,10 +9,6 @@ class RotatingXorStream {
   private checksum:number;
 
   constructor(private stream:D.DataViewStream) {
-    this.init();
-  }
-
-  private init():void {
     var e1 = this.stream.readUByte();
     var e2 = this.stream.readUByte();
     this.enc = e1 ^ e2;
@@ -29,13 +25,42 @@ class RotatingXorStream {
   }
 }
 
+class VerticalXorStream {
+
+  private width:number;
+  private lastLine:number[];
+  private x:number = 0;
+  private y:number = 0;
+
+  constructor(private stream:HuffmanStream, width:number) {
+    this.width = width / 2;
+    this.lastLine = new Array<number>(width);
+  }
+
+  public read():number {
+    var b = this.stream.read();
+
+    if (this.y > 0) {
+      b = b ^ this.lastLine[this.x];
+    }
+    this.lastLine[this.x] = b;
+    if (this.x < this.width - 1) {
+        this.x++;
+    } else {
+        this.y++;
+        this.x = 0;
+    }
+    return b;
+  }
+}
+
 class HuffmanNode {
   public left:HuffmanNode;
   public right:HuffmanNode;
   public data:number = -1;
 }
 
-class HuffmanStream {
+export class HuffmanStream {
 
   private tree:HuffmanNode;
   private bitstream:B.BitReader;
@@ -46,9 +71,9 @@ class HuffmanStream {
   }
 
   private loadNode(r:B.BitReader):HuffmanNode {
-    if (r.read(1) == 0) {
+    if (r.readBit() == 0) {
       var left = this.loadNode(r);
-      r.read(1);
+      r.readBit();
       var right = this.loadNode(r);
       var node = new HuffmanNode();
       node.left = left;
@@ -56,7 +81,7 @@ class HuffmanStream {
       return node;
     } else {
       var node = new HuffmanNode();
-      node.data = r.read(8);
+      node.data = r.readBits(8);
       return node;
     }
   }
@@ -64,7 +89,7 @@ class HuffmanStream {
   public read():number {
     var node = this.tree;
     while (node.data == -1) {
-      if(this.bitstream.read(1))
+      if(!this.bitstream.readBit())
         node = node.left;
       else
         node = node.right;
@@ -75,7 +100,7 @@ class HuffmanStream {
 
 function readMsqBlocks(r:D.DataViewStream):number[][] {
   var sign = r.readByteString(4);
-  if (sign != 'msq0' || sign != 'msq1')
+  if (sign != 'msq0' && sign != 'msq1')
     throw new Error('No msq header found in file');
   var disk = sign[3];
   var stage = 0;
@@ -84,7 +109,7 @@ function readMsqBlocks(r:D.DataViewStream):number[][] {
   var end = 4;
 
   while(!r.eoi()) {
-    var b = r.readUByte();
+    var b = r.readByteString(1);
     switch (stage) {
         case 0: 
           if (b == 'm')
@@ -113,7 +138,7 @@ function readMsqBlocks(r:D.DataViewStream):number[][] {
       end++;
     }
   blocks.push([start, end-start]);
-  }
+  return blocks;
 }
 
 var TYPE_SAVEGAME = 'TYPE_SAVEGAME';
@@ -139,16 +164,16 @@ function isShopItems(bytes:number[]):boolean {
 
 function getType(r:D.DataViewStream, size:number) {
   var sign = r.readByteString(4);
-  if (sign != 'msq0' || sign != 'msq1')
+  if (sign != 'msq0' && sign != 'msq1')
     throw new Error('No msq header found in file');
   var xorStream = new RotatingXorStream(r);
   var bytes = new Array<number>(9);
   for (var i = 0; i < 9; i++)
     bytes[i] = xorStream.read();
 
-  if (msqBlockSize == 4614 && isSaveGame(bytes)) {
+  if (size == 4614 && isSaveGame(bytes)) {
     return TYPE_SAVEGAME;
-  } else if (msqBlockSize == 766 && isShopItems(bytes)) {
+  } else if (size == 766 && isShopItems(bytes)) {
     return TYPE_SHOPLIST;
   } else {
     return TYPE_MAP;
@@ -185,7 +210,7 @@ export class ActionMap {
     this.mapSize = mapSize;
     this.actions = new Array<number>(mapSize*mapSize);
     for (var i = 0; i < mapSize*mapSize; i++)
-      this.actions[i] r.readUByte();
+      this.actions[i] = r.readUByte();
   }
 
   public get(x:number, y:number):number {
@@ -198,7 +223,7 @@ class CentralDirectory {
   public stringsOffset:number;
   public monsterNamesOffset:number;
   public monsterDataOffset:number;
-  public actionClassMasterTable:number[] = new Array<number(16);
+  public actionClassMasterTable:number[] = new Array<number>(16);
   public nibble6Offset:number;
   public npcOffset:number;
 
@@ -253,36 +278,38 @@ export class BattleSettings {
 
 export class TileMap {
 
-  private mapSize:number;
-  private map:number[];
+  public map:number[];
+  private unknown:number;
 
   constructor(r:D.DataViewStream) {
-    this.mapSize = Math.sqrt(r.readUInt());
-    if (this.mapSize != 32 && this.mapSize != 64)
+    var mapSize = Math.sqrt(r.readUInt());
+    if (mapSize != 32 && mapSize != 64)
       throw new Error('Invalid Tile Map header');
 
     this.unknown = r.readUInt();
     var huffmanStream = new HuffmanStream(r);
-    this.map = new Array<number>(this.mapSize*this.mapSize);
-    for (var i = 0; i < map.length; i++)
+    this.map = new Array<number>(mapSize*mapSize);
+    for (var i = 0; i < this.map.length; i++)
       this.map[i] = huffmanStream.read();
   }
 }
 
 export class Strings {
 
+  public strings:string[] = [];
+
   constructor(r:D.DataViewStream, end:number) {
     var start = r.mark();
-    var charTable = new Array<number[]>(60);
+    var charTable = new Array<number>(60);
     for (var i = 60; i > 0; i--)
-      charTable[60-i] = [r.readUByte(), i];
+      charTable[60-i] = r.readUByte();
     var tmp = r.readUShort();
     var quantity = tmp / 2;
     var stringOffsets = new Array<number>();
-    stringsOffset.push(tmp);
+    stringOffsets.push(tmp);
     for (var i = 1; i < quantity; i++) {
       tmp = r.readUShort();
-      if ((tmp + start + 60 >= end) || (tmp < stringOffsets.get(i - 1))) {
+      if ((tmp + start + 60 >= end) || (tmp < stringOffsets[i - 1])) {
         if (i == quantity - 1) {
           continue;
         } else {
@@ -292,25 +319,244 @@ export class Strings {
       stringOffsets.push(tmp);
     }
     for (var i = 0; i < stringOffsets.length; i++) {
-      r.setOffset(stringOffsets.get(i) + 60 + start);
+      r.setOffset(stringOffsets[i] + 60 + start);
       this.readStringGroup(r, charTable, end);
     }
   }
 
-  private readStringGroup(r:D.DataViewStream, charTable:number[], end:number) {
+  private readStringGroup(r:D.DataViewStream, charTable:number[], end:number):void {
+    var bitStream = new B.BitReader(r);
+    for (var j = 0; j < 4; j++) {
+      var upper = false;
+      var high = false;
+      var str = '';
+      outer: while (true) {
+        if (r.mark() > end)
+          return;
+        var index = bitStream.readBits(5, true);
+        switch (index) {
+          case 0x1f: 
+            high = true;
+            break;
+          case 0x1e:
+            upper = true;
+            break;
+          default:
+            var char_ = charTable[index + (high ? 0x1e : 0)];
+            if (char_ == 0) break outer;
+            var s = String.fromCharCode(char_);
+            if (upper)
+              s = s.toUpperCase();
+            str += s;
+            upper = false;
+            high = false;
+        }
+      }
+      this.strings.push(str);
+    }
+  }
+}
 
+export class Skills {
+
+  public skills:number[][] = new Array<number[]>();
+
+  constructor(r:D.DataViewStream) {
+    for (var i = 0; i < 30; i++) {
+      this.skills.push([r.readUByte(), r.readUByte()]);
+    }
+  }
+}
+
+export class Items {
+
+  private items:number[][] = new Array<number[]>();
+
+  constructor(r:D.DataViewStream) {
+    for (var i = 0; i < 30; i++) {
+      var id = r.readUByte();
+      var load = r.readUByte();
+      if (id != 0)
+        this.items.push([id, load]);
+    }
+  }
+}
+
+export class Char {
+
+  public name:string;
+  public str:number;
+  public iq:number;
+  public lck:number;
+  public spd:number;
+  public agi:number;
+  public dex:number;
+  public chr:number;
+  public money:number;
+  public gender:number;
+  public natio:number;
+  public ac:number;
+  public maxCon:number;
+  public con:number;
+  public weapon:number;
+  public skillPoints:number;
+  public exp:number;
+  public level:number;
+  public armor:number;
+  public lastCon:number;
+  public afflictions:number;
+  public isNpc:number;
+  public unknown2A:number;
+  public itemRefuse:number;
+  public skillRefuse:number;
+  public attribRefuse:number;
+  public tradeRefuse:number;
+  public unknown2F:number;
+  public joinString:number;
+  public willingness:number;
+  public rank:string;
+  public skills:Skills;
+  public items:Items;
+
+  constructor(r:D.DataViewStream) {
+    this.name = r.readByteString(14);
+    this.str = r.readUByte();
+    this.iq = r.readUByte();
+    this.lck = r.readUByte();
+    this.spd = r.readUByte();
+    this.agi = r.readUByte();
+    this.dex = r.readUByte();
+    this.chr = r.readUByte();
+    var tmp = r.readUInt();
+    this.money = tmp & 0xffffff;
+    this.gender = (tmp >> 16) & 0xff;
+    this.natio = r.readUByte();
+    this.ac = r.readUByte();
+    this.maxCon = r.readUShort();
+    this.con = r.readUShort();
+    this.weapon = r.readUByte();
+    this.skillPoints = r.readUByte();
+    tmp = r.readUInt();
+    this.exp = tmp & 0xffffff;
+    this.level = (tmp >> 16) & 0xff;
+    this.armor = r.readUByte();
+    this.lastCon = r.readUShort();
+    this.afflictions = r.readUByte();
+    this.isNpc = r.readUByte();
+    this.unknown2A = r.readUByte();
+    this.itemRefuse = r.readUByte();
+    this.skillRefuse = r.readUByte();
+    this.attribRefuse = r.readUByte();
+    this.tradeRefuse = r.readUByte();
+    this.unknown2F = r.readUByte();
+    this.joinString = r.readUByte();
+    this.willingness = r.readUByte();
+    this.rank = r.readByteString(25);
+    r.skip(53);
+    this.skills = new Skills(r);
+    r.skip(1);
+    this.items = new Items(r);
+    r.skip(7);
+  }
+}
+
+export class NPCS {
+
+  public chars:Char[] = [];
+
+  constructor(r:D.DataViewStream) {
+    var offset = r.mark();
+    if (r.readUShort() != 0)
+      return;
+
+    offset += 2;
+    var quantity = (r.readUShort() - offset) / 2;
+    if (quantity < 1 || quantity > 255)
+      return;
+
+    offset += quantity * 2;
+    for (var i = 1; i < quantity; i++) {
+      var tmp = r.readUShort();
+      if (tmp != (offset + i * 0x100))
+        return
+    }
+
+    for (var i = 0; i < quantity; i++)
+      this.chars.push(new Char(r));
+  }
+}
+
+export class Monster {
+
+  public name:string;
+  public exp:number;
+  public skill:number;
+  public randomDamage:number;
+  public maxGroupSize:number;
+  public ac:number;
+  public fixedDamage:number;
+  public weaponType:number;
+  public type:number;
+  public picture:number;
+
+  constructor(r:D.DataViewStream, name:string) {
+    this.name = name;
+    this.exp = r.readUShort();
+    this.skill = r.readUByte();
+    this.randomDamage = r.readUByte();
+    var tmp = r.readUByte();
+    this.maxGroupSize = tmp >> 4;
+    this.ac = tmp & 15;
+    var tmp = r.readUByte();
+    this.fixedDamage = tmp >> 4;
+    this.weaponType = tmp & 15;
+    this.type = r.readUByte();
+    this.picture = r.readUByte();
+  }
+}
+
+export class Monsters {
+
+  public monsters:Monster[] = [];
+
+  constructor(r:D.DataViewStream, quantity:number, dataOffset:number) {
+    var names:string[] = [];
+    for (var i = 0; i < quantity; i++) {
+      var name = '';
+      var b = r.readUByte();
+      while (b != 0) {
+        name += String.fromCharCode(b);
+        b = r.readUByte();
+      } 
+      names.push(name);
+    }
+
+    r.setOffset(dataOffset);
+    for (var i = 0; i < quantity; i++) {
+      this.monsters.push(new Monster(r, names[i]));
+    }
   }
 }
 
 export class GameMap {
 
-  private mapSize:number;
+  public mapSize:number;
   private size:number;
   private tilemapOffset:number;
 
+  public actionClassMap:ActionClassMap;
+  public actionMap:ActionMap;
+  public info:Info;
+  public battleSettings:BattleSettings;
+  public tileMap:TileMap;
+  public strings:Strings;
+  public npcs:NPCS;
+  public monsters:Monsters;
+
+
   constructor(r:D.DataViewStream, size:number) {
     var sign = r.readByteString(4);
-    if (sign != 'msq0' || sign != 'msq1')
+    if (sign != 'msq0' && sign != 'msq1')
       throw new Error('No msq header found in file');
 
     var start = r.mark();
@@ -331,8 +577,8 @@ export class GameMap {
     for (var i = encSize; i < bytes.length; i++)
       bytes[i] = r.readUByte();
 
-    var tilemapOffset = getTilemapOffset(bytes, mapSize);
-    var stream = new D.DataViewStream(new UInt8Array(bytes), true);
+    var tilemapOffset = this.getTilemapOffset(bytes, mapSize);
+    var stream = new D.DataViewStream(new Uint8Array(bytes).buffer, true);
     this.mapSize = mapSize;
     this.size = size;
     this.tilemapOffset = tilemapOffset;
@@ -352,6 +598,16 @@ export class GameMap {
 
     stream.setOffset(centralDirectory.stringsOffset);
     this.strings = new Strings(stream, this.tilemapOffset);
+
+    stream.setOffset(centralDirectory.npcOffset);
+    this.npcs = new NPCS(stream);
+
+    var monstersOffset = centralDirectory.monsterDataOffset;
+    if (monstersOffset != 0) {
+      var quantity = (centralDirectory.stringsOffset - monstersOffset) / 8;
+      stream.setOffset(centralDirectory.monsterNamesOffset);
+      this.monsters = new Monsters(stream, quantity, monstersOffset);
+    }
   }
 
   private getMapSize(bytes:number[]):number {
@@ -367,7 +623,7 @@ export class GameMap {
       is32 = true;
     }
 
-    if (i32 == is64)
+    if (is32 == is64)
       throw new Error('Cannot determine map size');
 
     return is64 ? 64 : 32;
@@ -378,8 +634,8 @@ export class GameMap {
     return ((bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8));
   }
 
-  private getTilemapOffset(bytes:number[], mapsize:number):number {
-    int i = bytes.length - 9;
+  private getTilemapOffset(bytes:number[], mapSize:number):number {
+    var i = bytes.length - 9;
     while (i > 0) {
       if ((bytes[i] == 0) && (bytes[i + 1] == ((mapSize * mapSize) >> 8))
           && (bytes[i + 2] == 0) && (bytes[i + 3] == 0)
@@ -394,7 +650,7 @@ export class GameMap {
 
 export class Game {
 
-  private maps:GameMap[] = [];
+  public maps:GameMap[] = [];
 
   constructor(file:ArrayBuffer) {
     var r = new D.DataViewStream(file, true);
@@ -416,4 +672,49 @@ export class Game {
       }
     }
   }
+}
+
+export class Pic {
+
+  public pixels:number[];
+
+  constructor(hs:HuffmanStream, w:number, h:number) {
+    var vxor = new VerticalXorStream(hs, w);
+    this.pixels = new Array<number>(w*h);
+    for (var i = 0; i < w*h; i+=2){
+      var b = vxor.read();
+      this.pixels[i] = b >> 4;
+      this.pixels[i+1] = b & 0xf;
+    }
+  }
+}
+
+export class HTDSTileset {
+
+  public pics:Pic[] = [];
+
+  constructor(r:D.DataViewStream) {
+    var size = r.readUInt();
+    var sign = r.readByteString(3) + r.readUByte();
+    if (sign != 'msq0' && sign != 'msq1')
+      throw new Error('No msq header found in file');
+
+    var quantity = size * 2 / 16 / 16;
+    var huffmanStream = new HuffmanStream(r);
+    for ( var i = 0; i < quantity; i++) {
+      this.pics.push(new Pic(huffmanStream, 16, 16));
+    }
+  }
+}
+
+export class HTDS {
+
+  public tilesets:HTDSTileset[] = [];
+
+  constructor(file:ArrayBuffer) {
+    var r = new D.DataViewStream(file, true);
+    while (!r.eoi())
+      this.tilesets.push(new HTDSTileset(r));
+  }
+
 }

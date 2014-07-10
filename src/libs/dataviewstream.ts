@@ -13,6 +13,10 @@ export class DataViewStream {
     return this.offset >= this.view.byteLength;
   }
 
+  public skip(n:number) {
+    this.offset += n;
+  }
+
   public setOffset(off:number):void {
     this.offset = off;
   }
