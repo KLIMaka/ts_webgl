@@ -4,8 +4,10 @@ import Panel = require('./modules/ui/drawpanel');
 import P = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
+import browser = require('./libs/browser');
 
-var R = 'resources/engines/wl/GAME1';
+var gn = browser.getQueryVariable('game');
+var R = 'resources/engines/wl/GAME'+gn;
 var T0 = 'resources/engines/wl/ALLHTDS1';
 var T1 = 'resources/engines/wl/ALLHTDS2';
 getter.loader

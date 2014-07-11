@@ -98,45 +98,50 @@ export class HuffmanStream {
   }
 }
 
+var fa0 = [
+  {'m' : 1},
+  {'s' : 2},
+  {'q' : 3},
+  {'0' : 4},
+];
+var fa1 = [
+  {'m' : 1},
+  {'s' : 2},
+  {'q' : 3},
+  {'1' : 4},
+];
+
+function search(r:D.DataViewStream, disk:string):number {
+  var fa = disk == '0' ? fa0 : fa1;
+  var state = 0;
+  var length = 0;
+  while(!r.eoi() && state != 4) {
+    var b = r.readByteString(1);
+    var state = fa[state][b] | 0;
+    length++;
+  }
+  return length;
+}
+
+
 function readMsqBlocks(r:D.DataViewStream):number[][] {
   var sign = r.readByteString(4);
   if (sign != 'msq0' && sign != 'msq1')
     throw new Error('No msq header found in file');
   var disk = sign[3];
-  var stage = 0;
   var blocks = new Array<number[]>();
   var start = 0;
   var end = 4;
 
-  while(!r.eoi()) {
-    var b = r.readByteString(1);
-    switch (stage) {
-        case 0: 
-          if (b == 'm')
-            stage++;
-          break;
-        case 1: 
-          if (b == 's')
-            stage++;
-          else
-            stage = 0;
-          break;
-        case 2: 
-          if (b == 'q')
-            stage++;
-          else
-            stage = 0
-          break;
-        case 3: 
-          if (b == disk){
-            blocks.push([start, end-3-start]);
-            start = end - 3;
-          }
-          stage = 0;
-          break;
-      }
-      end++;
+  while(true) {
+    end += search(r, disk)
+    if (!r.eoi()) {
+      blocks.push([start, end-4-start]);
+      start = end - 4;
+    } else {
+      break;
     }
+  }
   blocks.push([start, end-start]);
   return blocks;
 }
@@ -561,7 +566,7 @@ export class GameMap {
 
     var start = r.mark();
     var xorStream = new RotatingXorStream(r);
-    var bytes = new Array<number>(6189);
+    var bytes = new Uint8Array(6189);
     for (var i = 0; i < 6189; i++) {
       bytes[i] = xorStream.read();
     }
@@ -569,7 +574,7 @@ export class GameMap {
     var mapSize = this.getMapSize(bytes);
     var encSize = this.getEncryptionSize(bytes, mapSize);
 
-    bytes = new Array<number>(size - 6);
+    bytes = new Uint8Array(size - 6);
     r.setOffset(start);
     xorStream = new RotatingXorStream(r);
     for (var i = 0; i < encSize; i++)
@@ -578,7 +583,7 @@ export class GameMap {
       bytes[i] = r.readUByte();
 
     var tilemapOffset = this.getTilemapOffset(bytes, mapSize);
-    var stream = new D.DataViewStream(new Uint8Array(bytes).buffer, true);
+    var stream = new D.DataViewStream(bytes.buffer, true);
     this.mapSize = mapSize;
     this.size = size;
     this.tilemapOffset = tilemapOffset;
@@ -610,7 +615,7 @@ export class GameMap {
     }
   }
 
-  private getMapSize(bytes:number[]):number {
+  private getMapSize(bytes:Uint8Array):number {
     var is64 = false;
     var offset = 64 * 64 * 3 / 2;
     if ((offset + 44 < bytes.length) && (bytes[offset + 44] == 64 && bytes[offset + 6] == 0 && bytes[offset + 7] == 0)) {
@@ -629,12 +634,12 @@ export class GameMap {
     return is64 ? 64 : 32;
   }
 
-  private getEncryptionSize(bytes:number[], mapSize:number):number {
+  private getEncryptionSize(bytes:Uint8Array, mapSize:number):number {
     var offset = mapSize * mapSize * 3 / 2;
     return ((bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8));
   }
 
-  private getTilemapOffset(bytes:number[], mapSize:number):number {
+  private getTilemapOffset(bytes:Uint8Array, mapSize:number):number {
     var i = bytes.length - 9;
     while (i > 0) {
       if ((bytes[i] == 0) && (bytes[i + 1] == ((mapSize * mapSize) >> 8))
