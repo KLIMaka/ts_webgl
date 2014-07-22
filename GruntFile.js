@@ -7,7 +7,8 @@ module.exports = function (grunt) {
     'raven',
     'buid',
     'anvil',
-    'wl'
+    'wl',
+    'sound'
   ];
 
   for (var i = 0; i < modules.length; i++) {
