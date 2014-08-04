@@ -15,3 +15,9 @@ export function drawToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElem
   provider.render(id.data);
   ctx.putImageData(id, x, y);
 }
+
+export function clearCanvas(canvas:HTMLCanvasElement, style:string) {
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = style;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}

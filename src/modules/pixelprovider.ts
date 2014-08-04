@@ -1,5 +1,6 @@
 
 import MU = require('../libs/mathutils');
+import Anim = require('./anim');
 
 export interface PixelProvider {
   getPixel(x:number, y:number):Uint8Array;
@@ -195,5 +196,19 @@ export function fit(w:number, h:number, provider:PixelProvider, paddColor:number
     } else {
       return resize(provider, w, h);
     }
+  }
+}
+
+export class AnimatedPixelProvider extends Anim.DefaultAnimated<PixelProvider> {
+  constructor(frames:PixelProvider[], fps:number) {
+    super(frames, fps);
+  }
+
+  public getWidth(): number {
+    return this.animate(0).getWidth();
+  }
+
+  public getHeight(): number {
+    return this.animate(0).getHeight();
   }
 }
