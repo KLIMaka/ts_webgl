@@ -1,10 +1,10 @@
 
-import buildstructs = require('../libs/buildstructs');
-import MU = require('../libs/mathutils');
-import GLM = require('../libs_js/glmatrix');
-import triangulator = require('./triangulator');
-import mb = require('./meshbuilder');
-import DS = require('./drawstruct');
+import buildstructs = require('./structs');
+import MU = require('../../../libs/mathutils');
+import GLM = require('../../../libs_js/glmatrix');
+import triangulator = require('../../triangulator');
+import mb = require('../../meshbuilder');
+import DS = require('../../drawstruct');
 
 var SCALE = -16;
 var UNITS2DEG = (1 / 4096);
@@ -131,6 +131,57 @@ function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number) {
     return; 
   }
   addFace(builder, mb.QUADS, quad, idx);
+}
+
+class WallInfo {
+  public front:number;
+  public back:number;
+
+  public upQuad:number;
+  public middleQuad:number;
+  public bottomQuad:number;
+
+  constructor(front:number) {
+    this.front = front;
+  }
+}
+
+class SectorInfo {
+  public id:number;
+
+  public floorPoly:number;
+  public ceilingPoly:number;
+
+  constructor(id:number) {
+    this.id = id;
+  }
+}
+
+export class BoardProcessor {
+
+  private sectors:SectorInfo[] = [];
+  private walls:WallInfo[] = [];
+
+  constructor(private board:buildstructs.Board) {
+    var sectors = board.sectors;
+    var walls = board.walls;
+    for (var s = 0; s < sectors.length; s++) {
+      var sector = sectors[s];
+      var sinfo = new SectorInfo(s);
+      this.sectors[s] = sinfo;
+
+      for (var i = 0; i < sector.wallnum; i++) {
+        var w = sector.wallptr + i;
+        var wall = walls[w];
+        var winfo = (wall.nextwall == -1 || this.walls[wall.nextwall] == undefined)
+          ? new WallInfo(w)
+          : this.walls[wall.nextwall];
+        if (winfo.front != w)
+          winfo.back = w;
+        this.walls[w] = winfo;
+      }
+    }
+  }
 }
 
 export function buildBoard(board:buildstructs.Board, gl:WebGLRenderingContext):DS.DrawStruct {

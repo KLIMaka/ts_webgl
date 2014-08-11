@@ -5,10 +5,11 @@ module.exports = function (grunt) {
 
   var modules = [
     'raven',
-    'buid',
+    'build',
     'anvil',
     'wl',
-    'sound'
+    'sound',
+    'grp'
   ];
 
   for (var i = 0; i < modules.length; i++) {

@@ -52,7 +52,7 @@ class DynamicVertexBufferBuilder {
     this.lastIdx++;
   }
 
-  public mark():number {
+  public tell():number {
     return this.lastIdx;
   }
 
@@ -197,6 +197,20 @@ export class MeshBuilder {
     private idx:IndexBufferBuilder
   ) {}
 
+  public tell():any {
+    var mark = {};
+    for (var attr in this.buffers) {
+      mark[attr] = this.buffers[attr].tell();
+    }
+    return mark;
+  }
+
+  public goto(mark:any) {
+    for (var attr in this.buffers) {
+      this.buffers[attr].goto(mark[attr]);
+    }
+  }
+
   public start(mode:number):MeshBuilder {
     this.idx.setMode(mode);
     return this;
@@ -239,7 +253,7 @@ export class MeshBuilderConstructor {
   private idx:IndexBufferBuilder;
 
   public buffer(name:string, arrayType:any, type:number, spacing:number, normalized:boolean=false):MeshBuilderConstructor {
-    this.buffers[name] = new VertexBufferBuilder(arrayType, type, spacing, normalized);
+    this.buffers[name] = new DynamicVertexBufferBuilder(64*1024, arrayType, type, spacing, normalized);
     return this;
   }
 

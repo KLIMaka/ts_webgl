@@ -1,0 +1,49 @@
+import data = require('../../../libs/dataviewstream');
+
+export class GrpFile {
+
+  private data:data.DataViewStream;
+  private count:number;
+  private files:any = {};
+
+  constructor(buf:ArrayBuffer) {
+    this.data = new data.DataViewStream(buf, true);
+    this.loadFiles();
+  }
+ 
+  private loadFiles() {
+    var d = this.data;
+    d.setOffset(12);
+    this.count = d.readUInt();
+    var offset = this.count * 16 + 16;
+    for (var i = 0; i < this.count; i++) {
+      var fname = d.readByteString(12);
+      var size = d.readUInt();
+      this.files[fname] = offset;
+      offset += size;
+    }
+  }
+ 
+  public get(fname:string):data.DataViewStream {
+    var off = this.files[fname];
+    if (off != undefined){
+       this.data.setOffset(off);
+      return this.data.subView();
+    }
+    return null;
+  }
+}
+
+export function create(buf:ArrayBuffer):GrpFile {
+  return new GrpFile(buf);
+}
+
+export function createPalette(stream:data.DataViewStream):number[] {
+  var pal = new Array<number>(768);
+  for (var i = 0; i < 256; i++) {
+    pal[i*3+0] = stream.readUByte()*4;
+    pal[i*3+1] = stream.readUByte()*4;
+    pal[i*3+2] = stream.readUByte()*4;
+  }
+  return pal;
+}

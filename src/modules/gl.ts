@@ -51,6 +51,13 @@ export class Uniform4fvSetter {
 }
 export var vec4Setter = new Uniform4fvSetter();
 
+export class UniformIntSetter {
+  setUniform(gl:WebGLRenderingContext, location:WebGLUniformLocation, value:any):void {
+    gl.uniform1i(location, value);
+  }
+}
+export var int1Setter = new UniformIntSetter();
+
 export class UniformBinder {
 
   private resolvers:{[index:string]: ()=>any;} = {};

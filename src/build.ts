@@ -1,17 +1,11 @@
 import GL = require('./modules/gl');
 import shaders = require('./modules/shader');
-import mb = require('./modules/meshbuilder');
 import getter = require('./libs/getter');
-import build = require('./modules/buildloader');
 import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
-import buildutils = require('./modules/buildutils');
-import buildstructs = require('./libs/buildstructs');
-import GLM = require('libs_js/glmatrix');
-import tex = require('./modules/textures');
-import camera = require('./modules/camera');
+import build = require('./modules/engines/build/loader');
+import buildutils = require('./modules/engines/build/utils');
 import MU = require('./libs/mathutils');
-import DS = require('./modules/drawstruct');
 
 var w = 600;
 var h = 400;
@@ -34,17 +28,18 @@ gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
 var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
+console.log(new buildutils.BoardProcessor(board));
 var model = buildutils.buildBoard(board, gl);
-var baseShader = shaders.createShader(gl, load('resources/shaders/base.vsh'), load('resources/shaders/base.fsh'), ['MVP', 'eyedir', 'eyepos', 'activeIdx']);
-var selectShader = shaders.createShader(gl, load('resources/shaders/select.vsh'), load('resources/shaders/select.fsh'), ['MVP']);
+var baseShader = shaders.createShader(gl, load('resources/shaders/base.vsh'), load('resources/shaders/base.fsh'));
+var selectShader = shaders.createShader(gl, load('resources/shaders/select.vsh'), load('resources/shaders/select.fsh'));
 var control = new controller.Controller3D(gl);
-var activeIdx = [0,0,0,0];
+var activeIdx = 0;
 
 var binder = new GL.UniformBinder();
 binder.addResolver('MVP', GL.mat4Setter, ()=>control.getMatrix());
 binder.addResolver('eyepos', GL.vec3Setter, ()=>control.getCamera().getPos());
 binder.addResolver('eyedir', GL.vec3Setter, ()=>control.getCamera().forward());
-binder.addResolver('activeIdx', GL.vec4Setter, ()=>activeIdx);
+binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
 
 control.getCamera().setPosXYZ(board.posx, board.posz*-16, board.posy);
 
@@ -60,7 +55,7 @@ GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
   GL.draw(gl, model, selectShader);
 
   var id = GL.readId(gl, control.getX(), control.getY());
-  activeIdx = MU.int2vec4norm(id);
+  activeIdx = id;
 
   // actual draw
   gl.clearColor(0.1, 0.3, 0.1, 1.0);

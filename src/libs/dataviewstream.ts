@@ -33,6 +33,12 @@ export class DataViewStream {
     return this.view.getUint8(this.offset++);
   }
 
+  public readUByteArray(size:number):Uint8Array {
+    var arr = new Uint8Array(this.view.buffer, this.offset, size);
+    this.offset += size;
+    return arr;
+  }
+
   public readShort():number {
     var ret = this.view.getInt16(this.offset, this.littleEndian);
     this.offset += 2;
@@ -66,7 +72,12 @@ export class DataViewStream {
   public readByteString(len:number):string{
     var str = new Array<string>(len);
     for (var i = 0; i < len; i++) {
-      str[i] = String.fromCharCode(this.readByte());
+      var c = this.readByte();
+      if (c == 0){
+        this.skip(len-i-1);
+        break;
+      }
+      str[i] = String.fromCharCode(c);
     }
     return str.join('');
   }

@@ -38,7 +38,7 @@ export class Shader {
   }
 }
 
-export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmentSrc:string, uniforms:string[]):Shader {
+export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmentSrc:string):Shader {
 
   function compileSource(type:number, source:string):WebGLShader {
     var shader = gl.createShader(type);
@@ -50,6 +50,8 @@ export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmen
     return shader;
   }
 
+  var uniforms = processShaders(vertexSrc, fragmentSrc);
+
   var program = gl.createProgram();
   gl.attachShader(program, compileSource(gl.VERTEX_SHADER, vertexSrc));
   gl.attachShader(program, compileSource(gl.FRAGMENT_SHADER, fragmentSrc));
@@ -59,4 +61,22 @@ export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmen
   }
 
   return new Shader(program, uniforms);
+}
+
+function processShaders(vsh:string, fsh:string):string[] {
+  var uniforms:string[] = [];
+  var shaders = [vsh, fsh];
+  for (var i in shaders) {
+    var shader = shaders[i];
+    var lines = shader.split("\r?\n");
+    for (var l in lines) {
+      var line = lines[l];
+      var m = line.match(/uniform +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+      if (m == null) continue;
+      var name = m[1];
+      if (uniforms.indexOf(name) == -1)
+        uniforms.push(name);
+    }
+  }
+  return uniforms;
 }

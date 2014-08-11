@@ -1,5 +1,5 @@
-import data = require('../libs/dataviewstream');
-import build = require('../libs/buildstructs');
+import data = require('../../../libs/dataviewstream');
+import build = require('./structs');
 
 function readSectors(buf:data.DataViewStream, numsectors:number):build.Sector[] {
   var sectors = new Array<build.Sector>(numsectors);
