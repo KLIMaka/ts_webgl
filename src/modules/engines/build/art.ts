@@ -45,7 +45,7 @@ export class ArtFile {
   public getImage(id:number):Uint8Array {
     var offset = this.offsets[id];
     this.stream.setOffset(offset);
-    return this.stream.readUByteArray(this.ws[id]*this.hs[id]);
+    return data.arrayCreator(Uint8Array, this.ws[id]*this.hs[id])(this.stream);
   }
 
   public getWidth(id:number) {

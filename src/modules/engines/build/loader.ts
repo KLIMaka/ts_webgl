@@ -1,34 +1,82 @@
 import data = require('../../../libs/dataviewstream');
 import build = require('./structs');
 
+var sectorStruct = data.structCreator(build.Sector, [
+  ['wallptr', data.ushort],
+  ['wallnum', data.ushort],
+  ['ceilingz', data.int],
+  ['floorz', data.int],
+  ['ceilingstat', data.ushort],
+  ['floorstat', data.ushort],
+  ['ceilingpicnum', data.ushort],
+  ['ceilingheinum', data.short],
+  ['ceilingshade', data.byte],
+  ['ceilingpal', data.ubyte],
+  ['ceilingxpanning', data.ubyte],
+  ['ceilingypanning', data.ubyte],
+  ['floorpicnum', data.ushort],
+  ['floorheinum', data.short],
+  ['floorshade', data.byte],
+  ['floorpal', data.ubyte],
+  ['floorxpanning', data.ubyte],
+  ['floorypanning', data.ubyte],
+  ['visibility', data.byte],
+  ['filler', data.byte],
+  ['lotag', data.ushort],
+  ['hitag', data.ushort],
+  ['extra', data.ushort]
+]);
+
+var wallStruct = data.structCreator(build.Wall, [
+  ['x', data.int],
+  ['y', data.int],
+  ['point2', data.ushort],
+  ['nextwall', data.short],
+  ['nextsector', data.short],
+  ['cstat', data.ushort],
+  ['picnum', data.ushort],
+  ['overpicnum', data.ushort],
+  ['shade', data.byte],
+  ['pal', data.ubyte],
+  ['xrepeat', data.ubyte],
+  ['yrepeat', data.ubyte],
+  ['xpanning', data.ubyte],
+  ['ypanning', data.ubyte],
+  ['lotag', data.ushort],
+  ['hitag', data.ushort],
+  ['extra', data.ushort]
+]);
+
+var spriteStruct = data.structCreator(build.Sprite, [
+  ['x', data.int],
+  ['y', data.int],
+  ['z', data.int],
+  ['cstat', data.ushort],
+  ['picnum', data.ushort],
+  ['shade', data.byte],
+  ['pal', data.ubyte],
+  ['clipdist', data.ubyte],
+  ['filler', data.ubyte],
+  ['xrepeat', data.byte],
+  ['yrepeat', data.byte],
+  ['xoffset', data.ubyte],
+  ['yoffset', data.ubyte],
+  ['sectnum', data.ushort],
+  ['statnum', data.ushort],
+  ['ang', data.ushort],
+  ['owner', data.ushort],
+  ['xvel', data.short],
+  ['yvel', data.short],
+  ['zvel', data.short],
+  ['lotag', data.ushort],
+  ['hitag', data.ushort],
+  ['extra', data.ushort]
+]);
+
 function readSectors(buf:data.DataViewStream, numsectors:number):build.Sector[] {
   var sectors = new Array<build.Sector>(numsectors);
   for (var i = 0; i < numsectors; i++) {
-    var sector = new build.Sector();
-    sectors[i] = sector;
-    sector.wallptr = buf.readUShort();
-    sector.wallnum = buf.readUShort();
-    sector.ceilingz = buf.readInt();
-    sector.floorz = buf.readInt();
-    sector.ceilingstat = buf.readUShort();
-    sector.floorstat = buf.readUShort();
-    sector.ceilingpicnum = buf.readUShort();
-    sector.ceilingheinum = buf.readShort();
-    sector.ceilingshade = buf.readByte();
-    sector.ceilingpal = buf.readUByte();
-    sector.ceilingxpanning = buf.readUByte();
-    sector.ceilingypanning = buf.readUByte();
-    sector.floorpicnum = buf.readUShort();
-    sector.floorheinum = buf.readShort();
-    sector.floorshade = buf.readByte();
-    sector.floorpal = buf.readUByte();
-    sector.floorxpanning = buf.readUByte();
-    sector.floorypanning = buf.readUByte();
-    sector.visibility = buf.readByte();
-    sector.filler = buf.readByte();
-    sector.lotag = buf.readUShort();
-    sector.hitag = buf.readUShort();
-    sector.extra = buf.readUShort();
+    sectors[i] = <build.Sector> sectorStruct(buf);
   }
   return sectors;
 }
@@ -36,25 +84,7 @@ function readSectors(buf:data.DataViewStream, numsectors:number):build.Sector[] 
 function readWalls(buf:data.DataViewStream, numwals:number):build.Wall[] {
   var walls = new Array<build.Wall>(numwals);
   for (var i = 0; i < numwals; i++) {
-    var wall = new build.Wall();
-    walls[i] = wall;
-    wall.x = buf.readInt();
-    wall.y = buf.readInt();
-    wall.point2 = buf.readUShort();
-    wall.nextwall = buf.readShort();
-    wall.nextsector = buf.readShort();
-    wall.cstat = buf.readUShort();
-    wall.picnum = buf.readUShort();
-    wall.overpicnum = buf.readUShort();
-    wall.shade = buf.readByte();
-    wall.pal = buf.readUByte();
-    wall.xrepeat = buf.readUByte();
-    wall.yrepeat = buf.readUByte();
-    wall.xpanning = buf.readUByte();
-    wall.ypanning = buf.readUByte();
-    wall.lotag = buf.readUShort();
-    wall.hitag = buf.readUShort();
-    wall.extra = buf.readUShort();
+    walls[i] = <build.Wall> wallStruct(buf);
   }
   return walls;
 };
@@ -62,31 +92,7 @@ function readWalls(buf:data.DataViewStream, numwals:number):build.Wall[] {
 function readSprites(buf:data.DataViewStream, numsprites:number):build.Sprite[] {
   var sprites = new Array<build.Sprite>(numsprites);
   for (var i = 0; i < numsprites; i++) {
-    var sprite = new build.Sprite();
-    sprites[i] = sprite;
-    sprite.x = buf.readInt();
-    sprite.y = buf.readInt();
-    sprite.z = buf.readInt();
-    sprite.cstat = buf.readUShort();
-    sprite.picnum = buf.readUShort();
-    sprite.shade = buf.readByte();
-    sprite.pal = buf.readUByte();
-    sprite.clipdist = buf.readUByte();
-    sprite.filler = buf.readUByte();
-    sprite.xrepeat = buf.readByte();
-    sprite.yrepeat = buf.readByte();
-    sprite.xoffset = buf.readUByte();
-    sprite.yoffset = buf.readUByte();
-    sprite.sectnum = buf.readUShort();
-    sprite.statnum = buf.readUShort();
-    sprite.ang = buf.readUShort();
-    sprite.owner = buf.readUShort();
-    sprite.xvel = buf.readUShort();
-    sprite.yvel = buf.readUShort();
-    sprite.zvel = buf.readUShort();
-    sprite.lotag = buf.readUShort();
-    sprite.hitag = buf.readUShort();
-    sprite.extra = buf.readUShort();
+    sprites[i] = <build.Sprite> spriteStruct(buf);
   }
   return sprites;
 };
