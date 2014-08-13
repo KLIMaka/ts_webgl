@@ -1,4 +1,5 @@
 import shaders = require('shader');
+import material = require('material');
 import DS = require('drawstruct');
 
 export function createContext(w:number, h:number, opts = {}):WebGLRenderingContext {
@@ -64,7 +65,6 @@ export class UniformBinder {
   private setters  :{[index:string]: UniformSetter;} = {};
 
   public bind(gl:WebGLRenderingContext, shader:shaders.Shader):void {
-    gl.useProgram(shader.getProgram());
     var uniforms = shader.getUniforms();
     for (var i = 0; i < uniforms.length; i++) {
       var uniform = uniforms[i];
@@ -79,17 +79,28 @@ export class UniformBinder {
   }
 }
 
-export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, shader:shaders.Shader) {
-  var attributes = model.getAttributes();
+export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, material:material.Material, globalBinder:UniformBinder) {
+  var shader = material.getShader();
+  gl.useProgram(shader.getProgram());
+  globalBinder.bind(gl, shader);
+
+  var samplers = shader.getSamplers();
+  var unit = gl.TEXTURE0;
+  for (var i in samplers) {
+    var sampler = samplers[i];
+    gl.activeTexture(unit);
+    material.getTexture(sampler).bind(gl);
+    gl.uniform1i(shader.getUniformLocation(sampler, gl), unit - gl.TEXTURE0);
+  }
+
+  var attributes = shader.getAttributes();
   for (var i in  attributes) {
     var attr = attributes[i];
     var buf = model.getVertexBuffer(attr);
     var location = shader.getAttributeLocation(attr, gl);
-    if (location != -1) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
-      gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
-    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
+    gl.enableVertexAttribArray(location);
+    gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
   }
 
   if (model.getIndexBuffer() == null) {

@@ -1,5 +1,6 @@
 import GL = require('./modules/gl');
 import shaders = require('./modules/shader');
+import material = require('./modules/material');
 import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
@@ -31,7 +32,9 @@ var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
 console.log(new buildutils.BoardProcessor(board));
 var model = buildutils.buildBoard(board, gl);
 var baseShader = shaders.createShader(gl, load('resources/shaders/base.vsh'), load('resources/shaders/base.fsh'));
+var baseMaterial = new material.SimpleMaterial(baseShader, null);
 var selectShader = shaders.createShader(gl, load('resources/shaders/select.vsh'), load('resources/shaders/select.fsh'));
+var selectMaterial = new material.SimpleMaterial(selectShader, null);
 var control = new controller.Controller3D(gl);
 var activeIdx = 0;
 
@@ -50,19 +53,15 @@ GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
   //select draw
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  binder.bind(gl, selectShader);
-  GL.draw(gl, model, selectShader);
+  GL.draw(gl, model, selectMaterial, binder);
 
   var id = GL.readId(gl, control.getX(), control.getY());
   activeIdx = id;
 
   // actual draw
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
-
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  binder.bind(gl, baseShader);
-  GL.draw(gl, model, baseShader);
+  GL.draw(gl, model, baseMaterial, binder);
 });
 
 gl.canvas.oncontextmenu = () => false;

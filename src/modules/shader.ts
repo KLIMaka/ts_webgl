@@ -1,32 +1,43 @@
+import Set = require('../libs/set');
 
 export class Shader {
 
   private program:WebGLProgram;
   private uniforms = {};
   private attribs = {};
-  private uniforms_names:string[]; 
+  private uniformNames:string[]; 
+  private attributeNames:string[]; 
+  private samplers:string[]; 
 
-  constructor(prog:WebGLProgram, uniforms:string[]) {
+  constructor(gl:WebGLRenderingContext, prog:WebGLProgram, params:any) {
     this.program = prog;
-    this.uniforms_names = uniforms;
+    this.uniformNames = params.uniforms.values();
+    this.attributeNames = params.attributes.values();
+    this.samplers = params.samplers.values();
+    this.initUniformLocations(gl);
+    this.initAttributeLocations(gl);
+  }
+
+  private initUniformLocations(gl:WebGLRenderingContext):void {
+    for (var i in this.uniformNames) {
+      var uniform = this.uniformNames[i];
+      this.uniforms[uniform] = gl.getUniformLocation(this.program, uniform);
+    }
+  }
+
+  private initAttributeLocations(gl:WebGLRenderingContext):void {
+    for (var i in this.attributeNames) {
+      var attrib = this.attributeNames[i];
+      this.attribs[attrib] = gl.getAttribLocation(this.program, attrib);
+    }
   }
 
   public getUniformLocation(name:string, gl:WebGLRenderingContext):WebGLUniformLocation {
-    var location = this.uniforms[name];
-    if(location == undefined) {
-      location = gl.getUniformLocation(this.program, name);
-      this.uniforms[name] = location;
-    }
-    return location;
+    return this.uniforms[name];
   }
 
   public getAttributeLocation(name:string, gl:WebGLRenderingContext):number {
-    var location = this.attribs[name];
-    if(location == undefined) {
-      location = gl.getAttribLocation(this.program, name);
-      this.attribs[name] = location;
-    }
-    return location;
+    return this.attribs[name];
   }
 
   public getProgram():WebGLProgram {
@@ -34,7 +45,15 @@ export class Shader {
   }
 
   public getUniforms():string[] {
-    return this.uniforms_names;
+    return this.uniformNames;
+  }
+
+  public getAttributes():string[] {
+    return this.attributeNames;
+  }
+
+  public getSamplers():string[] {
+    return this.samplers;
   }
 }
 
@@ -50,7 +69,7 @@ export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmen
     return shader;
   }
 
-  var uniforms = processShaders(vertexSrc, fragmentSrc);
+  var params = processShaders(vertexSrc, fragmentSrc);
 
   var program = gl.createProgram();
   gl.attachShader(program, compileSource(gl.VERTEX_SHADER, vertexSrc));
@@ -60,23 +79,39 @@ export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmen
     throw 'link error: ' + gl.getProgramInfoLog(program);
   }
 
-  return new Shader(program, uniforms);
+  return new Shader(gl, program, params);
 }
 
-function processShaders(vsh:string, fsh:string):string[] {
-  var uniforms:string[] = [];
+function processLine(line:string, params:any):any {
+  var m = line.match(/uniform +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+  if (m != null)
+    params.uniforms.add(m[1]);
+  m = line.match(/attribute +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+  if (m != null)
+    params.attributes.add(m[1]);
+  m = line.match(/uniform sampler2D +([a-zA-Z0-9_]+)/);
+  if (m != null)
+    params.samplers.add(m[1]);
+}
+
+function createParams():any {
+  var params:any = {};
+  params.uniforms = Set.create<string>();
+  params.attributes = Set.create<string>();
+  params.samplers = Set.create<string>();
+  return params;
+}
+
+function processShaders(vsh:string, fsh:string):any {
+  var params = createParams();
   var shaders = [vsh, fsh];
   for (var i in shaders) {
     var shader = shaders[i];
-    var lines = shader.split("\r?\n");
+    var lines = shader.split("\n");
     for (var l in lines) {
       var line = lines[l];
-      var m = line.match(/uniform +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
-      if (m == null) continue;
-      var name = m[1];
-      if (uniforms.indexOf(name) == -1)
-        uniforms.push(name);
+      processLine(line, params);
     }
   }
-  return uniforms;
+  return params;
 }
