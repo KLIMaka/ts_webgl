@@ -17,15 +17,9 @@ export class ArtFile {
     var start = stream.readUInt();
     var end = stream.readUInt();
     var size = end - start + 1;
-    var hs = new Array<number>(size);
-    for (var i = 0; i < size; i++)
-      hs[i] = stream.readUShort();
-    var ws = new Array<number>(size);
-    for (var i = 0; i < size; i++)
-      ws[i] = stream.readUShort();
-    var anums = new Array<number>(size);
-    for (var i = 0; i < size; i++)
-      anums[i] = stream.readUInt();
+    var hs = data.array(data.ushort, size)(stream);
+    var ws = data.array(data.ushort, size)(stream);
+    var anums = data.array(data.uint, size)(stream);
     var offsets = new Array<number>(size);
     var offset = stream.mark();
     for (var i = 0; i < size; i++){
@@ -45,7 +39,7 @@ export class ArtFile {
   public getImage(id:number):Uint8Array {
     var offset = this.offsets[id];
     this.stream.setOffset(offset);
-    return data.arrayCreator(Uint8Array, this.ws[id]*this.hs[id])(this.stream);
+    return data.array(data.ubyte, this.ws[id]*this.hs[id])(this.stream);
   }
 
   public getWidth(id:number) {

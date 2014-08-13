@@ -87,24 +87,56 @@ export class DataViewStream {
   }
 }
 
-export var byte = (s:DataViewStream) => s.readByte();
-export var ubyte = (s:DataViewStream) => s.readUByte();
-export var short = (s:DataViewStream) => s.readShort();
-export var ushort = (s:DataViewStream) => s.readUShort();
-export var int = (s:DataViewStream) => s.readInt();
-export var uint = (s:DataViewStream) => s.readUInt();
-export var float = (s:DataViewStream) => s.readFloat();
-export var string = (s:DataViewStream, len:number) => s.readByteString(len);
-export var stringCreator = (len:number) => {return (s:DataViewStream) => string(s, len)};
-export var array = (s:DataViewStream, type:any, len:number) => {var arr = new type(s.buffer(), s.mark(), len); s.skip(len*type.BYTES_PER_ELEMENT); return arr;}
-export var arrayCreator = (type:any, len:number) => {return (s:DataViewStream) => array(s, type, len)};
+export class ValueResolver {
+  constructor(private name:string) {}
+  get(locals:any):any {return locals[this.name]}
+}
+export function val(name:string) {return new ValueResolver(name)}
+function get(val:any, locals:any) {return val instanceof ValueResolver ? val.get(locals) : val}
 
-export var struct = (s:DataViewStream, fields:any, type:any) => {
+export var byte = (s:DataViewStream, locals:any={}) => s.readByte();
+export var ubyte = (s:DataViewStream, locals:any={}) => s.readUByte();
+export var short = (s:DataViewStream, locals:any={}) => s.readShort();
+export var ushort = (s:DataViewStream, locals:any={}) => s.readUShort();
+export var int = (s:DataViewStream, locals:any={}) => s.readInt();
+export var uint = (s:DataViewStream, locals:any={}) => s.readUInt();
+export var float = (s:DataViewStream, locals:any={}) => s.readFloat();
+var arrayTypes:any = {};
+arrayTypes[byte] = Int8Array;
+arrayTypes[ubyte] = Uint8Array;
+arrayTypes[short] = Int16Array;
+arrayTypes[ushort] = Uint16Array;
+arrayTypes[int] = Int32Array;
+arrayTypes[uint] = Uint32Array;
+arrayTypes[float] = Float32Array;
+
+export var string_ = (s:DataViewStream, len:number) => s.readByteString(len);
+export var string = (len:any) => {return (s:DataViewStream, locals:any={}) => string_(s, get(len,locals))};
+
+export var array_ = (s:DataViewStream, type:any, len:number) => {
+  var arrayType = arrayTypes[type];
+  if (s.mark() % arrayType.BYTES_PER_ELEMENT != 0) {
+    var arr = new Array(len);
+    for (var i = 0; i < len; i++)
+      arr[i] = type(s);
+    return new arrayType(arr);
+  } else {
+    var tarr = new arrayType(s.buffer(), s.mark(), len); 
+    s.skip(len*arrayType.BYTES_PER_ELEMENT); 
+    return tarr;
+  }
+}
+export var array = (type:any, len:any) => {return (s:DataViewStream, locals:any={}) => array_(s, get(type,locals), get(len,locals))};
+
+export var structArray_ = (s:DataViewStream, struct:any, len:number, locals:any={}) => {var arr = []; for(var i = 0; i < len; i++) arr[i] = struct(s, locals); return arr;}
+export var structArray = (len:any, struct:any) => {return (s:DataViewStream, locals:any={}) => structArray_(s, get(struct,locals), get(len,locals), locals)}
+
+export var struct_ = (s:DataViewStream, fields:any, type:any, locals:any={}) => {
   var struct = new type();
   for (var i in fields) {
     var field = fields[i];
-    struct[field[0]] = field[1](s);
+    struct[field[0]] = field[1](s, struct);
   }
   return struct;
 };
-export var structCreator = (type:any, fields:any) => {return (s:DataViewStream) => struct(s, fields, type)};
+export var struct = (type:any, fields:any) => {return (s:DataViewStream, locals:any={}) => struct_(s, get(fields,locals), get(type,locals), locals)};

@@ -90,7 +90,7 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
     dst[dstoff] = this.pal[paloff];
     dst[dstoff+1] = this.pal[paloff+1];
     dst[dstoff+2] = this.pal[paloff+2];
-    dst[dstoff+3] = this.alpha;
+    dst[dstoff+3] = idx == this.transIdx ? 0 : this.alpha;
   }
 }
 

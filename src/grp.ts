@@ -1,5 +1,6 @@
 import GRP = require('./modules/engines/build/grp');
 import ART = require('./modules/engines/build/art');
+import RFF = require('./modules/engines/build/rff');
 
 import IU = require('./libs/imgutils');
 import pixel = require('./modules/pixelprovider');
@@ -38,8 +39,11 @@ for (var a = 0; a < 18; a++) {
 
 getter.loader
 .load('resources/engines/blood/palette.dat')
+.load('resources/engines/blood/sounds.rff')
 .finish(() => {
 
+var rff = RFF.create(getter.get('resources/engines/blood/sounds.rff'));
+console.log(rff);
 var pal = GRP.createPalette(new data.DataViewStream(getter.get('resources/engines/blood/palette.dat'), true));
 
 for (var a = 0; a < 18; a++) {
@@ -49,7 +53,7 @@ for (var a = 0; a < 18; a++) {
     var h = art.getHeight(i);
     if (w == 0 || h == 0)
       continue;
-    var pp = pixel.axisSwap(new pixel.RGBPalPixelProvider(art.getImage(i), pal, w, h));
+    var pp = pixel.axisSwap(new pixel.RGBPalPixelProvider(art.getImage(i), pal, w, h, 255, 255));
     document.body.appendChild(IU.createCanvas(pp));
   }
 }
