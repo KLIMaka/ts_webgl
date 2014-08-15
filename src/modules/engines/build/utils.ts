@@ -77,30 +77,10 @@ function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wa
   };
 }
 
-class WallInfo {
-  public front:number;
-  public back:number;
 
-  public upQuad:number;
-  public middleQuad:number;
-  public bottomQuad:number;
-
-  constructor(front:number) {
-    this.front = front;
-  }
-}
-
-class SectorInfo {
-  public id:number;
-
-  public floorPoly:number;
-  public ceilingPoly:number;
-
-  constructor(id:number) {
-    this.id = id;
-  }
-}
-
+var TYPE_SECTOR_FLOOR = 1;
+var TYPE_SECTOR_CEILING = 2;
+var TYPE_WALL = 3;
 class ObjectHandle {
   constructor(public material:DS.Material, public offset:number, public len:number) {}
 }
@@ -128,10 +108,10 @@ function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:D
   // d <- c
   var tcscalex = material.getTexture('base').getWidth() * 16;
   var tcscaley = material.getTexture('base').getHeight() * 16;
-  var a = quad[0]; var atc = [len(a[0], a[2])/tcscalex, a[1]/tcscaley];
-  var b = quad[1]; var btc = [len(b[0], b[2])/tcscalex, b[1]/tcscaley];
-  var c = quad[2]; var ctc = [len(c[0], c[2])/tcscalex, c[1]/tcscaley];
-  var d = quad[3]; var dtc = [len(d[0], d[2])/tcscalex, d[1]/tcscaley];
+  var d = quad[3]; var dtc = [0, 0];
+  var a = quad[0]; var atc = [0, (d[1]-a[1])/tcscaley];
+  var b = quad[1]; var btc = [len(d[0]-b[0], d[2]-b[2])/tcscalex, (d[1]-b[1])/tcscaley];
+  var c = quad[2]; var ctc = [len(d[0]-b[0], d[2]-b[2])/tcscalex, (d[1]-c[1])/tcscaley];
   var offset = builder.offset() * 2;
 
   if (a[1] == d[1]) {
@@ -206,11 +186,22 @@ export interface MaterialFactory {
   get(picnum:number):DS.Material;
 }
 
+class WallInfo {
+  constructor(public normal:number[], public ds:DS.DrawStruct){}
+}
+
+class SectorInfo {
+  constructor(public floor:DS.DrawStruct, public ceiling:DS.DrawStruct){}
+}
+
 export class BoardProcessor {
+  private sectors:SectorInfo[] = [];
+  private walls:WallInfo[] = [];
+
   constructor(private board:buildstructs.Board) {}
 
-  public build(gl:WebGLRenderingContext, materialFactory:MaterialFactory):DS.DrawStruct[] {
-    var objs:ObjectHandle[] = [];
+  public build(gl:WebGLRenderingContext, materialFactory:MaterialFactory):void {
+    var objs:any = [];
     var builder = new mb.MeshBuilderConstructor()
       .buffer('aPos', Float32Array, gl.FLOAT, 3)
       .buffer('aNorm', Float32Array, gl.FLOAT, 3)
@@ -253,7 +244,7 @@ export class BoardProcessor {
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          objs.push(addWall(builder, [a, b, c, d], idx, material));
+          objs.push([addWall(builder, [a, b, c, d], idx, material), TYPE_WALL, w]);
         } else {
           var nextsector = sectors[wall.nextsector];
           var nextslope = createSlopeCalculator(nextsector, walls);
@@ -270,7 +261,7 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            objs.push(addWall(builder, [a, b, c, d], idx, material));
+            objs.push([addWall(builder, [a, b, c, d], idx, material), TYPE_WALL, w]);
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
@@ -283,22 +274,66 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            objs.push(addWall(builder, [a, b, c, d], idx, material));
+            objs.push([addWall(builder, [a, b, c, d], idx, material), TYPE_WALL, w]);
           }
         }
         i++;
         idx++;
       }
 
-      objs.push(addSector(false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum)));
-      objs.push(addSector(true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum)));
+      objs.push([addSector(false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum)), TYPE_SECTOR_FLOOR, s]);
+      objs.push([addSector(true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum)), TYPE_SECTOR_CEILING, s]);
     }
 
     var tmp:mb.Mesh = <mb.Mesh>builder.build(gl, null);
+    var vtxBuf = tmp.getVertexBuffers();
+    var idxBuf = tmp.getIndexBuffer();
+    var mode = tmp.getMode();
+    for (var i = 0; i < objs.length; i++) {
+      var obj = objs[i][0];
+      var type = objs[i][1];
+      var id = objs[i][2];
+
+      if (type == TYPE_WALL && id == objs[i+1][2]) {
+        var wall1 = walls[id];
+        var wall2 = walls[wall1.point2];
+        var normal = MU.normal2d([wall1.x, wall1.y], [wall2.x, wall2.y]);
+        var wallMesh = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len + objs[i+1][0].len, obj.offset);
+        this.walls[id] = new WallInfo(normal, wallMesh);
+        i++;
+      } else {
+        var wall1 = walls[id];
+        var wall2 = walls[wall1.point2];
+        var normal = MU.normal2d([wall1.x, wall1.y], [wall2.x, wall2.y]);
+        var wallMesh = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len, obj.offset)
+        this.walls[id] = new WallInfo(normal, wallMesh);
+      }
+
+      if (type == TYPE_SECTOR_FLOOR) {
+        var floor = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len, obj.offset);
+        var ceiling = new mb.Mesh(objs[i+1][0].material, vtxBuf, idxBuf, mode, objs[i+1][0].len, objs[i+1][0].offset);
+        this.sectors[id] = new SectorInfo(floor, ceiling);
+        i++;
+      }
+    }
+  }
+
+  public get(pos:number[], eye:number[]):DS.DrawStruct[] {
     var ds:DS.DrawStruct[] = [];
-    for (var i in objs) {
-      var obj = objs[i];
-      ds.push(new mb.Mesh(obj.material, tmp.getVertexBuffers(), tmp.getIndexBuffer(), tmp.getMode(), obj.len, obj.offset));
+    var sectors = this.sectors;
+    var walls = this.walls;
+    for (var i = 0; i < sectors.length; i++) {
+      ds.push(sectors[i].floor);
+      ds.push(sectors[i].ceiling);
+    }
+    var eye2d = [eye[0], eye[2]];
+    GLM.vec2.normalize(eye2d, eye2d);
+    for (var i = 0; i < walls.length; i++) {
+      var wall = walls[i];
+      if (wall == undefined)
+        continue;
+      if (GLM.vec2.dot(eye2d, wall.normal) <= 0)
+        ds.push(wall.ds);
     }
     return ds;
   }

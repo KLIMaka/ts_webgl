@@ -21,6 +21,13 @@ export function int(x:number) {
   return x|0;
 }
 
+var tmpNoraml = GLM.vec2.create();
+export function normal2d(v1:number[], v2:number[]):number[] {
+  GLM.vec2.sub(tmpNoraml, v2, v1);
+  GLM.vec2.normalize(tmpNoraml, tmpNoraml);
+  return [-tmpNoraml[1], tmpNoraml[0]];
+}
+
 export function mat3FromMat4(out:GLM.Mat3Array, a:GLM.Mat4Array):GLM.Mat3Array {
   out[0] = a[0];
   out[1] = a[1];

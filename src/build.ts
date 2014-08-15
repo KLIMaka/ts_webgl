@@ -59,8 +59,8 @@ var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
 var processor = new buildutils.BoardProcessor(board);
 var baseShader = shaders.createShader(gl, 'resources/shaders/base');
 var selectShader = shaders.createShader(gl, 'resources/shaders/select');
+processor.build(gl, new MF(artFiles, pal, baseShader, selectShader, gl));
 
-var models = processor.build(gl, new MF(artFiles, pal, baseShader, selectShader, gl));
 
 var control = new controller.Controller3D(gl);
 var activeIdx = 0;
@@ -89,6 +89,7 @@ GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
   // actual draw
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
   for (var i = 0; i < models.length; i++)
     GL.draw(gl, models[i], binder);
 });
