@@ -1,15 +1,25 @@
 import Set = require('../libs/set');
+import DS = require('drawstruct');
+import getter = require('../libs/getter');
 
-export class Shader {
+var defaultFSH = 'void main(){gl_FragColor = vec4(0.0);}';
+var defaultVSH = 'void main(){gl_Position = vec4(0.0);}';
+var defaultProgram:WebGLProgram = null;
+
+export class Shader implements DS.Shader {
 
   private program:WebGLProgram;
   private uniforms = {};
   private attribs = {};
-  private uniformNames:string[]; 
-  private attributeNames:string[]; 
-  private samplers:string[]; 
+  private uniformNames:string[] = []; 
+  private attributeNames:string[] = []; 
+  private samplers:string[] = []; 
 
-  constructor(gl:WebGLRenderingContext, prog:WebGLProgram, params:any) {
+  constructor(prog:WebGLProgram) {
+    this.program = prog;
+  }
+
+  public init(gl:WebGLRenderingContext, prog:WebGLProgram, params:any):void {
     this.program = prog;
     this.uniformNames = params.uniforms.values();
     this.attributeNames = params.attributes.values();
@@ -57,29 +67,52 @@ export class Shader {
   }
 }
 
-export function createShader(gl:WebGLRenderingContext, vertexSrc:string, fragmentSrc:string):Shader {
+var cache:{[index:string]:Shader} = {};
 
-  function compileSource(type:number, source:string):WebGLShader {
-    var shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      throw 'compile error: ' + gl.getShaderInfoLog(shader);
-    }
+export function createShader(gl:WebGLRenderingContext, name:string):Shader {
+  var shader = cache[name];
+  if (shader != undefined)
     return shader;
+
+  if (defaultProgram == null) {
+    defaultProgram = compileProgram(gl, defaultVSH, defaultFSH);
   }
 
-  var params = processShaders(vertexSrc, fragmentSrc);
+  var shader = new Shader(defaultProgram);
+  var vsh = null;
+  var fsh = null;
+  getter.preloadString(name+'.vsh', (s:String)=> {vsh=s; if(fsh!=null) initShader(gl, shader, vsh, fsh)});
+  getter.preloadString(name+'.fsh', (s:String)=> {fsh=s; if(vsh!=null) initShader(gl, shader, vsh, fsh)});
 
+  cache[name] = shader;
+  return shader;
+}
+
+function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:string) {
+  var program = compileProgram(gl, vsh, fsh);
+  var params = processShaders(vsh, fsh);
+  shader.init(gl, program, params);
+}
+
+function compileProgram(gl:WebGLRenderingContext, vsh:string, fsh:string):WebGLProgram {
   var program = gl.createProgram();
-  gl.attachShader(program, compileSource(gl.VERTEX_SHADER, vertexSrc));
-  gl.attachShader(program, compileSource(gl.FRAGMENT_SHADER, fragmentSrc));
+  gl.attachShader(program, compileSource(gl, gl.VERTEX_SHADER, vsh));
+  gl.attachShader(program, compileSource(gl, gl.FRAGMENT_SHADER, fsh));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw 'link error: ' + gl.getProgramInfoLog(program);
   }
+  return program;
+}
 
-  return new Shader(gl, program, params);
+function compileSource(gl:WebGLRenderingContext, type:number, source:string):WebGLShader {
+  var shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw 'compile error: ' + gl.getShaderInfoLog(shader);
+  }
+  return shader;
 }
 
 function processLine(line:string, params:any):any {

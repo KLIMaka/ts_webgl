@@ -1,5 +1,9 @@
 import data = require('../../../libs/dataviewstream');
 
+export class ArtInfo {
+  constructor(public w:number, public h:number, public anum:number, public img:Uint8Array) {}
+}
+
 export class ArtFile {
 
   public offsets:number[];
@@ -36,21 +40,45 @@ export class ArtFile {
     this.size = size;
   }
 
-  public getImage(id:number):Uint8Array {
+  public getInfo(id:number):ArtInfo {
     var offset = this.offsets[id];
     this.stream.setOffset(offset);
-    return data.array(data.ubyte, this.ws[id]*this.hs[id])(this.stream);
+    return new ArtInfo(this.ws[id], this.hs[id], this.anums[id], data.array(data.ubyte, this.ws[id]*this.hs[id])(this.stream));
   }
 
-  public getWidth(id:number) {
-    return this.ws[id];
+  public getStart():number {
+    return this.start;
   }
 
-  public getHeight(id:number) {
-    return this.hs[id];
+  public getEnd():number {
+    return this.end;
+  }
+}
+
+export class ArtFiles {
+
+  constructor(private arts:ArtFile[]) {}
+
+  private getArt(id:number) {
+    for (var i in this.arts){
+      var art = this.arts[i];
+      if (id >= art.getStart() && id <= art.getEnd())
+        return art;
+    }
+    return null;
+  }
+
+  public getInfo(id:number):ArtInfo {
+    var art = this.getArt(id);
+    if (art == null) return null;
+    return art.getInfo(id - art.getStart());
   }
 }
 
 export function create(stream:data.DataViewStream):ArtFile {
   return new ArtFile(stream);
+}
+
+export function createArts(arts:ArtFile[]):ArtFiles {
+  return new ArtFiles(arts);
 }

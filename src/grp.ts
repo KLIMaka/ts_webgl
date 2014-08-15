@@ -31,31 +31,28 @@ import data = require('./libs/dataviewstream');
 // });
 
 var path = 'resources/engines/blood/';
-var arts = [];
+var artNames = [];
 for (var a = 0; a < 18; a++) {
-  arts[a] = path + 'TILES0'+("00" + a).slice(-2)+'.ART';
-  getter.loader.load(arts[a]);
+  artNames[a] = path + 'TILES0'+("00" + a).slice(-2)+'.ART';
+  getter.loader.load(artNames[a]);
 }
 
 getter.loader
 .load('resources/engines/blood/palette.dat')
-.load('resources/engines/blood/sounds.rff')
 .finish(() => {
 
-var rff = RFF.create(getter.get('resources/engines/blood/sounds.rff'));
-console.log(rff);
 var pal = GRP.createPalette(new data.DataViewStream(getter.get('resources/engines/blood/palette.dat'), true));
 
-for (var a = 0; a < 18; a++) {
-  var art = ART.create(new data.DataViewStream(getter.get(arts[a]), true));
-  for (var i = 0; i < art.size; i++) {
-    var w = art.getWidth(i);
-    var h = art.getHeight(i);
-    if (w == 0 || h == 0)
-      continue;
-    var pp = pixel.axisSwap(new pixel.RGBPalPixelProvider(art.getImage(i), pal, w, h, 255, 255));
-    document.body.appendChild(IU.createCanvas(pp));
-  }
+var arts = [];
+for (var a = 0; a < 18; a++)
+  arts.push(ART.create(new data.DataViewStream(getter.get(artNames[a]), true)));
+var artFiles = ART.createArts(arts);
+for (var i = 0; i < 18*256; i++) {
+  var info = artFiles.getInfo(i);
+  if (info == null || info.w == 0 || info.h == 0)
+    continue;
+   var pp = pixel.axisSwap(new pixel.RGBPalPixelProvider(info.img, pal, info.w, info.h, 255, 255));
+   document.body.appendChild(IU.createCanvas(pp));
 }
 
 });

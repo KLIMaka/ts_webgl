@@ -109,6 +109,43 @@ class VertexBufferImpl implements DS.VertexBuffer {
   }
 }
 
+export class Mesh implements DS.DrawStruct {
+
+  constructor(private material:DS.Material, private vtxBuffers, private idx:DS.IndexBuffer, private mode:number, private length:number, private offset:number=0) {}
+
+  getMaterial():DS.Material {
+    return this.material;
+  }
+
+  getMode():number {
+    return this.mode;
+  }
+
+  getVertexBuffer(attribute:string):DS.VertexBuffer {
+    return this.vtxBuffers[attribute];
+  }
+
+  getAttributes():string[] {
+    return Object.keys(this.vtxBuffers);
+  }
+
+  getIndexBuffer():DS.IndexBuffer {
+    return this.idx;
+  }
+
+  getVertexBuffers() {
+    return this.vtxBuffers;
+  }
+
+  getLength():number {
+    return this.length;
+  }
+
+  getOffset():number {
+    return this.offset;
+  }
+}
+
 export var NONE = 0;
 export var TRIANGLES = 3;
 export var QUADS = 4;
@@ -197,12 +234,8 @@ export class MeshBuilder {
     private idx:IndexBufferBuilder
   ) {}
 
-  public tell():any {
-    var mark = {};
-    for (var attr in this.buffers) {
-      mark[attr] = this.buffers[attr].tell();
-    }
-    return mark;
+  public offset():number {
+    return this.idx.length();
   }
 
   public goto(mark:any) {
@@ -236,14 +269,14 @@ export class MeshBuilder {
     this.attrs = {};
   }
 
-  public build(gl:WebGLRenderingContext):DS.DrawStruct {
+  public build(gl:WebGLRenderingContext, material:DS.Material):DS.DrawStruct {
     var bufs = {};
     for (var bufName in this.buffers) {
       //noinspection JSUnfilteredForInLoop
       bufs[bufName] = this.buffers[bufName].build(gl);
     }
     var idx = this.idx.build(gl);
-    return new DS.Mesh(bufs, idx, gl.TRIANGLES, this.idx.length());
+    return new Mesh(material, bufs, idx, gl.TRIANGLES, this.idx.length());
   }
 }
 

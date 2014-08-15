@@ -1,5 +1,5 @@
-import shaders = require('shader');
-import material = require('material');
+import shaders = require('shaders');
+import materials = require('materials');
 import DS = require('drawstruct');
 
 export function createContext(w:number, h:number, opts = {}):WebGLRenderingContext {
@@ -64,10 +64,12 @@ export class UniformBinder {
   private resolvers:{[index:string]: ()=>any;} = {};
   private setters  :{[index:string]: UniformSetter;} = {};
 
-  public bind(gl:WebGLRenderingContext, shader:shaders.Shader):void {
+  public bind(gl:WebGLRenderingContext, shader:DS.Shader):void {
     var uniforms = shader.getUniforms();
     for (var i = 0; i < uniforms.length; i++) {
       var uniform = uniforms[i];
+      if (this.resolvers[uniform] == undefined)
+        continue;
       var value = this.resolvers[uniform]();
       this.setters[uniform].setUniform(gl, shader.getUniformLocation(uniform, gl), value);
     }
@@ -79,18 +81,18 @@ export class UniformBinder {
   }
 }
 
-export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, material:material.Material, globalBinder:UniformBinder) {
+export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, globalBinder:UniformBinder) {
+  var material = model.getMaterial();
   var shader = material.getShader();
   gl.useProgram(shader.getProgram());
   globalBinder.bind(gl, shader);
 
   var samplers = shader.getSamplers();
-  var unit = gl.TEXTURE0;
-  for (var i in samplers) {
-    var sampler = samplers[i];
-    gl.activeTexture(unit);
-    material.getTexture(sampler).bind(gl);
-    gl.uniform1i(shader.getUniformLocation(sampler, gl), unit - gl.TEXTURE0);
+  for (var unit in samplers) {
+    var sampler = samplers[unit];
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, material.getTexture(sampler).get());
+    gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
   }
 
   var attributes = shader.getAttributes();

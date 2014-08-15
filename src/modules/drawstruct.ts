@@ -1,6 +1,5 @@
 
 export interface VertexBuffer {
-
   getBuffer(): WebGLBuffer;
   getType(): number;
   getSpacing(): number;
@@ -10,56 +9,39 @@ export interface VertexBuffer {
 }
 
 export interface IndexBuffer {
-
   getBuffer(): WebGLBuffer;
   getType(): number;
 }
 
-export interface DrawStruct {
+export interface Texture {
+  get():WebGLTexture;
+  getWidth():number;
+  getHeight():number;
+  getFormat():number;
+  getType():number;
+}
 
+export interface Shader {
+  getUniformLocation(name:string, gl:WebGLRenderingContext):WebGLUniformLocation;
+  getAttributeLocation(name:string, gl:WebGLRenderingContext):number;
+  getProgram():WebGLProgram;
+  getUniforms():string[];
+  getAttributes():string[];
+  getSamplers():string[];
+}
+
+export interface Material {
+  getShader():Shader;
+  getTexture(sampler:string):Texture;
+}
+
+
+export interface DrawStruct {
+  getMaterial():Material;
   getMode(): number;
   getVertexBuffer(attribute:string): VertexBuffer;
   getAttributes(): string[];
   getIndexBuffer(): IndexBuffer;
   getLength(): number;
   getOffset(): number;
-}
-
-export class Mesh implements DrawStruct {
-
-  private idx:IndexBuffer;
-  private mode:number;
-  private length:number;
-  private vtxBuffers;
-
-  constructor(vtxBuffers, idx:IndexBuffer, mode:number, length:number) {
-    this.vtxBuffers = vtxBuffers;
-    this.idx = idx;
-    this.mode = mode;
-    this.length = length;
-  }
-
-  getMode():number {
-    return this.mode;
-  }
-
-  getVertexBuffer(attribute:string):VertexBuffer {
-    return this.vtxBuffers[attribute];
-  }
-
-  getAttributes():string[] {
-    return Object.keys(this.vtxBuffers);
-  }
-
-  getIndexBuffer():IndexBuffer {
-    return this.idx;
-  }
-
-  getLength():number {
-    return this.length;
-  }
-
-  getOffset():number {
-    return 0;
-  }
 }
