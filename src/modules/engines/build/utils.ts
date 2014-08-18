@@ -160,29 +160,36 @@ function addSector(ceiling:boolean, sector:buildstructs.Sector, walls:buildstruc
   var tcscaley = material.getTexture('base').getHeight() * 16;
   var offset = builder.offset() * 2;
   var contour = getContours(sector, walls);
-  var tris:number[][] = triangulator.triangulate(contour.getContour(), contour.getHoles());
-  var normal:number[] = null;
-  for (var i = 0; i < tris.length; i += 3) {
-    var t0x = tris[i+0][0];
-    var t1x = tris[i+1][0];
-    var t2x = tris[i+2][0];
-    var t0y = tris[i+0][1];
-    var t1y = tris[i+1][1];
-    var t2y = tris[i+2][1];
-    var z1 = slope(t0x, t0y, heinum) + z;
-    var z2 = slope(t1x, t1y, heinum) + z;
-    var z3 = slope(t2x, t2y, heinum) + z;
-    var v1 = [t0x, z1 / SCALE, t0y];
-    var v2 = [t1x, z2 / SCALE, t1y];
-    var v3 = [t2x, z3 / SCALE, t2y];
-    var v1tc = [t0x/tcscalex, t0y/tcscaley];
-    var v2tc = [t1x/tcscalex, t1y/tcscaley];
-    var v3tc = [t2x/tcscalex, t2y/tcscaley];
+  try {
+    var tris:number[][] = contour.getContour() == undefined 
+      ?  triangulator.triangulate(contour.getHoles()[0], [])
+      :  triangulator.triangulate(contour.getContour(), contour.getHoles());
+    var normal:number[] = null;
+    for (var i = 0; i < tris.length; i += 3) {
+      var t0x = tris[i+0][0];
+      var t1x = tris[i+1][0];
+      var t2x = tris[i+2][0];
+      var t0y = tris[i+0][1];
+      var t1y = tris[i+1][1];
+      var t2y = tris[i+2][1];
+      var z1 = slope(t0x, t0y, heinum) + z;
+      var z2 = slope(t1x, t1y, heinum) + z;
+      var z3 = slope(t2x, t2y, heinum) + z;
+      var v1 = [t0x, z1 / SCALE, t0y];
+      var v2 = [t1x, z2 / SCALE, t1y];
+      var v3 = [t2x, z3 / SCALE, t2y];
+      var v1tc = [t0x/tcscalex, t0y/tcscaley];
+      var v2tc = [t1x/tcscalex, t1y/tcscaley];
+      var v3tc = [t2x/tcscalex, t2y/tcscaley];
 
-    addFace(builder, mb.TRIANGLES, ceiling ? [v3,v2,v1] : [v1,v2,v3], ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc], idx);
-    if (normal == null) normal = MU.normal(ceiling ? [v3,v2,v1] : [v1,v2,v3]);
+      addFace(builder, mb.TRIANGLES, ceiling ? [v3,v2,v1] : [v1,v2,v3], ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc], idx);
+      if (normal == null) normal = MU.normal(ceiling ? [v3,v2,v1] : [v1,v2,v3]);
+    }
+    return new ObjectHandle(material, normal, offset, tris.length);
+  } catch (e) {
+    console.error(e);
+    return null;
   }
-  return new ObjectHandle(material, normal, offset, tris.length);
 }
 
 export interface MaterialFactory {
@@ -284,8 +291,14 @@ export class BoardProcessor {
         idx++;
       }
 
-      objs.push([addSector(false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum)), TYPE_SECTOR_FLOOR, s]);
-      objs.push([addSector(true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum)), TYPE_SECTOR_CEILING, s]);
+      var floorObj = addSector(false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum));
+      if (floorObj != null)
+        objs.push([floorObj, TYPE_SECTOR_FLOOR, s]);
+      else
+        console.error('error in sector ' + s);
+      var ceilingObj = addSector(true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
+      if (ceilingObj != null)
+        objs.push([ceilingObj, TYPE_SECTOR_CEILING, s]);
     }
 
     var tmp:mb.Mesh = <mb.Mesh>builder.build(gl, null);
@@ -322,6 +335,8 @@ export class BoardProcessor {
     var fov = 0.707;
     for (var i = 0; i < sectors.length; i++) {
         var sector = sectors[i];
+        if (sector == undefined)
+          continue;
         if (GLM.vec3.dot(eye, sector.floorNormal) <= fov)
           ds.push(sector.floor);
         if (GLM.vec3.dot(eye, sector.ceilingNormal) <= fov)

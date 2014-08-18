@@ -21,7 +21,7 @@ export class RffFile {
 
   private data:data.DataViewStream;
   private header;
-  private fat;
+  public fat;
   private namesTable = {};
 
   constructor(buf:ArrayBuffer) {
@@ -55,9 +55,14 @@ export class RffFile {
     return name;
   }
 
-  public get(fname:string):data.DataViewStream {
+  public get(fname:string):Uint8Array {
     var record = this.fat[this.namesTable[this.convertFname(fname)]];
-    return null;
+    this.data.setOffset(record.offset);
+    var arr = data.array(data.ubyte, record.size)(this.data);
+    if (record.flags & 0x10)
+      for (var i = 0; i < 256; i++)
+        arr[i] ^= (i >> 1);
+    return arr;
   }
 }
 

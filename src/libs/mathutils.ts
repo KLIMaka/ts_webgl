@@ -21,6 +21,10 @@ export function int(x:number) {
   return x|0;
 }
 
+export function powof2(x:number):boolean {
+  return (x & (x-1)) == 0;
+}
+
 var tmpNoraml = GLM.vec2.create();
 export function normal2d(v1:number[], v2:number[]):number[] {
   GLM.vec2.sub(tmpNoraml, v2, v1);

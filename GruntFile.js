@@ -12,6 +12,10 @@ module.exports = function (grunt) {
     'grp'
   ];
 
+  var nodemodules = [
+    'util'
+  ];
+
   for (var i = 0; i < modules.length; i++) {
     var module = modules[i];
 
@@ -28,6 +32,20 @@ module.exports = function (grunt) {
       tasks: ['typescript:' + module]
     });
 
+    grunt.registerTask(module, ['typescript:' + module]);
+  }
+
+  for (var i = 0; i < nodemodules.length; i++) {
+    var module = nodemodules[i];
+
+    grunt.config(['typescript', module], {
+      src: ['src/' + module + '.ts'],
+      dest: 'node_distr/',
+      options: {
+        basePath: 'src/',
+        module: 'commonjs'
+      }
+    });
     grunt.registerTask(module, ['typescript:' + module]);
   }
 }

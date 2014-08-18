@@ -81,35 +81,35 @@ export class UniformBinder {
   }
 }
 
-export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, globalBinder:UniformBinder) {
-  var material = model.getMaterial();
-  var shader = material.getShader();
-  gl.useProgram(shader.getProgram());
-  globalBinder.bind(gl, shader);
+export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBinder:UniformBinder) {
+  for (var m = 0; m < models.length; m++) {
+    var model = models[m];
+    var material = model.getMaterial();
+    var shader = material.getShader();
+    if (m == 0) {
+      gl.useProgram(shader.getProgram());
+      globalBinder.bind(gl, shader);
+      var attributes = shader.getAttributes();
+      for (var a = 0; a < attributes.length; a++) {
+        var attr = attributes[a];
+        var buf = model.getVertexBuffer(attr);
+        var location = shader.getAttributeLocation(attr, gl);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
+        gl.enableVertexAttribArray(location);
+        gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
+      }
+      var idxBuf = model.getIndexBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf.getBuffer());
+    }
 
-  var samplers = shader.getSamplers();
-  for (var unit = 0; unit < samplers.length; unit++) {
-    var sampler = samplers[unit];
-    gl.activeTexture(gl.TEXTURE0 + unit);
-    gl.bindTexture(gl.TEXTURE_2D, material.getTexture(sampler).get());
-    gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
-  }
+    var samplers = shader.getSamplers();
+    for (var unit = 0; unit < samplers.length; unit++) {
+      var sampler = samplers[unit];
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, material.getTexture(sampler).get());
+      gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
+    }
 
-  var attributes = shader.getAttributes();
-  for (var i = 0; i < attributes.length; i++) {
-    var attr = attributes[i];
-    var buf = model.getVertexBuffer(attr);
-    var location = shader.getAttributeLocation(attr, gl);
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
-    gl.enableVertexAttribArray(location);
-    gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
-  }
-
-  if (model.getIndexBuffer() == null) {
-    gl.drawArrays(model.getMode(), model.getOffset(), model.getLength());
-  } else {
-    var idxBuf = model.getIndexBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf.getBuffer());
     gl.drawElements(model.getMode(), model.getLength(), idxBuf.getType(), model.getOffset());
   }
 }
