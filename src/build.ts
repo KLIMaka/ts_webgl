@@ -13,9 +13,9 @@ import ART = require('./modules/engines/build/art');
 import pixel = require('./modules/pixelprovider');
 import TEX = require('./modules/textures');
 
-var w = 600;
-var h = 400;
-var MAP = 'resources/buildmaps/newboard.MAP';
+var w = 1024;
+var h = 768;
+var MAP = 'resources/buildmaps/doly.MAP';
 var RES = 'resources/engines/duke/duke3d.grp';
 
 class MF implements buildutils.MaterialFactory {

@@ -88,7 +88,7 @@ export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, globalBinder
   globalBinder.bind(gl, shader);
 
   var samplers = shader.getSamplers();
-  for (var unit in samplers) {
+  for (var unit = 0; unit < samplers.length; unit++) {
     var sampler = samplers[unit];
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, material.getTexture(sampler).get());
@@ -96,7 +96,7 @@ export function draw(gl:WebGLRenderingContext, model:DS.DrawStruct, globalBinder
   }
 
   var attributes = shader.getAttributes();
-  for (var i in  attributes) {
+  for (var i = 0; i < attributes.length; i++) {
     var attr = attributes[i];
     var buf = model.getVertexBuffer(attr);
     var location = shader.getAttributeLocation(attr, gl);
