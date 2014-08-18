@@ -1,4 +1,5 @@
 uniform mat4 MVP;
+uniform vec3 eyedir;
 
 attribute vec3 aNorm;
 attribute vec3 aPos;
@@ -14,7 +15,7 @@ int unpack (vec4 c) {
 }
 
 void main() {
-	att = max(dot(aNorm, normalize(vec3(1.0, 2.0, 3.0))), 0.1);
+	att = max(dot(aNorm, -eyedir), 0.5);
 	idx = float(unpack(aIdx));
 	tc = aTc;
 	gl_Position = MVP * vec4(aPos, 1);

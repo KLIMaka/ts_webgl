@@ -1,5 +1,6 @@
 import DS = require('drawstruct');
 import MU = require('../libs/mathutils')
+import pixel = require('./pixelprovider');
 
 export class Texture implements DS.Texture {
 
@@ -8,9 +9,9 @@ export class Texture implements DS.Texture {
   private height:number;
   private format:number;
   private type:number;
-  public data:ArrayBufferView;
+  public data:Uint8Array;
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:ArrayBufferView = null) {
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
     this.id = gl.createTexture();
     this.width = width;
     this.height = height;
@@ -18,15 +19,25 @@ export class Texture implements DS.Texture {
     this.type = gl.UNSIGNED_BYTE;
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, /*gl.NEAREST*/gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, /*gl.NEAREST*/gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, /*gl.NEAREST*/gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, /*gl.NEAREST*/gl.NEAREST_MIPMAP_NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
     if (img == null) 
       img = new Uint8Array(width*height*4);
     this.data = img;
-    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, this.data);
+    if (height == width && MU.ispow2(height)) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, this.data);
+    } else {
+      var max = MU.nextpow2(Math.max(height, width));
+      var data = new Uint8Array(max*max*4);
+      var pp = pixel.resize(new pixel.RGBAArrayPixelProvider(img, width, height), max, max);
+      pp.render(data);
+      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, max, max, 0, this.format, this.type, data);
+    }
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   public get():WebGLTexture {
@@ -52,11 +63,11 @@ export class Texture implements DS.Texture {
 
 export class DrawTexture extends Texture {
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:ArrayBufferView = null) {
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
     super(width, height, gl, img);
   }
 
-  public putPiexl(x:number, y:number, pixel:ArrayBufferView, gl:WebGLRenderingContext) {
+  public putPiexl(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext) {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, 1, 1, this.getFormat(), this.getType(), pixel);
   }
@@ -67,7 +78,7 @@ export class RenderTexture extends Texture {
   private framebuffer:WebGLFramebuffer;
   private renderbuffer:WebGLRenderbuffer;
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:ArrayBufferView = null) {
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
     super(width, height, gl, img);
     this.framebuffer = gl.createFramebuffer();
     this.renderbuffer = gl.createRenderbuffer();
@@ -76,7 +87,7 @@ export class RenderTexture extends Texture {
     gl.bindRenderbuffer(gl.RENDERBUFFER, null);
   }
 
-  public drawTo(gl:WebGLRenderingContext, callback:(WebGLRenderingContext)=>void):ArrayBufferView {
+  public drawTo(gl:WebGLRenderingContext, callback:(WebGLRenderingContext)=>void):Uint8Array {
     var v = gl.getParameter(gl.VIEWPORT);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
     gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderbuffer);

@@ -68,10 +68,10 @@ export class RGBAArrayPixelProvider extends AbstractPixelProvider {
 
   public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
     var w = this.getWidth();
-    dst[dstoff] = this.arr[x+y*w];
-    dst[dstoff+1] = this.arr[x+y*w+1];
-    dst[dstoff+2] = this.arr[x+y*w+2];
-    dst[dstoff+3] = this.arr[x+y*w+3];
+    dst[dstoff] = this.arr[(x+y*w)*4];
+    dst[dstoff+1] = this.arr[(x+y*w)*4+1];
+    dst[dstoff+2] = this.arr[(x+y*w)*4+2];
+    dst[dstoff+3] = this.arr[(x+y*w)*4+3];
   }
 }
 

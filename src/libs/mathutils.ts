@@ -21,8 +21,16 @@ export function int(x:number) {
   return x|0;
 }
 
-export function powof2(x:number):boolean {
+export function ispow2(x:number):boolean {
   return (x & (x-1)) == 0;
+}
+
+export function nextpow2(x) {
+  --x;
+  for (var i = 1; i < 32; i <<= 1) {
+    x = x | x >> i;
+  }
+  return x + 1;
 }
 
 var tmpNoraml = GLM.vec2.create();
