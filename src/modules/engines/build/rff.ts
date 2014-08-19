@@ -47,16 +47,17 @@ export class RffFile {
     this.fat = data.structArray(numFiles, fatRecord)(stream);
     for (var i in this.fat) {
       var r = this.fat[i];
+      r.filename = this.convertFname(r.filename);
       this.namesTable[r.filename] = i;
     }
   }
 
   private convertFname(name:string):string {
-    return name;
+    return name.substr(3) + '.' + name.substr(0, 3);
   }
 
   public get(fname:string):Uint8Array {
-    var record = this.fat[this.namesTable[this.convertFname(fname)]];
+    var record = this.fat[this.namesTable[fname]];
     this.data.setOffset(record.offset);
     var arr = data.array(data.ubyte, record.size)(this.data);
     if (record.flags & 0x10)

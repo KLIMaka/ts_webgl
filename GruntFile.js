@@ -13,7 +13,7 @@ module.exports = function (grunt) {
   ];
 
   var nodemodules = [
-    'util'
+    'rff'
   ];
 
   for (var i = 0; i < modules.length; i++) {

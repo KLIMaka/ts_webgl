@@ -11,8 +11,8 @@ import GRP = require('./modules/engines/build/grp');
 import pixel = require('./modules/pixelprovider');
 import TEX = require('./modules/textures');
 
-var w = 1024;
-var h = 768;
+var w = 600;
+var h = 400;
 var MAP = 'resources/buildmaps/blood_e3m1.MAP';
 var selectPass = false;
 
