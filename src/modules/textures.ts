@@ -20,23 +20,14 @@ export class Texture implements DS.Texture {
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, /*gl.NEAREST*/gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, /*gl.NEAREST*/gl.NEAREST_MIPMAP_NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, /*gl.NEAREST*/gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
     if (img == null) 
       img = new Uint8Array(width*height*4);
     this.data = img;
-    if (height == width && MU.ispow2(height)) {
-      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, this.data);
-    } else {
-      var max = MU.nextpow2(Math.max(height, width));
-      var data = new Uint8Array(max*max*4);
-      var pp = pixel.resize(new pixel.RGBAArrayPixelProvider(img, width, height), max, max);
-      pp.render(data);
-      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, max, max, 0, this.format, this.type, data);
-    }
-    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, this.data);
     gl.bindTexture(gl.TEXTURE_2D, null);
   }
 

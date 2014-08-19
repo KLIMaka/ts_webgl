@@ -5,15 +5,14 @@ import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
 import build = require('./modules/engines/build/loader');
 import buildutils = require('./modules/engines/build/utils');
-import MU = require('./libs/mathutils');
 import DS = require('./modules/drawstruct');
-import GRP = require('./modules/engines/build/grp');
 import ART = require('./modules/engines/build/art');
+import GRP = require('./modules/engines/build/grp');
 import pixel = require('./modules/pixelprovider');
 import TEX = require('./modules/textures');
 
-var w = 600;
-var h = 400;
+var w = 1024;
+var h = 768;
 var MAP = 'resources/buildmaps/blood_e3m1.MAP';
 var selectPass = false;
 

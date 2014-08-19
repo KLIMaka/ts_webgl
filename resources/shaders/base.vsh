@@ -5,6 +5,7 @@ attribute vec3 aNorm;
 attribute vec3 aPos;
 attribute vec4 aIdx;
 attribute vec2 aTc;
+attribute float aShade;
 
 varying float att;
 varying float idx;
@@ -15,7 +16,7 @@ int unpack (vec4 c) {
 }
 
 void main() {
-	att = max(dot(aNorm, -eyedir), 0.5);
+	att = ((-aShade*2.0 + 127.0) / 256.0);
 	idx = float(unpack(aIdx));
 	tc = aTc;
 	gl_Position = MVP * vec4(aPos, 1);

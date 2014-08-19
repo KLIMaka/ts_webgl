@@ -90,10 +90,11 @@ function len(x:number, y:number) {
   return Math.sqrt(x*x + y*y);
 }
 
-function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], tcs:number[][], idx:number) {
+function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
   builder.start(type)
     .attr('aNorm', MU.normal(verts))
-    .attr('aIdx', MU.int2vec4(idx));
+    .attr('aIdx', MU.int2vec4(idx))
+    .attr('aShade', [shade]);
   for (var i = 0; i < type; i++){
     builder
       .attr('aTc', tcs[i])
@@ -102,7 +103,7 @@ function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], tcs:numb
   builder.end();
 }
 
-function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:DS.Material):ObjectHandle {
+function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:DS.Material, shade:number):ObjectHandle {
   // a -> b
   // ^    |
   // |    v
@@ -116,15 +117,15 @@ function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:D
   var offset = builder.offset() * 2;
 
   if (a[1] == d[1]) {
-    addFace(builder, mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx);
+    addFace(builder, mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
     return new ObjectHandle(material, MU.normal([a,b,c]), offset, 3);
   }
   if (b[1] == c[1]) {
-    addFace(builder, mb.TRIANGLES, [a,b,d], [atc,btc,dtc], idx);
+    addFace(builder, mb.TRIANGLES, [a,b,d], [atc,btc,dtc], idx, shade);
     return new ObjectHandle(material, MU.normal([a,b,d]), offset, 3);
   }
   if (a[1] < d[1] && b[1] < c[1]){
-    addFace(builder, mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx);
+    addFace(builder, mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
     return new ObjectHandle(material, MU.normal([d,c,b,a]), offset, 6);
   }
 
@@ -138,8 +139,8 @@ function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:D
     GLM.vec3.scale(tmp, tmp, k);
     var e = GLM.vec3.add(GLM.vec3.create(), d, tmp);
     var etc = [len(e[0], e[2])/tcscalex, e[1]/tcscaley];
-    addFace(builder, mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx);
-    addFace(builder, mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx);
+    addFace(builder, mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
+    addFace(builder, mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
     return new ObjectHandle(material, MU.normal([d,e,a]), offset, 6);
   }
   if (b[1] < c[1]) {
@@ -147,11 +148,11 @@ function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:D
     GLM.vec3.scale(tmp, tmp, k);
     var e = GLM.vec3.add(GLM.vec3.create(), a, tmp);
     var etc = [len(e[0], e[2])/tcscalex, e[1]/tcscaley];
-    addFace(builder, mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx);
-    addFace(builder, mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx);
+    addFace(builder, mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
+    addFace(builder, mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
     return new ObjectHandle(material, MU.normal([a,e,d]), offset, 6);
   }
-  addFace(builder, mb.QUADS, quad, [atc,btc,ctc,dtc], idx);
+  addFace(builder, mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
   return new ObjectHandle(material, MU.normal([a,b,c]), offset, 6);
 }
 
@@ -182,7 +183,7 @@ function addSector(ceiling:boolean, sector:buildstructs.Sector, walls:buildstruc
       var v2tc = [t1x/tcscalex, t1y/tcscaley];
       var v3tc = [t2x/tcscalex, t2y/tcscaley];
 
-      addFace(builder, mb.TRIANGLES, ceiling ? [v3,v2,v1] : [v1,v2,v3], ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc], idx);
+      addFace(builder, mb.TRIANGLES, ceiling ? [v3,v2,v1] : [v1,v2,v3], ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc], idx, ceiling ? sector.ceilingshade : sector.floorshade);
       if (normal == null) normal = MU.normal(ceiling ? [v3,v2,v1] : [v1,v2,v3]);
     }
     return new ObjectHandle(material, normal, offset, tris.length);
@@ -217,6 +218,7 @@ export class BoardProcessor {
       .buffer('aNorm', Float32Array, gl.FLOAT, 3)
       .buffer('aIdx', Uint8Array, gl.UNSIGNED_BYTE, 4, true)
       .buffer('aTc', Float32Array, gl.FLOAT, 2)
+      .buffer('aShade', Int8Array, gl.BYTE, 1)
       .index(Uint16Array, gl.UNSIGNED_SHORT)
       .build();
 
@@ -254,7 +256,7 @@ export class BoardProcessor {
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          objs.push([addWall(builder, [a, b, c, d], idx, material), TYPE_WALL, w]);
+          objs.push([addWall(builder, [a, b, c, d], idx, material, wall.shade), TYPE_WALL, w]);
         } else {
           var nextsector = sectors[wall.nextsector];
           var nextslope = createSlopeCalculator(nextsector, walls);
@@ -271,7 +273,7 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            objs.push([addWall(builder, [a, b, c, d], idx, material), TYPE_WALL, w]);
+            objs.push([addWall(builder, [a, b, c, d], idx, material, wall.shade), TYPE_WALL, w]);
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
@@ -284,7 +286,7 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            objs.push([addWall(builder, [a, b, c, d], idx, material), TYPE_WALL, w]);
+            objs.push([addWall(builder, [a, b, c, d], idx, material, wall.shade), TYPE_WALL, w]);
           }
         }
         i++;
