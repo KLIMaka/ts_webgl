@@ -2,3 +2,4 @@
 distr
 node_distr
 node_modules
+*.cfg

@@ -10,10 +10,10 @@ import ART = require('./modules/engines/build/art');
 import GRP = require('./modules/engines/build/grp');
 import pixel = require('./modules/pixelprovider');
 import TEX = require('./modules/textures');
+import CFG = require('./libs/config');
 
-var w = 600;
-var h = 400;
 var MAP = 'resources/buildmaps/blood_e3m1.MAP';
+var cfgFile = 'build.cfg';
 var selectPass = false;
 
 class Mat implements DS.Material {
@@ -52,8 +52,13 @@ for (var a = 0; a < 18; a++) {
 
 getter.loader
 .load(MAP)
+.loadString(cfgFile)
 .load('resources/engines/blood/palette.dat')
 .finish(() => {
+
+var cfg = CFG.create(getter.getString(cfgFile));
+var w = cfg.width;
+var h = cfg.height;
 
 var pal = GRP.createPalette(new data.DataViewStream(getter.get('resources/engines/blood/palette.dat'), true));
 var arts = [];
