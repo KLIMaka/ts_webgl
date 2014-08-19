@@ -77,7 +77,7 @@ export class RGBAArrayPixelProvider extends AbstractPixelProvider {
 
 export class RGBPalPixelProvider extends AbstractPixelProvider {
 
-  constructor(private arr:Uint8Array, private pal:number[], w:number, h:number, private alpha:number=255, private transIdx:number=-1) {
+  constructor(private arr:Uint8Array, private pal:Uint8Array, w:number, h:number, private alpha:number=255, private transIdx:number=-1) {
     super(w, h);
     if (arr.length != w*h)
       throw new Error('Invalid array size. Need ' + (w*h*4) + ' but provided ' + arr.length);

@@ -41,6 +41,10 @@ class TriangulationContext implements TriangulatedSector {
     return this.holes;
   }
 
+  public removeHoles():void {
+    this.holes = [];
+  }
+
   public remove(p:any) {
     var contour = this.contour;
     for (var i = 0; i < contour.length; i++) {
@@ -80,10 +84,13 @@ function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):numb
 
   var res:number[][] = null;
   while (res == null) {
+    var size = ctx.getContour().length;
     try {
       res = triangulator.triangulate(ctx.getContour(), ctx.getHoles());
     } catch (e) {
       ctx.remove(e.points[0]);
+      if (size == ctx.getContour().length)
+        ctx.removeHoles();
     }
   }
   return res;
@@ -131,17 +138,23 @@ function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], tcs:numb
   builder.end();
 }
 
-function addWall(builder:mb.MeshBuilder, quad:number[][], idx:number, material:DS.Material, shade:number):ObjectHandle {
+function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][], idx:number, material:DS.Material, isupper:boolean):ObjectHandle {
   // a -> b
   // ^    |
   // |    v
   // d <- c
   var tcscalex = material.getTexture('base').getWidth() * 16;
   var tcscaley = material.getTexture('base').getHeight() * 16;
-  var d = quad[3]; var dtc = [0, 0];
-  var a = quad[0]; var atc = [0, (d[1]-a[1])/tcscaley];
-  var b = quad[1]; var btc = [len(d[0]-b[0], d[2]-b[2])/tcscalex, (d[1]-b[1])/tcscaley];
-  var c = quad[2]; var ctc = [len(d[0]-b[0], d[2]-b[2])/tcscalex, (d[1]-c[1])/tcscaley];
+  var shade = wall.shade;
+  var tcxoff = wall.xpanning / (tcscalex / 16);
+  var tcyoff = wall.ypanning / (tcscaley / 16);
+  var length = len(quad[0][0]-quad[1][0], quad[0][2]-quad[1][2]);
+  isupper = ((wall.cstat & 4) != 0) ? true : isupper;
+
+  var d = quad[3]; var dtc = isupper ? [tcxoff,                 tcyoff]                      : [tcxoff,                 tcyoff+(quad[0][1]-d[1])/tcscaley];
+  var a = quad[0]; var atc = isupper ? [tcxoff,                 tcyoff+(d[1]-a[1])/tcscaley] : [tcxoff,                 tcyoff];
+  var b = quad[1]; var btc = isupper ? [tcxoff+length/tcscalex, tcyoff+(d[1]-b[1])/tcscaley] : [tcxoff+length/tcscalex, tcyoff+(a[1]-b[1])/tcscaley];
+  var c = quad[2]; var ctc = isupper ? [tcxoff+length/tcscalex, tcyoff+(d[1]-c[1])/tcscaley] : [tcxoff+length/tcscalex, tcyoff+(a[1]-c[1])/tcscaley];
   var offset = builder.offset() * 2;
 
   if (a[1] == d[1]) {
@@ -276,7 +289,7 @@ export class BoardProcessor {
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          objs.push([addWall(builder, [a, b, c, d], idx, material, wall.shade), TYPE_WALL, w]);
+          objs.push([addWall(wall, builder, [a, b, c, d], idx, material, false), TYPE_WALL, w]);
         } else {
           var nextsector = sectors[wall.nextsector];
           var nextslope = createSlopeCalculator(nextsector, walls);
@@ -295,8 +308,9 @@ export class BoardProcessor {
             var d = [x1, z4 / SCALE, y1];
             var shade = wall.shade;
             if ((wall.cstat & 2) != 0)
-              shade = walls[wall.nextwall].shade;
-            objs.push([addWall(builder, [a, b, c, d], idx, material, shade), TYPE_WALL, w]);
+              objs.push([addWall(walls[wall.nextwall], builder, [a, b, c, d], idx, material, false), TYPE_WALL, w]);
+            else
+              objs.push([addWall(wall, builder, [a, b, c, d], idx, material, false), TYPE_WALL, w]);
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
@@ -309,8 +323,7 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            var shade = wall.shade;
-            objs.push([addWall(builder, [a, b, c, d], idx, material, shade), TYPE_WALL, w]);
+            objs.push([addWall(wall, builder, [a, b, c, d], idx, material, true), TYPE_WALL, w]);
           }
         }
         i++;

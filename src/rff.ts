@@ -19,6 +19,8 @@ switch (cmd)
   case 'extract': {
     var ifile = process.argv[4];
     var ofile = process.argv[5];
+    if (ofile == undefined)
+      ofile = ifile;
     fs.writeFile(ofile, new Buffer(file.get(ifile)));
     break;
   }

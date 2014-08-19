@@ -11,8 +11,9 @@ import GRP = require('./modules/engines/build/grp');
 import pixel = require('./modules/pixelprovider');
 import TEX = require('./modules/textures');
 import CFG = require('./libs/config');
+import RFF = require('./modules/engines/build/rff');
 
-var MAP = 'resources/buildmaps/blood_e3m1.MAP';
+var rffFile = 'resources/engines/blood/blood.rff';
 var cfgFile = 'build.cfg';
 var selectPass = false;
 
@@ -25,7 +26,7 @@ class Mat implements DS.Material {
 class MF implements buildutils.MaterialFactory {
   private materials:DS.Material[] = [];
   
-  constructor(private arts:ART.ArtFiles, private pal:number[], private baseShader:DS.Shader, private selectShader:DS.Shader, private gl:WebGLRenderingContext) {}
+  constructor(private arts:ART.ArtFiles, private pal:Uint8Array, private baseShader:DS.Shader, private selectShader:DS.Shader, private gl:WebGLRenderingContext) {}
 
   get(picnum:number) {
     var mat = this.materials[picnum];
@@ -43,6 +44,56 @@ class MF implements buildutils.MaterialFactory {
   }
 }
 
+function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array) {
+  var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
+  gl.enable(gl.CULL_FACE);
+  gl.enable(gl.DEPTH_TEST);
+
+  var board = build.loadBuildMap(new data.DataViewStream(map, true));
+  var processor = new buildutils.BoardProcessor(board);
+  var baseShader = shaders.createShader(gl, 'resources/shaders/base');
+  var selectShader = shaders.createShader(gl, 'resources/shaders/select');
+  processor.build(gl, new MF(artFiles, pal, baseShader, selectShader, gl));
+
+
+  var control = new controller.Controller3D(gl);
+  var activeIdx = 0;
+
+  var binder = new GL.UniformBinder();
+  binder.addResolver('MVP', GL.mat4Setter,       ()=>control.getMatrix());
+  binder.addResolver('eyepos', GL.vec3Setter,    ()=>control.getCamera().getPos());
+  binder.addResolver('eyedir', GL.vec3Setter,    ()=>control.getCamera().forward());
+  binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
+
+  // control.getCamera().setPosXYZ(board.posx, board.posz*-16, board.posy);
+
+  GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
+
+    control.move(time);
+
+    if (cfg.select) {
+      //select draw
+      selectPass = true;
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
+      GL.draw(gl, models, binder);
+
+      var id = GL.readId(gl, control.getX(), control.getY());
+      activeIdx = id;
+    }
+
+    // actual draw
+    selectPass = false;
+    gl.clearColor(0.1, 0.3, 0.1, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
+    GL.draw(gl, models, binder);
+  });
+
+  gl.canvas.oncontextmenu = () => false;
+}
+
 var path = 'resources/engines/blood/';
 var artNames = [];
 for (var a = 0; a < 18; a++) {
@@ -51,65 +102,18 @@ for (var a = 0; a < 18; a++) {
 }
 
 getter.loader
-.load(MAP)
 .loadString(cfgFile)
-.load('resources/engines/blood/palette.dat')
+.load(rffFile)
 .finish(() => {
 
 var cfg = CFG.create(getter.getString(cfgFile));
-var w = cfg.width;
-var h = cfg.height;
-
-var pal = GRP.createPalette(new data.DataViewStream(getter.get('resources/engines/blood/palette.dat'), true));
+var rff = RFF.create(getter.get(rffFile));
+var pal = rff.get('BLOOD.PAL');
 var arts = [];
 for (var a = 0; a < 18; a++)
   arts.push(ART.create(new data.DataViewStream(getter.get(artNames[a]), true)));
 var artFiles = ART.createArts(arts);
 
-var gl = GL.createContext(w, h, {alpha:false, antialias:false});
-gl.enable(gl.CULL_FACE);
-gl.enable(gl.DEPTH_TEST);
-
-var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
-var processor = new buildutils.BoardProcessor(board);
-var baseShader = shaders.createShader(gl, 'resources/shaders/base');
-var selectShader = shaders.createShader(gl, 'resources/shaders/select');
-processor.build(gl, new MF(artFiles, pal, baseShader, selectShader, gl));
-
-
-var control = new controller.Controller3D(gl);
-var activeIdx = 0;
-
-var binder = new GL.UniformBinder();
-binder.addResolver('MVP', GL.mat4Setter, ()=>control.getMatrix());
-binder.addResolver('eyepos', GL.vec3Setter, ()=>control.getCamera().getPos());
-binder.addResolver('eyedir', GL.vec3Setter, ()=>control.getCamera().forward());
-binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
-
-// control.getCamera().setPosXYZ(board.posx, board.posz*-16, board.posy);
-
-GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
-
-  control.move(time);
-
-  // //select draw
-  // selectPass = true;
-  // gl.clearColor(0, 0, 0, 0);
-  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  // var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
-  // GL.draw(gl, models, binder);
-
-  // var id = GL.readId(gl, control.getX(), control.getY());
-  // activeIdx = id;
-
-  // actual draw
-  selectPass = false;
-  gl.clearColor(0.1, 0.3, 0.1, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
-  GL.draw(gl, models, binder);
-});
-
-gl.canvas.oncontextmenu = () => false;
+getter.preload(cfg.map, (map:ArrayBuffer) => render(cfg, map, artFiles, pal))
 
 });
