@@ -4,6 +4,7 @@ import GLM = require('../libs_js/glmatrix');
 var radsInDeg = 180 / Math.PI;
 var degInRad = Math.PI / 180;
 var PI2 = Math.PI*2;
+var EPS = 1e-5;
 
 export function deg2rad(deg:number):number {
   return deg * degInRad;
@@ -31,6 +32,57 @@ export function nextpow2(x) {
     x = x | x >> i;
   }
   return x + 1;
+}
+
+export function intersect2d(p1s:number[], p1e:number[], p2s:number[], p2e:number[]):number[] {
+  var t = intersect2dT(p1s, p1e, p2s, p2e);
+  if (t == null)
+    return null;
+  return GLM.vec2.lerp(GLM.vec2.create(), p1s, p2e, t);
+}
+
+export function intersect2dT(p1s:number[], p1e:number[], p2s:number[], p2e:number[]):number {
+  var d = (p1s[0]-p1e[0])*(p2s[1]-p2e[1]) - (p1s[1]-p1e[1])*(p2s[0]-p2e[0]);
+  if (Math.abs(d) < EPS)
+    return null;
+  var res = [
+    ((p1s[0]*p1e[1]-p1s[1]*p1e[0])*(p2s[0]-p2e[0]) - (p1s[0]-p1e[0])*(p2s[0]*p2e[1]-p2s[1]*p2e[0])) / d,
+    ((p1s[0]*p1e[1]-p1s[1]*p1e[0])*(p2s[1]-p2e[1]) - (p1s[1]-p1e[1])*(p2s[0]*p2e[1]-p2s[1]*p2e[0])) / d
+  ];
+
+  var dx = p1e[0]-p1s[0];
+  var dy = p1e[1]-p1s[1];
+  var dot = ((res[0]-p1s[0])*dx + (res[1]-p1s[1])*dy) / GLM.vec2.sqrLen([dx, dy]);
+  if (dot < 0.0 || dot > 1.0)
+    return null;
+  return dot;
+}
+
+export function direction3d(ps:number[], pe:number[]):number[] {
+  var tmp = GLM.vec3.create();
+  return GLM.vec3.normalize(tmp, GLM.vec3.sub(tmp, pe, ps));
+}
+
+export function projectXY(p:number[]):number[] {return p}
+export function projectXZ(p:number[]):number[] {return [p[0], p[2]]}
+export function projectYZ(p:number[]):number[] {return [p[1], p[2]]}
+
+export function intersect3d(p1s:number[], p1e:number[], p2s:number[], p2e:number[]):number[] {
+  var dir1 = direction3d(p1s, p1e);
+  var dir2 = direction3d(p2s, p2e);
+
+  var p = 
+    (dir1[1]*dir2[0] - dir2[1]*dir1[0]) != 0 ? projectXY :
+    (dir1[0]*dir2[1] - dir2[0]*dir1[1]) != 0 ? projectXZ :
+    (dir1[1]*dir2[2] - dir2[1]*dir1[2]) != 0 ? projectYZ :
+    null;
+
+  if (p == null)
+    return null;
+  var t = intersect2dT(p(p1s), p(p1e), p(p2s), p(p2e));
+  if (t == null)
+    return null;
+  return GLM.vec3.lerp(GLM.vec3.create(), p1s, p1e, t);
 }
 
 var tmpNoraml = GLM.vec2.create();

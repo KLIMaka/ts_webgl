@@ -116,13 +116,13 @@ function compileSource(gl:WebGLRenderingContext, type:number, source:string):Web
 }
 
 function processLine(line:string, params:any):any {
-  var m = line.match(/uniform +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+  var m = line.match(/^uniform +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
   if (m != null)
     params.uniforms.add(m[1]);
-  m = line.match(/attribute +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+  m = line.match(/^attribute +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
   if (m != null)
     params.attributes.add(m[1]);
-  m = line.match(/uniform sampler2D +([a-zA-Z0-9_]+)/);
+  m = line.match(/^uniform sampler2D +([a-zA-Z0-9_]+)/);
   if (m != null)
     params.samplers.add(m[1]);
 }

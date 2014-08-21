@@ -2,7 +2,7 @@ uniform mat4 MVP;
 uniform vec3 eyedir;
 uniform vec3 eyepos;
 
-attribute vec3 aNorm;
+//attribute vec3 aNorm;
 attribute vec3 aPos;
 attribute vec4 aIdx;
 attribute vec2 aTc;
@@ -17,7 +17,7 @@ int unpack (vec4 c) {
 }
 
 void main() {
-	att = ((-aShade*2.0 + 170.0) / 256.0);
+	att = ((-aShade*2.0 + 190.0) / 256.0);
 	att -= length(aPos - eyepos) / (70.0 * 1024.0);
 	idx = float(unpack(aIdx));
 	tc = aTc;

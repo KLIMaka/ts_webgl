@@ -28,6 +28,7 @@ export class Controller3D {
   private oldY = 0;
   private keys = {};
   private fov = 90;
+  private click = false;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -52,6 +53,7 @@ export class Controller3D {
 
   private mouseup(e:MouseEvent):boolean {
     this.drag = false;
+    this.click = true;
     return false;
   }
 
@@ -110,6 +112,10 @@ export class Controller3D {
     return this.camera;
   }
 
+  public isClick():boolean {
+    return this.click;
+  }
+
   public move(speed:number):void {
 
     speed *= 8000;
@@ -128,6 +134,7 @@ export class Controller3D {
     GLM.vec3.scale(sideways, sideways, speed * (right - left));
     GLM.vec3.add(campos, campos, sideways);
 
+    this.click = false;
     this.camera.setPos(campos);    
   }
 }

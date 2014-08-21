@@ -138,23 +138,23 @@ function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], tcs:numb
   builder.end();
 }
 
-function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][], idx:number, material:DS.Material, isupper:boolean):ObjectHandle {
+function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][], idx:number, material:DS.Material, base:number):ObjectHandle {
   // a -> b
   // ^    |
   // |    v
   // d <- c
+
   var tcscalex = material.getTexture('base').getWidth() * 16;
   var tcscaley = material.getTexture('base').getHeight() * 16;
   var shade = wall.shade;
   var tcxoff = wall.xpanning / (tcscalex / 16);
   var tcyoff = wall.ypanning / (tcscaley / 16);
   var length = len(quad[0][0]-quad[1][0], quad[0][2]-quad[1][2]);
-  isupper = ((wall.cstat & 4) != 0) ? true : isupper;
 
-  var d = quad[3]; var dtc = isupper ? [tcxoff,                 tcyoff]                      : [tcxoff,                 tcyoff+(quad[0][1]-d[1])/tcscaley];
-  var a = quad[0]; var atc = isupper ? [tcxoff,                 tcyoff+(d[1]-a[1])/tcscaley] : [tcxoff,                 tcyoff];
-  var b = quad[1]; var btc = isupper ? [tcxoff+length/tcscalex, tcyoff+(d[1]-b[1])/tcscaley] : [tcxoff+length/tcscalex, tcyoff+(a[1]-b[1])/tcscaley];
-  var c = quad[2]; var ctc = isupper ? [tcxoff+length/tcscalex, tcyoff+(d[1]-c[1])/tcscaley] : [tcxoff+length/tcscalex, tcyoff+(a[1]-c[1])/tcscaley];
+  var a = quad[0]; var atc = [tcxoff,                 tcyoff+(base-a[1])/tcscaley];
+  var b = quad[1]; var btc = [tcxoff+length/tcscalex, tcyoff+(base-b[1])/tcscaley];
+  var c = quad[2]; var ctc = [tcxoff+length/tcscalex, tcyoff+(base-c[1])/tcscaley];
+  var d = quad[3]; var dtc = [tcxoff,                 tcyoff+(base-d[1])/tcscaley];
   var offset = builder.offset() * 2;
 
   if (a[1] == d[1]) {
@@ -170,25 +170,16 @@ function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][]
     return new ObjectHandle(material, MU.normal([d,c,b,a]), offset, 6);
   }
 
-  var tmp = GLM.vec3.create();
-  var left = Math.abs(a[1] - d[1]);
-  var right = Math.abs(b[1] - c[1]);
-  var k = left < right ? (left/right)*0.5 : 1 - (right/left)*0.5;
-
   if (a[1] < d[1]) {
-    GLM.vec3.sub(tmp, c, d);
-    GLM.vec3.scale(tmp, tmp, k);
-    var e = GLM.vec3.add(GLM.vec3.create(), d, tmp);
-    var etc = [len(e[0], e[2])/tcscalex, e[1]/tcscaley];
+    var e = MU.intersect3d(a,b,c,d);
+    var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     addFace(builder, mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     addFace(builder, mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
     return new ObjectHandle(material, MU.normal([d,e,a]), offset, 6);
   }
   if (b[1] < c[1]) {
-    GLM.vec3.sub(tmp, b, a);
-    GLM.vec3.scale(tmp, tmp, k);
-    var e = GLM.vec3.add(GLM.vec3.create(), a, tmp);
-    var etc = [len(e[0], e[2])/tcscalex, e[1]/tcscaley];
+    var e = MU.intersect3d(a,b,c,d);
+    var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     addFace(builder, mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     addFace(builder, mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
     return new ObjectHandle(material, MU.normal([a,e,d]), offset, 6);
@@ -239,8 +230,9 @@ class SectorInfo {
 }
 
 export class BoardProcessor {
-  private sectors:SectorInfo[] = [];
   private walls:WallInfo[] = [];
+  private sectors:SectorInfo[] = [];
+  private index:any = [];
 
   constructor(private board:buildstructs.Board) {}
 
@@ -261,6 +253,7 @@ export class BoardProcessor {
     for (var s = 0; s < sectors.length; s++) {
       var sectorIdx = idx++;
       var sector = sectors[s];
+      this.index[sectorIdx] = sector;
 
       var slope = createSlopeCalculator(sector, walls);
       var ceilingheinum = sector.ceilingheinum;
@@ -272,6 +265,7 @@ export class BoardProcessor {
       while (i < sector.wallnum) {
         var w = sector.wallptr + i;
         var wall = walls[w];
+        this.index[idx] = wall;
         var wall2 = walls[wall.point2];
         var x1 = wall.x;
         var y1 = wall.y;
@@ -289,7 +283,8 @@ export class BoardProcessor {
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          objs.push([addWall(wall, builder, [a, b, c, d], idx, material, false), TYPE_WALL, w]);
+          var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, 8192 / SCALE);
+          objs.push([wallobj, TYPE_WALL, w]);
         } else {
           var nextsector = sectors[wall.nextsector];
           var nextslope = createSlopeCalculator(nextsector, walls);
@@ -307,10 +302,10 @@ export class BoardProcessor {
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
             var shade = wall.shade;
-            if ((wall.cstat & 2) != 0)
-              objs.push([addWall(walls[wall.nextwall], builder, [a, b, c, d], idx, material, false), TYPE_WALL, w]);
-            else
-              objs.push([addWall(wall, builder, [a, b, c, d], idx, material, false), TYPE_WALL, w]);
+            var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
+            var base = ((wall.cstat & 4) != 0) ? floorz : nextfloorz;
+            var wallobj = addWall(wall_, builder, [a, b, c, d], idx, materialFactory.get(wall_.picnum), base / SCALE)
+            objs.push([wallobj, TYPE_WALL, w]);
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
@@ -323,7 +318,9 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            objs.push([addWall(wall, builder, [a, b, c, d], idx, material, true), TYPE_WALL, w]);
+            var base = ((wall.cstat & 4) != 0) ? floorz : nextceilingz;
+            var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, base / SCALE);
+            objs.push([wallobj, TYPE_WALL, w]);
           }
         }
         i++;
@@ -385,6 +382,10 @@ export class BoardProcessor {
       ds.push(wall.ds);
     }
     return ds;
+  }
+
+  public getByIdx(idx:number):any {
+    return this.index[idx];
   }
 }
 

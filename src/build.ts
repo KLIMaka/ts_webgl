@@ -69,8 +69,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
-    control.move(time);
-
     if (cfg.select) {
       //select draw
       selectPass = true;
@@ -81,6 +79,9 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
       var id = GL.readId(gl, control.getX(), control.getY());
       activeIdx = id;
+      if (control.isClick()) {
+        console.log(processor.getByIdx(activeIdx));
+      }
     }
 
     // actual draw
@@ -89,6 +90,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
     GL.draw(gl, models, binder);
+
+    control.move(time);
   });
 
   gl.canvas.oncontextmenu = () => false;
