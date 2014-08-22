@@ -1,18 +1,19 @@
 uniform mat4 P;
 uniform mat4 MV;
-uniform mat4 MVP;
-uniform float size;
-uniform vec3 eyepos;
 
-attribute vec3 norm;
-attribute vec3 pos;
+attribute vec3 aPos;
+attribute vec2 aSize;
+attribute vec2 aTc;
+attribute float aShade;
 
-varying vec3 toEye;
+varying vec2 tc;
+varying float shade;
 
 void main() {
-    toEye = eyepos - pos;
-	vec4 wpos = vec4(pos, 1.0);
+	vec4 wpos = vec4(aPos, 1.0);
     vec4 epos = MV * wpos;
-    epos.xy += norm.xy * size;
+    epos.xy += aSize;
     gl_Position = P * epos;
+    tc = aTc;
+    shade = ((-aShade*2.0 + 190.0) / 256.0);
 }

@@ -1,11 +1,10 @@
 precision mediump float;
+uniform sampler2D base;
 
-uniform vec3 eyedir;
-
-varying vec3 toEye;
+varying vec2 tc;
+varying float shade;
 
 void main() {
-    vec3 color = vec3(1.0);
-    color *= dot(normalize(toEye), -normalize(eyedir));
+	vec3 color = texture2D(base, tc).rgb * shade;
 	gl_FragColor = vec4(color, 1.0);
 }
