@@ -7,6 +7,7 @@ import mb = require('../../meshbuilder');
 import DS = require('../../drawstruct');
 
 var SCALE = -16;
+var TCBASE = 8192;
 var UNITS2DEG = (1 / 4096);
 
 interface TriangulatedSector {
@@ -143,18 +144,18 @@ function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][]
   // ^    |
   // |    v
   // d <- c
-
-  var tcscalex = material.getTexture('base').getWidth() * 16;
-  var tcscaley = material.getTexture('base').getHeight() * 16;
+  var xflip = ((wall.cstat & 8) != 0) ? -1 : 1;
+  var yflip = ((wall.cstat & 256) != 0) ? -1 : 1;
+  var tcscalex = wall.xrepeat / 8.0 / (material.getTexture('base').getWidth() / 64.0) * xflip;
+  var tcscaley = (material.getTexture('base').getHeight() * 16) / (wall.yrepeat / 8.0) * yflip;
   var shade = wall.shade;
-  var tcxoff = wall.xpanning / (tcscalex / 16);
-  var tcyoff = wall.ypanning / (tcscaley / 16);
-  var length = len(quad[0][0]-quad[1][0], quad[0][2]-quad[1][2]);
+  var tcxoff = wall.xpanning / material.getTexture('base').getWidth();
+  var tcyoff = wall.ypanning * 8.0;
 
-  var a = quad[0]; var atc = [tcxoff,                 tcyoff+(base-a[1])/tcscaley];
-  var b = quad[1]; var btc = [tcxoff+length/tcscalex, tcyoff+(base-b[1])/tcscaley];
-  var c = quad[2]; var ctc = [tcxoff+length/tcscalex, tcyoff+(base-c[1])/tcscaley];
-  var d = quad[3]; var dtc = [tcxoff,                 tcyoff+(base-d[1])/tcscaley];
+  var a = quad[0]; var atc = [tcxoff,          (tcyoff+base-a[1])/tcscaley];
+  var b = quad[1]; var btc = [tcxoff+tcscalex, (tcyoff+base-b[1])/tcscaley];
+  var c = quad[2]; var ctc = [tcxoff+tcscalex, (tcyoff+base-c[1])/tcscaley];
+  var d = quad[3]; var dtc = [tcxoff,          (tcyoff+base-d[1])/tcscaley];
   var offset = builder.offset() * 2;
 
   if (a[1] == d[1]) {
@@ -188,11 +189,10 @@ function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][]
   return new ObjectHandle(material, MU.normal([a,b,c]), offset, 6);
 }
 
-function addSector(ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:mb.MeshBuilder, idx:number, material:DS.Material):ObjectHandle {
+function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:mb.MeshBuilder, idx:number, material:DS.Material):ObjectHandle {
   var tcscalex = material.getTexture('base').getWidth() * 16;
   var tcscaley = material.getTexture('base').getHeight() * 16;
   var offset = builder.offset() * 2;
-  var tris:number[][] = triangulate(sector, walls);
   var normal:number[] = null;
   for (var i = 0; i < tris.length; i += 3) {
     var t0x = tris[i+0][0];
@@ -283,7 +283,8 @@ export class BoardProcessor {
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
-          var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, 8192 / SCALE);
+          var base = ((wall.cstat & 4) != 0) ? floorz : ceilingz;
+          var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, base / SCALE);
           objs.push([wallobj, TYPE_WALL, w]);
         } else {
           var nextsector = sectors[wall.nextsector];
@@ -303,7 +304,7 @@ export class BoardProcessor {
             var d = [x1, z4 / SCALE, y1];
             var shade = wall.shade;
             var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
-            var base = ((wall.cstat & 4) != 0) ? floorz : nextfloorz;
+            var base = ((wall.cstat & 4) != 0) ? ceilingz : nextfloorz;
             var wallobj = addWall(wall_, builder, [a, b, c, d], idx, materialFactory.get(wall_.picnum), base / SCALE)
             objs.push([wallobj, TYPE_WALL, w]);
           }
@@ -318,7 +319,7 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
-            var base = ((wall.cstat & 4) != 0) ? floorz : nextceilingz;
+            var base = ((wall.cstat & 4) != 0) ? ceilingz : nextceilingz;
             var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, base / SCALE);
             objs.push([wallobj, TYPE_WALL, w]);
           }
@@ -327,9 +328,10 @@ export class BoardProcessor {
         idx++;
       }
 
-      var floorObj = addSector(false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum));
+      var tris:number[][] = triangulate(sector, walls);
+      var floorObj = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum));
       objs.push([floorObj, TYPE_SECTOR_FLOOR, s]);
-      var ceilingObj = addSector(true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
+      var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
       objs.push([ceilingObj, TYPE_SECTOR_CEILING, s]);
     }
 

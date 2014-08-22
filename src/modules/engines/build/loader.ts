@@ -48,8 +48,8 @@ var boardStruct = data.struct(build.Board, [
     ['pal', data.ubyte],
     ['xrepeat', data.ubyte],
     ['yrepeat', data.ubyte],
-    ['xpanning', data.ubyte],
-    ['ypanning', data.ubyte],
+    ['xpanning', data.byte],
+    ['ypanning', data.byte],
     ['lotag', data.ushort],
     ['hitag', data.ushort],
     ['extra', data.ushort]
