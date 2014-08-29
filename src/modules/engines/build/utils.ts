@@ -185,6 +185,7 @@ function addWall(wall:buildstructs.Wall, builder:mb.MeshBuilder, quad:number[][]
     addFace(builder, mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
     return new ObjectHandle(material, MU.normal([a,e,d]), offset, 6);
   }
+
   addFace(builder, mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
   return new ObjectHandle(material, MU.normal([a,b,c]), offset, 6);
 }
@@ -253,7 +254,7 @@ export class BoardProcessor {
     for (var s = 0; s < sectors.length; s++) {
       var sectorIdx = idx++;
       var sector = sectors[s];
-      this.index[sectorIdx] = sector;
+      this.index[sectorIdx] = [sector, s];
 
       var slope = createSlopeCalculator(sector, walls);
       var ceilingheinum = sector.ceilingheinum;
@@ -265,7 +266,7 @@ export class BoardProcessor {
       while (i < sector.wallnum) {
         var w = sector.wallptr + i;
         var wall = walls[w];
-        this.index[idx] = wall;
+        this.index[idx] = [wall, w];
         var wall2 = walls[wall.point2];
         var x1 = wall.x;
         var y1 = wall.y;
@@ -362,26 +363,42 @@ export class BoardProcessor {
     }
   }
 
-  public get(pos:number[], eye:number[]):DS.DrawStruct[] {
+  public get(ms:MoveStruct, eye:number[]):DS.DrawStruct[] {
     var ds:DS.DrawStruct[] = [];
     var sectors = this.sectors;
     var walls = this.walls;
-    var fov = 0.707;
-    for (var i = 0; i < sectors.length; i++) {
-        var sector = sectors[i];
-        if (sector == undefined)
-          continue;
-        if (GLM.vec3.dot(eye, sector.floorNormal) <= fov)
-          ds.push(sector.floor);
-        if (GLM.vec3.dot(eye, sector.ceilingNormal) <= fov)
-          ds.push(sector.ceiling);
-    }
-    for (var i = 0; i < walls.length; i++) {
-      var wall = walls[i];
-      if (wall == undefined)
-        continue;
-      if (GLM.vec2.dot(eye, wall.normal) <= fov)
-      ds.push(wall.ds);
+    var board = this.board;
+    var pos = [ms.x,  ms.y];
+    eye = GLM.vec2.normalize(GLM.vec2.create(), [eye[0], eye[2]]);
+
+    var pvs = [getSector(board, ms)];
+    for (var i = 0; i < pvs.length; i++) {
+      var cursecnum = pvs[i];
+      ds.push(sectors[cursecnum].floor);
+      ds.push(sectors[cursecnum].ceiling);
+
+      var cursec = board.sectors[cursecnum];
+      for (var w = 0; w < cursec.wallnum; w++) {
+        var wallidx = cursec.wallptr + w;
+        var wall = board.walls[wallidx];
+        var wall2 = board.walls[wall.point2];
+        var w1 = [wall.x, wall.y];
+        var w2 = [wall2.x, wall2.x];
+
+        var dot1 = GLM.vec2.dot(eye, MU.direction2d(pos, w1));
+        var dot2 = GLM.vec2.dot(eye, MU.direction2d(pos, w2));
+
+        if (dot1 <= 0.0 && dot2 <= 0.0) continue;
+
+        var wallds = walls[wallidx];
+        if (wallds != undefined) 
+          ds.push(wallds.ds);
+
+        if (wall.nextsector == -1) continue;
+
+        if (pvs.indexOf(wall.nextsector) == -1)
+          pvs.push(wall.nextsector);
+      }
     }
     return ds;
   }
@@ -397,26 +414,41 @@ export class MoveStruct {
   public y:number;
   public z:number;
   public sec:number;
+  public xvel:number;
+  public yvel:number;
+  public zvel:number;
 }
 
-export function move(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:number, dz:number):void {
-  if (dx == 0 && dy == 0 && dz == 0)
+export function move(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:number):void {
+  if (dx == 0 && dy == 0)
     return;
 
-    var walls = board.walls;
-    var cursec = getSector(board, ms);
-    var nx = ms.x + dx;
-    var ny = ms.y + dy;
-    var nz = ms.z + dz;
+  var walls = board.walls;
+  var sectors = board.sectors;
+  var cursecnum = getSector(board, ms);
+  var nx = ms.x + dx;
+  var ny = ms.y + dy;
 
-    var slope = createSlopeCalculator(sector, walls);
-    var ceilingheinum = sector.ceilingheinum;
-    var ceilingz = sector.ceilingz;
-    var floorheinum = sector.floorheinum;
-    var floorz = sector.floorz;
+  var enterwallnum = null;
+  while (cursecnum != -1) {
+    var cursec = sectors[cursecnum];
+    ms.sec = cursecnum;
+    var slope = createSlopeCalculator(cursec, walls);
+    var ceilingheinum = cursec.ceilingheinum;
+    var ceilingz = cursec.ceilingz;
+    var floorheinum = cursec.floorheinum;
+    var floorz = cursec.floorz;
+
+    var inter:number[] = [0,0];
+    var mint = 100.0;
+    var interwall:buildstructs.Wall = null;
+    var p1s = [ms.x, ms.y];
+    var p1e = [nx, ny];
 
     for (var w = 0; w < cursec.wallnum; w++) {
       var wallidx = cursec.wallptr + w;
+      if (enterwallnum == wallidx)
+        continue;
       var wall = walls[wallidx];
       var wall2 = walls[wall.point2];
       var x1 = wall.x;
@@ -428,15 +460,72 @@ export function move(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:numb
       var cz2 = slope(x2, y2, ceilingheinum) + ceilingz;
       var fz2 = slope(x2, y2, floorheinum) + floorz;
 
-      var inter = MU.intersect2d([x1,y1],[x2,y2],[ms.x,ms.y],[nx,ny]);
-      if (inter == null)
+      var t = MU.intersect2dT(p1s, p1e, [x1,y1], [x2,y2]);
+      if (t == null)
         continue;
 
+      if (t < mint) {
+        GLM.vec2.lerp(inter, [ms.x,ms.y], [nx,ny], t);
+        mint = t;
+        interwall = wall;
+      }
+
+    }
+    if (mint <= 1.0) {
       var interf = slope(inter[0], inter[1], floorheinum) + floorz;
       var interc = slope(inter[0], inter[1], ceilingheinum) + ceilingz;
+
+      cursecnum = interwall.nextsector;
+      enterwallnum = interwall.nextwall;
+
+      if (cursecnum != -1) {
+        var nsector = sectors[cursecnum];
+        var nslope = createSlopeCalculator(nsector, walls);
+        var nf = nslope(inter[0], inter[1], nsector.floorheinum) + nsector.floorz;
+        var diff = ms.z - nf;
+        console.log(diff);
+        if (diff > 8192)
+          cursecnum = -1;
+      }
+
+      if (cursecnum == -1) {
+        var interwall2 = walls[interwall.point2];
+        var normal = MU.normal2d([interwall.x, interwall.y], [interwall2.x, interwall2.y]);
+        GLM.vec2.add(inter, inter, GLM.vec2.scale(normal, normal, 64));
+      }
+      
+      ms.x = inter[0];
+      ms.y = inter[1];
+    } else {
+      ms.x = nx;
+      ms.y = ny;
+      break;
     }
+  }
 }
 
-function getSector(board:buildstructs.Board, ms:MoveStruct):buildstructs.Sector {
-  return board.sectors[ms.sec];
+function getSector(board:buildstructs.Board, ms:MoveStruct):number {
+  return ms.sec;
+}
+
+export function fall(board:buildstructs.Board, ms:MoveStruct, dz:number):void {
+  var walls = board.walls;
+  var sectors = board.sectors;
+  var secnum = getSector(board, ms);
+  var sector = sectors[secnum];
+  var slope = createSlopeCalculator(sector, walls);
+  var ceilingheinum = sector.ceilingheinum;
+  var ceilingz = sector.ceilingz;
+  var floorheinum = sector.floorheinum;
+  var floorz = sector.floorz;
+
+  var fz = slope(ms.x, ms.y, floorheinum) + floorz;
+  var cz = slope(ms.x, ms.y, ceilingheinum) + ceilingz;
+
+  var nz = ms.z + dz;
+  if (nz < cz)
+    nz = cz;
+  else if (nz > fz)
+    nz = fz;
+  ms.z = nz;
 }

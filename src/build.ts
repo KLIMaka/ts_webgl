@@ -5,6 +5,7 @@ import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
 import build = require('./modules/engines/build/loader');
 import buildutils = require('./modules/engines/build/utils');
+import buildstructs = require('./modules/engines/build/structs');
 import DS = require('./modules/drawstruct');
 import ART = require('./modules/engines/build/art');
 import GRP = require('./modules/engines/build/grp');
@@ -44,6 +45,15 @@ class MF implements buildutils.MaterialFactory {
   }
 }
 
+function getPlayerStart(board:buildstructs.Board):buildstructs.Sprite {
+  for (var i = 0; i < board.numsprites; i++) {
+    var sprite = board.sprites[i];
+    if (sprite.lotag == 1)
+      return sprite;
+  }
+  return null;
+}
+
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
@@ -55,8 +65,17 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
   processor.build(gl, new MF(artFiles, pal, baseShader, selectShader, gl));
 
+  console.log(board);
+
 
   var control = new controller.Controller3D(gl);
+  var playerstart = getPlayerStart(board);
+  var ms = new buildutils.MoveStruct();
+  ms.sec = playerstart.sectnum;
+  ms.x = playerstart.x;
+  ms.y = playerstart.y;
+  ms.z = playerstart.z;
+
   var activeIdx = 0;
 
   var binder = new GL.UniformBinder();
@@ -65,8 +84,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   binder.addResolver('eyedir', GL.vec3Setter,    ()=>control.getCamera().forward());
   binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
 
-  // control.getCamera().setPosXYZ(board.posx, board.posz*-16, board.posy);
-
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
     if (cfg.select) {
@@ -74,13 +91,14 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
       selectPass = true;
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
+      var models = processor.get(ms, control.getCamera().forward());
       GL.draw(gl, models, binder);
 
       var id = GL.readId(gl, control.getX(), control.getY());
       activeIdx = id;
       if (control.isClick()) {
         console.log(processor.getByIdx(activeIdx));
+        console.log(control.getCamera());
       }
     }
 
@@ -88,10 +106,14 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     selectPass = false;
     gl.clearColor(0.1, 0.3, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    var models = processor.get(control.getCamera().getPos(), control.getCamera().forward());
+    var models = processor.get(ms, control.getCamera().forward());
     GL.draw(gl, models, binder);
 
-    control.move(time);
+    // control.move(time);
+    var d = control.move1(time);
+    buildutils.move(board, ms, d[0], d[1]);
+    buildutils.fall(board, ms, time*8192*4)
+    control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
   });
 
   gl.canvas.oncontextmenu = () => false;

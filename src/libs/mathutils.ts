@@ -50,17 +50,28 @@ export function intersect2dT(p1s:number[], p1e:number[], p2s:number[], p2e:numbe
     ((p1s[0]*p1e[1]-p1s[1]*p1e[0])*(p2s[1]-p2e[1]) - (p1s[1]-p1e[1])*(p2s[0]*p2e[1]-p2s[1]*p2e[0])) / d
   ];
 
-  var dx = p1e[0]-p1s[0];
-  var dy = p1e[1]-p1s[1];
-  var dot = ((res[0]-p1s[0])*dx + (res[1]-p1s[1])*dy) / GLM.vec2.sqrLen([dx, dy]);
-  if (dot < 0.0 || dot > 1.0)
+  var dx1 = p1e[0]-p1s[0];
+  var dy1 = p1e[1]-p1s[1];
+  var dot1 = ((res[0]-p1s[0])*dx1 + (res[1]-p1s[1])*dy1) / GLM.vec2.sqrLen([dx1, dy1]);
+  if (dot1 < 0.0 || dot1 > 1.0)
     return null;
-  return dot;
+  var dx2 = p2e[0]-p2s[0];
+  var dy2 = p2e[1]-p2s[1];
+  var dot2 = ((res[0]-p2s[0])*dx2 + (res[1]-p2s[1])*dy2) / GLM.vec2.sqrLen([dx2, dy2]);
+  if (dot2 < 0.0 || dot2 > 1.0)
+    return null;
+
+  return dot1;
 }
 
 export function direction3d(ps:number[], pe:number[]):number[] {
   var tmp = GLM.vec3.create();
   return GLM.vec3.normalize(tmp, GLM.vec3.sub(tmp, pe, ps));
+}
+
+export function direction2d(ps:number[], pe:number[]):number[] {
+  var tmp = GLM.vec2.create();
+  return GLM.vec2.normalize(tmp, GLM.vec2.sub(tmp, pe, ps));
 }
 
 export function projectXY(p:number[]):number[] {return p}
@@ -105,23 +116,35 @@ export function mat3FromMat4(out:GLM.Mat3Array, a:GLM.Mat4Array):GLM.Mat3Array {
   return out;
 }
 
+
+var toNext = GLM.vec2.create();
+var toPrev = GLM.vec2.create(); 
+//
+//   p1     p3
+//    \ ang /
+//     \ ^ /
+//      \ /
+//      p2
+export function ang2d(p1:number[], p2:number[], p3:number[]):number {
+  GLM.vec2.sub(toNext, p3, p2); GLM.vec2.normalize(toNext, toNext);
+  GLM.vec2.sub(toPrev, p1, p2); GLM.vec2.normalize(toPrev, toPrev);
+  var angToNext = Math.acos(toNext[0]);
+  angToNext = toNext[1] < 0 ? PI2 - angToNext : angToNext;
+  var angToPrev = Math.acos(toPrev[0]);
+  angToPrev = toPrev[1] < 0 ? PI2 - angToPrev : angToPrev;
+  var ang = angToNext - angToPrev;
+  ang = (ang < 0 ? PI2 + ang : ang);
+  return ang;
+}
+
 export function isCW(polygon:number[][]):boolean {
-  var toNext = GLM.vec2.create();
-  var toPrev = GLM.vec2.create();
   var angsum = 0;
   var N = polygon.length;
   for (var i = 0; i < N; i++) {
     var curr = polygon[i];
     var prev = polygon[i == 0 ? N - 1 : i - 1];
     var next = polygon[i == N - 1 ? 0 : i + 1];
-    GLM.vec2.sub(toNext, next, curr); GLM.vec2.normalize(toNext, toNext);
-    GLM.vec2.sub(toPrev, prev, curr); GLM.vec2.normalize(toPrev, toPrev);
-    var angToNext = Math.acos(toNext[0]);
-    angToNext = toNext[1] < 0 ? PI2 - angToNext : angToNext;
-    var angToPrev = Math.acos(toPrev[0]);
-    angToPrev = toPrev[1] < 0 ? PI2 - angToPrev : angToPrev;
-    var ang = angToNext - angToPrev;
-    angsum += (ang < 0 ? PI2 + ang : ang);
+    angsum += ang2d(prev, curr, next);
   }
   return rad2deg(angsum) == 180*(N-2);
 }

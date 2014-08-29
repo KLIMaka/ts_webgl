@@ -29,6 +29,7 @@ export class Controller3D {
   private keys = {};
   private fov = 90;
   private click = false;
+  private moveVec = [0, 0];
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -43,9 +44,9 @@ export class Controller3D {
   }
 
   private mousemove(e:MouseEvent):boolean {
-    if (this.drag) {
-      this.camera.updateAngles(e.x - this.oldX, e.y - this.oldY);
-    }
+    // if (this.drag) {
+    //   this.camera.updateAngles(e.x - this.oldX, e.y - this.oldY);
+    // }
     this.oldX = e.x;
     this.oldY = e.y;
     return false;
@@ -136,5 +137,25 @@ export class Controller3D {
 
     this.click = false;
     this.camera.setPos(campos);    
+  }
+
+  public move1(speed:number):number[] {
+    speed *= 8000;
+    var moveVec = this.moveVec;
+
+    var forward = this.camera.forward();
+    moveVec[0] = forward[0];
+    moveVec[1] = forward[2];
+    var up = this.keys['W'] | this.keys['UP'];
+    var down = this.keys['S'] | this.keys['DOWN'];
+    GLM.vec2.normalize(moveVec, moveVec);
+    GLM.vec3.scale(moveVec, moveVec, speed * (up - down));
+
+    var left = this.keys['A'] | this.keys['LEFT'];
+    var right = this.keys['D'] | this.keys['RIGHT'];
+    this.camera.updateAngles(-(left*speed/70) + (right*speed/70), 0);
+
+    this.click = false;
+    return moveVec;
   }
 }
