@@ -153,7 +153,7 @@ export class TexturePixelProvider {
 
   private w:number;
   private h:number;
-  private data:number[];
+  private data:Uint8Array;
 
   constructor(tex) {
     var texcanvas = document.createElement('canvas');
@@ -230,7 +230,7 @@ export class TexturePixelProvider {
   }
 }
 
-function blend(src:number[], off:number, dst:number[]) {
+function blend(src:Uint8Array, off:number, dst:number[]) {
   var a = dst[3] / 256;
   var b = 1 - a;
   src[off+0] = src[off+0]*b + dst[0]*a;

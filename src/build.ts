@@ -63,10 +63,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var processor = new buildutils.BoardProcessor(board);
   var baseShader = shaders.createShader(gl, 'resources/shaders/base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
-  processor.build(gl, new MF(artFiles, pal, baseShader, selectShader, gl));
-
-  console.log(board);
-
+  var mf = new MF(artFiles, pal, baseShader, selectShader, gl);
+  processor.build(gl, mf);
 
   var control = new controller.Controller3D(gl);
   var playerstart = getPlayerStart(board);
@@ -107,6 +105,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     gl.clearColor(0.1, 0.3, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var models = processor.get(ms, control.getCamera().forward());
+    console.log(models.length);
     GL.draw(gl, models, binder);
 
     // control.move(time);

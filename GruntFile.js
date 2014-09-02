@@ -9,7 +9,9 @@ module.exports = function (grunt) {
     'anvil',
     'wl',
     'sound',
-    'grp'
+    'grp',
+    'particles',
+    'hmm2'
   ];
 
   var nodemodules = [
