@@ -47,6 +47,10 @@ export class AggFile {
     this.data.setOffset(this.fat[rec].offset);
     return this.data.subView();
   }
+
+  public getList():string[] {
+    return Object.keys(this.nametable);
+  }
 }
 
 export function create(buf:ArrayBuffer):AggFile {

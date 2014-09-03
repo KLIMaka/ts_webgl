@@ -43,16 +43,19 @@ export class IcnFile {
   public getFrame(i:number):Uint8Array {
     var h = this.headers[i];
     this.data.setOffset(this.globoff+h.offsetData+6);
-    return renderIcnFrame(this.data, h.width, h.height);
+    if (h.type == 0x20)
+      return renderIcnFrame2(this.data, h.width, h.height);
+    else
+      return renderIcnFrame1(this.data, h.width, h.height);
   }
 
-  public getSize(i:number):Size {
+  public getInfo(i:number):Header {
     var h = this.headers[i];
-    return <Size> h;
+    return h;
   }
 }
 
-function renderIcnFrame(data:data.DataViewStream, w:number, h:number):Uint8Array {
+function renderIcnFrame1(data:data.DataViewStream, w:number, h:number):Uint8Array {
   var buf = new Uint8Array(w*h);
   var x = 0;
   var y = 0;
@@ -71,7 +74,7 @@ function renderIcnFrame(data:data.DataViewStream, w:number, h:number):Uint8Array
     } else if (b == 0xc0) {
       b = data.readUByte();
       var c = (b%4==0) ? data.readUByte() : b%4;
-      x += c;
+      while (c--) buf[y*w+x++] = 1;
     } else if (b == 0xc1) {
       var c = data.readUByte();
       var i = data.readUByte()
@@ -80,6 +83,27 @@ function renderIcnFrame(data:data.DataViewStream, w:number, h:number):Uint8Array
       var c = b - 0xc0;
       var i = data.readUByte()
       while (c--) buf[y*w+x++] = i;
+    }
+  }
+  return buf;
+}
+
+function renderIcnFrame2(data:data.DataViewStream, w:number, h:number):Uint8Array {
+  var buf = new Uint8Array(w*h);
+  var x = 0;
+  var y = 0;
+  for(;;) {
+    var b = data.readUByte();
+
+    if (b == 0) {
+      y++;
+      x = 0;
+    } else if (b < 0x80) {
+      while (b--) buf[y*w+x++] = 1;
+    } else if (b == 0x80) {
+      break;
+    } else {
+      x += b - 0x80;
     }
   }
   return buf;

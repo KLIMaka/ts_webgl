@@ -16,6 +16,13 @@ export function drawToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElem
   ctx.putImageData(id, x, y);
 }
 
+export function blendToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElement, x:number=0, y:number=0) {
+  var ctx = canvas.getContext('2d');
+  var id = ctx.getImageData(x ,y, provider.getWidth(), provider.getHeight());
+  provider.blend(id.data);
+  ctx.putImageData(id, x, y);
+}
+
 export function clearCanvas(canvas:HTMLCanvasElement, style:string) {
   var ctx = canvas.getContext('2d');
   ctx.fillStyle = style;

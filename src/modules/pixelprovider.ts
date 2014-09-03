@@ -8,6 +8,7 @@ export interface PixelProvider {
   getWidth():number;
   getHeight():number;
   render(dst:Uint8Array):void;
+  blend(dst:Uint8Array):void;
 }
 
 export class AbstractPixelProvider implements PixelProvider {
@@ -39,6 +40,25 @@ export class AbstractPixelProvider implements PixelProvider {
       for (var x = 0; x < this.w; x++){
         this.putToDst(x, y, dst, off);
         off+=4
+      }
+    }
+  }
+
+  blend(dst:Uint8Array):void {
+    var tmpdst = new Uint8Array(4);
+    var off = 0;
+    for (var y = 0; y < this.h; y++) {
+      for (var x = 0; x < this.w; x++){
+        this.putToDst(x, y, tmpdst, 0);
+        if (tmpdst[3] == 0){
+          off+=4;
+          continue;
+        }
+        dst[off+0] = tmpdst[0];
+        dst[off+1] = tmpdst[1];
+        dst[off+2] = tmpdst[2];
+        dst[off+3] = tmpdst[3];
+        off+=4;
       }
     }
   }
@@ -151,8 +171,35 @@ export class AxisSwapPixelProvider extends AbstractPixelProvider {
   }
 }
 
+export class FlipPixelProvider extends AbstractPixelProvider {
+  private xs:number;
+  private ys:number;
+
+  constructor(private provider:PixelProvider, xswap:boolean, yswap:boolean) {
+    super(provider.getWidth(), provider.getHeight());
+    this.xs = xswap ? provider.getWidth()-1 : 0;
+    this.ys = yswap ? provider.getHeight()-1 : 0;
+  }
+
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
+    this.provider.putToDst(Math.abs(x-this.xs), Math.abs(y-this.ys), dst, dstoff);
+  }
+}
+
 export function axisSwap(provider:PixelProvider) {
   return new AxisSwapPixelProvider(provider);
+}
+
+export function xflip(provider:PixelProvider) {
+  return new FlipPixelProvider(provider, true, false);
+}
+
+export function yflip(provider:PixelProvider) {
+  return new FlipPixelProvider(provider, false, true);
+}
+
+export function xyflip(provider:PixelProvider) {
+  return new FlipPixelProvider(provider, true, true);
 }
 
 export function rect(provider:PixelProvider, sx:number, sy:number, ex:number, ey:number, paddColod:number[]=[0,0,0,0]) {
