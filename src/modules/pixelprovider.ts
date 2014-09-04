@@ -26,15 +26,15 @@ export class AbstractPixelProvider implements PixelProvider {
     return dst;
   }
 
-  getWidth():number {
+  public getWidth():number {
     return this.w;
   }
 
-  getHeight():number {
+  public getHeight():number {
     return this.h;
   }
 
-  render(dst:Uint8Array):void {
+  public render(dst:Uint8Array):void {
     var off = 0;
     for (var y = 0; y < this.h; y++) {
       for (var x = 0; x < this.w; x++){
@@ -44,7 +44,7 @@ export class AbstractPixelProvider implements PixelProvider {
     }
   }
 
-  blend(dst:Uint8Array):void {
+  public blend(dst:Uint8Array):void {
     var tmpdst = new Uint8Array(4);
     var off = 0;
     for (var y = 0; y < this.h; y++) {
@@ -54,10 +54,11 @@ export class AbstractPixelProvider implements PixelProvider {
           off+=4;
           continue;
         }
-        dst[off+0] = tmpdst[0];
-        dst[off+1] = tmpdst[1];
-        dst[off+2] = tmpdst[2];
-        dst[off+3] = tmpdst[3];
+        var a = tmpdst[3] / 255;
+        dst[off+0] = MU.int(tmpdst[0]*a + dst[off+0]*(1-a));
+        dst[off+1] = MU.int(tmpdst[1]*a + dst[off+1]*(1-a));
+        dst[off+2] = MU.int(tmpdst[2]*a + dst[off+2]*(1-a));
+        dst[off+3] = 255;
         off+=4;
       }
     }
@@ -97,7 +98,15 @@ export class RGBAArrayPixelProvider extends AbstractPixelProvider {
 
 export class RGBPalPixelProvider extends AbstractPixelProvider {
 
-  constructor(private arr:Uint8Array, private pal:Uint8Array, w:number, h:number, private alpha:number=255, private transIdx:number=-1) {
+  constructor(
+    private arr:Uint8Array, 
+    private pal:Uint8Array, 
+    w:number, h:number, 
+    private alpha:number=255, 
+    private transIdx:number=-1, 
+    private shadow:number=-1, 
+    private shadowColor:number[]=[0,0,0,0]
+  ) {
     super(w, h);
     if (arr.length != w*h)
       throw new Error('Invalid array size. Need ' + (w*h*4) + ' but provided ' + arr.length);
@@ -106,6 +115,13 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
   public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
     var w = this.getWidth();
     var idx = this.arr[x+y*w];
+    if (idx == this.shadow) {
+      dst[dstoff+0] = this.shadowColor[0];
+      dst[dstoff+1] = this.shadowColor[1];
+      dst[dstoff+2] = this.shadowColor[2];
+      dst[dstoff+3] = this.shadowColor[3];
+      return;
+    }
     var paloff = idx*3;
     dst[dstoff] = this.pal[paloff];
     dst[dstoff+1] = this.pal[paloff+1];
