@@ -9,7 +9,7 @@ import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
 
 var RES = 'resources/engines/h2/heroes2.agg';
-var MAP = 'resources/engines/h2/maps/BELTWAY.MP2';
+var MAP = 'resources/engines/h2/maps/BROKENA.MP2';
 var shadow = [0,0,0,127];
 
 function getDetails(info:any):any {
@@ -60,13 +60,6 @@ class TilePixelProvider extends pixel.AbstractPixelProvider {
 
 function addonsort(a:any, b:any):number {var dl = a.l-b.l; return dl==0?b.q-a.q:dl;}
 
-function createTile():any {
-  var icnFile2 = ICN.create(aggFile.get(OBJN.getIcn(obj2)));
-  var frame2 = icnFile2.getFrame(tile.indexName2);
-  var i2 = icnFile2.getInfo(tile.indexName2);
-  var pp2 = new pixel.RGBPalPixelProvider(frame2, pal, i2.width, i2.height, 255, 0, 1, shadow);
-  return {pp:pp2, xoff:i2.offsetX, yoff:i2.offsetY, q:0, l:2, i2:tile});
-}
 
 getter.loader
 .load(RES)
@@ -81,6 +74,18 @@ var map:HTMLCanvasElement = document.createElement('canvas');
 map.width = tilFile.width*mapFile.width;
 map.height = tilFile.height*mapFile.height;
 document.body.appendChild(map);
+
+function createTile(obj:number, idx:number, count:number, level:number, adds:any):any {
+  if (obj == 0)
+    return;
+  var icnFile = ICN.create(aggFile.get(OBJN.getIcn(obj)));
+  if (icnFile == null)
+    return;
+  var frame = icnFile.getFrame(idx);
+  var i = icnFile.getInfo(idx);
+  var pp = new pixel.RGBPalPixelProvider(frame, pal, i.width, i.height, 255, 0, 1, shadow);
+  adds.push({pp:pp, xoff:i.offsetX, yoff:i.offsetY, q:count, l:level});
+}
 
 var tilesInfo:any = [];
 var tiles = mapFile.tiles;
@@ -113,48 +118,14 @@ for (var i = 0; i < tiles.length; i++) {
 
   var adds:any = [];
 
-  var obj1 = tile.objectName1;
-  if (obj1 != 0) {
-    var icnFile1 = ICN.create(aggFile.get(OBJN.getIcn(obj1)));
-    var frame1 = icnFile1.getFrame(tile.indexName1);
-    var i1 = icnFile1.getInfo(tile.indexName1);
-    var pp1 = new pixel.RGBPalPixelProvider(frame1, pal, i1.width, i1.height, 255, 0, 1, shadow);
-    adds.push({pp:pp1, xoff:i1.offsetX, yoff:i1.offsetY, q:0, l:1, i1:tile});
-  }
-  var obj2 = tile.objectName2;
-  if (obj2 != 0) {
-    var icnFile2 = ICN.create(aggFile.get(OBJN.getIcn(obj2)));
-    var frame2 = icnFile2.getFrame(tile.indexName2);
-    var i2 = icnFile2.getInfo(tile.indexName2);
-    var pp2 = new pixel.RGBPalPixelProvider(frame2, pal, i2.width, i2.height, 255, 0, 1, shadow);
-    adds.push({pp:pp2, xoff:i2.offsetX, yoff:i2.offsetY, q:0, l:2, i2:tile});
-  }
+  createTile(tile.objectName1, tile.indexName1, 0, 1, adds);
+  createTile(tile.objectName2, tile.indexName2, 0, 2, adds);
 
 
   for (var addon = tile.indexAddon; addon != 0; addon = addons[addon].indexAddon) {
     var add = addons[addon];
-    var obj1 = add.objectNameN1 * 2;
-    if (obj1 != 0) {
-      var icnname1 = OBJN.getIcn(obj1);
-      if (icnname1 != null) {
-        var icnFile1 = ICN.create(aggFile.get(icnname1));
-        var frame1 = icnFile1.getFrame(add.indexNameN1);
-        var i1 = icnFile1.getInfo(add.indexNameN1);
-        var pp1 = new pixel.RGBPalPixelProvider(frame1, pal, i1.width, i1.height, 255, 0, 1, shadow);
-        adds.push({pp:pp1, xoff:i1.offsetX, yoff:i1.offsetY, q:add.quantityN%4, l:1, i1:add});
-      }
-    }
-    var obj2 = add.objectNameN2;
-    if (obj2 != 0) {
-      var icnname2 = OBJN.getIcn(obj2);
-      if (icnname2 != null) {
-        var icnFile2 = ICN.create(aggFile.get(icnname2));
-        var frame2 = icnFile2.getFrame(add.indexNameN2);
-        var i2 = icnFile2.getInfo(add.indexNameN2);
-        var pp2 = new pixel.RGBPalPixelProvider(frame2, pal, i2.width, i2.height, 255, 0, 1, shadow);
-        adds.push({pp:pp2, xoff:i2.offsetX, yoff:i2.offsetY, q:add.quantityN%4, l:2, i2:add});
-      }
-    }
+    createTile(add.objectNameN1*2, add.indexNameN1, add.quantityN%4, 1, adds);
+    createTile(add.objectNameN2, add.indexNameN2, add.quantityN%4, 2, adds);
   }
 
   if (adds.length != 0){
