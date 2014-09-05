@@ -133,7 +133,7 @@ export var structArray = (len:any, struct:any) => {return (s:DataViewStream, loc
 
 export var struct_ = (s:DataViewStream, fields:any, type:any, locals:any={}) => {
   var struct = new type();
-  for (var i in fields) {
+  for (var i = 0; i < fields.length; i++) {
     var field = fields[i];
     struct[field[0]] = field[1](s, struct);
   }

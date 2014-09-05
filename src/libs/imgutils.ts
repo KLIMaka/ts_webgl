@@ -1,6 +1,13 @@
 
 import pixel = require('../modules/pixelprovider');
 
+export function createEmptyCanvas(width:number, height:number):HTMLCanvasElement {
+  var canvas:HTMLCanvasElement = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
 export function createCanvas(provider:pixel.PixelProvider):HTMLCanvasElement {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
   canvas.width = provider.getWidth();

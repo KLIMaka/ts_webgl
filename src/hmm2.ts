@@ -30,6 +30,33 @@ function getDetails(info:any):any {
   return {w:w, h:h, xoff:xoff, yoff:yoff};
 }
 var tmpdst = new Uint8Array(4);
+// 812
+// 7 3
+// 654
+var tmpblend = new Uint8Array(4*8);
+var a = 2/12;
+var b = 1/12;
+function blend(dst:Uint8Array, off:number) {
+  var c = 0;
+  c += tmpblend[3]>=127?a:0;
+  c += tmpblend[7]>=127?b:0;
+  c += tmpblend[11]>=127?a:0;
+  c += tmpblend[15]>=127?b:0;
+  c += tmpblend[19]>=127?a:0;
+  c += tmpblend[23]>=127?b:0;
+  c += tmpblend[27]>=127?a:0;
+  c += tmpblend[31]>=127?b:0;
+
+  return MU.int(127*c);
+}
+
+function renderOffset(pp:pixel.PixelProvider, x:number, y:number, off:number, curr:number) {
+  if (x < 0 || y < 0 || x >= pp.getWidth() || y >= pp.getHeight()){
+    tmpblend[off+3] = curr;
+    return;
+  }
+  pp.putToDst(x, y, tmpblend, off);
+}
 
 class TilePixelProvider extends pixel.AbstractPixelProvider {
 
@@ -48,12 +75,25 @@ class TilePixelProvider extends pixel.AbstractPixelProvider {
       if (nx < 0 || ny < 0 || nx >= info.pp.getWidth() || ny >= info.pp.getHeight())
         continue;
       info.pp.putToDst(nx, ny, tmpdst, 0);
+      var preva = dst[dstoff+3];
       dst[dstoff+0] = tmpdst[0];
       dst[dstoff+1] = tmpdst[1];
       dst[dstoff+2] = tmpdst[2];
       dst[dstoff+3] = tmpdst[3];
 
-      if (tmpdst[3] && (tmpdst[3] == 255)) break;
+      if (tmpdst[3] == 255) break;
+
+      renderOffset(info.pp, nx+0, ny-1, 0, tmpdst[3]);
+      renderOffset(info.pp, nx+1, ny-1, 4, tmpdst[3]);
+      renderOffset(info.pp, nx+1, ny+0, 8, tmpdst[3]);
+      renderOffset(info.pp, nx+1, ny+1, 12, tmpdst[3]);
+      renderOffset(info.pp, nx+0, ny+1, 16, tmpdst[3]);
+      renderOffset(info.pp, nx-1, ny+1, 20, tmpdst[3]);
+      renderOffset(info.pp, nx-1, ny+0, 24, tmpdst[3]);
+      renderOffset(info.pp, nx-1, ny-1, 28, tmpdst[3]);
+      var b = blend(dst, dstoff);
+
+      dst[dstoff+3] = Math.max(b, preva);
     }
   }
 }
@@ -70,36 +110,50 @@ var aggFile = AGG.create(getter.get(RES));
 var pal = AGG.createPalette(aggFile.get('KB.PAL'));
 var tilFile = TIL.create(aggFile.get('GROUND32.TIL'));
 var mapFile = MP2.create(getter.get(MAP));
-var map:HTMLCanvasElement = document.createElement('canvas');
-map.width = tilFile.width*mapFile.width;
-map.height = tilFile.height*mapFile.height;
+var map = IU.createEmptyCanvas(tilFile.width*mapFile.width, tilFile.height*mapFile.height);
+map.style.position='absolute';
 document.body.appendChild(map);
+var tmap = IU.createEmptyCanvas(tilFile.width*mapFile.width, tilFile.height*mapFile.height);
+tmap.style.position='absolute';
+document.body.appendChild(tmap);
 
-function createTile(obj:number, idx:number, count:number, level:number, adds:any):any {
+var icnCache:{[index:string]:ICN.IcnFile} = {};
+function createTile(obj:number, idx:number, count:number, level:number, adds:any, tile:any):any {
   if (obj == 0)
     return;
-  var icnFile = ICN.create(aggFile.get(OBJN.getIcn(obj)));
+  var icnName = OBJN.getIcn(obj);
+  var icnFile = icnCache[icnName];
+  if (icnFile == undefined) {
+    icnFile = ICN.create(aggFile.get(icnName));
+    icnCache[icnName] = icnFile;
+  }
   if (icnFile == null)
     return;
   var frame = icnFile.getFrame(idx);
   var i = icnFile.getInfo(idx);
   var pp = new pixel.RGBPalPixelProvider(frame, pal, i.width, i.height, 255, 0, 1, shadow);
-  adds.push({pp:pp, xoff:i.offsetX, yoff:i.offsetY, q:count, l:level});
+  adds.push({pp:pp, xoff:i.offsetX, yoff:i.offsetY, q:count, l:level, tile:tile});
 }
 
 var tilesInfo:any = [];
 var tiles = mapFile.tiles;
 var addons = mapFile.addons;
 map.onclick = (e) => {
-  var x = e.x-8;
-  var y = e.y-8;
-  var infos = tilesInfo[MU.int(y/tilFile.height)*mapFile.width+MU.int(x/tilFile.width)];
+  var x = e.pageX-8;
+  var y = e.pageY-8;
+  var mx = MU.int(x/tilFile.width);
+  var my = MU.int(y/tilFile.height);
+  var infos = tilesInfo[my*mapFile.width+mx];
   console.log(infos);
   console.log(getDetails(infos));
+  console.log(mx, my, x, y);
   for (var i = 0; i < infos.length; i++) {
     var canvas = IU.createCanvas(infos[i].pp);
     document.body.appendChild(canvas);
   }
+  document.body.appendChild(document.createElement('br'));
+  var pp = new TilePixelProvider(infos, getDetails(infos));
+  document.body.appendChild(IU.createCanvas(pp));
 }
 
 for (var i = 0; i < tiles.length; i++) {
@@ -118,23 +172,24 @@ for (var i = 0; i < tiles.length; i++) {
 
   var adds:any = [];
 
-  createTile(tile.objectName1, tile.indexName1, 0, 1, adds);
-  createTile(tile.objectName2, tile.indexName2, 0, 2, adds);
+  createTile(tile.objectName1, tile.indexName1, 0, 1, adds, tile);
+  createTile(tile.objectName2, tile.indexName2, 0, 2, adds, tile);
 
 
   for (var addon = tile.indexAddon; addon != 0; addon = addons[addon].indexAddon) {
     var add = addons[addon];
-    createTile(add.objectNameN1*2, add.indexNameN1, add.quantityN%4, 1, adds);
-    createTile(add.objectNameN2, add.indexNameN2, add.quantityN%4, 2, adds);
+    createTile(add.objectNameN1*2, add.indexNameN1, add.quantityN%4, 1, adds, add);
+    createTile(add.objectNameN2, add.indexNameN2, add.quantityN%4, 2, adds, add);
   }
 
   if (adds.length != 0){
     adds.sort(addonsort);
     var details = getDetails(adds);
     pp = new TilePixelProvider(adds, details);
-    IU.blendToCanvas(pp, map, x+details.xoff, y+details.yoff);
+    IU.drawToCanvas(pp, tmap, x+details.xoff, y+details.yoff);
   }
-  tilesInfo.push(adds);
+  tilesInfo[i] = adds;
+
 }
 
 // var list = aggFile.getList();
