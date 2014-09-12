@@ -9,7 +9,7 @@ import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
 
 var RES = 'resources/engines/h2/heroes2.agg';
-var MAP = 'resources/engines/h2/maps/BROKENA.MP2';
+var MAP = 'resources/engines/h2/maps/MINERALW.MP2';
 var shadow = [0,0,0,127];
 
 function getDetails(info:any):any {
@@ -29,13 +29,12 @@ function getDetails(info:any):any {
   }
   return {w:w, h:h, xoff:xoff, yoff:yoff};
 }
-var tmpdst = new Uint8Array(4);
 // 812
 // 7 3
 // 654
 var tmpblend = new Uint8Array(4*8);
-var a = 2/12;
-var b = 1/12;
+var a = 1/6.82;
+var b = 0.707/6.82;
 function blend(dst:Uint8Array, off:number) {
   var c = 0;
   c += tmpblend[3]>=127?a:0;
@@ -67,33 +66,29 @@ class TilePixelProvider extends pixel.AbstractPixelProvider {
   public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
     var d = this.details;
     var infos = this.info;
-    dst[dstoff+3] = 0;
+    var a = 0
+    dst[dstoff+3] = a;
     for (var i = infos.length-1; i >= 0; i--) {
       var info = infos[i];
       var nx = x+d.xoff-info.xoff;
       var ny = y+d.yoff-info.yoff;
-      if (nx < 0 || ny < 0 || nx >= info.pp.getWidth() || ny >= info.pp.getHeight())
-        continue;
-      info.pp.putToDst(nx, ny, tmpdst, 0);
-      var preva = dst[dstoff+3];
-      dst[dstoff+0] = tmpdst[0];
-      dst[dstoff+1] = tmpdst[1];
-      dst[dstoff+2] = tmpdst[2];
-      dst[dstoff+3] = tmpdst[3];
+      if (!(nx < 0 || ny < 0 || nx >= info.pp.getWidth() || ny >= info.pp.getHeight()))
+        info.pp.putToDst(nx, ny, dst, dstoff);
 
-      if (tmpdst[3] == 255) break;
+      if (dst[dstoff+3] == 255) break;
 
-      renderOffset(info.pp, nx+0, ny-1, 0, tmpdst[3]);
-      renderOffset(info.pp, nx+1, ny-1, 4, tmpdst[3]);
-      renderOffset(info.pp, nx+1, ny+0, 8, tmpdst[3]);
-      renderOffset(info.pp, nx+1, ny+1, 12, tmpdst[3]);
-      renderOffset(info.pp, nx+0, ny+1, 16, tmpdst[3]);
-      renderOffset(info.pp, nx-1, ny+1, 20, tmpdst[3]);
-      renderOffset(info.pp, nx-1, ny+0, 24, tmpdst[3]);
-      renderOffset(info.pp, nx-1, ny-1, 28, tmpdst[3]);
+      renderOffset(info.pp, nx+0, ny-1, 0, dst[dstoff+3]);
+      renderOffset(info.pp, nx+1, ny-1, 4, dst[dstoff+3]);
+      renderOffset(info.pp, nx+1, ny+0, 8, dst[dstoff+3]);
+      renderOffset(info.pp, nx+1, ny+1, 12, dst[dstoff+3]);
+      renderOffset(info.pp, nx+0, ny+1, 16, dst[dstoff+3]);
+      renderOffset(info.pp, nx-1, ny+1, 20, dst[dstoff+3]);
+      renderOffset(info.pp, nx-1, ny+0, 24, dst[dstoff+3]);
+      renderOffset(info.pp, nx-1, ny-1, 28, dst[dstoff+3]);
       var b = blend(dst, dstoff);
 
-      dst[dstoff+3] = Math.max(b, preva);
+      dst[dstoff+3] = Math.max(b, a);
+      a = b;
     }
   }
 }
@@ -138,7 +133,7 @@ function createTile(obj:number, idx:number, count:number, level:number, adds:any
 var tilesInfo:any = [];
 var tiles = mapFile.tiles;
 var addons = mapFile.addons;
-map.onclick = (e) => {
+tmap.onclick = (e) => {
   var x = e.pageX-8;
   var y = e.pageY-8;
   var mx = MU.int(x/tilFile.width);
@@ -189,7 +184,6 @@ for (var i = 0; i < tiles.length; i++) {
     IU.drawToCanvas(pp, tmap, x+details.xoff, y+details.yoff);
   }
   tilesInfo[i] = adds;
-
 }
 
 // var list = aggFile.getList();

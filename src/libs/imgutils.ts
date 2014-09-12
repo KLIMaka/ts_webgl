@@ -35,3 +35,10 @@ export function clearCanvas(canvas:HTMLCanvasElement, style:string) {
   ctx.fillStyle = style;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
+
+export function copyRGBA(src:Uint8Array, srcoff:number, dst:Uint8Array, dstoff:number) {
+  dst[dstoff] = src[srcoff];
+  dst[dstoff+1] = src[srcoff+1];
+  dst[dstoff+2] = src[srcoff+2];
+  dst[dstoff+3] = src[srcoff+3];
+}
