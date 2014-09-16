@@ -11,7 +11,8 @@ module.exports = function (grunt) {
     'sound',
     'grp',
     'particles',
-    'hmm2'
+    'hmm2',
+    'hmm_bin'
   ];
 
   var nodemodules = [

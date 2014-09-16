@@ -224,6 +224,13 @@ export function rect(provider:PixelProvider, sx:number, sy:number, ex:number, ey
   return new RectPixelProvider(provider, sx, sy, ex, ey, paddColod);
 }
 
+export function center(provider:PixelProvider, w:number, h:number, paddColod:number[]=[0,0,0,0]) {
+  var dw = MU.int((provider.getWidth() - w)/2);
+  var dh = MU.int((provider.getHeight() - h)/2);
+  return rect(provider, dw, dh, w+dw, h+dh);
+
+}
+
 export function resize(provider:PixelProvider, w:number, h:number) {
   if (provider.getHeight() == h && provider.getWidth() == w)
     return provider;
