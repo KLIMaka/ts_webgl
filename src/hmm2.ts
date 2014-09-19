@@ -8,8 +8,9 @@ import pixel = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
 
+declare var config;
 var RES = 'resources/engines/h2/heroes2.agg';
-var MAP = 'resources/engines/h2/maps/MINERALW.MP2';
+var MAP = 'resources/engines/h2/maps/' + config.map;
 var shadow = [0,0,0,127];
 
 function getDetails(info:any):any {
@@ -32,21 +33,26 @@ function getDetails(info:any):any {
 // 812
 // 7 3
 // 654
-var tmpblend = new Uint8Array(4*8);
-var a = 1/6.82;
-var b = 0.707/6.82;
-function blend(dst:Uint8Array, off:number) {
-  var c = 0;
-  c += tmpblend[3]>=127?a:0;
-  c += tmpblend[7]>=127?b:0;
-  c += tmpblend[11]>=127?a:0;
-  c += tmpblend[15]>=127?b:0;
-  c += tmpblend[19]>=127?a:0;
-  c += tmpblend[23]>=127?b:0;
-  c += tmpblend[27]>=127?a:0;
-  c += tmpblend[31]>=127?b:0;
+var tmpblend = new Uint8Array(4*12);
+var a = 3/24;
+var b = 2/24;
+var c = 1/24;
+function blend() {
+  var s = 0;
+  s += tmpblend[3]>=127?a:0;
+  s += tmpblend[7]>=127?b:0;
+  s += tmpblend[11]>=127?a:0;
+  s += tmpblend[15]>=127?b:0;
+  s += tmpblend[19]>=127?a:0;
+  s += tmpblend[23]>=127?b:0;
+  s += tmpblend[27]>=127?a:0;
+  s += tmpblend[31]>=127?b:0;
+  s += tmpblend[35]>=127?c:0;
+  s += tmpblend[39]>=127?c:0;
+  s += tmpblend[43]>=127?c:0;
+  s += tmpblend[47]>=127?c:0;
 
-  return MU.int(127*c);
+  return MU.int(127*s);
 }
 
 function renderOffset(pp:pixel.PixelProvider, x:number, y:number, off:number, curr:number) {
@@ -55,6 +61,38 @@ function renderOffset(pp:pixel.PixelProvider, x:number, y:number, off:number, cu
     return;
   }
   pp.putToDst(x, y, tmpblend, off);
+}
+
+class ShadowBlendPixelProvider extends pixel.AbstractPixelProvider {
+
+  constructor(private provider:TilePixelProvider) {
+    super(provider.getWidth(), provider.getHeight());
+  }
+
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
+    var pp = this.provider;
+    pp.putToDst(x, y, dst, dstoff);
+    var a = dst[dstoff+3];
+    if (a == 255)
+      return;
+
+    renderOffset(pp, x+0, y-1, 0, a);
+    renderOffset(pp, x+1, y-1, 4, a);
+    renderOffset(pp, x+1, y+0, 8, a);
+    renderOffset(pp, x+1, y+1, 12, a);
+    renderOffset(pp, x+0, y+1, 16, a);
+    renderOffset(pp, x-1, y+1, 20, a);
+    renderOffset(pp, x-1, y+0, 24, a);
+    renderOffset(pp, x-1, y-1, 28, a);
+
+    renderOffset(pp, x-2, y-0, 32, a);
+    renderOffset(pp, x-0, y-2, 36, a);
+    renderOffset(pp, x+2, y-0, 40, a);
+    renderOffset(pp, x-0, y+2, 44, a);
+    var b = blend();
+
+    dst[dstoff+3] = b;
+  }
 }
 
 class TilePixelProvider extends pixel.AbstractPixelProvider {
@@ -72,23 +110,15 @@ class TilePixelProvider extends pixel.AbstractPixelProvider {
       var info = infos[i];
       var nx = x+d.xoff-info.xoff;
       var ny = y+d.yoff-info.yoff;
-      if (!(nx < 0 || ny < 0 || nx >= info.pp.getWidth() || ny >= info.pp.getHeight()))
-        info.pp.putToDst(nx, ny, dst, dstoff);
+      if (nx < 0 || ny < 0 || nx >= info.pp.getWidth() || ny >= info.pp.getHeight())
+        continue;
+      
+      info.pp.putToDst(nx, ny, dst, dstoff);
 
       if (dst[dstoff+3] == 255) break;
 
-      renderOffset(info.pp, nx+0, ny-1, 0, dst[dstoff+3]);
-      renderOffset(info.pp, nx+1, ny-1, 4, dst[dstoff+3]);
-      renderOffset(info.pp, nx+1, ny+0, 8, dst[dstoff+3]);
-      renderOffset(info.pp, nx+1, ny+1, 12, dst[dstoff+3]);
-      renderOffset(info.pp, nx+0, ny+1, 16, dst[dstoff+3]);
-      renderOffset(info.pp, nx-1, ny+1, 20, dst[dstoff+3]);
-      renderOffset(info.pp, nx-1, ny+0, 24, dst[dstoff+3]);
-      renderOffset(info.pp, nx-1, ny-1, 28, dst[dstoff+3]);
-      var b = blend(dst, dstoff);
-
-      dst[dstoff+3] = Math.max(b, a);
-      a = b;
+      dst[dstoff+3] = Math.max(dst[dstoff+3], a);
+      a = dst[dstoff+3];
     }
   }
 }
@@ -119,7 +149,7 @@ function createTile(obj:number, idx:number, count:number, level:number, adds:any
   var icnName = OBJN.getIcn(obj);
   var icnFile = icnCache[icnName];
   if (icnFile == undefined) {
-    icnFile = ICN.create(aggFile.get(icnName));
+    icnFile = ICN.create(aggFile.get(icnName + '.ICN'));
     icnCache[icnName] = icnFile;
   }
   if (icnFile == null)
@@ -127,6 +157,15 @@ function createTile(obj:number, idx:number, count:number, level:number, adds:any
   var frame = icnFile.getFrame(idx);
   var i = icnFile.getInfo(idx);
   var pp = new pixel.RGBPalPixelProvider(frame, pal, i.width, i.height, 255, 0, 1, shadow);
+  adds.push({pp:pp, xoff:i.offsetX, yoff:i.offsetY, q:count, l:level, tile:tile});
+
+  var anim = OBJN.getAnimFrame(icnName, idx, 0);
+  if (anim == 0)
+    return;
+
+  frame = icnFile.getFrame(anim);
+  i = icnFile.getInfo(anim);
+  pp = new pixel.RGBPalPixelProvider(frame, pal, i.width, i.height, 255, 0, 1, shadow);
   adds.push({pp:pp, xoff:i.offsetX, yoff:i.offsetY, q:count, l:level, tile:tile});
 }
 
@@ -147,7 +186,7 @@ tmap.onclick = (e) => {
     document.body.appendChild(canvas);
   }
   document.body.appendChild(document.createElement('br'));
-  var pp = new TilePixelProvider(infos, getDetails(infos));
+  var pp = new ShadowBlendPixelProvider(new TilePixelProvider(infos, getDetails(infos)));
   document.body.appendChild(IU.createCanvas(pp));
 }
 
@@ -180,7 +219,7 @@ for (var i = 0; i < tiles.length; i++) {
   if (adds.length != 0){
     adds.sort(addonsort);
     var details = getDetails(adds);
-    pp = new TilePixelProvider(adds, details);
+    pp = new ShadowBlendPixelProvider(new TilePixelProvider(adds, details));
     IU.drawToCanvas(pp, tmap, x+details.xoff, y+details.yoff);
   }
   tilesInfo[i] = adds;
