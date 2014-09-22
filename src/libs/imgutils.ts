@@ -42,3 +42,14 @@ export function copyRGBA(src:Uint8Array, srcoff:number, dst:Uint8Array, dstoff:n
   dst[dstoff+2] = src[srcoff+2];
   dst[dstoff+3] = src[srcoff+3];
 }
+
+export function blendRGBA(src:Uint8Array, srcoff:number, dst:Uint8Array, dstoff:number) {
+  if (src[srcoff+3] == 0)
+    return;
+  var t = src[srcoff+3]/255;
+  var t_ = 1-t;
+  dst[dstoff+0] = dst[dstoff+0]*t_ + src[srcoff+0]*t;
+  dst[dstoff+1] = dst[dstoff+1]*t_ + src[srcoff+1]*t;
+  dst[dstoff+2] = dst[dstoff+2]*t_ + src[srcoff+2]*t;
+  dst[dstoff+3] = Math.max(dst[dstoff+3], src[srcoff+3]);
+}

@@ -1,3 +1,3 @@
 var config = {
-  map : 'ENROTH.MP2'
+  map : 'PYRAMID.MP2'
 }

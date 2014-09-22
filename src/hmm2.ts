@@ -52,7 +52,7 @@ function blend() {
   s += tmpblend[43]>=127?c:0;
   s += tmpblend[47]>=127?c:0;
 
-  return MU.int(127*s);
+  return MU.int(100*s);
 }
 
 function renderOffset(pp:pixel.PixelProvider, x:number, y:number, off:number, curr:number) {
