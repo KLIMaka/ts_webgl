@@ -59,6 +59,13 @@ export class UniformIntSetter {
 }
 export var int1Setter = new UniformIntSetter();
 
+export class UniformFloatSetter {
+  setUniform(gl:WebGLRenderingContext, location:WebGLUniformLocation, value:any):void {
+    gl.uniform1f(location, value);
+  }
+}
+export var float1Setter = new UniformFloatSetter();
+
 export class UniformBinder {
 
   private resolvers:{[index:string]: ()=>any;} = {};
@@ -70,8 +77,11 @@ export class UniformBinder {
       var uniform = uniforms[i];
       if (this.resolvers[uniform] == undefined)
         continue;
+      var loc = shader.getUniformLocation(uniform, gl)
+      if (!loc)
+        continue;
       var value = this.resolvers[uniform]();
-      this.setters[uniform].setUniform(gl, shader.getUniformLocation(uniform, gl), value);
+      this.setters[uniform].setUniform(gl, loc, value);
     }
   }
 
@@ -93,6 +103,8 @@ export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBin
       for (var a = 0; a < attributes.length; a++) {
         var attr = attributes[a];
         var buf = model.getVertexBuffer(attr);
+        if (buf == undefined)
+          throw new Error('No buffer for shader attribute <' + attr + '>');
         var location = shader.getAttributeLocation(attr, gl);
         gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
         gl.enableVertexAttribArray(location);

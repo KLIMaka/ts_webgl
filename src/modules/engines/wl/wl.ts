@@ -1,6 +1,6 @@
 
-import D = require('../../libs/dataviewstream');
-import B = require('../bitreader');
+import D = require('../../../libs/dataviewstream');
+import B = require('../../bitreader');
 
 class RotatingXorStream {
 

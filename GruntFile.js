@@ -12,7 +12,8 @@ module.exports = function (grunt) {
     'grp',
     'particles',
     'hmm2',
-    'hmm_bin'
+    'hmm_bin',
+    'app1'
   ];
 
   var nodemodules = [

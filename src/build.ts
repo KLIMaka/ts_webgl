@@ -36,7 +36,7 @@ class MF implements buildutils.MaterialFactory {
 
     var info = this.arts.getInfo(picnum);
     var arr = new Uint8Array(info.w*info.h*4);
-    var pp = pixel.axisSwap(new pixel.RGBPalPixelProvider(info.img, this.pal, info.w, info.h, 255, 255));
+    var pp = pixel.axisSwap(new pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
     pp.render(arr);
     mat = new Mat(this.baseShader, this.selectShader, {base:new TEX.Texture(pp.getWidth(), pp.getHeight(), this.gl, arr)});
 

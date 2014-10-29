@@ -32,11 +32,11 @@ var noneImg = new Uint8Array([
   1, 1, 1, 1, 1, 1, 1, 1, 
 ]);
 
-var nonePal = [
+var nonePal = new Uint8Array([
   255, 255, 255,
   255,   0,   0
-]
-var noneProvider = new P.RGBPalPixelProvider(noneImg, nonePal, 8, 8);
+]);
+var noneProvider = new P.fromPal(noneImg, nonePal, 8, 8);
 
 export class DrawPanel {
 

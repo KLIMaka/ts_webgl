@@ -213,6 +213,8 @@ smap.onclick = (e) => {
   for (var i = 0; i < infos.length; i++) {
     ids.push(infos[i].tile.uniqNumber1);
     ids.push(infos[i].tile.uniqNumberN1);
+    ids.push(infos[i].tile.uniqNumber2);
+    ids.push(infos[i].tile.uniqNumberN2);
     var canvas = IU.createCanvas(infos[i].pp);
     document.body.appendChild(canvas);
   }

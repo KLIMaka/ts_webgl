@@ -51,7 +51,7 @@ for (var i = 0; i < 18*256; i++) {
   var info = artFiles.getInfo(i);
   if (info == null || info.w == 0 || info.h == 0)
     continue;
-   var pp = pixel.axisSwap(new pixel.RGBPalPixelProvider(info.img, pal, info.w, info.h, 255, 255));
+   var pp = pixel.axisSwap(new pixel.fromPal(info.img, pal, info.w, info.h, 255, 255));
    document.body.appendChild(IU.createCanvas(pp));
 }
 

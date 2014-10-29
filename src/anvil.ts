@@ -1,7 +1,8 @@
 import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import browser = require('./libs/browser');
-import imgutils = require('./libs/imgutils');
+import IU = require('./libs/imgutils');
+import PP = require('./modules/pixelprovider');
 
 var resnum = browser.getQueryVariable('res');
 
@@ -14,10 +15,10 @@ getter.loader
 .finish(() => {
 
 var createTmpBuffer = function() {
-  var buffer = [];
+  var buffer = new Uint8Array(0);
   return function(size:number) {
     if(buffer.length < size){
-      buffer = new Array<number>(size);
+      buffer = new Uint8Array(size);
     }
     for (var i = 0; i < size; i++)
       buffer[i] = 0;
@@ -25,29 +26,12 @@ var createTmpBuffer = function() {
   }
 }();
 
-function createImage(w:number, h:number, data:number[], off:number, trans:number, pal:number[]):void {
-  var canvas:HTMLCanvasElement = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  var ctx = canvas.getContext('2d');
-  var id = ctx.getImageData(0, 0, w, h);
-  var idata = id.data;
-  for (var i = 0; i < w*h; i++) {
-    var idx = i * 4;
-    var col = data[off+i];
-    idata[idx + 0] = pal[col*3+0];
-    idata[idx + 1] = pal[col*3+1];
-    idata[idx + 2] = pal[col*3+2];
-    if (col == trans)
-      idata[idx + 3] = 0;
-    else
-      idata[idx + 3] = 255; 
-  }
-  ctx.putImageData(id, 0, 0); 
+function createImage(w:number, h:number, data:Uint8Array, off:number, trans:number, pal:Uint8Array):void {
+  var canvas = IU.createCanvas(PP.resize(PP.fromPal(data.subarray(0, w*h), pal, w, h, 255, trans), w*2, h*2));
   document.body.appendChild(canvas);
 }
 
-function LZSS(r:data.DataViewStream, size:number):number[] {
+function LZSS(r:data.DataViewStream, size:number):Uint8Array {
   var ret = createTmpBuffer(size);
   var retoff = 0;
 
@@ -76,7 +60,7 @@ function LZSS(r:data.DataViewStream, size:number):number[] {
   return ret;
 }
 
-function read(r:data.DataViewStream, size:number, compressed:boolean):number[] {
+function read(r:data.DataViewStream, size:number, compressed:boolean):Uint8Array {
   if (compressed) {
     return LZSS(r, size);
   } else {
@@ -87,7 +71,7 @@ function read(r:data.DataViewStream, size:number, compressed:boolean):number[] {
   }
 }
 
-function readFile(r:data.DataViewStream, pal:number[]) {
+function readFile(r:data.DataViewStream, pal:Uint8Array) {
   var begin = r.mark();
   var sign = r.readByteString(4);
   if (sign != 'D3GR')
@@ -105,7 +89,7 @@ function readFile(r:data.DataViewStream, pal:number[]) {
 
   if (palOff != 0) {
     r.setOffset(palOff + begin);
-    var pal = pal.slice();
+    var pal = new Uint8Array(pal);
     var colors = r.readUShort();
     var start = r.readUShort()-0x100;
     for (var i = start; i < start+colors; i++){
@@ -134,9 +118,9 @@ function readFile(r:data.DataViewStream, pal:number[]) {
   }
 }
 
-function readPal(r:data.DataViewStream, off:number):number[] {
+function readPal(r:data.DataViewStream, off:number):Uint8Array {
   r.setOffset(off);
-  var pal = new Array<number>(256*3);
+  var pal = new Uint8Array(256*3);
   for (var i = 0; i < 256; i++){
     pal[i*3+0] = r.readUByte() * 4;
     pal[i*3+1] = r.readUByte() * 4;

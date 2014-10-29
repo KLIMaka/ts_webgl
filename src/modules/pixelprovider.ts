@@ -202,6 +202,10 @@ export class FlipPixelProvider extends AbstractPixelProvider {
   }
 }
 
+export function fromPal(arr:Uint8Array, pal:Uint8Array, w:number, h:number, alpha:number=255, transIdx:number=-1, shadow:number=-1, shadowColor:number[]=[0,0,0,0]) {
+  return new RGBPalPixelProvider(arr, pal, w, h, alpha, transIdx, shadow, shadowColor);
+}
+
 export function axisSwap(provider:PixelProvider) {
   return new AxisSwapPixelProvider(provider);
 }

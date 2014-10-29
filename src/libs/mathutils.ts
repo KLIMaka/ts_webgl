@@ -4,7 +4,7 @@ import GLM = require('../libs_js/glmatrix');
 var radsInDeg = 180 / Math.PI;
 var degInRad = Math.PI / 180;
 var PI2 = Math.PI*2;
-var EPS = 1e-5;
+var EPS = 1e-9;
 
 export function deg2rad(deg:number):number {
   return deg * degInRad;
@@ -67,6 +67,16 @@ export function intersect2dT(p1s:number[], p1e:number[], p2s:number[], p2e:numbe
 export function direction3d(ps:number[], pe:number[]):number[] {
   var tmp = GLM.vec3.create();
   return GLM.vec3.normalize(tmp, GLM.vec3.sub(tmp, pe, ps));
+}
+
+export function resize2d(sx:number, sy:number, ex:number, ey:number, dl:number):number[] {
+  var dx = ex-sx;
+  var dy = ey-sy;
+  var len = Math.sqrt(dx*dx + dy*dy);
+  var scale = (len+dl)/len;
+  var nx = sx + dx*scale;
+  var ny = sy + dy*scale;
+  return [nx, ny];
 }
 
 export function direction2d(ps:number[], pe:number[]):number[] {
