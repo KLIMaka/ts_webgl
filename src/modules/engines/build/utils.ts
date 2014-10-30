@@ -126,6 +126,14 @@ function len(x:number, y:number) {
   return Math.sqrt(x*x + y*y);
 }
 
+function addWall1(board:buildstructs.Board, wallidx:number, sectoridx:number) {
+  var slope = createSlopeCalculator(sector, walls);
+  var ceilingheinum = sector.ceilingheinum;
+  var ceilingz = sector.ceilingz;
+  var floorheinum = sector.floorheinum;
+  var floorz = sector.floorz;
+}
+
 function addFace(builder:mb.MeshBuilder, type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
   builder.start(type)
     .attr('aNorm', MU.normal(verts))
@@ -212,8 +220,12 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
     var v2tc = [t1x/tcscalex, t1y/tcscaley];
     var v3tc = [t2x/tcscalex, t2y/tcscaley];
 
-    addFace(builder, mb.TRIANGLES, ceiling ? [v3,v2,v1] : [v1,v2,v3], ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc], idx, ceiling ? sector.ceilingshade : sector.floorshade);
-    if (normal == null) normal = MU.normal(ceiling ? [v3,v2,v1] : [v1,v2,v3]);
+    var vtxs = ceiling ? [v3,v2,v1] : [v1,v2,v3]; 
+    var tcs = ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]
+    var shade = ceiling ? sector.ceilingshade : sector.floorshade;
+
+    addFace(builder, mb.TRIANGLES, vtxs, tcs, idx, shade);
+    if (normal == null) normal = MU.normal(vtxs);
   }
   return new ObjectHandle(material, normal, offset, tris.length);
 }

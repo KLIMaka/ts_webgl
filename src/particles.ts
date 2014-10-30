@@ -43,7 +43,7 @@ function init(p:P.Particle) {
 
 function update(p:P.Particle, dt:number) {
   // p.attr.size += (4/h)*dt;
-  p.x += p.vx*dt; 
+  p.x += p.vx*dt;
   p.y += p.vy*dt;
   p.vx *= (1 - dt);
   p.vx += (Math.random()-0.5)*0.05;
@@ -94,7 +94,7 @@ function update_frame() {
 
   particles.update(dt);
   var size = updateBuffers(particles, buffer);
-  
+
   rast.clear(bg, 0);
   rast.drawTriangles(idxs, 0, size);
   ctx.putImageData(img, 0, 0);

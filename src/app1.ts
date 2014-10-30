@@ -27,7 +27,7 @@ class Mat implements ds.Material {
 
 var SCALE = -16;
 function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext, shader:ds.Shader):ds.DrawStruct {
-  var builder = new mb.MeshBuilderConstructor()
+  var builder = new mb.MeshBuilderConstructor(4)
     .buffer('pos', Float32Array, gl.FLOAT, 3)
     .buffer('norm', Float32Array, gl.FLOAT, 2)
     .index(Uint16Array, gl.UNSIGNED_SHORT)
@@ -38,16 +38,16 @@ function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext, shade
   var z = sprite.z / SCALE;
 
   builder.start(mb.QUADS)
-    .attr('norm', [-1, 1] ).vtx('pos', [x, z, y])
-    .attr('norm', [1, 1]  ).vtx('pos', [x, z, y])
-    .attr('norm', [1, -1] ).vtx('pos', [x, z, y])
+    .attr('norm', [-1,  1]).vtx('pos', [x, z, y])
+    .attr('norm', [ 1,  1]).vtx('pos', [x, z, y])
+    .attr('norm', [ 1, -1]).vtx('pos', [x, z, y])
     .attr('norm', [-1, -1]).vtx('pos', [x, z, y])
     .end();
   return builder.build(gl, new Mat(shader));
 }
 
 function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture) {
-  var builder = new mb.MeshBuilderConstructor()
+  var builder = new mb.MeshBuilderConstructor(4)
     .buffer('pos', Float32Array, gl.FLOAT, 2)
     .buffer('norm', Float32Array, gl.FLOAT, 2)
     .index(Uint16Array, gl.UNSIGNED_SHORT)
