@@ -1,0 +1,65 @@
+
+.frame {
+	position: absolute;
+	border-left: 2px solid #EEE;
+	border-right: 2px solid #999;
+	border-top: 2px solid #EEE;
+	border-bottom: 2px solid #999;
+	background: #CCC;
+	font: 11px Helvetica, arial, freesans, clean, sans-serif;
+}
+
+.header {
+	padding: 5px 10px;
+	font-size: 13px;
+	font-weight: bold;
+	color: black;
+	cursor: default;
+	text-align: center;
+}
+
+.hline {
+	border-top: 2px solid #999;
+	border-bottom: 2px solid #EEE;
+	margin: 0px 5px;
+}
+
+.button {
+	border-radius: 2px;
+	padding: 3px 10px;
+	border-left: 2px solid #EEE;
+	border-right: 2px solid #999;
+	border-top: 2px solid #EEE;
+	border-bottom: 2px solid #999;
+	display: inline-block;
+	background: #CCC;
+	font-weight: bold;
+	color: black;
+	cursor: default;
+}
+
+.button:active{
+	border-left: 2px solid #999;
+	border-right: 2px solid #EEE;
+	border-top: 2px solid #999;
+	border-bottom: 2px solid #EEE;
+	background: #888;
+	color: #EEE;
+}
+
+.contour {
+	margin: 5px;
+	border: 1px solid black;
+	border-radius: 2px;
+	display: inline-block;
+}
+
+.center {
+	display:-webkit-box;
+    -webkit-box-pack:center;
+    -webkit-box-align:center;
+}
+
+.content {
+	margin: 5px 5px;
+}

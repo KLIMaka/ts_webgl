@@ -68,6 +68,70 @@ class MF implements buildutils.MaterialFactory {
   get(picnum:number) {return picnum==9999 ? this.wallmat : this.mat}
 }
 
+var S = 4096*4;
+var R = 300;
+class MyBoardBuilder implements buildutils.BoardBuilder {
+  private builder:mb.MeshBuilder;
+  private canvas:HTMLCanvasElement = document.createElement('canvas');
+  private ctx:any;
+  private packer = new tcpack.Packer(S, S);
+
+  constructor() {
+    var gl = WebGLRenderingContext;
+    this.builder = new mb.MeshBuilderConstructor()
+      .buffer('aPos', Float32Array, gl.FLOAT, 3)
+      .buffer('aNorm', Float32Array, gl.FLOAT, 3)
+      .buffer('aIdx', Uint8Array, gl.UNSIGNED_BYTE, 4, true)
+      .buffer('aTc', Float32Array, gl.FLOAT, 2)
+      .buffer('aLMTc', Float32Array, gl.FLOAT, 2)
+      .buffer('aShade', Int8Array, gl.BYTE, 1)
+      .index(Uint16Array, gl.UNSIGNED_SHORT)
+      .build();
+
+    this.canvas.width = R;
+    this.canvas.height = R;
+    this.ctx = this.canvas.getContext('2d');
+  }
+
+  public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
+    var proj = MU.project3d(verts);
+    var hull = tcpack.getHull(proj);
+    var r = this.packer.pack(new tcpack.Rect(hull.maxx-hull.minx, hull.maxy-hull.miny));
+    this.ctx.rect(r.xoff/S*R, r.yoff/S*R, r.w/S*R, r.h/S*R);
+    var lmtcs = [];
+    for (var i = 0; i < verts.length; i++) {
+      var u = (r.xoff+proj[i][0]-hull.minx)/S;
+      var v = (r.yoff+proj[i][1]-hull.miny)/S;
+      lmtcs.push([u, v]);
+    }
+    var normal = MU.normal(verts);
+
+    this.builder.start(type)
+      .attr('aNorm', normal)
+      .attr('aIdx', MU.int2vec4(idx))
+      .attr('aShade', [shade]);
+    for (var i = 0; i < verts.length; i++){
+      this.builder
+        .attr('aTc', tcs[i])
+        .attr('aLMTc', lmtcs[i])
+        .vtx('aPos', verts[i]);
+    }
+    this.builder.end();
+
+
+  }
+
+  public getOffset(): number {
+    return this.builder.offset() * 2;
+  }
+
+  public build(gl:WebGLRenderingContext):ds.DrawStruct {
+    this.ctx.stroke();
+    document.body.appendChild(this.canvas);
+    return this.builder.build(gl, null);
+  }
+}
+
 var MAP = 'resources/buildmaps/cube.map';
 
 getter.loader
@@ -91,7 +155,7 @@ base = new TEX.DrawTexture(1, 1, gl);
 var baseShader = shaders.createShader(gl, 'resources/shaders/base');
 var size = 32;
 var tex1 = new TEX.DrawTexture(size, size, gl);
-var model = new buildutils.BoardProcessor(board).build(gl, new MF(baseShader, new Mat(baseShader, {base:tex1}))).getAll();
+var prcessor = new buildutils.BoardProcessor(board).build(gl, new MF(baseShader, new Mat(baseShader, {base:tex1})), new MyBoardBuilder());
 var control = new controller.Controller3D(gl);
 var pixel = new Uint8Array(4);
 var trace_baseShader = shaders.createShader(gl, 'resources/shaders/trace_base');
@@ -132,6 +196,7 @@ var traceContext = {
   cam: new camera.Camera(0, 0, 0, 0, 180),
   mat: GLM.mat4.create(),
   pmat: GLM.mat4.perspective(GLM.mat4.create(), MU.deg2rad(fov), 1, 1, 0xFFFF),
+  ms: new buildutils.MoveStruct()
 };
 
 var traceBinder = new GL.UniformBinder();
@@ -148,6 +213,7 @@ function init(x: number, y:number, ctx:any) {
   GLM.vec3.add(ctx.npos, ctx.start, ctx.dx);
   GLM.vec3.add(ctx.npos, ctx.npos, ctx.dy);
   ctx.cam.setPos(ctx.npos);
+  ms.x = ctx.npos.x; ms.y = ctx.npos.z;
 
   GLM.mat4.perspective(ctx.mat, MU.deg2rad(fov), 1, 1, 0xFFFF);
   GLM.mat4.mul(ctx.mat, ctx.mat, ctx.cam.getTransformMatrix());
@@ -159,14 +225,17 @@ function trace(gl:WebGLRenderingContext) {
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  GL.draw(gl, model, traceBinder);
+  var models = prcessor.get(traceContext.ms, traceContext.cam.forward());
+  GL.draw(gl, models, traceBinder);
   GL.draw(gl, [light], traceBinder);
 }
 
-var last = null;
+var ms = new buildutils.MoveStruct();
 GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   control.move(time);
+  ms.x = control.getCamera().getPos()[0];
+  ms.y = control.getCamera().getPos()[2];
 
   var data = RT.drawTo(gl, trace);
   var sum = 0;
@@ -183,7 +252,6 @@ GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
   x++;
   if (x == size) {
     x = 0;
-    last = null;
     y++;
     if (y == size) {
       y = 0;
@@ -193,7 +261,8 @@ GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  GL.draw(gl, model, binder);
+  var models = prcessor.get(ms, control.getCamera().forward());
+  GL.draw(gl, models, binder);
   GL.draw(gl, [light], binder);
   GL.draw(gl, [screen], screenBinder);
 });

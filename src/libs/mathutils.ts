@@ -171,6 +171,33 @@ export function normal(verts:number[][]) {
   return res;
 }
 
+export function projectionSpace(vtxs:number[][]) {
+  GLM.vec3.sub(a, vtxs[1], vtxs[0]);
+  GLM.vec3.sub(b, vtxs[2], vtxs[0]);
+  var n = GLM.vec3.create();
+  var c = GLM.vec3.create();
+  GLM.vec3.cross(n, b, a);
+  GLM.vec3.normalize(n, n);
+  GLM.vec3.cross(c, n, a);
+  GLM.vec3.normalize(c, c);
+  GLM.vec3.normalize(a, a);
+  return [
+    a[0], a[1], a[2],
+    c[0], c[1], c[2],
+    n[0], n[1], n[2]
+  ];
+}
+
+export function project3d(vtxs:number[][]):number[][] {
+  var mat = projectionSpace(vtxs);
+  var ret = [];
+  for (var i = 0; i < vtxs.length; i++) {
+    var vtx = GLM.vec3.transformMat3(GLM.vec3.create(), vtxs[i], mat);
+    ret.push([vtx[0], vtx[1]]);
+  }
+  return ret;
+}
+
 export function int2vec4(int:number) {
   return [(int&0xff), ((int>>>8)&0xff), ((int>>>16)&0xff), ((int>>>24)&0xff)];
 }

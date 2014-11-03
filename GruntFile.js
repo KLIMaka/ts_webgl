@@ -13,7 +13,8 @@ module.exports = function (grunt) {
     'particles',
     'hmm2',
     'hmm_bin',
-    'app1'
+    'app1',
+    'ui'
   ];
 
   var nodemodules = [
