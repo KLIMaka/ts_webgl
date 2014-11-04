@@ -2,7 +2,7 @@ uniform mat4 MVP;
 uniform vec3 eyedir;
 uniform vec3 eyepos;
 
-//attribute vec3 aNorm;
+attribute vec3 aNorm;
 attribute vec3 aPos;
 attribute vec4 aIdx;
 attribute vec2 aTc;

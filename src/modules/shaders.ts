@@ -88,6 +88,12 @@ export function createShader(gl:WebGLRenderingContext, name:string):Shader {
   return shader;
 }
 
+export function createShaderFromSrc(gl:WebGLRenderingContext, vsh:string, fsh:string):Shader {
+  var shader = new Shader(compileProgram(gl, vsh, fsh));
+  initShader(gl, shader, vsh, fsh);
+  return shader;
+}
+
 function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:string) {
   var program = compileProgram(gl, vsh, fsh);
   var params = processShaders(vsh, fsh);

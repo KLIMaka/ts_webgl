@@ -1,5 +1,3 @@
-import shaders = require('shaders');
-import materials = require('materials');
 import DS = require('drawstruct');
 
 export function createContext(w:number, h:number, opts = {}):WebGLRenderingContext {
