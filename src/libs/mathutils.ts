@@ -4,7 +4,7 @@ import GLM = require('../libs_js/glmatrix');
 var radsInDeg = 180 / Math.PI;
 var degInRad = Math.PI / 180;
 var PI2 = Math.PI*2;
-var EPS = 1e-5;
+var EPS = 1e-9;
 
 export function deg2rad(deg:number):number {
   return deg * degInRad;
@@ -67,6 +67,16 @@ export function intersect2dT(p1s:number[], p1e:number[], p2s:number[], p2e:numbe
 export function direction3d(ps:number[], pe:number[]):number[] {
   var tmp = GLM.vec3.create();
   return GLM.vec3.normalize(tmp, GLM.vec3.sub(tmp, pe, ps));
+}
+
+export function resize2d(sx:number, sy:number, ex:number, ey:number, dl:number):number[] {
+  var dx = ex-sx;
+  var dy = ey-sy;
+  var len = Math.sqrt(dx*dx + dy*dy);
+  var scale = (len+dl)/len;
+  var nx = sx + dx*scale;
+  var ny = sy + dy*scale;
+  return [nx, ny];
 }
 
 export function direction2d(ps:number[], pe:number[]):number[] {
@@ -159,6 +169,33 @@ export function normal(verts:number[][]) {
   GLM.vec3.cross(res, b, a);
   GLM.vec3.normalize(res, res);
   return res;
+}
+
+export function projectionSpace(vtxs:number[][]) {
+  GLM.vec3.sub(a, vtxs[1], vtxs[0]);
+  GLM.vec3.sub(b, vtxs[2], vtxs[0]);
+  var n = GLM.vec3.create();
+  var c = GLM.vec3.create();
+  GLM.vec3.cross(n, b, a);
+  GLM.vec3.normalize(n, n);
+  GLM.vec3.cross(c, n, a);
+  GLM.vec3.normalize(c, c);
+  GLM.vec3.normalize(a, a);
+  return [
+    a[0], a[1], a[2],
+    c[0], c[1], c[2],
+    n[0], n[1], n[2]
+  ];
+}
+
+export function project3d(vtxs:number[][]):number[][] {
+  var mat = projectionSpace(vtxs);
+  var ret = [];
+  for (var i = 0; i < vtxs.length; i++) {
+    var vtx = GLM.vec3.transformMat3(GLM.vec3.create(), vtxs[i], mat);
+    ret.push([vtx[0], vtx[1]]);
+  }
+  return ret;
 }
 
 export function int2vec4(int:number) {

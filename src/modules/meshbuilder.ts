@@ -46,6 +46,8 @@ class DynamicVertexBufferBuilder {
   }
 
   public push(data:number[]):void {
+    if (this.lastIdx >= this.maxSize)
+      throw new Error('MaxSize limit exceeded');
     var off = this.lastIdx*this.spacing;
     for (var i = 0; i < this.spacing; i++)
       this.buffer[off+i] = data[i];
@@ -284,9 +286,14 @@ export class MeshBuilderConstructor {
 
   private buffers = {};
   private idx:IndexBufferBuilder;
+  private size:number;
+
+  constructor(size:number=64*1024) {
+    this.size = size;
+  }
 
   public buffer(name:string, arrayType:any, type:number, spacing:number, normalized:boolean=false):MeshBuilderConstructor {
-    this.buffers[name] = new DynamicVertexBufferBuilder(64*1024, arrayType, type, spacing, normalized);
+    this.buffers[name] = new DynamicVertexBufferBuilder(this.size, arrayType, type, spacing, normalized);
     return this;
   }
 

@@ -1,6 +1,5 @@
 import getter = require('./libs/getter');
-import WL = require('./modules/engines/wl');
-import Panel = require('./modules/ui/drawpanel');
+import WL = require('./modules/engines/wl/wl');
 import P = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
@@ -16,7 +15,7 @@ getter.loader
 .load(T1)
 .finish(() => {
 
-var egapal = [
+var egapal = new Uint8Array([
   0x00, 0x00, 0x00, 
   0x00, 0x00, 0xaa,
   0x00, 0xaa, 0x00,
@@ -33,18 +32,22 @@ var egapal = [
   0xff, 0x55, 0xff, 
   0xff, 0xff, 0x55,
   0xff, 0xff, 0xff
-]
+]);
 
 var game = new WL.Game(getter.get(R));
 var t0 = new WL.HTDS(getter.get(T0));
 var t1 = new WL.HTDS(getter.get(T1));
+
+console.log(game);
+console.log(t0);
+console.log(t1);
  
 var tilesets = new Array<HTMLCanvasElement[]>();
 for (var i = 0; i < 9; i++) {
   var tileset = i < 4 ? t0.tilesets[i] : t1.tilesets[i-4];
   var imgs = new Array<HTMLCanvasElement>(tileset.pics.length);
   for (var j = 0; j < tileset.pics.length; j++){
-    imgs[j] = IU.createCanvas(new P.RGBPalPixelProvider(tileset.pics[j].pixels, egapal, 16, 16));
+    imgs[j] = IU.createCanvas(new P.fromPal(tileset.pics[j].pixels, egapal, 16, 16));
   }
   tilesets.push(imgs);
 }

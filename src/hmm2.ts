@@ -135,12 +135,18 @@ var aggFile = AGG.create(getter.get(RES));
 var pal = AGG.createPalette(aggFile.get('KB.PAL'));
 var tilFile = TIL.create(aggFile.get('GROUND32.TIL'));
 var mapFile = MP2.create(getter.get(MAP));
-var map = IU.createEmptyCanvas(tilFile.width*mapFile.width, tilFile.height*mapFile.height);
+var MAP_W = tilFile.width*mapFile.width;
+var MAP_H = tilFile.height*mapFile.height;
+
+var map = IU.createEmptyCanvas(MAP_W, MAP_H);
 map.style.position='absolute';
 document.body.appendChild(map);
-var tmap = IU.createEmptyCanvas(tilFile.width*mapFile.width, tilFile.height*mapFile.height);
+var tmap = IU.createEmptyCanvas(MAP_W, MAP_H);
 tmap.style.position='absolute';
 document.body.appendChild(tmap);
+var smap = IU.createEmptyCanvas(MAP_W, MAP_H);
+smap.style.position='absolute';
+document.body.appendChild(smap);
 
 var icnCache:{[index:string]:ICN.IcnFile} = {};
 function createTile(obj:number, idx:number, count:number, level:number, adds:any, tile:any):any {
@@ -169,10 +175,32 @@ function createTile(obj:number, idx:number, count:number, level:number, adds:any
   adds.push({pp:pp, xoff:i.offsetX, yoff:i.offsetY, q:count, l:level, tile:tile});
 }
 
+var uniqInfo:any = [];
+function addUniqTile(tile, x, y) {
+  var id = tile.uniqNumber1 == 0 ? tile.uniqNumber2 : tile.uniqNumber1;
+  if (id == 0) return;
+  var uniq = uniqInfo[id];
+  if (uniq == undefined) {
+    uniq = [];
+    uniqInfo[id] = uniq;
+  }
+  uniq.push({tile:tile, x:x, y:y});
+}
+function addUniqAddon(addon, x, y) {
+  var id = addon.uniqNumberN1 == 0 ? addon.uniqNumberN2 : addon.uniqNumberN1;
+  if (id == 0) return;
+  var uniq = uniqInfo[id];
+  if (uniq == undefined) {
+    uniq = [];
+    uniqInfo[id] = uniq;
+  }
+  uniq.push({addon:addon, x:x, y:y});
+}
+
 var tilesInfo:any = [];
 var tiles = mapFile.tiles;
 var addons = mapFile.addons;
-tmap.onclick = (e) => {
+smap.onclick = (e) => {
   var x = e.pageX-8;
   var y = e.pageY-8;
   var mx = MU.int(x/tilFile.width);
@@ -181,13 +209,38 @@ tmap.onclick = (e) => {
   console.log(infos);
   console.log(getDetails(infos));
   console.log(mx, my, x, y);
+  var ids = [];
   for (var i = 0; i < infos.length; i++) {
+    ids.push(infos[i].tile.uniqNumber1);
+    ids.push(infos[i].tile.uniqNumberN1);
+    ids.push(infos[i].tile.uniqNumber2);
+    ids.push(infos[i].tile.uniqNumberN2);
     var canvas = IU.createCanvas(infos[i].pp);
     document.body.appendChild(canvas);
   }
   document.body.appendChild(document.createElement('br'));
   var pp = new ShadowBlendPixelProvider(new TilePixelProvider(infos, getDetails(infos)));
   document.body.appendChild(IU.createCanvas(pp));
+
+  var ctx = smap.getContext('2d');
+  // ctx.fillStyle="rgba(0,0,0,0)";
+  // ctx.fillRect(0, 0, MAP_W, MAP_H);
+  ctx.fillStyle="#000000";
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i];
+    if (id == undefined || id == 0)
+      continue;
+    var info = uniqInfo[id];
+    if (info == undefined)
+      continue;
+    console.log(id);
+    for (var t = 0; t < info.length; t++) {
+      var tile = info[t];
+      ctx.rect(tile.x, tile.y, 32, 32);
+    }
+  }
+  ctx.stroke();
+
 }
 
 for (var i = 0; i < tiles.length; i++) {
@@ -208,12 +261,13 @@ for (var i = 0; i < tiles.length; i++) {
 
   createTile(tile.objectName1, tile.indexName1, 0, 1, adds, tile);
   createTile(tile.objectName2, tile.indexName2, 0, 2, adds, tile);
-
+  addUniqTile(tile, x, y);
 
   for (var addon = tile.indexAddon; addon != 0; addon = addons[addon].indexAddon) {
     var add = addons[addon];
     createTile(add.objectNameN1*2, add.indexNameN1, add.quantityN%4, 1, adds, add);
     createTile(add.objectNameN2, add.indexNameN2, add.quantityN%4, 2, adds, add);
+    addUniqAddon(add, x, y);
   }
 
   if (adds.length != 0){
@@ -242,5 +296,6 @@ for (var i = 0; i < tiles.length; i++) {
 
 console.log(aggFile);
 console.log(mapFile);
+console.log(uniqInfo);
 
 });

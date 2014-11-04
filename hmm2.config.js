@@ -1,3 +1,3 @@
 var config = {
-  map : 'PYRAMID.MP2'
+  map : 'TEST.MP2'
 }
