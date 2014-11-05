@@ -281,7 +281,7 @@ export class BoardProcessor {
   private index:any = [];
   private dss:DS.DrawStruct[] = [];
 
-  constructor(private board:buildstructs.Board) {}
+  constructor(public board:buildstructs.Board) {}
 
   public build(gl:WebGLRenderingContext, materialFactory:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder()):BoardProcessor {
     var objs:any = [];

@@ -199,6 +199,10 @@ export class IndexBufferBuilder {
     return this.buffer.length;
   }
 
+  public buf():number[] {
+    return this.buffer;
+  }
+
   public build(gl:WebGLRenderingContext):DS.IndexBuffer {
     var bufIdx = gl.createBuffer();
     var data = new this.arrayType(this.buffer);
@@ -269,6 +273,10 @@ export class MeshBuilder {
   public end():void {
     this.idx.setMode(NONE);
     this.attrs = {};
+  }
+
+  public idxbuf():IndexBufferBuilder {
+    return this.idx;
   }
 
   public build(gl:WebGLRenderingContext, material:DS.Material):DS.DrawStruct {

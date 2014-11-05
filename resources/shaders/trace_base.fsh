@@ -1,6 +1,7 @@
 precision mediump float;
 
 uniform vec3 eyedir;
+
 varying vec3 toLight;
 
 void main() {

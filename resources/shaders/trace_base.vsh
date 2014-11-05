@@ -1,13 +1,12 @@
 uniform mat4 MVP;
 uniform vec3 eyepos;
 
-attribute vec3 norm;
-attribute vec3 pos;
+attribute vec3 aPos;
 
 varying vec3 toLight;
 
 void main() {
-	vec3 toEye = eyepos - pos;
+	vec3 toEye = eyepos - aPos;
 	toLight = toEye;
-	gl_Position = MVP * vec4(pos, 1);
+	gl_Position = MVP * vec4(aPos, 1);
 }
