@@ -2,6 +2,7 @@ precision mediump float;
 
 uniform int activeIdx;
 uniform sampler2D base;
+uniform sampler2D lm;
 
 varying float att;
 varying float idx;
@@ -13,8 +14,6 @@ void main() {
   vec3 select = activeIdx==current 
   	? vec3(1,0.5,0.2) 
   	: vec3(1,1,1);
-  vec3 color = texture2D(base, tc).rgb * select;
-  float c = step(fract(lmtc.x*64.0), 0.5) + step(fract(lmtc.y*64.0), 0.5);
-  c = c == 2.0 || c == 0.0 ? 0.2 : 0.8;
-  gl_FragColor = vec4(/*color * att*/c, c, c, 1.0);
+  vec3 color = texture2D(lm, lmtc).rgb;
+  gl_FragColor = vec4(color, 1.0);
 }

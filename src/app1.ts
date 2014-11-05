@@ -64,8 +64,7 @@ function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture)
 }
 
 class MF implements buildutils.MaterialFactory {
-  private mat:ds.Material = null;
-  constructor(private shader:ds.Shader) {this.mat = new Mat(shader)}
+  constructor(private mat:Mat) {}
   get(picnum:number) {return this.mat}
 }
 
@@ -199,7 +198,7 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
     canvas.width = w;
     canvas.height = h;
     var ctx = canvas.getContext('2d');
-    var img = ctx.getImageData(0, 0, R, R);
+    var img = ctx.getImageData(0, 0, w, h);
     var RT = new TEX.RenderTexture(128, 128, gl);
     var rast = new raster.Rasterizer(img, (attrs:number[]) => {
       return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
@@ -232,18 +231,18 @@ var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resourc
 var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
 var size = 32;
 var builder = new MyBoardBuilder();
-var processor = new buildutils.BoardProcessor(board).build(gl, new MF(trace_baseShader), builder);
+var processor = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(trace_baseShader)), builder);
 var control = new controller.Controller3D(gl);
 
 traceContext.processor = processor;
 traceContext.light = buildSprite(board.sprites[0], gl, trace_spriteShader);
-var lm = builder.bake(gl, 300, 300);
-var tex1 = new TEX.Texture(300, 300, gl, lm);
+var lm = builder.bake(gl, 128, 128);
+var tex1 = new TEX.Texture(128, 128, gl, new Uint8Array(lm));
 
 // var light = ;
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
 builder = new MyBoardBuilder();
-var processor1 = new buildutils.BoardProcessor(board).build(gl, new MF(base_shader), builder);
+var processor1 = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(base_shader, {lm:tex1})), builder);
 var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), tex1);
 
 
