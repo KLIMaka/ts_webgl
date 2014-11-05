@@ -104,6 +104,8 @@ export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBin
         if (buf == undefined)
           throw new Error('No buffer for shader attribute <' + attr + '>');
         var location = shader.getAttributeLocation(attr, gl);
+        if (location == -1)
+          continue;
         gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
         gl.enableVertexAttribArray(location);
         gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());

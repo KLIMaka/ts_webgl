@@ -171,9 +171,32 @@ export function normal(verts:number[][]) {
   return res;
 }
 
+function findOrigin(vtxs:number[][]):number[] {
+  var len = vtxs.length;
+  var res = [len-1, 0, 1];
+  var maxlen = 0;
+  var d = GLM.vec3.create();
+  for (var i = 0; i < len; i++) {
+    var prev = i == 0 ? len-1 : i-1;
+    var next = i == len-1 ? 0 : i+1;
+    var vi = vtxs[i];
+    var vn = vtxs[next];
+
+    GLM.vec3.sub(d, vi, vn);
+    var dl = GLM.vec3.len(d);
+    if (/*((d[0]==0 && d[1]==0)||(d[0]==0 && d[2]==0)||(d[1]==0 && d[2]==0)) &&*/ dl > maxlen) {
+      maxlen = dl;
+      res = [prev, i, next];
+    }
+  } 
+  return res;
+}
+
 export function projectionSpace(vtxs:number[][]) {
-  GLM.vec3.sub(a, vtxs[1], vtxs[0]);
-  GLM.vec3.sub(b, vtxs[2], vtxs[0]);
+  var o = findOrigin(vtxs);
+  GLM.vec3.sub(a, vtxs[o[1]], vtxs[o[2]]);
+  GLM.vec3.sub(b, vtxs[o[1]], vtxs[o[0]]);
+  console.log(a, b);
   var n = GLM.vec3.create();
   var c = GLM.vec3.create();
   GLM.vec3.cross(n, b, a);

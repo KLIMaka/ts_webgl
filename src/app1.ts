@@ -71,7 +71,7 @@ class MF implements buildutils.MaterialFactory {
 var traceContext = {
   MVP: GLM.mat4.create(),
   MV: GLM.mat4.create(),
-  P: GLM.mat4.create(),
+  P: GLM.mat4.perspective(GLM.mat4.create(), MU.deg2rad(90), 1, 1, 0xFFFF),
   pos: null,
   dir: null,
   ms: new buildutils.MoveStruct(),
@@ -91,7 +91,7 @@ function trace(gl:WebGLRenderingContext) {
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  var models = traceContext.processor.getAll();
+  var models = traceContext.processor.get(traceContext.ms, traceContext.dir);
   GL.draw(gl, models, traceBinder);
   GL.draw(gl, [traceContext.light], traceBinder);
 }
@@ -105,12 +105,12 @@ function upVector(dir:number[]):number[] {
   return GLM.vec3.cross(GLM.vec3.create(), dir, right);
 }
 
-var pixel = [0, 0, 0, 0];
+var pixel = [0, 0, 0, 255];
 function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[], dir:number[]):number[] {
   var center = GLM.vec3.add(GLM.vec3.create(), pos, dir);
   var up = upVector(dir);
   var MV = GLM.mat4.lookAt(traceContext.MV, pos, center, up);
-  var P = GLM.mat4.perspective(traceContext.P, MU.deg2rad(100), 1, 1, 0xFFFF);
+  var P = traceContext.P;
   GLM.mat4.mul(traceContext.MVP, P, MV);
   traceContext.pos = pos;
   traceContext.dir = dir;
@@ -126,12 +126,10 @@ function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[],
       count++;
   }
   pixel[0] = pixel[1] = pixel[2] = Math.min(sum / count, 255);
-  pixel[3] = 255;
   return pixel;
 }
 
 var S = 4096*4;
-var R = 300;
 class MyBoardBuilder implements buildutils.BoardBuilder {
   private builder:mb.MeshBuilder;
   private packer = new tcpack.Packer(S, S);
@@ -201,12 +199,13 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
     var img = ctx.getImageData(0, 0, w, h);
     var RT = new TEX.RenderTexture(128, 128, gl);
     var rast = new raster.Rasterizer(img, (attrs:number[]) => {
-      return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
+      //return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
+      return [255, 0, 0, 255];
     });
     rast.bindAttributes(0, this.buf, 8);
     rast.drawTriangles(this.builder.idxbuf().buf(), 0, this.builder.idxbuf().length());
     ctx.putImageData(img, 0, 0);
-    return img.data;
+    return new Uint8Array(img.data);
   }
 }
 
@@ -237,9 +236,8 @@ var control = new controller.Controller3D(gl);
 traceContext.processor = processor;
 traceContext.light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 var lm = builder.bake(gl, 128, 128);
-var tex1 = new TEX.Texture(128, 128, gl, new Uint8Array(lm));
+var tex1 = new TEX.Texture(128, 128, gl, lm);
 
-// var light = ;
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
 builder = new MyBoardBuilder();
 var processor1 = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(base_shader, {lm:tex1})), builder);
