@@ -71,7 +71,7 @@ class MF implements buildutils.MaterialFactory {
 var traceContext = {
   MVP: GLM.mat4.create(),
   MV: GLM.mat4.create(),
-  P: GLM.mat4.perspective(GLM.mat4.create(), MU.deg2rad(90), 1, 1, 0xFFFF),
+  P: GLM.mat4.perspective(GLM.mat4.create(), MU.deg2rad(160), 1, 1, 0xFFFF),
   pos: null,
   dir: null,
   ms: new buildutils.MoveStruct(),
@@ -85,7 +85,7 @@ traceBinder.addResolver('MV', GL.mat4Setter,      ()=>traceContext.MV);
 traceBinder.addResolver('P', GL.mat4Setter,       ()=>traceContext.P);
 traceBinder.addResolver('eyepos', GL.vec3Setter,  ()=>traceContext.pos);
 traceBinder.addResolver('eyedir', GL.vec3Setter,  ()=>traceContext.dir);
-traceBinder.addResolver('size', GL.float1Setter,  ()=>100);
+traceBinder.addResolver('size', GL.float1Setter,  ()=>400);
 
 function trace(gl:WebGLRenderingContext) {
   gl.clearColor(0, 0, 0, 1);
@@ -109,9 +109,9 @@ var pixel = [0, 0, 0, 255];
 function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[], dir:number[]):number[] {
   var center = GLM.vec3.add(GLM.vec3.create(), pos, dir);
   var up = upVector(dir);
-  var MV = GLM.mat4.lookAt(traceContext.MV, pos, center, up);
   var P = traceContext.P;
-  GLM.mat4.mul(traceContext.MVP, P, MV);
+  var MV = GLM.mat4.lookAt(traceContext.MV, pos, center, up);
+  var MVP = GLM.mat4.mul(traceContext.MVP, P, MV);
   traceContext.pos = pos;
   traceContext.dir = dir;
   traceContext.ms.x = pos[0];
@@ -199,8 +199,7 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
     var img = ctx.getImageData(0, 0, w, h);
     var RT = new TEX.RenderTexture(128, 128, gl);
     var rast = new raster.Rasterizer(img, (attrs:number[]) => {
-      //return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
-      return [255, 0, 0, 255];
+      return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
     });
     rast.bindAttributes(0, this.buf, 8);
     rast.drawTriangles(this.builder.idxbuf().buf(), 0, this.builder.idxbuf().length());
@@ -232,9 +231,10 @@ var size = 32;
 var builder = new MyBoardBuilder();
 var processor = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(trace_baseShader)), builder);
 var control = new controller.Controller3D(gl);
+var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 
 traceContext.processor = processor;
-traceContext.light = buildSprite(board.sprites[0], gl, trace_spriteShader);
+traceContext.light = light;
 var lm = builder.bake(gl, 128, 128);
 var tex1 = new TEX.Texture(128, 128, gl, lm);
 
@@ -268,7 +268,7 @@ GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   var models = processor1.get(ms, control.getCamera().forward());
   GL.draw(gl, models, binder);
-  // GL.draw(gl, [light], binder);
+  GL.draw(gl, [light], binder);
   GL.draw(gl, [screen], screenBinder);
 });
 

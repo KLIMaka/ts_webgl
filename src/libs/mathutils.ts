@@ -171,25 +171,42 @@ export function normal(verts:number[][]) {
   return res;
 }
 
+export function cyclic(x:number, max:number):number {
+  return x > 0 ? (x%max) : (max + x%max);
+}
+
+function findOther(vtxs:number[][], start:number, v1:number, v2:number) {
+  var vec = GLM.vec3.sub(GLM.vec3.create(), vtxs[v1], vtxs[v2]);
+  var len = vtxs.length;
+  for (var i = 0; i < len; i++) {
+    var v3 = cyclic(start+i, len);
+    var vec1 = GLM.vec3.sub(GLM.vec3.create(), vtxs[v1], vtxs[v3]);
+    var d = GLM.vec3.dot(vec1, vec) / (GLM.vec3.len(vec)*GLM.vec3.len(vec1));
+    if (Math.abs(Math.abs(d)-1.0) < 1e-10)
+      continue;
+    return v3;
+  }
+}
+
 function findOrigin(vtxs:number[][]):number[] {
   var len = vtxs.length;
-  var res = [len-1, 0, 1];
+  var res = [2, 0, 1];
   var maxlen = 0;
   var d = GLM.vec3.create();
   for (var i = 0; i < len; i++) {
-    var prev = i == 0 ? len-1 : i-1;
-    var next = i == len-1 ? 0 : i+1;
+    var next2 = cyclic(i+2, len);
+    var next = cyclic(i+1, len);
     var vi = vtxs[i];
     var vn = vtxs[next];
 
     GLM.vec3.sub(d, vi, vn);
     var dl = GLM.vec3.len(d);
-    if (/*((d[0]==0 && d[1]==0)||(d[0]==0 && d[2]==0)||(d[1]==0 && d[2]==0)) &&*/ dl > maxlen) {
+    if (((d[0]==0 && d[1]==0)||(d[0]==0 && d[2]==0)||(d[1]==0 && d[2]==0)) && dl > maxlen) {
       maxlen = dl;
-      res = [prev, i, next];
+      res = [next2, i, next];
     }
   } 
-  return res;
+  return [findOther(vtxs, res[0], res[1], res[2]), res[1], res[2]];
 }
 
 export function projectionSpace(vtxs:number[][]) {
@@ -205,9 +222,9 @@ export function projectionSpace(vtxs:number[][]) {
   GLM.vec3.normalize(c, c);
   GLM.vec3.normalize(a, a);
   return [
-    a[0], a[1], a[2],
-    c[0], c[1], c[2],
-    n[0], n[1], n[2]
+    a[0], c[0], n[0],
+    a[1], c[1], n[1],
+    a[2], c[2], n[2]
   ];
 }
 
