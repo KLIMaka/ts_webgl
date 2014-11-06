@@ -12,6 +12,7 @@ import GLM = require('libs_js/glmatrix');
 import TEX = require('./modules/textures');
 import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
+import IU = require('./libs/imgutils');
 import tcpack = require('./modules/texcoordpacker');
 import raster = require('./modules/rasterizer');
 
@@ -129,7 +130,7 @@ function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[],
   return pixel;
 }
 
-var S = 4096*4;
+var S = 4096*5;
 class MyBoardBuilder implements buildutils.BoardBuilder {
   private builder:mb.MeshBuilder;
   private packer = new tcpack.Packer(S, S);
@@ -153,6 +154,8 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
     var proj = MU.project3d(verts);
     var hull = tcpack.getHull(proj);
     var r = this.packer.pack(new tcpack.Rect(hull.maxx-hull.minx, hull.maxy-hull.miny));
+    if (r == null)
+      throw new Error("Can not pack face");
     var lmtcs = [];
     for (var i = 0; i < verts.length; i++) {
       var u = (r.xoff+proj[i][0]-hull.minx)/S;

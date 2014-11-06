@@ -19,13 +19,17 @@ export class Packer {
   private p2:Packer;
   private width:number;
   private height:number;
+  private wpad:number;
+  private hpad:number;
   private xoff:number;
   private yoff:number;
   private sized = false;
 
-  constructor(w:number, h:number, xoff:number = 0, yoff:number = 0) {
+  constructor(w:number, h:number, wpad:number = 1, hpad:number = 1, xoff:number = 0, yoff:number = 0) {
     this.width = w;
     this.height = h;
+    this.wpad = wpad;
+    this.hpad = hpad;
     this.xoff = xoff;
     this.yoff = yoff;
   }
@@ -39,14 +43,16 @@ export class Packer {
         r = this.p2.pack(rect);
       return r;
     } else {
-      if (rect.w <= this.width && rect.h <= this.height) {
-        rect.xoff = this.xoff; rect.yoff = this.yoff;
+      var nw = rect.w+this.wpad*2;
+      var nh = rect.h+this.hpad*2;
+      if (nw <= this.width && nh <= this.height) {
+        rect.xoff = this.xoff + this.wpad; rect.yoff = this.yoff + this.hpad;
         this.sized = true;
-        if (rect.w != this.width) {
-          this.p1 = new Packer(this.width - rect.w, rect.h, this.xoff+rect.w, this.yoff);
+        if (nw != this.width) {
+          this.p1 = new Packer(this.width - nw, nh, this.wpad, this.hpad, this.xoff+nw, this.yoff);
         }
-        if (rect.h != this.height) {
-          this.p2 = new Packer(this.width, this.height - rect.h, this.xoff, this.yoff+rect.h);
+        if (nh != this.height) {
+          this.p2 = new Packer(this.width, this.height - nh, this.wpad, this.hpad, this.xoff, this.yoff+nh);
         }
         return rect;
       }
