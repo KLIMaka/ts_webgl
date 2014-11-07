@@ -57,9 +57,9 @@ function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture)
 
   builder.start(mb.QUADS)
     .attr('norm', [0, 0]).vtx('pos', [0, 0])
-    .attr('norm', [1, 0]).vtx('pos', [100, 0])
-    .attr('norm', [1, 1]).vtx('pos', [100, 100])
-    .attr('norm', [0, 1]).vtx('pos', [0, 100])
+    .attr('norm', [1, 0]).vtx('pos', [128, 0])
+    .attr('norm', [1, 1]).vtx('pos', [128, 128])
+    .attr('norm', [0, 1]).vtx('pos', [0, 128])
     .end();
   return builder.build(gl, new Mat(shader, {texture:tex}));
 }
@@ -72,7 +72,7 @@ class MF implements buildutils.MaterialFactory {
 var traceContext = {
   MVP: GLM.mat4.create(),
   MV: GLM.mat4.create(),
-  P: GLM.mat4.perspective(GLM.mat4.create(), MU.deg2rad(160), 1, 1, 0xFFFF),
+  P: GLM.mat4.perspective(GLM.mat4.create(), MU.deg2rad(90), 1, 1, 0xFFFF),
   pos: null,
   dir: null,
   ms: new buildutils.MoveStruct(),
@@ -86,7 +86,7 @@ traceBinder.addResolver('MV', GL.mat4Setter,      ()=>traceContext.MV);
 traceBinder.addResolver('P', GL.mat4Setter,       ()=>traceContext.P);
 traceBinder.addResolver('eyepos', GL.vec3Setter,  ()=>traceContext.pos);
 traceBinder.addResolver('eyedir', GL.vec3Setter,  ()=>traceContext.dir);
-traceBinder.addResolver('size', GL.float1Setter,  ()=>400);
+traceBinder.addResolver('size', GL.float1Setter,  ()=>100);
 
 function trace(gl:WebGLRenderingContext) {
   gl.clearColor(0, 0, 0, 1);
@@ -99,24 +99,22 @@ function trace(gl:WebGLRenderingContext) {
 
 var up_ = [0, 1, 0];
 var right_ = [1, 0, 0];
-function upVector(dir:number[]):number[] {
+function rightVector(dir:number[]):number[] {
   var right = GLM.vec3.cross(GLM.vec3.create(), dir, up_);
   if (GLM.vec3.len(right) < 1e-10)
     right = GLM.vec3.cross(right, dir, right_);
+  return right;
+}
+
+function upVector(dir:number[], right:number[]):number[] {
   return GLM.vec3.cross(GLM.vec3.create(), dir, right);
 }
 
-var pixel = [0, 0, 0, 255];
-function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[], dir:number[]):number[] {
+function gather(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[], dir:number[], up:number[]):number[] {
   var center = GLM.vec3.add(GLM.vec3.create(), pos, dir);
-  var up = upVector(dir);
   var P = traceContext.P;
   var MV = GLM.mat4.lookAt(traceContext.MV, pos, center, up);
   var MVP = GLM.mat4.mul(traceContext.MVP, P, MV);
-  traceContext.pos = pos;
-  traceContext.dir = dir;
-  traceContext.ms.x = pos[0];
-  traceContext.ms.y = pos[2];
 
   var data = rt.drawTo(gl, trace);
   var sum = 0;
@@ -126,14 +124,76 @@ function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[],
     if (data[i] != 0)
       count++;
   }
-  pixel[0] = pixel[1] = pixel[2] = Math.min(sum / count, 255);
+  return [sum, count];
+}
+
+var pixel = [0, 0, 0, 255];
+function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[], dir:number[]):number[] {
+  traceContext.pos = pos;
+  traceContext.dir = dir;
+  traceContext.ms.x = pos[0];
+  traceContext.ms.y = pos[2];
+  
+  var right = rightVector(dir);
+  var up = upVector(dir, right);
+  var right_ = GLM.vec3.negate(GLM.vec3.create(), right);
+  var up_ = GLM.vec3.negate(GLM.vec3.create(), up);
+
+  var setup = [
+    [dir, up],
+    [right, dir],
+    [right_, dir],
+    [up, dir],
+    [up_, dir]
+  ];
+
+  var g = [0, 0];
+  for (var i = 0; i < setup.length; i++) {
+    var s = setup[i];
+    var res = gather(gl, rt, pos, s[0], s[1]);
+    g[0] += res[0]; g[1] += res[1];
+  }
+  var c = g[1] == 0 ? 0 : Math.min(g[0]/g[1], 255);
+  pixel[0] = pixel[1] = pixel[2] = c;
   return pixel;
 }
 
+function processLM(lm:Uint8Array, w:number, h:number):Uint8Array {
+  var ret = new Uint8Array(w*h*4);
+  var dw = 4;
+  var dh = w*4;
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var idx = (y*w+x)*4;
+      var c = lm[idx];
+      var a = lm[idx+3];
+      if (a == 0) {
+        var sum = 0;
+        var count = 0;
+        if (x > 0) {sum += lm[idx-dw]; count += lm[idx-dw+3]!=0?1:0;}
+        if (x < w-1) {sum += lm[idx+dw]; count += lm[idx+dw+3]!=0?1:0;}
+        if (y > 0) {sum += lm[idx-dh]; count += lm[idx-dh+3]!=0?1:0;}
+        if (y < h-1) {sum += lm[idx+dh]; count += lm[idx+dh+3]!=0?1:0;}
+        if (x > 0 && y > 0) {sum += lm[idx-dw-dh]; count += lm[idx-dw-dh+3]!=0?1:0;}
+        if (x > 0 && y < h-1) {sum += lm[idx-dw+dh]; count += lm[idx-dw+dh+3]!=0?1:0;}
+        if (x < w-1 && y > 0) {sum += lm[idx+dw-dh]; count += lm[idx+dw-dh+3]!=0?1:0;}
+        if (x < w-1 && y < h-1) {sum += lm[idx+dw+dh]; count += lm[idx+dw+dh+3]!=0?1:0;}
+        c = sum / count;
+      }
+      ret[idx] = c;
+      ret[idx+1] = c;
+      ret[idx+2] = c;
+      ret[idx+3] = a == 0 ? 0 : 255;
+    }
+  }
+  return ret;
+}
+
 var S = 4096*5;
+var R = 256;
 class MyBoardBuilder implements buildutils.BoardBuilder {
   private builder:mb.MeshBuilder;
-  private packer = new tcpack.Packer(S, S);
+  private packer = new tcpack.Packer(S, S, S/R, S/R);
   private buf:number[] = [];
   private idxs:number[] = [];
 
@@ -205,6 +265,7 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
       return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
     });
     rast.bindAttributes(0, this.buf, 8);
+    rast.clear([0,0,0,0], 0);
     rast.drawTriangles(this.builder.idxbuf().buf(), 0, this.builder.idxbuf().length());
     ctx.putImageData(img, 0, 0);
     return new Uint8Array(img.data);
@@ -230,7 +291,6 @@ var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
 base = new TEX.DrawTexture(1, 1, gl);
 var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_base.vsh'), getter.getString('resources/shaders/trace_base.fsh'));
 var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
-var size = 32;
 var builder = new MyBoardBuilder();
 var processor = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(trace_baseShader)), builder);
 var control = new controller.Controller3D(gl);
@@ -238,8 +298,8 @@ var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 
 traceContext.processor = processor;
 traceContext.light = light;
-var lm = builder.bake(gl, 128, 128);
-var tex1 = new TEX.Texture(128, 128, gl, lm);
+var lm = processLM(builder.bake(gl, R, R), R, R);
+var tex1 = new TEX.Texture(R, R, gl, lm);
 
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
 builder = new MyBoardBuilder();
