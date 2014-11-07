@@ -158,14 +158,14 @@ function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[],
   return pixel;
 }
 
-function processLM(lm:Uint8Array, w:number, h:number):Uint8Array {
+function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8Array {
   var ret = new Uint8Array(w*h*4);
   var dw = 4;
   var dh = w*4;
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       var idx = (y*w+x)*4;
-      var c = lm[idx];
+      var c = lm[idx]/2 + (lm1==null ? 0 : lm1[idx])/2;
       var a = lm[idx+3];
       if (a == 0) {
         var sum = 0;
@@ -190,7 +190,7 @@ function processLM(lm:Uint8Array, w:number, h:number):Uint8Array {
 }
 
 var S = 4096*5;
-var R = 256;
+var R = 128;
 class MyBoardBuilder implements buildutils.BoardBuilder {
   private builder:mb.MeshBuilder;
   private packer = new tcpack.Packer(S, S, S/R, S/R);
@@ -289,22 +289,26 @@ gl.enable(gl.DEPTH_TEST);
 var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
 
 base = new TEX.DrawTexture(1, 1, gl);
+var lm = new TEX.DrawTexture(R, R, gl);
 var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_base.vsh'), getter.getString('resources/shaders/trace_base.fsh'));
 var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
 var builder = new MyBoardBuilder();
-var processor = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(trace_baseShader)), builder);
+var processor = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(trace_baseShader, {lm:lm})), builder);
 var control = new controller.Controller3D(gl);
 var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 
 traceContext.processor = processor;
 traceContext.light = light;
-var lm = processLM(builder.bake(gl, R, R), R, R);
-var tex1 = new TEX.Texture(R, R, gl, lm);
+var lmdata = processLM(builder.bake(gl, R, R), R, R);
+lm.putSubImage(0, 0, R, R, lmdata, gl);
+lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
+lm.putSubImage(0, 0, R, R, lmdata, gl);
+
 
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
 builder = new MyBoardBuilder();
-var processor1 = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(base_shader, {lm:tex1})), builder);
-var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), tex1);
+var processor1 = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(base_shader, {lm:lm})), builder);
+var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), lm);
 
 
 var binder = new GL.UniformBinder();

@@ -58,9 +58,14 @@ export class DrawTexture extends Texture {
     super(width, height, gl, img);
   }
 
-  public putPiexl(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext) {
+  public putPiexl(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext):void {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, 1, 1, this.getFormat(), this.getType(), pixel);
+  }
+
+  public putSubImage(x:number, y:number, w:number, h:number, img:Uint8Array, gl:WebGLRenderingContext):void {
+    gl.bindTexture(gl.TEXTURE_2D, this.id);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, this.getFormat(), this.getType(), img);
   }
 }
 
