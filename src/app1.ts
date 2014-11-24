@@ -165,7 +165,7 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       var idx = (y*w+x)*4;
-      var c = lm[idx]/2 + (lm1==null ? 0 : lm1[idx])/2;
+      var c = (lm[idx] + (lm1==null ? 0 : lm1[idx]))/ (lm1==null ? 1 : 2);
       var a = lm[idx+3];
       if (a == 0) {
         var sum = 0;

@@ -89,6 +89,15 @@ export class UniformBinder {
   }
 }
 
+export function binder(resolvers:any):UniformBinder {
+  var binder = new UniformBinder();
+  for (var i = 0; i < resolvers.length; i++) {
+    var r = resolvers[i];
+    binder.addResolver(r[0], r[1], r[2]);
+  }
+  return binder;
+}
+
 export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBinder:UniformBinder) {
   for (var m = 0; m < models.length; m++) {
     var model = models[m];

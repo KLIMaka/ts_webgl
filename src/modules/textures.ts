@@ -19,8 +19,8 @@ export class Texture implements DS.Texture {
     this.type = gl.UNSIGNED_BYTE;
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
@@ -52,6 +52,10 @@ export class Texture implements DS.Texture {
   }
 }
 
+export function createTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
+  return new Texture(width, height, gl, img);
+}
+
 export class DrawTexture extends Texture {
 
   constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
@@ -67,6 +71,10 @@ export class DrawTexture extends Texture {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, this.getFormat(), this.getType(), img);
   }
+}
+
+export function createDrawTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
+  return new DrawTexture(width, height, gl, img);
 }
 
 export class RenderTexture extends Texture {

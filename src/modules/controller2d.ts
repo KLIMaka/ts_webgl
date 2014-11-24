@@ -12,6 +12,7 @@ export class Controller2D {
   private cameraY = 0;
   private scale = 1;
   private projection = GLM.mat4.create();
+  private dragButton = 1;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -32,11 +33,15 @@ export class Controller2D {
   }
 
   private mouseup(e:MouseEvent):boolean {
+    if (e.button != this.dragButton)
+      return;
     this.drag = false;
     return false;
   }
 
   private mousedown(e:MouseEvent):boolean {
+    if (e.button != this.dragButton)
+      return;
     this.drag = true;
     this.dragStartX = e.x;
     this.dragStartY = e.y;
@@ -65,6 +70,10 @@ export class Controller2D {
     this.scale = scale;
   }
 
+  public setPos(x:number, y:number):void {
+    this.camera.setPosXYZ(x, y, 0);
+  }
+
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
     var wscale = this.gl.drawingBufferWidth/2 * this.scale;
@@ -73,4 +82,12 @@ export class Controller2D {
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
+
+  public setDragButton(btn:number) {
+    this.dragButton = btn;
+  }
+}
+
+export function create(gl:WebGLRenderingContext):Controller2D {
+  return new Controller2D(gl);
 }
