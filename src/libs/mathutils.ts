@@ -238,6 +238,37 @@ export function project3d(vtxs:number[][]):number[][] {
   return ret;
 }
 
+export class BBox {
+  constructor(
+    public minx:number,
+    public maxx:number,
+    public miny:number,
+    public maxy:number,
+    public minz:number,
+    public maxz:number
+    ) {}
+}
+export function bbox(vtxs:number[][]):BBox {
+  var minx = vtxs[0][0];
+  var maxx = vtxs[0][0];
+  var miny = vtxs[0][1];
+  var maxy = vtxs[0][1];
+  var minz = vtxs[0][2];
+  var maxz = vtxs[0][2];
+
+  var len = vtxs.length;
+  for (var i = 0; i < len; i++) {
+    var v = vtxs[i];
+    minx = Math.min(v[0], minx);
+    miny = Math.min(v[1], miny);
+    minz = Math.min(v[2], minz);
+    maxx = Math.max(v[0], maxz);
+    maxy = Math.max(v[1], maxy);
+    maxz = Math.max(v[2], maxz);
+  }
+  return new BBox(minx, maxx, miny, maxy, minz, maxz);
+}
+
 export function int2vec4(int:number) {
   return [(int&0xff), ((int>>>8)&0xff), ((int>>>16)&0xff), ((int>>>24)&0xff)];
 }

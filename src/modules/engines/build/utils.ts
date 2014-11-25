@@ -119,7 +119,7 @@ var TYPE_SECTOR_CEILING = 2;
 var TYPE_WALL = 3;
 
 class ObjectHandle {
-  constructor(public material:DS.Material, public normal:number[], public offset:number, public len:number) {}
+  constructor(public bbox:MU.BBox, public material:DS.Material, public normal:number[], public offset:number, public len:number) {}
 }
 
 function len(x:number, y:number) {
@@ -144,18 +144,19 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
   var c = quad[2]; var ctc = [tcxoff+tcscalex, (tcyoff+base-c[1])/tcscaley];
   var d = quad[3]; var dtc = [tcxoff,          (tcyoff+base-d[1])/tcscaley];
   var offset = builder.getOffset();
+  var bbox = MU.bbox(quad);
 
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
-    return new ObjectHandle(material, MU.normal([a,b,c]), offset, 3);
+    return new ObjectHandle(bbox, material, MU.normal([a,b,c]), offset, 3);
   }
   if (b[1] == c[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,d], [atc,btc,dtc], idx, shade);
-    return new ObjectHandle(material, MU.normal([a,b,d]), offset, 3);
+    return new ObjectHandle(bbox, material, MU.normal([a,b,d]), offset, 3);
   }
   if (a[1] < d[1] && b[1] < c[1]){
     builder.addFace(mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
-    return new ObjectHandle(material, MU.normal([d,c,b,a]), offset, 6);
+    return new ObjectHandle(bbox, material, MU.normal([d,c,b,a]), offset, 6);
   }
 
   if (a[1] < d[1]) {
@@ -163,18 +164,18 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
     var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
-    return new ObjectHandle(material, MU.normal([d,e,a]), offset, 6);
+    return new ObjectHandle(bbox, material, MU.normal([d,e,a]), offset, 6);
   }
   if (b[1] < c[1]) {
     var e = MU.intersect3d(a,b,c,d);
     var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
-    return new ObjectHandle(material, MU.normal([a,e,d]), offset, 6);
+    return new ObjectHandle(bbox, material, MU.normal([a,e,d]), offset, 6);
   }
 
   builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
-  return new ObjectHandle(material, MU.normal([a,b,c]), offset, 6);
+  return new ObjectHandle(bbox, material, MU.normal([a,b,c]), offset, 6);
 }
 
 function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, material:DS.Material):ObjectHandle {
@@ -208,8 +209,9 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
     if (normal == null) normal = MU.normal(vtxs);
   }
   builder.addFace(mb.TRIANGLES, vtxs, tcs, idx, shade);
+  var bbox = MU.bbox(vtxs);
 
-  return new ObjectHandle(material, normal, offset, tris.length);
+  return new ObjectHandle(bbox, material, normal, offset, tris.length);
 }
 
 export interface MaterialFactory {
@@ -217,11 +219,11 @@ export interface MaterialFactory {
 }
 
 class WallInfo {
-  constructor(public normal:number[], public ds:DS.DrawStruct){}
+  constructor(public bbox:MU.BBox, public normal:number[], public ds:DS.DrawStruct){}
 }
 
 class SectorInfo {
-  constructor(public floorNormal:number[], public ceilingNormal:number[], public floor:DS.DrawStruct, public ceiling:DS.DrawStruct){}
+  constructor(public bbox:MU.BBox, public floorNormal:number[], public ceilingNormal:number[], public floor:DS.DrawStruct, public ceiling:DS.DrawStruct){}
 }
 
 export class WallGeometry {
@@ -384,19 +386,19 @@ export class BoardProcessor {
 
       if (type == TYPE_WALL && id == objs[i+1][2]) {
         var wallMesh = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len + objs[i+1][0].len, obj.offset);
-        this.walls[id] = new WallInfo(obj.normal, wallMesh);
+        this.walls[id] = new WallInfo(obj.bbox, obj.normal, wallMesh);
         this.dss.push(wallMesh);
         i++;
       } else if (type == TYPE_WALL) {
         var wallMesh = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len, obj.offset)
-        this.walls[id] = new WallInfo(obj.normal, wallMesh);
+        this.walls[id] = new WallInfo(obj.bbox, obj.normal, wallMesh);
         this.dss.push(wallMesh);
       }
 
       if (type == TYPE_SECTOR_FLOOR) {
         var floor = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len, obj.offset);
         var ceiling = new mb.Mesh(objs[i+1][0].material, vtxBuf, idxBuf, mode, objs[i+1][0].len, objs[i+1][0].offset);
-        this.sectors[id] = new SectorInfo(obj.normal, objs[i+1][0].normal, floor, ceiling);
+        this.sectors[id] = new SectorInfo(obj.bbox, obj.normal, objs[i+1][0].normal, floor, ceiling);
         this.dss.push(floor);
         this.dss.push(ceiling);
         i++;
@@ -409,26 +411,26 @@ export class BoardProcessor {
     return this.dss;
   }
 
-  private getNotInSector(eye:number[]):DS.DrawStruct[] {
+  private getNotInSector(ms:MoveStruct, eye:number[]):DS.DrawStruct[] {
     var ds:DS.DrawStruct[] = [];
     var sectors = this.sectors;
     var walls = this.walls;
-    var fov =0;
+    var fov = 0;
     for (var i = 0; i < sectors.length; i++) {
       var sector = sectors[i];
       if (sector == undefined)
         continue;
-      if (GLM.vec3.dot(eye, sector.floorNormal) <= fov)
+      if (bboxVisible(ms, eye, sector.bbox, null)) {
         ds.push(sector.floor);
-      if (GLM.vec3.dot(eye, sector.ceilingNormal) <= fov)
         ds.push(sector.ceiling);
+      }
     }
     for (var i = 0; i < walls.length; i++) {
       var wallinfo = walls[i];
       if (wallinfo == undefined)
         continue;
-      if (GLM.vec2.dot(eye, wallinfo.normal) <= fov)
-      ds.push(wallinfo.ds);
+      if (bboxVisible(ms, eye, wallinfo.bbox, wallinfo.normal))
+        ds.push(wallinfo.ds);
     }
     return ds;
   }
@@ -471,13 +473,31 @@ export class BoardProcessor {
   public get(ms:MoveStruct, eye:number[]):DS.DrawStruct[] {
     var sec = getSector(this.board, ms);
     return sec == -1
-      ? this.getNotInSector(eye)
+      ? this.getNotInSector(ms, eye)
       : this.getInSector(ms, sec)
   }
 
   public getByIdx(idx:number):any {
     return this.index[idx];
   }
+}
+
+function bboxVisible(ms:MoveStruct, eye:number[], bbox:MU.BBox, normal:number[]):boolean {
+  var dmaxx = bbox.maxx-ms.x
+  var dmaxz = bbox.maxz-ms.y;
+  var dminx = bbox.minx-ms.x;
+  var dminz = bbox.minz-ms.y;
+  if ((dmaxx*eye[0] + dmaxz*eye[2]) > 0) return true;
+  if ((dmaxx*eye[0] + dminz*eye[2]) > 0) return true;
+  if ((dminx*eye[0] + dmaxz*eye[2]) > 0) return true;
+  if ((dminx*eye[0] + dminz*eye[2]) > 0) return true;
+  if (normal != null) {
+    if ((dmaxx*normal[0] + dmaxz*normal[2]) > 0) return true;
+    if ((dmaxx*normal[0] + dminz*normal[2]) > 0) return true;
+    if ((dminx*normal[0] + dmaxz*normal[2]) > 0) return true;
+    if ((dminx*normal[0] + dminz*normal[2]) > 0) return true;
+  }
+  return false;
 }
 
 export class MoveStruct {

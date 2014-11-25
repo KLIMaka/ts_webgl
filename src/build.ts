@@ -104,18 +104,18 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     selectPass = false;
     gl.clearColor(0.1, 0.3, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    // var models = processor.get(ms, control.getCamera().forward());
+    var pos = control.getCamera().getPos();
+    ms.x = pos[0]; ms.y = pos[2]; ms.sec = undefined;
     var models = processor.get(ms, control.getCamera().forward());
-    //var pos = control.getCamera().getPos();
-    //ms.x = pos[0]; ms.y = pos[2]; ms.sec = undefined;
-    //var models = processor.get(ms, control.getCamera().forward());
     console.log(models.length);
     GL.draw(gl, models, binder);
 
     control.move(time);
-    var d = control.move1(time);
-    buildutils.move(board, ms, d[0], d[1]);
-    buildutils.fall(board, ms, time*8192*4)
-    control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
+    // var d = control.move1(time);
+    // buildutils.move(board, ms, d[0], d[1]);
+    // buildutils.fall(board, ms, time*8192*4)
+    // control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
   });
 
   gl.canvas.oncontextmenu = () => false;
