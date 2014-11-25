@@ -36,9 +36,9 @@ class MF implements buildutils.MaterialFactory {
 
     var info = this.arts.getInfo(picnum);
     var arr = new Uint8Array(info.w*info.h*4);
-    var pp = pixel.axisSwap(new pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
+    var pp = pixel.axisSwap(pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
     pp.render(arr);
-    mat = new Mat(this.baseShader, this.selectShader, {base:new TEX.Texture(pp.getWidth(), pp.getHeight(), this.gl, arr)});
+    mat = new Mat(this.baseShader, this.selectShader, {base:new TEX.TextureImpl(pp.getWidth(), pp.getHeight(), this.gl, arr)});
 
     this.materials[picnum] = mat;
     return mat;
@@ -61,7 +61,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   var board = build.loadBuildMap(new data.DataViewStream(map, true));
   var processor = new buildutils.BoardProcessor(board);
-  var baseShader = shaders.createShader(gl, 'resources/shaders/base');
+  var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
   var mf = new MF(artFiles, pal, baseShader, selectShader, gl);
   processor.build(gl, mf);
@@ -105,10 +105,13 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     gl.clearColor(0.1, 0.3, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var models = processor.get(ms, control.getCamera().forward());
+    //var pos = control.getCamera().getPos();
+    //ms.x = pos[0]; ms.y = pos[2]; ms.sec = undefined;
+    //var models = processor.get(ms, control.getCamera().forward());
     console.log(models.length);
     GL.draw(gl, models, binder);
 
-    // control.move(time);
+    control.move(time);
     var d = control.move1(time);
     buildutils.move(board, ms, d[0], d[1]);
     buildutils.fall(board, ms, time*8192*4)

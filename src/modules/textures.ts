@@ -2,7 +2,7 @@ import DS = require('drawstruct');
 import MU = require('../libs/mathutils')
 import pixel = require('./pixelprovider');
 
-export class Texture implements DS.Texture {
+export class TextureImpl implements DS.Texture {
 
   public id:WebGLTexture;
   private width:number;
@@ -53,10 +53,10 @@ export class Texture implements DS.Texture {
 }
 
 export function createTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
-  return new Texture(width, height, gl, img);
+  return new TextureImpl(width, height, gl, img);
 }
 
-export class DrawTexture extends Texture {
+export class DrawTexture extends TextureImpl {
 
   constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
     super(width, height, gl, img);
@@ -77,7 +77,7 @@ export function createDrawTexture(width:number, height:number, gl:WebGLRendering
   return new DrawTexture(width, height, gl, img);
 }
 
-export class RenderTexture extends Texture {
+export class RenderTexture extends TextureImpl {
 
   private framebuffer:WebGLFramebuffer;
   private renderbuffer:WebGLRenderbuffer;

@@ -145,10 +145,6 @@ class TriIntersection {
   }
 }
 
-export interface PixelProvider {
-  get(u:number, w:number):number[];
-}
-
 export class TexturePixelProvider {
 
   private w:number;

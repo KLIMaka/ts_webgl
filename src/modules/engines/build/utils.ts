@@ -413,7 +413,7 @@ export class BoardProcessor {
     var ds:DS.DrawStruct[] = [];
     var sectors = this.sectors;
     var walls = this.walls;
-    var fov = 0.707;
+    var fov =0;
     for (var i = 0; i < sectors.length; i++) {
       var sector = sectors[i];
       if (sector == undefined)
@@ -614,7 +614,7 @@ export function move(board:buildstructs.Board, ms:MoveStruct, dx:number, dy:numb
   var nx = ms.x + dx;
   var ny = ms.y + dy;
 
-  var enterwallnum = null;
+  var enterwallnum:number = null;
   while (cursecnum != -1) {
     ms.sec = cursecnum;
     var inter = traceSector(board, cursecnum, ms.x, ms.y, nx, ny);

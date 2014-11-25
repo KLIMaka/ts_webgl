@@ -149,7 +149,7 @@ export class Controller3D {
     var up = this.keys['W'] | this.keys['UP'];
     var down = this.keys['S'] | this.keys['DOWN'];
     GLM.vec2.normalize(moveVec, moveVec);
-    GLM.vec3.scale(moveVec, moveVec, speed * (up - down));
+    GLM.vec2.scale(moveVec, moveVec, speed * (up - down));
 
     var left = this.keys['A'] | this.keys['LEFT'];
     var right = this.keys['D'] | this.keys['RIGHT'];
