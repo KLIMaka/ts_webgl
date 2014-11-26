@@ -472,6 +472,11 @@ export class BoardProcessor {
 
   public get(ms:MoveStruct, eye:number[]):DS.DrawStruct[] {
     var sec = getSector(this.board, ms);
+    if (sec == -1) {
+      sec = findSector(this.board, ms.x, ms.y, 0);
+      ms.sec = sec;
+    }
+    console.log(sec);
     return sec == -1
       ? this.getNotInSector(ms, eye)
       : this.getInSector(ms, sec)
@@ -491,12 +496,12 @@ function bboxVisible(ms:MoveStruct, eye:number[], bbox:MU.BBox, normal:number[])
   if ((dmaxx*eye[0] + dminz*eye[2]) > 0) return true;
   if ((dminx*eye[0] + dmaxz*eye[2]) > 0) return true;
   if ((dminx*eye[0] + dminz*eye[2]) > 0) return true;
-  if (normal != null) {
-    if ((dmaxx*normal[0] + dmaxz*normal[2]) > 0) return true;
-    if ((dmaxx*normal[0] + dminz*normal[2]) > 0) return true;
-    if ((dminx*normal[0] + dmaxz*normal[2]) > 0) return true;
-    if ((dminx*normal[0] + dminz*normal[2]) > 0) return true;
-  }
+  // if (normal != null) {
+  //   if ((dmaxx*normal[0] + dmaxz*normal[2]) > 0) return true;
+  //   if ((dmaxx*normal[0] + dminz*normal[2]) > 0) return true;
+  //   if ((dminx*normal[0] + dmaxz*normal[2]) > 0) return true;
+  //   if ((dminx*normal[0] + dminz*normal[2]) > 0) return true;
+  // }
   return false;
 }
 
@@ -690,9 +695,9 @@ function findSector(board:buildstructs.Board, x:number, y:number, secnum:number)
 }
 
 function inSector(board:buildstructs.Board, x:number, y:number, secnum:number):boolean {
-  if (!secnum)
-    return false;
   var sec = board.sectors[secnum];
+  if (sec == undefined)
+    return false;
   var inter = 0;
   for (var w = 0; w < sec.wallnum; w++) {
     var wallidx = w + sec.wallptr;

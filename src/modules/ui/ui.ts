@@ -45,8 +45,72 @@ export class Element {
   }
 }
 
+function create(tag:string) {
+  return document.createElement(tag);
+}
+
+export class Table extends Element {
+  constructor() {
+    super(create('table'));
+  }
+
+  public row(cols:Element[]):Table {
+    var tr = new Element(create('tr'));
+    for (var i = 0; i < cols.length; i++) {
+      var c = cols[i];
+      var td = new Element(create('td')).append(c);
+      tr.append(td);
+    }
+    this.append(tr);
+    return this;
+  }
+}
+
+export declare module Object {
+  export function keys(obj:any):any;
+  export function observe(beingObserved: any, callback: (update: any) => any):void;
+}
+
+export class Properties extends Table {
+  constructor(props:any) {
+    super();
+    this.className('props');
+    var keys = Object.keys(props);
+    var labels = {};
+    for (var i = 0; i < keys.length; i++){
+      var k = keys[i];
+      var l = label(props[k]);
+      labels[k] = l;
+      this.prop(k, l);
+    }
+    Object.observe(props, (changes) => {
+      for (var i = 0; i < changes.length; i++) {
+        var c = changes[i];
+        labels[c.name].text(props[c.name]+'');
+      }
+    });
+  }
+
+  public prop(name:string, el:Element):Properties {
+    this.row([div('property_name').text(name), el]);
+    return this;
+  }
+}
+
 function div(className:string):Element {
-  return new Element(document.createElement('div')).className(className);
+  return new Element(create('div')).className(className);
+}
+
+export function table():Table {
+  return new Table();
+}
+
+export function props(obj:any):Properties {
+  return new Properties(obj);
+}
+
+export function label(text:string):Element {
+  return div('label').text(text);
 }
 
 export function button(caption:string):Element {
@@ -57,12 +121,5 @@ export function panel(title:string):Element {
   return div('frame')
     .append(div('header').text(title))
     .append(div('hline'))
-    .append(div('content'))
-    .append(div('hline'))
-    .append(div('footer').append(
-      div('center')
-      .append(button('Ok'))
-      .append(button('Cancel'))
-      )
-    );
+    .append(div('content'));
 }

@@ -2,6 +2,7 @@ import GL = require('./modules/gl');
 import shaders = require('./modules/shaders');
 import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
+import MU = require('./libs/mathutils');
 import controller = require('./modules/controller3d');
 import build = require('./modules/engines/build/loader');
 import buildutils = require('./modules/engines/build/utils');
@@ -13,6 +14,7 @@ import pixel = require('./modules/pixelprovider');
 import TEX = require('./modules/textures');
 import CFG = require('./libs/config');
 import RFF = require('./modules/engines/build/rff');
+import UI = require('./modules/ui/ui');
 
 var rffFile = 'resources/engines/blood/blood.rff';
 var cfgFile = 'build.cfg';
@@ -58,6 +60,18 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
+
+  var info = {
+    'X:':0,
+    'Y:':0,
+    'Batches:':0,
+    'Sector:':0
+  }
+
+  var panel = UI.panel('Info');
+  var props = UI.props(info);
+  panel.append(props);
+  document.body.appendChild(panel.elem());
 
   var board = build.loadBuildMap(new data.DataViewStream(map, true));
   var processor = new buildutils.BoardProcessor(board);
@@ -106,9 +120,12 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // var models = processor.get(ms, control.getCamera().forward());
     var pos = control.getCamera().getPos();
-    ms.x = pos[0]; ms.y = pos[2]; ms.sec = undefined;
+    ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
     var models = processor.get(ms, control.getCamera().forward());
-    console.log(models.length);
+    info['Batches:'] = models.length;
+    info['Sector:'] = ms.sec;
+    info['X:'] = ms.x;
+    info['Y:'] = ms.y;
     GL.draw(gl, models, binder);
 
     control.move(time);

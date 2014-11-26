@@ -126,9 +126,11 @@ export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBin
     var samplers = shader.getSamplers();
     for (var unit = 0; unit < samplers.length; unit++) {
       var sampler = samplers[unit];
-      gl.activeTexture(gl.TEXTURE0 + unit);
+      if (m == 0) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
+      }
       gl.bindTexture(gl.TEXTURE_2D, material.getTexture(sampler).get());
-      gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
     }
 
     gl.drawElements(model.getMode(), model.getLength(), idxBuf.getType(), model.getOffset());
