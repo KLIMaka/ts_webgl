@@ -61,5 +61,8 @@ export class List<T> {
     ref.prev.next = ref.next;
     return ref;
   }
+}
 
+export function <T> create() {
+  return new List<T>();
 }

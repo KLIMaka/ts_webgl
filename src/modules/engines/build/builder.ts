@@ -367,11 +367,11 @@ export class BoardProcessor {
       var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
       objs.push([ceilingObj, TYPE_SECTOR_CEILING, s]);
 
-      var sprites = U.getSprites(this.board, s);
-      for (var i = 0; i < sprites.length; i++) {
-        var spr = sprites[i];
-        var mat = materialFactory.get(spr.picnum);
-      }
+      // var sprites = U.getSprites(this.board, s);
+      // for (var i = 0; i < sprites.length; i++) {
+      //   var spr = sprites[i];
+      //   var mat = materialFactory.get(spr.picnum);
+      // }
     }
 
     var tmp:mb.Mesh = <mb.Mesh>builder.build(gl);

@@ -41,7 +41,7 @@ getter.loader
 .load('resources/engines/blood/palette.dat')
 .finish(() => {
 
-var pal = GRP.createPalette(new data.DataViewStream(getter.get('resources/engines/blood/palette.dat'), true));
+var pal = new Uint8Array(getter.get('resources/engines/blood/palette.dat'));
 
 var arts = [];
 for (var a = 0; a < 18; a++)
@@ -51,8 +51,8 @@ for (var i = 0; i < 18*256; i++) {
   var info = artFiles.getInfo(i);
   if (info == null || info.w == 0 || info.h == 0)
     continue;
-   var pp = pixel.axisSwap(new pixel.fromPal(info.img, pal, info.w, info.h, 255, 255));
-   document.body.appendChild(IU.createCanvas(pp));
+  var pp = pixel.axisSwap(pixel.fromPal(info.img, pal, info.w, info.h, 255, 255));
+  document.body.appendChild(IU.createCanvas(pp));
 }
 
 });
