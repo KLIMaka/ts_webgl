@@ -145,14 +145,15 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
     
+
+    var models = processor.get(ms, control.getCamera().forward());
+    GL.draw(gl, models, binder);
+    
     info['Batches:'] = models.length;
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;
     drawCompass(compass, control.getCamera().forward());
-
-    var models = processor.get(ms, control.getCamera().forward());
-    GL.draw(gl, models, binder);
 
     control.move(time);
     // var d = control.move1(time);

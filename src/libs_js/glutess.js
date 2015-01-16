@@ -27,40 +27,82 @@ var gluTessBeginContour = Module.cwrap('gluTessBeginContour', 'void', ['number']
 var gluTessEndContour = Module.cwrap('gluTessEndContour', 'void', ['number']);
 var gluTessEndPolygon = Module.cwrap('gluTessEndPolygon', 'void', ['number']);
 
+var res = [];
 var vertexCallback = Runtime.addFunction(function(vtxptr) {
-	console.log('Vertex');
+  var x = Module.HEAPF32[vtxptr>>2];
+  var y = Module.HEAPF32[(vtxptr>>2)+1];
+  res.push([x ,y]);
+  // console.log('Vertex ' + x + ' ' + y);
 });
 
 var beginCallback = Runtime.addFunction(function(mode) {
-	console.log('Begin ' + mode);
+  // console.log('Begin ' + mode);
 });
 
 var endCallback = Runtime.addFunction(function() {
-	console.log('End');
+  // console.log('End');
 });
 
 var errorCallback = Runtime.addFunction(function(error) {
-	console.log('Error ' + error);
+  console.log('Error ' + error);
 });
 
 var tess = gluNewTess();
+gluTessProperty(tess, 100140, 100132);
 gluTessNormal(tess, 0, 0, 1);
-gluTessCallback(tess, 100101, vertexCallback);
 gluTessCallback(tess, 100100, beginCallback);
+gluTessCallback(tess, 100101, vertexCallback);
 gluTessCallback(tess, 100102, endCallback);
 gluTessCallback(tess, 100103, errorCallback);
+gluTessCallback(tess, 100104, endCallback);
 
 exports.beginPolygon = function() {gluTessBeginPolygon(tess, 0);}
 exports.beginContour = function() {gluTessBeginContour(tess);}
-exports.endPolygon = function() {gluTessEndPolygon(tess);}
-exports.endContour = function() {gluTessEndContour(tess);}
-exports.vertices = function(vtxs) {
-	var buf = Module._malloc(vtxs.length*vtxs.BYTES_PER_ELEMENT);
-	Module.HEAPU8.set(new Uint8Array(vtxs.buffer), buf);
-	for (var i = 0; i < vtxs.length/3; i++) {
-		gluTessVertex(tess, buf+i*12, buf+i*12);
-	}
-	Module._free(buf);
+exports.endPolygon   = function() {gluTessEndPolygon(tess);}
+exports.endContour   = function() {gluTessEndContour(tess);}
+exports.vertices     = function(vtxs) {
+  var buf = Module._malloc(vtxs.length*4);
+  Module.HEAPF32.set(vtxs, buf>>2);
+  for (var i = 0; i < vtxs.length*4; i+=12) {
+    gluTessVertex(tess, buf+i, buf+i);
+  }
+  //Module._free(buf);
+}
+
+function alloc(contours) {
+  var arr = [];
+  for (var i = 0; i < contours.length; i++) {
+    var c = contours[i];
+    for (v = 0; v < c.length; v+=2) {
+      arr.push(c[v], c[v+1], 0);
+    }
+  }
+  var buf = Module._malloc(arr.length*4);
+  Module.HEAPF32.set(arr, buf>>2);
+  return buf;
+}
+
+function free(buf) {
+  Module._free(buf);
+}
+
+exports.tesselate = function(contours) {
+  res = [];
+  var buf = alloc(contours);
+  var vtx = buf;
+  gluTessBeginPolygon(tess, 0);
+  for (var i = 0; i < contours.length; i++) {
+    var c = contours[i];
+    gluTessBeginContour(tess);
+    for (var v = 0; v < c.length/2; v++) {
+      gluTessVertex(tess, vtx, vtx);
+      vtx += 12;
+    }
+    gluTessEndContour(tess);
+  }
+  gluTessEndPolygon(tess);
+  free(buf);
+  return res;
 }
 
 });
