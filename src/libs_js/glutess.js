@@ -32,15 +32,20 @@ var vertexCallback = Runtime.addFunction(function(vtxptr) {
   var x = Module.HEAPF32[vtxptr>>2];
   var y = Module.HEAPF32[(vtxptr>>2)+1];
   res.push([x ,y]);
-  // console.log('Vertex ' + x + ' ' + y);
 });
 
-var beginCallback = Runtime.addFunction(function(mode) {
-  // console.log('Begin ' + mode);
+var combineBuf = Module._malloc(3*4*1000);
+var combineIdx = 0;
+var combineCallback = Runtime.addFunction(function(vtx, neighbor, weight, out) {
+  var buf = combineBuf + combineIdx*3*4;
+  Module.HEAPU32[out>>2] = buf;
+  Module.HEAPF32[(buf>>2)] = Module.HEAPF32[(vtx>>2)];
+  Module.HEAPF32[(buf>>2)+1] = Module.HEAPF32[(vtx>>2)+1];
+  Module.HEAPF32[(buf>>2)+2] = Module.HEAPF32[(vtx>>2)+2];
+  combineIdx++;
 });
 
-var endCallback = Runtime.addFunction(function() {
-  // console.log('End');
+var edgeCallback = Runtime.addFunction(function() {
 });
 
 var errorCallback = Runtime.addFunction(function(error) {
@@ -50,24 +55,10 @@ var errorCallback = Runtime.addFunction(function(error) {
 var tess = gluNewTess();
 gluTessProperty(tess, 100140, 100132);
 gluTessNormal(tess, 0, 0, 1);
-gluTessCallback(tess, 100100, beginCallback);
 gluTessCallback(tess, 100101, vertexCallback);
-gluTessCallback(tess, 100102, endCallback);
 gluTessCallback(tess, 100103, errorCallback);
-gluTessCallback(tess, 100104, endCallback);
-
-exports.beginPolygon = function() {gluTessBeginPolygon(tess, 0);}
-exports.beginContour = function() {gluTessBeginContour(tess);}
-exports.endPolygon   = function() {gluTessEndPolygon(tess);}
-exports.endContour   = function() {gluTessEndContour(tess);}
-exports.vertices     = function(vtxs) {
-  var buf = Module._malloc(vtxs.length*4);
-  Module.HEAPF32.set(vtxs, buf>>2);
-  for (var i = 0; i < vtxs.length*4; i+=12) {
-    gluTessVertex(tess, buf+i, buf+i);
-  }
-  //Module._free(buf);
-}
+gluTessCallback(tess, 100104, edgeCallback);
+gluTessCallback(tess, 100105, combineCallback);
 
 function alloc(contours) {
   var arr = [];
@@ -89,6 +80,7 @@ function free(buf) {
 exports.tesselate = function(contours) {
   res = [];
   var buf = alloc(contours);
+  combineIdx = 0;
   var vtx = buf;
   gluTessBeginPolygon(tess, 0);
   for (var i = 0; i < contours.length; i++) {

@@ -42,6 +42,8 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
 }
 
 export function findSector(board:BS.Board, x:number, y:number, secnum:number = 0):number {
+  if (secnum == -1)
+    secnum = 0;
   var secs = [secnum];
   for (var i = 0; i < secs.length; i++) {
     secnum = secs[i];

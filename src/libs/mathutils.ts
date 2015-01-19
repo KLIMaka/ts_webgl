@@ -163,6 +163,8 @@ var a = GLM.vec3.create();
 var b = GLM.vec3.create();
 
 export function normal(verts:number[][]) {
+  if (verts[1] == undefined || verts[0] == undefined)
+    console.error('sdf');
   GLM.vec3.sub(a, verts[1], verts[0]);
   GLM.vec3.sub(b, verts[2], verts[0]);
   var res = GLM.vec3.create();

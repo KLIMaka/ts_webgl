@@ -307,6 +307,8 @@ export class BoardProcessor {
       }
 
       var tris:number[][] = triangulate(sector, walls);
+      if (tris.length == 0)
+        continue;
       var floorObj = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum));
       objs.push([floorObj, TYPE_SECTOR_FLOOR, s]);
       var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
@@ -379,16 +381,19 @@ export class BoardProcessor {
     return ds;
   }
 
-  private getInSector(ms:U.MoveStruct, sec:number):DS.DrawStruct[] {
+  private getInSector(ms:U.MoveStruct):DS.DrawStruct[] {
     var ds:DS.DrawStruct[] = [];
     var board = this.board;
     var sectors = this.sectors;
     var walls = this.walls;
-    var pvs = [sec];
+    var pvs = [ms.sec];
     for (var i = 0; i < pvs.length; i++) {
       var cursecnum = pvs[i];
-      ds.push(sectors[cursecnum].floor);
-      ds.push(sectors[cursecnum].ceiling);
+
+      if (sectors[cursecnum] != undefined) {
+        ds.push(sectors[cursecnum].floor);
+        ds.push(sectors[cursecnum].ceiling);
+      }
 
       var cursec = board.sectors[cursecnum];
       for (var w = 0; w < cursec.wallnum; w++) {
@@ -417,14 +422,12 @@ export class BoardProcessor {
   }
 
   public get(ms:U.MoveStruct, eye:number[]):DS.DrawStruct[] {
-    var sec = U.getSector(this.board, ms);
-    if (sec == -1) {
-      sec = U.findSector(this.board, ms.x, ms.y, 0);
-      ms.sec = sec;
+    if (!U.inSector(this.board, ms.x, ms.y, ms.sec)) {
+      ms.sec = U.findSector(this.board, ms.x, ms.y, ms.sec);
     }
-    return sec == -1
+    return ms.sec == -1
       ? this.getNotInSector(ms, eye)
-      : this.getInSector(ms, sec)
+      : this.getInSector(ms)
   }
 
   public getByIdx(idx:number):any {
