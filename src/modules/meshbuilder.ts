@@ -113,7 +113,14 @@ class VertexBufferImpl implements DS.VertexBuffer {
 
 export class Mesh implements DS.DrawStruct {
 
-  constructor(private material:DS.Material, private vtxBuffers, private idx:DS.IndexBuffer, private mode:number, private length:number, private offset:number=0) {}
+  constructor(
+    private material:DS.Material, 
+    private vtxBuffers, 
+    private idx:DS.IndexBuffer, 
+    private mode:number, 
+    private length:number, 
+    private offset:number=0
+  ) {}
 
   getMaterial():DS.Material {
     return this.material;

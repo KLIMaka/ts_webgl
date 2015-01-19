@@ -2,6 +2,7 @@
 import buildstructs = require('./structs');
 import MU = require('../../../libs/mathutils');
 import GLM = require('../../../libs_js/glmatrix');
+import GLU = require('../../../libs_js/glutess');
 import triangulator = require('../../triangulator');
 import mb = require('../../meshbuilder');
 import DS = require('../../drawstruct');
@@ -11,91 +12,35 @@ var SCALE = -16;
 var TCBASE = 8192;
 var UNITS2DEG = (1 / 4096);
 
-interface TriangulatedSector {
-  getContour():number[][];
-  getHoles():number[][][];
-}
-
-class TriangulationContext implements TriangulatedSector {
-  private contour:number[][];
-  private holes = [];
-
-  public addContour(contour:number[][]) {
-    if (!this.contour && !MU.isCW(contour)) {
-      this.contour = contour;
-    } else {
-      this.holes.push(contour);
-    }
-  }
-
-  public fix():void {
-    if (this.contour == undefined) {
-      this.contour = this.holes[0];
-      this.holes = [];
-    }
-  }
-
-  public getContour():number[][] {
-    return this.contour;
-  }
-
-  public getHoles():number[][][] {
-    return this.holes;
-  }
-
-  public removeHoles():void {
-    this.holes = [];
-  }
-
-  public remove(p:any) {
-    var contour = this.contour;
-    for (var i = 0; i < contour.length; i++) {
-      var cp = contour[i];
-      if (p.x == cp[0] && p.y == cp[1]) {
-        contour.splice(i, 1);
-        break;
-      }
-    }
-  }
-}
 
 function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):number[][] {
   var i = 0;
-  var pairs = [];
+  var chains = [];
   while (i < sector.wallnum) {
+    var ws = [];
     var firstwallIdx = i + sector.wallptr;
     var wall = walls[sector.wallptr + i];
+    ws.push(firstwallIdx);
     while (wall.point2 != firstwallIdx){
+      ws.push(wall.point2);
       wall = walls[wall.point2];
       i++;
     }
     i++;
-    pairs.push([firstwallIdx, sector.wallptr+i]);
+    chains.push(ws);
   }
 
-  var ctx = new TriangulationContext();
-  for (var i = 0; i < pairs.length; i++) {
+  var contours = [];
+  for (var i = 0; i < chains.length; i++) {
     var contour = [];
-    var pair = pairs[i];
-    for (var j = pair[0]; j < pair[1]; j++) {
-      contour.push([walls[j].x, walls[j].y]);
+    var chain = chains[i];
+    for (var j = 0; j < chain.length; j++) {
+      var wall = walls[chain[j]];
+      contour.push(wall.x, wall.y);
     }
-    ctx.addContour(contour);
+    contours.push(contour);
   }
-  ctx.fix();
-
-  var res:number[][] = null;
-  while (res == null) {
-    var size = ctx.getContour().length;
-    try {
-      res = triangulator.triangulate(ctx.getContour(), ctx.getHoles());
-    } catch (e) {
-      ctx.remove(e.points[0]);
-      if (size == ctx.getContour().length)
-        ctx.removeHoles();
-    }
-  }
-  return res;
+  return GLU.tesselate(contours);
 }
 
 function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wall[]) {
@@ -362,16 +307,18 @@ export class BoardProcessor {
       }
 
       var tris:number[][] = triangulate(sector, walls);
+      if (tris.length == 0)
+        continue;
       var floorObj = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum));
       objs.push([floorObj, TYPE_SECTOR_FLOOR, s]);
       var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
       objs.push([ceilingObj, TYPE_SECTOR_CEILING, s]);
 
-      var sprites = U.getSprites(this.board, s);
-      for (var i = 0; i < sprites.length; i++) {
-        var spr = sprites[i];
-        var mat = materialFactory.get(spr.picnum);
-      }
+      // var sprites = U.getSprites(this.board, s);
+      // for (var i = 0; i < sprites.length; i++) {
+      //   var spr = sprites[i];
+      //   var mat = materialFactory.get(spr.picnum);
+      // }
     }
 
     var tmp:mb.Mesh = <mb.Mesh>builder.build(gl);
@@ -434,16 +381,19 @@ export class BoardProcessor {
     return ds;
   }
 
-  private getInSector(ms:U.MoveStruct, sec:number):DS.DrawStruct[] {
+  private getInSector(ms:U.MoveStruct):DS.DrawStruct[] {
     var ds:DS.DrawStruct[] = [];
     var board = this.board;
     var sectors = this.sectors;
     var walls = this.walls;
-    var pvs = [sec];
+    var pvs = [ms.sec];
     for (var i = 0; i < pvs.length; i++) {
       var cursecnum = pvs[i];
-      ds.push(sectors[cursecnum].floor);
-      ds.push(sectors[cursecnum].ceiling);
+
+      if (sectors[cursecnum] != undefined) {
+        ds.push(sectors[cursecnum].floor);
+        ds.push(sectors[cursecnum].ceiling);
+      }
 
       var cursec = board.sectors[cursecnum];
       for (var w = 0; w < cursec.wallnum; w++) {
@@ -472,14 +422,12 @@ export class BoardProcessor {
   }
 
   public get(ms:U.MoveStruct, eye:number[]):DS.DrawStruct[] {
-    var sec = U.getSector(this.board, ms);
-    if (sec == -1) {
-      sec = U.findSector(this.board, ms.x, ms.y, 0);
-      ms.sec = sec;
+    if (!U.inSector(this.board, ms.x, ms.y, ms.sec)) {
+      ms.sec = U.findSector(this.board, ms.x, ms.y, ms.sec);
     }
-    return sec == -1
+    return ms.sec == -1
       ? this.getNotInSector(ms, eye)
-      : this.getInSector(ms, sec)
+      : this.getInSector(ms)
   }
 
   public getByIdx(idx:number):any {
