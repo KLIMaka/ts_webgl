@@ -1,4 +1,14 @@
 
+@font-face {
+    font-family: PressStart2P;
+    src: url('fonts/PressStart2P.ttf');
+}
+
+@font-face {
+    font-family: Nokia;
+    src: url('fonts/nokiafc22.ttf');
+}
+
 .frame {
 	position: absolute;
 	border-left: 2px solid #EEE;
@@ -6,13 +16,14 @@
 	border-top: 2px solid #EEE;
 	border-bottom: 2px solid #999;
 	background: #CCC;
-	font: 11px Helvetica, arial, freesans, clean, sans-serif;
+	font-family: 'Nokia';
+	font-size: 8px;
 }
 
 .header {
 	padding: 5px 10px;
-	font-size: 13px;
-	font-weight: bold;
+	font-size: 16px;
+	/*font-weight: bold;*/
 	color: black;
 	cursor: default;
 	text-align: center;
@@ -33,9 +44,13 @@
 	border-bottom: 2px solid #999;
 	display: inline-block;
 	background: #CCC;
-	font-weight: bold;
+	/*font-weight: bold;*/
 	color: black;
 	cursor: default;
+}
+
+.props {
+	font-size: 8px;
 }
 
 .button:active{
