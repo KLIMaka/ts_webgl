@@ -9,6 +9,10 @@
     src: url('fonts/nokiafc22.ttf');
 }
 
+body {
+	margin: 0px;
+}
+
 .frame {
 	position: absolute;
 	border-left: 2px solid #EEE;
