@@ -1,5 +1,5 @@
 
-import L = require('../modules/list');
+import L = require('./list');
 
 export class Pool<T> {
 
