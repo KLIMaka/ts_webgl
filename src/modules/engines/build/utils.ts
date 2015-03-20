@@ -129,7 +129,7 @@ function traceSector(board:BS.Board, secnum:number, sx:number, sy:number, ex:num
     var x2 = wall2.x;
     var y2 = wall2.y;
 
-    var t = MU.intersect2dT(p1s, p1e, [x1,y1], [x2,y2]);
+    var t = VEC.intersect2dT(p1s, p1e, [x1,y1], [x2,y2]);
     if (t == null)
       continue;
 
@@ -175,8 +175,9 @@ export function move(board:BS.Board, ms:MoveStruct, dx:number, dy:number):void {
 
       if (cursecnum == -1) {
         var interwall2 = walls[inter.wall.point2];
-        var normal = MU.normal2d([inter.wall.x, inter.wall.y], [interwall2.x, interwall2.y]);
+        var normal = VEC.normal2d([inter.wall.x, inter.wall.y], [interwall2.x, interwall2.y]);
         inter.point = VEC.add2d(inter.point, VEC.scale2d(normal, 64));
+        VEC.release2d(normal);
       }
       
       ms.x = inter.point[0];

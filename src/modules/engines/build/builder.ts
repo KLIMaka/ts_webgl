@@ -1,6 +1,7 @@
 
 import buildstructs = require('./structs');
 import MU = require('../../../libs/mathutils');
+import VEC = require('../../../libs/vecmath');
 import GLU = require('../../../libs_js/glutess');
 import mb = require('../../meshbuilder');
 import DS = require('../../drawstruct');
@@ -75,34 +76,34 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
 
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
-    return new ObjectHandle(bbox, tex, MU.normal([a,b,c]), offset, 3);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,c])), offset, 3);
   }
   if (b[1] == c[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,d], [atc,btc,dtc], idx, shade);
-    return new ObjectHandle(bbox, tex, MU.normal([a,b,d]), offset, 3);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,d])), offset, 3);
   }
   if (a[1] < d[1] && b[1] < c[1]){
     builder.addFace(mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
-    return new ObjectHandle(bbox, tex, MU.normal([d,c,b,a]), offset, 6);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([d,c,b,a])), offset, 6);
   }
 
   if (a[1] < d[1]) {
-    var e = MU.intersect3d(a,b,c,d);
+    var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
     var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
-    return new ObjectHandle(bbox, tex, MU.normal([d,e,a]), offset, 6);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([d,e,a])), offset, 6);
   }
   if (b[1] < c[1]) {
-    var e = MU.intersect3d(a,b,c,d);
+    var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
     var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
-    return new ObjectHandle(bbox, tex, MU.normal([a,e,d]), offset, 6);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,e,d])), offset, 6);
   }
 
   builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
-  return new ObjectHandle(bbox, tex, MU.normal([a,b,c]), offset, 6);
+  return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,c])), offset, 6);
 }
 
 function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, tex:DS.Texture):ObjectHandle {
@@ -133,7 +134,7 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
     vtxs = vtxs.concat(ceiling ? [v3,v2,v1] : [v1,v2,v3]); 
     tcs = tcs.concat(ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]);
 
-    if (normal == null) normal = MU.normal(vtxs);
+    if (normal == null) normal = VEC.detach3d(VEC.polygonNormal(vtxs));
   }
   builder.addFace(mb.TRIANGLES, vtxs, tcs, idx, shade);
   var bbox = MU.bbox(vtxs);
@@ -189,7 +190,7 @@ class DefaultBoardBuilder implements BoardBuilder {
 
   public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
     this.builder.start(type)
-      .attr('aNorm', MU.normal(verts))
+      .attr('aNorm', VEC.detach3d(VEC.polygonNormal(verts)))
       .attr('aIdx', MU.int2vec4(idx))
       .attr('aShade', [shade]);
     for (var i = 0; i < verts.length; i++){
