@@ -5,17 +5,17 @@ import pixel = require('./pixelprovider');
 export class TextureImpl implements DS.Texture {
 
   public id:WebGLTexture;
-  private width:number;
-  private height:number;
+  public width:number;
+  public height:number;
   private format:number;
   private type:number;
   public data:Uint8Array;
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
     this.id = gl.createTexture();
     this.width = width;
     this.height = height;
-    this.format = gl.RGBA;
+    this.format = format;
     this.type = gl.UNSIGNED_BYTE;
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
@@ -25,7 +25,7 @@ export class TextureImpl implements DS.Texture {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
     if (img == null) 
-      img = new Uint8Array(width*height*4);
+      img = new Uint8Array(width*height*bpp);
     this.data = img;
     gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.type, this.data);
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -52,17 +52,19 @@ export class TextureImpl implements DS.Texture {
   }
 }
 
-export function createTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
-  return new TextureImpl(width, height, gl, img);
+export function createTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+  return new TextureImpl(width, height, gl, img, format, bpp);
 }
 
 export class DrawTexture extends TextureImpl {
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
-    super(width, height, gl, img);
+  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+    super(width, height, gl, img, format, bpp);
   }
 
-  public putPiexl(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext):void {
+  public putPixel(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext):void {
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height)
+      return;
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, 1, 1, this.getFormat(), this.getType(), pixel);
   }
@@ -73,8 +75,8 @@ export class DrawTexture extends TextureImpl {
   }
 }
 
-export function createDrawTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
-  return new DrawTexture(width, height, gl, img);
+export function createDrawTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+  return new DrawTexture(width, height, gl, img, format, bpp);
 }
 
 export class RenderTexture extends TextureImpl {

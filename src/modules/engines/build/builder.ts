@@ -176,8 +176,7 @@ export interface BoardBuilder {
 class DefaultBoardBuilder implements BoardBuilder {
   private builder:mb.MeshBuilder;
 
-  constructor() {
-    var gl = WebGLRenderingContext;
+  constructor(gl:WebGLRenderingContext) {
     this.builder = new mb.MeshBuilderConstructor()
       .buffer('aPos', Float32Array, gl.FLOAT, 3)
       .buffer('aNorm', Float32Array, gl.FLOAT, 3)
@@ -218,7 +217,7 @@ export class BoardProcessor {
 
   constructor(public board:buildstructs.Board) {}
 
-  public build(gl:WebGLRenderingContext, textureProvider:TextureProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder()):BoardProcessor {
+  public build(gl:WebGLRenderingContext, textureProvider:TextureProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
     var objs:any = [];
 
     var idx = 1;

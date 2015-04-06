@@ -2,6 +2,15 @@ import BS = require('./structs');
 import MU = require('../../../libs/mathutils');
 import VEC = require('../../../libs/vecmath');
 
+export function getPlayerStart(board:BS.Board):BS.Sprite {
+  for (var i = 0; i < board.numsprites; i++) {
+    var sprite = board.sprites[i];
+    if (sprite.lotag == 1)
+      return sprite;
+  }
+  return null;
+}
+
 export class MoveStruct {
   public x:number;
   public y:number;

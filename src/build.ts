@@ -61,15 +61,6 @@ class TP implements builder.TextureProvider {
   }
 }
 
-function getPlayerStart(board:BS.Board):BS.Sprite {
-  for (var i = 0; i < board.numsprites; i++) {
-    var sprite = board.sprites[i];
-    if (sprite.lotag == 1)
-      return sprite;
-  }
-  return null;
-}
-
 function drawCompass(canvas:HTMLCanvasElement, eye:number[]) {
   var ctx = canvas.getContext('2d');
   var w = canvas.width;
@@ -118,7 +109,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   processor.build(gl, tp, mf);
 
   var control = new controller.Controller3D(gl);
-  var playerstart = getPlayerStart(board);
+  var playerstart = BU.getPlayerStart(board);
   var ms = new BU.MoveStruct();
   ms.sec = playerstart.sectnum;
   ms.x = playerstart.x;

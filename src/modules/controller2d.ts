@@ -83,6 +83,13 @@ export class Controller2D {
     return projection;
   }
 
+  public unproject(x:number, y:number):number[] {
+    var campos = this.camera.getPos();
+    var dx = this.gl.drawingBufferWidth/2;
+    var dy = this.gl.drawingBufferHeight/2;
+    return [(x-dx)*this.scale + campos[0], (y-dy)*this.scale + campos[1]];
+  }
+
   public setDragButton(btn:number) {
     this.dragButton = btn;
   }

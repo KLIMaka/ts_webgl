@@ -11,46 +11,55 @@ import GLM = require('./libs_js/glmatrix');
 var w = 800;
 var h = 600;
 
-function buildScreen(gl:WebGLRenderingContext, shader:DS.Shader, tex:DS.Texture) {
+function buildScreen(gl:WebGLRenderingContext, shader:DS.Shader, tex:DS.Texture, pal:DS.Texture) {
   var builder = new mb.MeshBuilderConstructor(4)
-    .buffer('pos', Float32Array, gl.FLOAT, 2)
-    .buffer('norm', Float32Array, gl.FLOAT, 2)
+    .buffer('aPos', Float32Array, gl.FLOAT, 2)
+    .buffer('aTc', Float32Array, gl.FLOAT, 2)
     .index(Uint16Array, gl.UNSIGNED_SHORT)
     .build();
 
   builder.start(mb.QUADS)
-    .attr('norm', [0, 0]).vtx('pos', [0, 0])
-    .attr('norm', [1, 0]).vtx('pos', [16, 0])
-    .attr('norm', [1, 1]).vtx('pos', [16, 16])
-    .attr('norm', [0, 1]).vtx('pos', [0, 16])
+    .attr('aTc', [0, 0]).vtx('aPos', [0, 0])
+    .attr('aTc', [1, 0]).vtx('aPos', [16, 0])
+    .attr('aTc', [1, 1]).vtx('aPos', [16, 16])
+    .attr('aTc', [0, 1]).vtx('aPos', [0, 16])
     .end();
-  return builder.build(gl, MAT.create(shader, {texture:tex}));
+  return builder.build(gl, MAT.create(shader, {base:tex, pal:pal}));
 }
 
 function createImage() {
-  var img = new Uint8Array(16*16*4);
+  var img = new Uint8Array(16*16);
   for (var i = 0; i < 256; i++){
-    var idx = i*4;
-    img[idx+0] = MU.cyclic(i*3, 256);
-    img[idx+1] = MU.cyclic(i*6, 256);
-    img[idx+2] = MU.cyclic(i*9, 256);
-    img[idx+3] = 255;
+    img[i] = i;
   }
   return img;
 }
 
-var img = createImage();
+function createPal() {
+  var pal = new Uint8Array(256*3);
+  for (var i  = 0; i < 256; i++) {
+    var idx = i*3;
+    pal[idx+0] = MU.int(Math.random()*256);
+    pal[idx+1] = MU.int(Math.random()*256);
+    pal[idx+2] = MU.int(Math.random()*256);
+  }
+  return pal;
+}
+
+var pixel = new Uint8Array(4);
 var gl = GL.createContext(w, h);
 var control = ctrl.create(gl);
-var tex = TEX.createDrawTexture(16, 16, gl, img);
-var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), tex);
-control.setPos(gl.drawingBufferWidth/2, gl.drawingBufferHeight/2);
+var tex = TEX.createDrawTexture(16, 16, gl, createImage(), gl.LUMINANCE, 1);
+var pal = TEX.createTexture(256, 1, gl, createPal(), gl.RGB, 3);
+var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/indexed'), tex, pal);
+control.setPos(16/2, 16/2);
 
-gl.canvas.onclick = (e) => {
-  var vec = GLM.vec3.fromValues(e.layerX, e.layerY, 0);
-  var mat = control.getMatrix();
-  GLM.vec3.transformMat3(vec, vec, mat);
-  console.log(vec);
+gl.canvas.onmousemove = (e) => {
+  var pos = control.unproject(e.layerX, e.layerY);
+  var x = MU.int(pos[0]);
+  var y = MU.int(pos[1]);
+  if (e.button == 1)
+    tex.putPixel(x, y, pixel, gl);
 }
 
 var binder = GL.binder([
