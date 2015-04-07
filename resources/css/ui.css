@@ -9,6 +9,11 @@
     src: url('fonts/nokiafc22.ttf');
 }
 
+@font-face {
+    font-family: pixelmix;
+    src: url('fonts/pixelmix.ttf');
+}
+
 body {
 	margin: 0px;
 }
@@ -22,6 +27,8 @@ body {
 	background: #CCC;
 	font-family: 'Nokia';
 	font-size: 8px;
+	font-smooth: never;
+	-webkit-font-smoothing: none;
 }
 
 .header {

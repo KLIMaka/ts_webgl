@@ -4,6 +4,7 @@ import mb = require('./modules/meshbuilder');
 import ds = require('./modules/drawstruct');
 import getter = require('./libs/getter');
 import build = require('./modules/engines/build/loader');
+import builder_ = require('./modules/engines/build/builder');
 import data = require('./libs/dataviewstream');
 import controller = require('./modules/controller3d');
 import buildutils = require('./modules/engines/build/utils');
@@ -12,6 +13,7 @@ import GLM = require('libs_js/glmatrix');
 import TEX = require('./modules/textures');
 import camera = require('./modules/camera');
 import MU = require('./libs/mathutils');
+import VEC = require('./libs/vecmath');
 import IU = require('./libs/imgutils');
 import tcpack = require('./modules/texcoordpacker');
 import raster = require('./modules/rasterizer');
@@ -64,9 +66,18 @@ function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture)
   return builder.build(gl, new Mat(shader, {texture:tex}));
 }
 
-class MF implements buildutils.MaterialFactory {
+class MF implements builder_.MaterialFactory {
   constructor(private mat:Mat) {}
-  get(picnum:number) {return this.mat}
+  solid(tex:ds.Texture) {return this.mat}
+  sprite(tex:ds.Texture) {return this.mat}
+}
+
+
+class TP implements builder_.TextureProvider {
+  private tex:ds.Texture = new TEX.TextureStub(1,1);
+  get(picnum:number): ds.Texture {
+    return this.tex;
+  }
 }
 
 var traceContext = {
@@ -191,7 +202,7 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
 
 var S = 4096*5;
 var R = 128;
-class MyBoardBuilder implements buildutils.BoardBuilder {
+class MyBoardBuilder implements builder_.BoardBuilder {
   private builder:mb.MeshBuilder;
   private packer = new tcpack.Packer(S, S, S/R, S/R);
   private buf:number[] = [];
@@ -211,7 +222,7 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
   }
 
   public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
-    var proj = MU.project3d(verts);
+    var proj = VEC.project3d(verts);
     var hull = tcpack.getHull(proj);
     var r = this.packer.pack(new tcpack.Rect(hull.maxx-hull.minx, hull.maxy-hull.miny));
     if (r == null)
@@ -222,7 +233,7 @@ class MyBoardBuilder implements buildutils.BoardBuilder {
       var v = (r.yoff+proj[i][1]-hull.miny)/S;
       lmtcs.push([u, v]);
     }
-    var normal = MU.normal(verts);
+    var normal = VEC.polygonNormal(verts);
 
     this.builder.start(type)
       .attr('aNorm', normal)
@@ -293,7 +304,7 @@ var lm = new TEX.DrawTexture(R, R, gl);
 var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_base.vsh'), getter.getString('resources/shaders/trace_base.fsh'));
 var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
 var builder = new MyBoardBuilder();
-var processor = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(trace_baseShader, {lm:lm})), builder);
+var processor = new builder_.BoardProcessor(board).build(gl, new TP(), new MF(new Mat(trace_baseShader, {lm:lm})), builder);
 var control = new controller.Controller3D(gl);
 var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 
@@ -301,13 +312,13 @@ traceContext.processor = processor;
 traceContext.light = light;
 var lmdata = processLM(builder.bake(gl, R, R), R, R);
 lm.putSubImage(0, 0, R, R, lmdata, gl);
-lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
-lm.putSubImage(0, 0, R, R, lmdata, gl);
+// lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
+// lm.putSubImage(0, 0, R, R, lmdata, gl);
 
 
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
 builder = new MyBoardBuilder();
-var processor1 = new buildutils.BoardProcessor(board).build(gl, new MF(new Mat(base_shader, {lm:lm})), builder);
+var processor1 = new builder_.BoardProcessor(board).build(gl, new TP(), new MF(new Mat(base_shader, {lm:lm})), builder);
 var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), lm);
 
 
