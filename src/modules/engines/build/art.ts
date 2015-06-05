@@ -21,9 +21,9 @@ export class ArtFile {
     var start = stream.readUInt();
     var end = stream.readUInt();
     var size = end - start + 1;
-    var hs = data.array(data.ushort, size)(stream);
-    var ws = data.array(data.ushort, size)(stream);
-    var anums = data.array(data.uint, size)(stream);
+    var hs = data.array(data.ushort, size).read(stream);
+    var ws = data.array(data.ushort, size).read(stream);
+    var anums = data.array(data.uint, size).read(stream);
     var offsets = new Array<number>(size);
     var offset = stream.mark();
     for (var i = 0; i < size; i++){
@@ -43,7 +43,11 @@ export class ArtFile {
   public getInfo(id:number):ArtInfo {
     var offset = this.offsets[id];
     this.stream.setOffset(offset);
-    return new ArtInfo(this.ws[id], this.hs[id], this.anums[id], data.array(data.ubyte, this.ws[id]*this.hs[id])(this.stream));
+    var w = this.ws[id];
+    var h = this.hs[id];
+    var anum = this.anums[id];
+    var pixels = data.array(data.ubyte, w*h).read(this.stream);
+    return new ArtInfo(w, h, anum, pixels);
   }
 
   public getStart():number {

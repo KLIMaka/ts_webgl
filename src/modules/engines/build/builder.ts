@@ -1,16 +1,14 @@
 
 import buildstructs = require('./structs');
 import MU = require('../../../libs/mathutils');
-import GLM = require('../../../libs_js/glmatrix');
+import VEC = require('../../../libs/vecmath');
 import GLU = require('../../../libs_js/glutess');
-import triangulator = require('../../triangulator');
 import mb = require('../../meshbuilder');
 import DS = require('../../drawstruct');
 import U = require('./utils');
 
 var SCALE = -16;
 var TCBASE = 8192;
-var UNITS2DEG = (1 / 4096);
 
 
 function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):number[][] {
@@ -43,46 +41,30 @@ function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):numb
   return GLU.tesselate(contours);
 }
 
-function createSlopeCalculator(sector:buildstructs.Sector, walls:buildstructs.Wall[]) {
-  var wall1 = walls[sector.wallptr];
-  var wall2 = walls[wall1.point2];
-
-  var normal = GLM.vec2.fromValues(-(wall2.y - wall1.y), wall2.x - wall1.x);
-  GLM.vec2.normalize(normal, normal);
-  var w = -GLM.vec2.dot(normal, GLM.vec2.fromValues(wall1.x , wall1.y));
-  var vec = GLM.vec2.create();
-
-  return function (x:number, y:number, rotation:number):number {
-    GLM.vec2.set(vec, x, y);
-    var dist = GLM.vec2.dot(normal, vec) + w;
-    return -(rotation * UNITS2DEG) * dist * SCALE;
-  };
-}
-
 
 var TYPE_SECTOR_FLOOR = 1;
 var TYPE_SECTOR_CEILING = 2;
 var TYPE_WALL = 3;
 
 class ObjectHandle {
-  constructor(public bbox:MU.BBox, public material:DS.Material, public normal:number[], public offset:number, public len:number) {}
+  constructor(public bbox:MU.BBox, public tex:DS.Texture, public normal:number[], public offset:number, public len:number) {}
 }
 
 function len(x:number, y:number) {
   return Math.sqrt(x*x + y*y);
 }
 
-function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], idx:number, material:DS.Material, base:number):ObjectHandle {
+function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, base:number):ObjectHandle {
   // a -> b
   // ^    |
   // |    v
   // d <- c
   var xflip = ((wall.cstat & 8) != 0) ? -1 : 1;
   var yflip = ((wall.cstat & 256) != 0) ? -1 : 1;
-  var tcscalex = wall.xrepeat / 8.0 / (material.getTexture('base').getWidth() / 64.0) * xflip;
-  var tcscaley = (material.getTexture('base').getHeight() * 16) / (wall.yrepeat / 8.0) * yflip;
+  var tcscalex = wall.xrepeat / 8.0 / (tex.getWidth() / 64.0) * xflip;
+  var tcscaley = (tex.getHeight() * 16) / (wall.yrepeat / 8.0) * yflip;
   var shade = wall.shade;
-  var tcxoff = wall.xpanning / material.getTexture('base').getWidth();
+  var tcxoff = wall.xpanning / tex.getWidth();
   var tcyoff = wall.ypanning * wall.yrepeat;
 
   var a = quad[0]; var atc = [tcxoff,          (tcyoff+base-a[1])/tcscaley];
@@ -94,39 +76,39 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
 
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
-    return new ObjectHandle(bbox, material, MU.normal([a,b,c]), offset, 3);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,c])), offset, 3);
   }
   if (b[1] == c[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,d], [atc,btc,dtc], idx, shade);
-    return new ObjectHandle(bbox, material, MU.normal([a,b,d]), offset, 3);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,d])), offset, 3);
   }
   if (a[1] < d[1] && b[1] < c[1]){
     builder.addFace(mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
-    return new ObjectHandle(bbox, material, MU.normal([d,c,b,a]), offset, 6);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([d,c,b,a])), offset, 6);
   }
 
   if (a[1] < d[1]) {
-    var e = MU.intersect3d(a,b,c,d);
+    var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
     var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
-    return new ObjectHandle(bbox, material, MU.normal([d,e,a]), offset, 6);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([d,e,a])), offset, 6);
   }
   if (b[1] < c[1]) {
-    var e = MU.intersect3d(a,b,c,d);
+    var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
     var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
-    return new ObjectHandle(bbox, material, MU.normal([a,e,d]), offset, 6);
+    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,e,d])), offset, 6);
   }
 
   builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
-  return new ObjectHandle(bbox, material, MU.normal([a,b,c]), offset, 6);
+  return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,c])), offset, 6);
 }
 
-function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, material:DS.Material):ObjectHandle {
-  var tcscalex = material.getTexture('base').getWidth() * 16;
-  var tcscaley = material.getTexture('base').getHeight() * 16;
+function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, tex:DS.Texture):ObjectHandle {
+  var tcscalex = tex.getWidth() * 16;
+  var tcscaley = tex.getHeight() * 16;
   var offset = builder.getOffset();
   var normal:number[] = null;
   var shade = ceiling ? sector.ceilingshade : sector.floorshade;
@@ -152,16 +134,25 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
     vtxs = vtxs.concat(ceiling ? [v3,v2,v1] : [v1,v2,v3]); 
     tcs = tcs.concat(ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]);
 
-    if (normal == null) normal = MU.normal(vtxs);
+    if (normal == null) normal = VEC.detach3d(VEC.polygonNormal(vtxs));
   }
   builder.addFace(mb.TRIANGLES, vtxs, tcs, idx, shade);
   var bbox = MU.bbox(vtxs);
 
-  return new ObjectHandle(bbox, material, normal, offset, tris.length);
+  return new ObjectHandle(bbox, tex, normal, offset, tris.length);
+}
+
+function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture):ObjectHandle {
+  return null;
+}
+
+export interface TextureProvider {
+  get(picnum:number):DS.Texture;
 }
 
 export interface MaterialFactory {
-  get(picnum:number):DS.Material;
+  solid(tex:DS.Texture):DS.Material;
+  sprite(tex:DS.Texture):DS.Material;
 }
 
 class WallInfo {
@@ -170,6 +161,10 @@ class WallInfo {
 
 class SectorInfo {
   constructor(public bbox:MU.BBox, public floorNormal:number[], public ceilingNormal:number[], public floor:DS.DrawStruct, public ceiling:DS.DrawStruct){}
+}
+
+class SpriteInfo {
+  constructor(public bbox:MU.BBox, public ds:DS.DrawStruct) {}
 }
 
 export interface BoardBuilder {
@@ -181,8 +176,7 @@ export interface BoardBuilder {
 class DefaultBoardBuilder implements BoardBuilder {
   private builder:mb.MeshBuilder;
 
-  constructor() {
-    var gl = WebGLRenderingContext;
+  constructor(gl:WebGLRenderingContext) {
     this.builder = new mb.MeshBuilderConstructor()
       .buffer('aPos', Float32Array, gl.FLOAT, 3)
       .buffer('aNorm', Float32Array, gl.FLOAT, 3)
@@ -195,7 +189,7 @@ class DefaultBoardBuilder implements BoardBuilder {
 
   public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
     this.builder.start(type)
-      .attr('aNorm', MU.normal(verts))
+      .attr('aNorm', VEC.detach3d(VEC.polygonNormal(verts)))
       .attr('aIdx', MU.int2vec4(idx))
       .attr('aShade', [shade]);
     for (var i = 0; i < verts.length; i++){
@@ -223,7 +217,7 @@ export class BoardProcessor {
 
   constructor(public board:buildstructs.Board) {}
 
-  public build(gl:WebGLRenderingContext, materialFactory:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder()):BoardProcessor {
+  public build(gl:WebGLRenderingContext, textureProvider:TextureProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
     var objs:any = [];
 
     var idx = 1;
@@ -234,7 +228,7 @@ export class BoardProcessor {
       var sector = sectors[s];
       this.index[sectorIdx] = [sector, s];
 
-      var slope = createSlopeCalculator(sector, walls);
+      var slope = U.createSlopeCalculator(sector, walls);
       var ceilingheinum = sector.ceilingheinum;
       var ceilingz = sector.ceilingz;
       var floorheinum = sector.floorheinum;
@@ -250,7 +244,7 @@ export class BoardProcessor {
         var y1 = wall.y;
         var x2 = wall2.x;
         var y2 = wall2.y;
-        var material = materialFactory.get(wall.picnum);
+        var tex = textureProvider.get(wall.picnum);
 
         if (wall.nextwall == -1) {
           var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
@@ -263,11 +257,11 @@ export class BoardProcessor {
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
           var base = ((wall.cstat & 4) != 0) ? floorz : ceilingz;
-          var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, base / SCALE);
+          var wallobj = addWall(wall, builder, [a, b, c, d], idx, tex, base / SCALE);
           objs.push([wallobj, TYPE_WALL, w]);
         } else {
           var nextsector = sectors[wall.nextsector];
-          var nextslope = createSlopeCalculator(nextsector, walls);
+          var nextslope = U.createSlopeCalculator(nextsector, walls);
           var nextfloorz = nextsector.floorz;
           var nextceilingz = nextsector.ceilingz;
 
@@ -283,7 +277,7 @@ export class BoardProcessor {
             var d = [x1, z4 / SCALE, y1];
             var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextfloorz;
-            var wallobj = addWall(wall_, builder, [a, b, c, d], idx, materialFactory.get(wall_.picnum), base / SCALE)
+            var wallobj = addWall(wall_, builder, [a, b, c, d], idx, textureProvider.get(wall_.picnum), base / SCALE)
             objs.push([wallobj, TYPE_WALL, w]);
           }
 
@@ -298,7 +292,7 @@ export class BoardProcessor {
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextceilingz;
-            var wallobj = addWall(wall, builder, [a, b, c, d], idx, material, base / SCALE);
+            var wallobj = addWall(wall, builder, [a, b, c, d], idx, tex, base / SCALE);
             objs.push([wallobj, TYPE_WALL, w]);
           }
         }
@@ -309,15 +303,15 @@ export class BoardProcessor {
       var tris:number[][] = triangulate(sector, walls);
       if (tris.length == 0)
         continue;
-      var floorObj = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, materialFactory.get(sector.floorpicnum));
+      var floorObj = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, textureProvider.get(sector.floorpicnum));
       objs.push([floorObj, TYPE_SECTOR_FLOOR, s]);
-      var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, materialFactory.get(sector.ceilingpicnum));
+      var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, textureProvider.get(sector.ceilingpicnum));
       objs.push([ceilingObj, TYPE_SECTOR_CEILING, s]);
 
       // var sprites = U.getSprites(this.board, s);
       // for (var i = 0; i < sprites.length; i++) {
       //   var spr = sprites[i];
-      //   var mat = materialFactory.get(spr.picnum);
+      //   var mat = textureProvider.get(spr.picnum);
       // }
     }
 
@@ -331,19 +325,24 @@ export class BoardProcessor {
       var id = objs[i][2];
 
       if (type == TYPE_WALL && id == objs[i+1][2]) {
-        var wallMesh = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len + objs[i+1][0].len, obj.offset);
+        var mat = materials.solid(obj.tex);
+        var len = obj.len + objs[i+1][0].len;
+        var wallMesh = new mb.Mesh(mat, vtxBuf, idxBuf, mode, len, obj.offset);
         this.walls[id] = new WallInfo(obj.bbox, obj.normal, wallMesh);
         this.dss.push(wallMesh);
         i++;
       } else if (type == TYPE_WALL) {
-        var wallMesh = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len, obj.offset)
+        var mat = materials.solid(obj.tex);
+        var wallMesh = new mb.Mesh(mat, vtxBuf, idxBuf, mode, obj.len, obj.offset)
         this.walls[id] = new WallInfo(obj.bbox, obj.normal, wallMesh);
         this.dss.push(wallMesh);
       }
 
       if (type == TYPE_SECTOR_FLOOR) {
-        var floor = new mb.Mesh(obj.material, vtxBuf, idxBuf, mode, obj.len, obj.offset);
-        var ceiling = new mb.Mesh(objs[i+1][0].material, vtxBuf, idxBuf, mode, objs[i+1][0].len, objs[i+1][0].offset);
+        var floormat = materials.solid(obj.tex);
+        var ceilmat = materials.solid(objs[i+1][0].tex);
+        var floor = new mb.Mesh(floormat, vtxBuf, idxBuf, mode, obj.len, obj.offset);
+        var ceiling = new mb.Mesh(ceilmat, vtxBuf, idxBuf, mode, objs[i+1][0].len, objs[i+1][0].offset);
         this.sectors[id] = new SectorInfo(obj.bbox, obj.normal, objs[i+1][0].normal, floor, ceiling);
         this.dss.push(floor);
         this.dss.push(ceiling);
@@ -445,119 +444,4 @@ function bboxVisible(ms:U.MoveStruct, eye:number[], bbox:MU.BBox, normal:number[
   if ((dminx*eye[0] + dmaxz*eye[2]) > 0) return true;
   if ((dminx*eye[0] + dminz*eye[2]) > 0) return true;
   return false;
-}
-
-class SectorIntersect {
-  constructor(
-    public t:number,
-    public wall:buildstructs.Wall,
-    public point:number[]
-  ) {}
-}
-
-function traceSector(board:buildstructs.Board, secnum:number, sx:number, sy:number, ex:number, ey:number):SectorIntersect {
-  var walls = board.walls;
-  var sectors = board.sectors;
-  var p1s = [sx, sy];
-  var p1e = [ex, ey];
-  var inter = new SectorIntersect(100.0, null, [0,0]);
-
-  var sec = sectors[secnum];
-  var slope = createSlopeCalculator(sec, walls);
-  var ceilingheinum = sec.ceilingheinum;
-  var ceilingz = sec.ceilingz;
-  var floorheinum = sec.floorheinum;
-  var floorz = sec.floorz;
-
-  for (var w = 0; w < sec.wallnum; w++) {
-    var wallidx = sec.wallptr + w;
-    var wall = walls[wallidx];
-    var wall2 = walls[wall.point2];
-    var x1 = wall.x;
-    var y1 = wall.y;
-    var x2 = wall2.x;
-    var y2 = wall2.y;
-
-    var t = MU.intersect2dT(p1s, p1e, [x1,y1], [x2,y2]);
-    if (t == null)
-      continue;
-
-    if (t < inter.t) {
-      GLM.vec2.lerp(inter.point, p1s, p1e, t);
-      inter.t = t;
-      inter.wall = wall;
-    }
-  }
-  return inter.t <= 1.0 ? inter : null;
-}
-
-export function move(board:buildstructs.Board, ms:U.MoveStruct, dx:number, dy:number):void {
-  if (dx == 0 && dy == 0)
-    return;
-
-  var cursecnum = U.getSector(board, ms);
-  if (cursecnum == -1)
-    return;
-    
-  var walls = board.walls;
-  var sectors = board.sectors;
-  var nx = ms.x + dx;
-  var ny = ms.y + dy;
-
-  var enterwallnum:number = null;
-  while (cursecnum != -1) {
-    ms.sec = cursecnum;
-    var inter = traceSector(board, cursecnum, ms.x, ms.y, nx, ny);
-
-    if (inter != null) {
-      cursecnum = inter.wall.nextsector;
-      enterwallnum = inter.wall.nextwall;
-
-      if (cursecnum != -1) {
-        var nsector = sectors[cursecnum];
-        var nslope = createSlopeCalculator(nsector, walls);
-        var nf = nslope(inter.point[0], inter.point[1], nsector.floorheinum) + nsector.floorz;
-        var diff = ms.z - nf;
-        if (diff > 8192)
-          cursecnum = -1;
-      }
-
-      if (cursecnum == -1) {
-        var interwall2 = walls[inter.wall.point2];
-        var normal = MU.normal2d([inter.wall.x, inter.wall.y], [interwall2.x, interwall2.y]);
-        GLM.vec2.add(inter.point, inter.point, GLM.vec2.scale(normal, normal, 64));
-      }
-      
-      ms.x = inter.point[0];
-      ms.y = inter.point[1];
-    } else {
-      ms.x = nx;
-      ms.y = ny;
-      break;
-    }
-  }
-}
-
-export function fall(board:buildstructs.Board, ms:U.MoveStruct, dz:number):void {
-  var secnum = U.getSector(board, ms);
-  if (secnum == -1)
-    return;
-  var walls = board.walls;
-  var sectors = board.sectors;
-  var sector = sectors[secnum];
-  var slope = createSlopeCalculator(sector, walls);
-  var ceilingheinum = sector.ceilingheinum;
-  var ceilingz = sector.ceilingz;
-  var floorheinum = sector.floorheinum;
-  var floorz = sector.floorz;
-
-  var fz = slope(ms.x, ms.y, floorheinum) + floorz;
-  var cz = slope(ms.x, ms.y, ceilingheinum) + ceilingz;
-
-  var nz = ms.z + dz;
-  if (nz < cz)
-    nz = cz;
-  else if (nz > fz)
-    nz = fz;
-  ms.z = nz;
 }

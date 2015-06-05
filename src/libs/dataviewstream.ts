@@ -85,40 +85,50 @@ export class DataViewStream {
     ret.setOffset(this.offset);
     return ret;
   }
+
+  public array(bytes:number) {
+    return new DataView(this.view.buffer, this.offset, bytes)
+  }
 }
 
-export class ValueResolver {
-  constructor(private name:string) {}
-  get(locals:any):any {return locals[this.name]}
+export interface Reader<T> {
+  read(s:DataViewStream):T;
+  sizeof():number;
+  arrType():any;
 }
-export function val(name:string) {return new ValueResolver(name)}
-function get(val:any, locals:any) {return val instanceof ValueResolver ? val.get(locals) : val}
 
-export var byte = (s:DataViewStream, locals:any={}) => s.readByte();
-export var ubyte = (s:DataViewStream, locals:any={}) => s.readUByte();
-export var short = (s:DataViewStream, locals:any={}) => s.readShort();
-export var ushort = (s:DataViewStream, locals:any={}) => s.readUShort();
-export var int = (s:DataViewStream, locals:any={}) => s.readInt();
-export var uint = (s:DataViewStream, locals:any={}) => s.readUInt();
-export var float = (s:DataViewStream, locals:any={}) => s.readFloat();
-var arrayTypes:any = {};
-arrayTypes[byte] = Int8Array;
-arrayTypes[ubyte] = Uint8Array;
-arrayTypes[short] = Int16Array;
-arrayTypes[ushort] = Uint16Array;
-arrayTypes[int] = Int32Array;
-arrayTypes[uint] = Uint32Array;
-arrayTypes[float] = Float32Array;
+export class BasicReader<T> implements Reader<T> {
+  constructor(private f:(s:DataViewStream)=>T, private size:number, private arr) {}
+  read(s:DataViewStream):T {return this.f(s)}
+  sizeof():number {return this.size}
+  arrType():any {return this.arr}
+}
 
-export var string_ = (s:DataViewStream, len:number) => s.readByteString(len);
-export var string = (len:any) => {return (s:DataViewStream, locals:any={}) => string_(s, get(len,locals))};
+export function reader<T>(rf:(s:DataViewStream)=>T, size:number, arr:any=null) {
+  return new BasicReader<T>(rf, size, arr);
+}
+
+export var byte = reader((s:DataViewStream) => s.readByte(), 1, Int8Array);
+export var ubyte = reader((s:DataViewStream) => s.readUByte(), 1, Uint8Array);
+export var short = reader((s:DataViewStream) => s.readShort(), 2, Int16Array);
+export var ushort = reader((s:DataViewStream) => s.readUShort(), 2, Uint16Array);
+export var int = reader((s:DataViewStream) => s.readInt(), 4, Int32Array);
+export var uint = reader((s:DataViewStream) => s.readUInt(), 4, Uint32Array);
+export var float = reader((s:DataViewStream) => s.readFloat(), 4, Float32Array);
+export var string = (len:any) => {return reader((s:DataViewStream) => s.readByteString(len), len)};
 
 export var array_ = (s:DataViewStream, type:any, len:number) => {
-  var arrayType = arrayTypes[type];
+  var arrayType = type.arrType();
+  if (arrayType == null) {
+    var arr = []; 
+    for(var i = 0; i < len; i++) 
+      arr[i] = type.read(s); 
+    return arr;
+  }
   if (s.mark() % arrayType.BYTES_PER_ELEMENT != 0) {
     var arr = new Array(len);
     for (var i = 0; i < len; i++)
-      arr[i] = type(s);
+      arr[i] = type.read(s);
     return new arrayType(arr);
   } else {
     var tarr = new arrayType(s.buffer(), s.mark(), len); 
@@ -126,17 +136,14 @@ export var array_ = (s:DataViewStream, type:any, len:number) => {
     return tarr;
   }
 }
-export var array = (type:any, len:any) => {return (s:DataViewStream, locals:any={}) => array_(s, get(type,locals), get(len,locals))};
+export var array = (type:any, len:number) => {return reader((s:DataViewStream) => array_(s, type, len), type.sizeof()*len)};
 
-export var structArray_ = (s:DataViewStream, struct:any, len:number, locals:any={}) => {var arr = []; for(var i = 0; i < len; i++) arr[i] = struct(s, locals); return arr;}
-export var structArray = (len:any, struct:any) => {return (s:DataViewStream, locals:any={}) => structArray_(s, get(struct,locals), get(len,locals), locals)}
-
-export var struct_ = (s:DataViewStream, fields:any, type:any, locals:any={}) => {
+export var struct_ = (s:DataViewStream, fields:any, type:any) => {
   var struct = new type();
   for (var i = 0; i < fields.length; i++) {
     var field = fields[i];
-    struct[field[0]] = field[1](s, struct);
+    struct[field[0]] = field[1].read(s);
   }
   return struct;
 };
-export var struct = (type:any, fields:any) => {return (s:DataViewStream, locals:any={}) => struct_(s, get(fields,locals), get(type,locals), locals)};
+export var struct = (type:any, fields:any) => {return reader((s:DataViewStream) => struct_(s, fields, type), fields.reduce((l,r) => l+r[1].sizeof(), 0))};

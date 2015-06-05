@@ -17,7 +17,7 @@ int unpack (vec4 c) {
 }
 
 void main() {
-	att = ((-aShade*2.0 + 190.0) / 256.0);
+	att = ((-aShade*3.0 + 190.0) / 256.0);
 	att -= length(aPos - eyepos) / (70.0 * 1024.0);
 	idx = float(unpack(aIdx));
 	tc = aTc;

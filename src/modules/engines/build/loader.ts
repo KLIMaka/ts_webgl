@@ -1,15 +1,7 @@
 import data = require('../../../libs/dataviewstream');
 import build = require('./structs');
 
-var boardStruct = data.struct(build.Board, [
-  ['version', data.uint],
-  ['posx', data.int],
-  ['posy', data.int],
-  ['posz', data.int],
-  ['ang', data.ushort],
-  ['cursectnum', data.ushort],
-  ['numsectors', data.ushort],
-  ['sectors', data.structArray(data.val('numsectors'), data.struct(build.Sector,[
+var sectorStruct = data.struct(build.Sector,[
     ['wallptr', data.ushort],
     ['wallnum', data.ushort],
     ['ceilingz', data.int],
@@ -33,9 +25,9 @@ var boardStruct = data.struct(build.Board, [
     ['lotag', data.ushort],
     ['hitag', data.ushort],
     ['extra', data.ushort]
-  ]))],
-  ['numwalls', data.ushort],
-  ['walls', data.structArray(data.val('numwalls'), data.struct(build.Wall,[
+  ]);
+
+var wallStruct =  data.struct(build.Wall,[
     ['x', data.int],
     ['y', data.int],
     ['point2', data.ushort],
@@ -53,9 +45,9 @@ var boardStruct = data.struct(build.Board, [
     ['lotag', data.ushort],
     ['hitag', data.ushort],
     ['extra', data.ushort]
-  ]))],
-  ['numsprites', data.ushort],
-  ['sprites', data.structArray(data.val('numsprites'), data.struct(build.Sprite,[
+  ]);
+
+var spriteStruct = data.struct(build.Sprite,[
     ['x', data.int],
     ['y', data.int],
     ['z', data.int],
@@ -79,9 +71,24 @@ var boardStruct = data.struct(build.Board, [
     ['lotag', data.ushort],
     ['hitag', data.ushort],
     ['extra', data.ushort]
-  ]))]
+  ]);
+
+var boardStruct = data.struct(build.Board, [
+  ['version', data.uint],
+  ['posx', data.int],
+  ['posy', data.int],
+  ['posz', data.int],
+  ['ang', data.ushort],
+  ['cursectnum', data.ushort]
 ]);
 
 export function loadBuildMap(stream:data.DataViewStream):build.Board {
-  return <build.Board> boardStruct(stream);
+  var brd = <build.Board> boardStruct.read(stream);
+  brd.numsectors = data.ushort.read(stream);
+  brd.sectors = data.array(sectorStruct, brd.numsectors).read(stream);
+  brd.numwalls = data.ushort.read(stream);
+  brd.walls = data.array(wallStruct, brd.numwalls).read(stream);
+  brd.numsprites = data.ushort.read(stream);
+  brd.sprites = data.array(spriteStruct, brd.numsprites).read(stream);
+  return brd;
 }

@@ -62,7 +62,3 @@ export class List<T> {
     return ref;
   }
 }
-
-export function <T> create() {
-  return new List<T>();
-}

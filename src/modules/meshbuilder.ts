@@ -3,32 +3,6 @@ import GLM = require('../libs_js/glmatrix');
 import MU  = require('../libs/mathutils');
 import DS = require('./drawstruct');
 
-
-class VertexBufferBuilder {
-
-  private buffer:number[] = [];
-
-  constructor(
-    private arrayType:any,
-    private type:number, 
-    private spacing:number, 
-    private normalized:boolean
-  ) {}
-
-  public push(data:number[]):void {
-    for (var i = 0; i < data.length; i++)
-      this.buffer.push(data[i]);
-  }
-
-  public build(gl:WebGLRenderingContext):DS.VertexBuffer {
-    var bufIdx = gl.createBuffer();
-    var data:ArrayBuffer = new this.arrayType(this.buffer);
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-    return new VertexBufferImpl(bufIdx, this.type, this.spacing, this.normalized);
-  }
-}
-
 class DynamicVertexBufferBuilder {
 
   private buffer:ArrayBuffer;
@@ -68,7 +42,7 @@ class DynamicVertexBufferBuilder {
   }
 
   public build(gl:WebGLRenderingContext):DS.VertexBuffer {
-    this.bufIdx = gl.createBuffer();
+    this.bufIdx = (this.bufIdx == null) ? gl.createBuffer() : this.bufIdx;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bufIdx);
     gl.bufferData(gl.ARRAY_BUFFER, this.buffer, gl.STREAM_DRAW);
     return new VertexBufferImpl(this.bufIdx, this.type, this.spacing, this.normalized);
@@ -165,6 +139,7 @@ export class IndexBufferBuilder {
   private idx = 0;
   private mode = NONE;
   private vtxCounter = 0;
+  private bufIdx:WebGLBuffer;
 
   constructor(
     private arrayType:any,
@@ -211,11 +186,11 @@ export class IndexBufferBuilder {
   }
 
   public build(gl:WebGLRenderingContext):DS.IndexBuffer {
-    var bufIdx = gl.createBuffer();
+    this.bufIdx = (this.bufIdx == null) ? gl.createBuffer() : this.bufIdx;
     var data = new this.arrayType(this.buffer);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer> data, gl.STATIC_DRAW);
-    return new IndexBufferImpl(bufIdx, this.type);
+    return new IndexBufferImpl(this.bufIdx, this.type);
   }
 }
 

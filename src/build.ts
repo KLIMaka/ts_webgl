@@ -29,33 +29,36 @@ class Mat implements DS.Material {
 }
 
 class MF implements builder.MaterialFactory {
-  private materials:DS.Material[] = [];
-  
-  constructor(private arts:ART.ArtFiles, private pal:Uint8Array, private baseShader:DS.Shader, private selectShader:DS.Shader, private gl:WebGLRenderingContext) {}
+  constructor(private baseShader:DS.Shader, private selectShader:DS.Shader){}
 
-  get(picnum:number) {
-    var mat = this.materials[picnum];
-    if (mat != undefined)
-      return mat;
+  solid(tex:DS.Texture) {
+    return new Mat(this.baseShader, this.selectShader, {base:tex});
+  }
+
+  sprite(tex:DS.Texture) {
+    return new Mat(this.baseShader, this.selectShader, {base:tex});
+  }
+}
+
+class TP implements builder.TextureProvider {
+  private textures:DS.Texture[] = [];
+  
+  constructor(private arts:ART.ArtFiles, private pal:Uint8Array, private gl:WebGLRenderingContext) {}
+
+  get(picnum:number): DS.Texture {
+    var tex = this.textures[picnum];
+    if (tex != undefined)
+      return tex;
 
     var info = this.arts.getInfo(picnum);
     var arr = new Uint8Array(info.w*info.h*4);
     var pp = pixel.axisSwap(pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
     pp.render(arr);
-    mat = new Mat(this.baseShader, this.selectShader, {base:new TEX.TextureImpl(pp.getWidth(), pp.getHeight(), this.gl, arr)});
+    tex = new TEX.TextureImpl(pp.getWidth(), pp.getHeight(), this.gl, arr);
 
-    this.materials[picnum] = mat;
-    return mat;
+    this.textures[picnum] = tex;
+    return tex;
   }
-}
-
-function getPlayerStart(board:BS.Board):BS.Sprite {
-  for (var i = 0; i < board.numsprites; i++) {
-    var sprite = board.sprites[i];
-    if (sprite.lotag == 1)
-      return sprite;
-  }
-  return null;
 }
 
 function drawCompass(canvas:HTMLCanvasElement, eye:number[]) {
@@ -101,11 +104,12 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var processor = new builder.BoardProcessor(board);
   var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
-  var mf = new MF(artFiles, pal, baseShader, selectShader, gl);
-  processor.build(gl, mf);
+  var mf = new MF(baseShader, selectShader);
+  var tp = new TP(artFiles, pal, gl);
+  processor.build(gl, tp, mf);
 
   var control = new controller.Controller3D(gl);
-  var playerstart = getPlayerStart(board);
+  var playerstart = BU.getPlayerStart(board);
   var ms = new BU.MoveStruct();
   ms.sec = playerstart.sectnum;
   ms.x = playerstart.x;
