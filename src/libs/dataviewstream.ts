@@ -125,16 +125,10 @@ export var array_ = (s:DataViewStream, type:any, len:number) => {
       arr[i] = type.read(s); 
     return arr;
   }
-  if (s.mark() % arrayType.BYTES_PER_ELEMENT != 0) {
-    var arr = new Array(len);
-    for (var i = 0; i < len; i++)
-      arr[i] = type.read(s);
-    return new arrayType(arr);
-  } else {
-    var tarr = new arrayType(s.buffer(), s.mark(), len); 
-    s.skip(len*arrayType.BYTES_PER_ELEMENT); 
-    return tarr;
-  }
+  var arr = new Array(len);
+  for (var i = 0; i < len; i++)
+    arr[i] = type.read(s);
+  return new arrayType(arr);
 }
 export var array = (type:any, len:number) => {return reader((s:DataViewStream) => array_(s, type, len), type.sizeof()*len)};
 
