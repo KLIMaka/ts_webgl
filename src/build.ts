@@ -4,7 +4,6 @@ import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import MU = require('./libs/mathutils');
 import controller = require('./modules/controller3d');
-import loader = require('./modules/engines/build/loader');
 import bloodloader = require('./modules/engines/build/bloodloader');
 import builder = require('./modules/engines/build/builder');
 import BS = require('./modules/engines/build/structs');
