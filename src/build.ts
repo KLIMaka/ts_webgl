@@ -138,7 +138,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
       activeIdx = id;
       if (control.isClick()) {
         console.log(processor.getByIdx(activeIdx));
-        console.log(control.getCamera());
       }
     }
 

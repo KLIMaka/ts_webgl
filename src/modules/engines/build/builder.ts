@@ -333,14 +333,19 @@ export class BoardProcessor {
       for (var i = 0; i < sprites.length; i++) {
         var sprite = sprites[i];
         var spr = this.board.sprites[sprite];
+        this.index[idx] = [spr, sprite];
+        if (spr.picnum == 0)
+          continue;
         var tex = textureProvider.get(spr.picnum);
         var mat = materials.solid(tex);
         var x = spr.x; var y = spr.y; var z = spr.z;
         var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
         var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
-        var ang = (spr.ang / 2048) * Math.PI * 2;
+        var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
         var dx = Math.sin(ang)*hw;
         var dy = Math.cos(ang)*hw;
+        var xf = (spr.cstat & 0x04) == 0x04;
+        var yf = (spr.cstat & 0x08) == 0x08;
 
         if ((spr.cstat & 0x30) == 0x10) { //wall
           var a = [x-dx, z/SCALE-hh, y-dy];
@@ -348,11 +353,9 @@ export class BoardProcessor {
           var c = [x+dx, z/SCALE+hh, y+dy];
           var d = [x-dx, z/SCALE+hh, y-dy];
           var vtxs = [a, b, c, d];
-          var tcs = [[1, 0], [0, 0], [0, 1], [1, 1]];
+          var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
           var bbox = MU.bbox(vtxs);
           builder.begin();
-          builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
-          vtxs.reverse(); tcs.reverse();
           builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
           var mesh = builder.end(mat);
           this.sprites[sprite] = new SpriteInfo(bbox, mesh);
