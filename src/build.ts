@@ -4,7 +4,7 @@ import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import MU = require('./libs/mathutils');
 import controller = require('./modules/controller3d');
-import loader = require('./modules/engines/build/loader');
+import bloodloader = require('./modules/engines/build/bloodloader');
 import builder = require('./modules/engines/build/builder');
 import BS = require('./modules/engines/build/structs');
 import BU = require('./modules/engines/build/utils');
@@ -100,7 +100,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   document.body.appendChild(panel.elem());
 
 
-  var board = loader.loadBuildMap(new data.DataViewStream(map, true));
+  var board = bloodloader.loadBloodMap(new data.DataViewStream(map, true));
   var processor = new builder.BoardProcessor(board);
   var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
@@ -189,6 +189,7 @@ for (var a = 0; a < 18; a++)
   arts.push(ART.create(new data.DataViewStream(getter.get(artNames[a]), true)));
 var artFiles = ART.createArts(arts);
 
-getter.preload(cfg.map, (map:ArrayBuffer) => render(cfg, map, artFiles, pal))
+var map = rff.get(cfg.map).buffer;
+render(cfg, map, artFiles, pal);
 
 });

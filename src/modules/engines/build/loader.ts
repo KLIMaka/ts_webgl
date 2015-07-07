@@ -1,7 +1,7 @@
 import data = require('../../../libs/dataviewstream');
 import build = require('./structs');
 
-var sectorStruct = data.struct(build.Sector,[
+export var sectorStruct = data.struct(build.Sector,[
     ['wallptr', data.ushort],
     ['wallnum', data.ushort],
     ['ceilingz', data.int],
@@ -27,7 +27,7 @@ var sectorStruct = data.struct(build.Sector,[
     ['extra', data.ushort]
   ]);
 
-var wallStruct =  data.struct(build.Wall,[
+export var wallStruct =  data.struct(build.Wall,[
     ['x', data.int],
     ['y', data.int],
     ['point2', data.ushort],
@@ -47,7 +47,7 @@ var wallStruct =  data.struct(build.Wall,[
     ['extra', data.ushort]
   ]);
 
-var spriteStruct = data.struct(build.Sprite,[
+export var spriteStruct = data.struct(build.Sprite,[
     ['x', data.int],
     ['y', data.int],
     ['z', data.int],
@@ -73,7 +73,7 @@ var spriteStruct = data.struct(build.Sprite,[
     ['extra', data.ushort]
   ]);
 
-var boardStruct = data.struct(build.Board, [
+export var boardStruct = data.struct(build.Board, [
   ['version', data.uint],
   ['posx', data.int],
   ['posy', data.int],
