@@ -39,6 +39,9 @@ export function sqrLen2d(x:number, y:number) {
   return x*x + y*y;
 }
 
+export function len2d(x:number, y:number) {
+  return Math.sqrt(x*x + y*y);
+}
 
 export function cyclic(x:number, max:number):number {
   return x > 0 ? (x%max) : (max + x%max);
@@ -53,6 +56,16 @@ export class BBox {
     public minz:number,
     public maxz:number
     ) {}
+
+  public grow(bbox:BBox): BBox {
+    this.minx = Math.min(this.minx, bbox.minx);
+    this.miny = Math.min(this.miny, bbox.miny);
+    this.minz = Math.min(this.minz, bbox.minz);
+    this.maxx = Math.max(this.maxx, bbox.maxx);
+    this.maxy = Math.max(this.maxy, bbox.maxy);
+    this.maxz = Math.max(this.maxz, bbox.maxz);
+    return this;
+  }
 }
 
 export function bbox(vtxs:number[][]):BBox {

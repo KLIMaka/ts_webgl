@@ -40,6 +40,7 @@ export interface DrawStruct {
   getMaterial():Material;
   getMode(): number;
   getVertexBuffer(attribute:string): VertexBuffer;
+  getVertexBuffers(): VertexBuffer[];
   getAttributes(): string[];
   getIndexBuffer(): IndexBuffer;
   getLength(): number;

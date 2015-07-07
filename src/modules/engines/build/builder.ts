@@ -41,20 +41,7 @@ function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):numb
   return GLU.tesselate(contours);
 }
 
-
-var TYPE_SECTOR_FLOOR = 1;
-var TYPE_SECTOR_CEILING = 2;
-var TYPE_WALL = 3;
-
-class ObjectHandle {
-  constructor(public bbox:MU.BBox, public tex:DS.Texture, public normal:number[], public offset:number, public len:number) {}
-}
-
-function len(x:number, y:number) {
-  return Math.sqrt(x*x + y*y);
-}
-
-function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, base:number):ObjectHandle {
+function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, mat:DS.Material, base:number):SolidInfo {
   // a -> b
   // ^    |
   // |    v
@@ -67,53 +54,48 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
   var tcxoff = wall.xpanning / tex.getWidth();
   var tcyoff = wall.ypanning * wall.yrepeat;
 
+  builder.begin();
+
   var a = quad[0]; var atc = [tcxoff,          (tcyoff+base-a[1])/tcscaley];
   var b = quad[1]; var btc = [tcxoff+tcscalex, (tcyoff+base-b[1])/tcscaley];
   var c = quad[2]; var ctc = [tcxoff+tcscalex, (tcyoff+base-c[1])/tcscaley];
   var d = quad[3]; var dtc = [tcxoff,          (tcyoff+base-d[1])/tcscaley];
-  var offset = builder.getOffset();
-  var bbox = MU.bbox(quad);
 
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
-    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,c])), offset, 3);
-  }
-  if (b[1] == c[1]) {
+  } else if (b[1] == c[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,d], [atc,btc,dtc], idx, shade);
-    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,d])), offset, 3);
-  }
-  if (a[1] < d[1] && b[1] < c[1]){
+  } else if (a[1] < d[1] && b[1] < c[1]){
     builder.addFace(mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
-    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([d,c,b,a])), offset, 6);
-  }
-
-  if (a[1] < d[1]) {
+  } else if (a[1] < d[1]) {
     var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
-    var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
+    var etc = [MU.len2d(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
-    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([d,e,a])), offset, 6);
-  }
-  if (b[1] < c[1]) {
+  } else if (b[1] < c[1]) {
     var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
-    var etc = [len(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
+    var etc = [MU.len2d(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
-    return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,e,d])), offset, 6);
+  } else {
+    builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
   }
 
-  builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
-  return new ObjectHandle(bbox, tex, VEC.detach3d(VEC.polygonNormal([a,b,c])), offset, 6);
+  var mesh = builder.end(mat);
+  var bbox = MU.bbox(quad);
+  var normal = VEC.detach3d(VEC.polygonNormal([a,b,c]));
+
+  return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, tex:DS.Texture):ObjectHandle {
+function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
   var tcscalex = tex.getWidth() * 16;
   var tcscaley = tex.getHeight() * 16;
-  var offset = builder.getOffset();
-  var normal:number[] = null;
   var shade = ceiling ? sector.ceilingshade : sector.floorshade;
   var vtxs = [];
   var tcs = [];
+  var normal:number[] = null;
+  builder.begin();
   for (var i = 0; i < tris.length; i += 3) {
     var t0x = tris[i+0][0];
     var t1x = tris[i+1][0];
@@ -137,12 +119,13 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
     if (normal == null) normal = VEC.detach3d(VEC.polygonNormal(vtxs));
   }
   builder.addFace(mb.TRIANGLES, vtxs, tcs, idx, shade);
+  var mesh = builder.end(mat);
   var bbox = MU.bbox(vtxs);
 
-  return new ObjectHandle(bbox, tex, normal, offset, tris.length);
+  return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture):ObjectHandle {
+function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture):void {
   return null;
 }
 
@@ -155,12 +138,16 @@ export interface MaterialFactory {
   sprite(tex:DS.Texture):DS.Material;
 }
 
+class SolidInfo {
+  constructor(public bbox:MU.BBox, public normal:number[], public ds:DS.DrawStruct) {}
+}
+
 class WallInfo {
-  constructor(public bbox:MU.BBox, public normal:number[], public ds:DS.DrawStruct){}
+  constructor(public up:SolidInfo, public down:SolidInfo){}
 }
 
 class SectorInfo {
-  constructor(public bbox:MU.BBox, public floorNormal:number[], public ceilingNormal:number[], public floor:DS.DrawStruct, public ceiling:DS.DrawStruct){}
+  constructor(public floor:SolidInfo, public ceiling:SolidInfo){}
 }
 
 class SpriteInfo {
@@ -169,12 +156,18 @@ class SpriteInfo {
 
 export interface BoardBuilder {
   addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number):void;
-  getOffset():number;
-  build(gl:WebGLRenderingContext):DS.DrawStruct;
+  begin():void;
+  end(mat:DS.Material):DS.DrawStruct;
+  finish(gl:WebGLRenderingContext):void;
 }
 
 class DefaultBoardBuilder implements BoardBuilder {
   private builder:mb.MeshBuilder;
+  private off = 0;
+  private len = 0;
+  private vtxBuf:DS.VertexBuffer[];
+  private idxBuf:DS.IndexBuffer;
+  private mode:number;
 
   constructor(gl:WebGLRenderingContext) {
     this.builder = new mb.MeshBuilderConstructor()
@@ -185,9 +178,14 @@ class DefaultBoardBuilder implements BoardBuilder {
       .buffer('aShade', Int8Array, gl.BYTE, 1)
       .index(Uint16Array, gl.UNSIGNED_SHORT)
       .build();
+
+    var tmp = this.builder.build(gl, null);
+    this.vtxBuf = tmp.getVertexBuffers();
+    this.idxBuf = tmp.getIndexBuffer();
+    this.mode = tmp.getMode();
   }
 
-  public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
+  public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number):void {
     this.builder.start(type)
       .attr('aNorm', VEC.detach3d(VEC.polygonNormal(verts)))
       .attr('aIdx', MU.int2vec4(idx))
@@ -198,27 +196,34 @@ class DefaultBoardBuilder implements BoardBuilder {
         .vtx('aPos', verts[i]);
     }
     this.builder.end();
+    this.len += (type == mb.QUADS ? (6*verts.length/4) : verts.length);
   }
 
-  public getOffset(): number {
-    return this.builder.offset() * 2;
+  public begin() {
+    this.off = this.builder.offset()*2;
+    this.len = 0;
   }
 
-  public build(gl:WebGLRenderingContext):DS.DrawStruct {
-    return this.builder.build(gl, null);
+  public end(mat:DS.Material):DS.DrawStruct {
+    return new mb.Mesh(mat, this.vtxBuf, this.idxBuf, this.mode, this.len, this.off);
+  }
+
+  public finish(gl:WebGLRenderingContext) {
+    this.builder.build(gl, null);
   }
 }
 
 export class BoardProcessor {
   private walls:WallInfo[] = [];
   private sectors:SectorInfo[] = [];
+  private sprites:SpriteInfo[] = [];
+  private spritesBySector:number[][] = [];
   private index:any = [];
   private dss:DS.DrawStruct[] = [];
 
   constructor(public board:buildstructs.Board) {}
 
   public build(gl:WebGLRenderingContext, textureProvider:TextureProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
-    var objs:any = [];
 
     var idx = 1;
     var sectors = this.board.sectors;
@@ -256,14 +261,17 @@ export class BoardProcessor {
           var b = [x2, z2 / SCALE, y2];
           var c = [x2, z3 / SCALE, y2];
           var d = [x1, z4 / SCALE, y1];
+          var vtxs = [a, b, c, d];
           var base = ((wall.cstat & 4) != 0) ? floorz : ceilingz;
-          var wallobj = addWall(wall, builder, [a, b, c, d], idx, tex, base / SCALE);
-          objs.push([wallobj, TYPE_WALL, w]);
+          var solid = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
+          this.walls[w] = new WallInfo(solid, null);
         } else {
           var nextsector = sectors[wall.nextsector];
           var nextslope = U.createSlopeCalculator(nextsector, walls);
           var nextfloorz = nextsector.floorz;
           var nextceilingz = nextsector.ceilingz;
+          var up:SolidInfo = null;
+          var down:SolidInfo = null;
 
           var nextfloorheinum = nextsector.floorheinum;
           var z1 = nextslope(x1, y1, nextfloorheinum) + nextfloorz;
@@ -275,10 +283,12 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
+            var vtxs = [a, b, c, d];
             var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
+            var tex_ = textureProvider.get(wall_.picnum);
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextfloorz;
-            var wallobj = addWall(wall_, builder, [a, b, c, d], idx, textureProvider.get(wall_.picnum), base / SCALE)
-            objs.push([wallobj, TYPE_WALL, w]);
+            up = addWall(wall_, builder, vtxs, idx, tex_, materials.solid(tex_), base / SCALE);
+            this.dss.push(up.ds);
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
@@ -291,9 +301,16 @@ export class BoardProcessor {
             var b = [x2, z2 / SCALE, y2];
             var c = [x2, z3 / SCALE, y2];
             var d = [x1, z4 / SCALE, y1];
+            var vtxs = [a, b, c, d];
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextceilingz;
-            var wallobj = addWall(wall, builder, [a, b, c, d], idx, tex, base / SCALE);
-            objs.push([wallobj, TYPE_WALL, w]);
+            down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
+            this.dss.push(down.ds);
+          }
+          if (up != null || down != null) {
+            if (up == null)
+              this.walls[w] = new WallInfo(down, up);
+            else 
+              this.walls[w] = new WallInfo(up, down);
           }
         }
         i++;
@@ -303,52 +320,54 @@ export class BoardProcessor {
       var tris:number[][] = triangulate(sector, walls);
       if (tris.length == 0)
         continue;
-      var floorObj = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, textureProvider.get(sector.floorpicnum));
-      objs.push([floorObj, TYPE_SECTOR_FLOOR, s]);
-      var ceilingObj = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, textureProvider.get(sector.ceilingpicnum));
-      objs.push([ceilingObj, TYPE_SECTOR_CEILING, s]);
 
-      // var sprites = U.getSprites(this.board, s);
-      // for (var i = 0; i < sprites.length; i++) {
-      //   var spr = sprites[i];
-      //   var mat = textureProvider.get(spr.picnum);
-      // }
-    }
+      var floortex = textureProvider.get(sector.floorpicnum);
+      var ceilingtex = textureProvider.get(sector.ceilingpicnum);
+      var floor = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, floortex, materials.solid(floortex));
+      var ceiling = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, ceilingtex, materials.solid(ceilingtex));
+      this.sectors[s] = new SectorInfo(floor, ceiling);
+      this.dss.push(floor.ds, ceiling.ds);
 
-    var tmp:mb.Mesh = <mb.Mesh>builder.build(gl);
-    var vtxBuf = tmp.getVertexBuffers();
-    var idxBuf = tmp.getIndexBuffer();
-    var mode = tmp.getMode();
-    for (var i = 0; i < objs.length; i++) {
-      var obj = objs[i][0];
-      var type = objs[i][1];
-      var id = objs[i][2];
+      var sprites = U.getSprites(this.board, s);
+      this.spritesBySector[s] = sprites;
+      for (var i = 0; i < sprites.length; i++) {
+        var sprite = sprites[i];
+        var spr = this.board.sprites[sprite];
+        this.index[idx] = [spr, sprite];
+        if (spr.picnum == 0)
+          continue;
+        var tex = textureProvider.get(spr.picnum);
+        var mat = materials.solid(tex);
+        var x = spr.x; var y = spr.y; var z = spr.z;
+        var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
+        var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
+        var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
+        var dx = Math.sin(ang)*hw;
+        var dy = Math.cos(ang)*hw;
+        var xf = (spr.cstat & 0x04) == 0x04;
+        var yf = (spr.cstat & 0x08) == 0x08;
 
-      if (type == TYPE_WALL && id == objs[i+1][2]) {
-        var mat = materials.solid(obj.tex);
-        var len = obj.len + objs[i+1][0].len;
-        var wallMesh = new mb.Mesh(mat, vtxBuf, idxBuf, mode, len, obj.offset);
-        this.walls[id] = new WallInfo(obj.bbox, obj.normal, wallMesh);
-        this.dss.push(wallMesh);
-        i++;
-      } else if (type == TYPE_WALL) {
-        var mat = materials.solid(obj.tex);
-        var wallMesh = new mb.Mesh(mat, vtxBuf, idxBuf, mode, obj.len, obj.offset)
-        this.walls[id] = new WallInfo(obj.bbox, obj.normal, wallMesh);
-        this.dss.push(wallMesh);
+        if ((spr.cstat & 0x30) == 0x10) { //wall
+          var a = [x-dx, z/SCALE-hh, y-dy];
+          var b = [x+dx, z/SCALE-hh, y+dy];
+          var c = [x+dx, z/SCALE+hh, y+dy];
+          var d = [x-dx, z/SCALE+hh, y-dy];
+          var vtxs = [a, b, c, d];
+          var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
+          var bbox = MU.bbox(vtxs);
+          builder.begin();
+          builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
+          var mesh = builder.end(mat);
+          this.sprites[sprite] = new SpriteInfo(bbox, mesh);
+          this.dss.push(mesh);
+        } else if ((spr.cstat & 0x30) == 0x20) { // floor
+
+        }
+
+        idx++;
       }
-
-      if (type == TYPE_SECTOR_FLOOR) {
-        var floormat = materials.solid(obj.tex);
-        var ceilmat = materials.solid(objs[i+1][0].tex);
-        var floor = new mb.Mesh(floormat, vtxBuf, idxBuf, mode, obj.len, obj.offset);
-        var ceiling = new mb.Mesh(ceilmat, vtxBuf, idxBuf, mode, objs[i+1][0].len, objs[i+1][0].offset);
-        this.sectors[id] = new SectorInfo(obj.bbox, obj.normal, objs[i+1][0].normal, floor, ceiling);
-        this.dss.push(floor);
-        this.dss.push(ceiling);
-        i++;
-      }
     }
+    builder.finish(gl);
     return this;
   }
 
@@ -360,22 +379,32 @@ export class BoardProcessor {
     var ds:DS.DrawStruct[] = [];
     var sectors = this.sectors;
     var walls = this.walls;
+    var sprites = this.sprites;
     var fov = 0;
     for (var i = 0; i < sectors.length; i++) {
       var sector = sectors[i];
       if (sector == undefined)
         continue;
-      if (bboxVisible(ms, eye, sector.bbox, null)) {
-        ds.push(sector.floor);
-        ds.push(sector.ceiling);
-      }
+      if (bboxVisible(ms, eye, sector.floor.bbox, sector.floor.normal))
+        ds.push(sector.floor.ds);
+      if (bboxVisible(ms, eye, sector.ceiling.bbox, sector.ceiling.normal))
+        ds.push(sector.ceiling.ds);
     }
     for (var i = 0; i < walls.length; i++) {
       var wallinfo = walls[i];
       if (wallinfo == undefined)
         continue;
-      if (bboxVisible(ms, eye, wallinfo.bbox, wallinfo.normal))
-        ds.push(wallinfo.ds);
+      if (bboxVisible(ms, eye, wallinfo.up.bbox, wallinfo.up.normal))
+        ds.push(wallinfo.up.ds);
+      if (wallinfo.down != null && bboxVisible(ms, eye, wallinfo.down.bbox, wallinfo.down.normal))
+        ds.push(wallinfo.down.ds);
+    }
+    for (var i = 0; i < sprites.length; i++) {
+      var spriteInfo = sprites[i];
+      if (spriteInfo == null)
+        continue;
+      if (bboxVisible(ms, eye, spriteInfo.bbox, null))
+        ds.push(spriteInfo.ds);
     }
     return ds;
   }
@@ -390,8 +419,17 @@ export class BoardProcessor {
       var cursecnum = pvs[i];
 
       if (sectors[cursecnum] != undefined) {
-        ds.push(sectors[cursecnum].floor);
-        ds.push(sectors[cursecnum].ceiling);
+        ds.push(sectors[cursecnum].floor.ds);
+        ds.push(sectors[cursecnum].ceiling.ds);
+      }
+
+      var sprites = this.spritesBySector[cursecnum];
+      if (sprites != undefined) {
+        for (var s = 0; s < sprites.length; s++) {
+          var spr = this.sprites[sprites[s]];
+          if (spr != undefined)
+            ds.push(spr.ds);
+        }
       }
 
       var cursec = board.sectors[cursecnum];
@@ -407,8 +445,11 @@ export class BoardProcessor {
         if (dx1*dy2 < dy1*dx2) continue;
 
         var wallinfo = walls[wallidx];
-        if (wallinfo != undefined) 
-          ds.push(wallinfo.ds);
+        if (wallinfo != undefined) {
+          ds.push(wallinfo.up.ds);
+          if (wallinfo.down != null)
+            ds.push(wallinfo.down.ds);
+        }
 
         if (wall.nextsector == -1) continue;
 

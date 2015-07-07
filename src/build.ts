@@ -138,7 +138,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
       activeIdx = id;
       if (control.isClick()) {
         console.log(processor.getByIdx(activeIdx));
-        console.log(control.getCamera());
       }
     }
 
@@ -151,6 +150,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     
 
     var models = processor.get(ms, control.getCamera().forward());
+    // var models = processor.getAll();
     GL.draw(gl, models, binder);
     
     info['Batches:'] = models.length;
