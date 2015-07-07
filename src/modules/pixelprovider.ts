@@ -14,7 +14,7 @@ export interface PixelProvider {
 export class AbstractPixelProvider implements PixelProvider {
 
   constructor(private w:number, private h:number) {
-    if (w <= 0 || h <= 0)
+    if (w < 0 || h < 0)
       throw new Error('Invalid size');
   }
 
