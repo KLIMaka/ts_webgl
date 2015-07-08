@@ -40,7 +40,7 @@ class MF implements builder.MaterialFactory {
   }
 }
 
-class TP implements builder.TextureProvider {
+class TP implements builder.ArtProvider {
   private textures:DS.Texture[] = [];
   
   constructor(private arts:ART.ArtFiles, private pal:Uint8Array, private gl:WebGLRenderingContext) {}
@@ -58,6 +58,11 @@ class TP implements builder.TextureProvider {
 
     this.textures[picnum] = tex;
     return tex;
+  }
+
+  getInfo(picnum:number):number {
+    var info = this.arts.getInfo(picnum);
+    return info.anum;
   }
 }
 

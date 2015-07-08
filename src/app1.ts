@@ -73,7 +73,7 @@ class MF implements builder_.MaterialFactory {
 }
 
 
-class TP implements builder_.TextureProvider {
+class TP implements builder_.ArtProvider {
   private tex:ds.Texture = new TEX.TextureStub(1,1);
   get(picnum:number): ds.Texture {
     return this.tex;

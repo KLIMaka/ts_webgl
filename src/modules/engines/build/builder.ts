@@ -129,8 +129,9 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
   return null;
 }
 
-export interface TextureProvider {
+export interface ArtProvider {
   get(picnum:number):DS.Texture;
+  getInfo(picnum:number):number;
 }
 
 export interface MaterialFactory {
@@ -223,7 +224,7 @@ export class BoardProcessor {
 
   constructor(public board:buildstructs.Board) {}
 
-  public build(gl:WebGLRenderingContext, textureProvider:TextureProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
+  public build(gl:WebGLRenderingContext, textureProvider:ArtProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
 
     var idx = 1;
     var sectors = this.board.sectors;
@@ -346,12 +347,15 @@ export class BoardProcessor {
         var dy = Math.cos(ang)*hw;
         var xf = (spr.cstat & 0x04) == 0x04;
         var yf = (spr.cstat & 0x08) == 0x08;
+        var tinfo = textureProvider.getInfo(spr.picnum);
+        var xo = (tinfo >> 8) & 0xFF; xo = (xo&0x7F)*((xo&0x80)?-1:1)*16;
+        var yo = (tinfo >> 16) & 0xFF; yo = (yo&0x7F)*((yo&0x80)?-1:1)*16;
 
         if ((spr.cstat & 0x30) == 0x10) { //wall
-          var a = [x-dx, z/SCALE-hh, y-dy];
-          var b = [x+dx, z/SCALE-hh, y+dy];
-          var c = [x+dx, z/SCALE+hh, y+dy];
-          var d = [x-dx, z/SCALE+hh, y-dy];
+          var a = [x-dx, z/SCALE-hh+yo, y-dy];
+          var b = [x+dx, z/SCALE-hh+yo, y+dy];
+          var c = [x+dx, z/SCALE+hh+yo, y+dy];
+          var d = [x-dx, z/SCALE+hh+yo, y-dy];
           var vtxs = [a, b, c, d];
           var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
           var bbox = MU.bbox(vtxs);
