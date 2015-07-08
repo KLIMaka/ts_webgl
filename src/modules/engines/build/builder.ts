@@ -348,8 +348,8 @@ export class BoardProcessor {
         var xf = (spr.cstat & 0x04) == 0x04;
         var yf = (spr.cstat & 0x08) == 0x08;
         var tinfo = textureProvider.getInfo(spr.picnum);
-        var xo = (tinfo >> 8) & 0xFF; xo = (xo&0x7F)*((xo&0x80)?-1:1)*16;
-        var yo = (tinfo >> 16) & 0xFF; yo = (yo&0x7F)*((yo&0x80)?-1:1)*16;
+        var xo = (tinfo >> 8) & 0xFF; xo = (xo&0x7F)*((xo&0x80)?-1:1)*16 * (spr.xrepeat/64);
+        var yo = (tinfo >> 16) & 0xFF; yo = (yo&0x7F)*((yo&0x80)?-1:1)*16 * (spr.yrepeat/64);
 
         if ((spr.cstat & 0x30) == 0x10) { //wall
           var a = [x-dx, z/SCALE-hh+yo, y-dy];
