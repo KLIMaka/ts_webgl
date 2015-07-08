@@ -361,6 +361,10 @@ export class BoardProcessor {
           var bbox = MU.bbox(vtxs);
           builder.begin();
           builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
+          if ((spr.cstat&0x40)==0) {
+            vtxs.reverse(); tcs.reverse();
+            builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
+          }
           var mesh = builder.end(mat);
           this.sprites[sprite] = new SpriteInfo(bbox, mesh);
           this.dss.push(mesh);
