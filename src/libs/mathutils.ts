@@ -87,7 +87,7 @@ export function bbox(vtxs:number[][]):BBox {
     minx = Math.min(v[0], minx);
     miny = Math.min(v[1], miny);
     minz = Math.min(v[2], minz);
-    maxx = Math.max(v[0], maxz);
+    maxx = Math.max(v[0], maxx);
     maxy = Math.max(v[1], maxy);
     maxz = Math.max(v[2], maxz);
   }

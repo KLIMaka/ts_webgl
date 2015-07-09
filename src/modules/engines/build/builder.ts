@@ -88,7 +88,10 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
   return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], heinum:number, z:number, slope:any, builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
+function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
+  var heinum = ceiling ? sector.ceilingheinum : sector.floorheinum;
+  var z = ceiling ? sector.ceilingz : sector.floorz;
+  var slope = U.createSlopeCalculator(sector, walls);
   var tcscalex = tex.getWidth() * 16;
   var tcscaley = tex.getHeight() * 16;
   var shade = ceiling ? sector.ceilingshade : sector.floorshade;
@@ -125,8 +128,49 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
   return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture):void {
-  return null;
+function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture, mat:DS.Material, tinfo:number, idx:number):SpriteInfo {
+  var x = spr.x; var y = spr.y; var z = spr.z;
+  var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
+  var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
+  var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
+  var xf = (spr.cstat & 0x04) == 0x04;
+  var yf = (spr.cstat & 0x08) == 0x08;
+  var xo = (tinfo >> 8) & 0xFF; xo = MU.ubyte2byte(xo)*16 * (spr.xrepeat/64);
+  var yo = (tinfo >> 16) & 0xFF; yo = MU.ubyte2byte(yo)*16 * (spr.yrepeat/64);
+  var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
+  var vtxs:number[][] = null;
+
+  if ((spr.cstat & 0x30) == 0x10 || (spr.cstat & 0x30) == 0x00) { //wall
+    var dx = Math.sin(ang)*hw;
+    var dy = Math.cos(ang)*hw;
+    
+    var a = [x-dx, z/SCALE-hh+yo, y-dy];
+    var b = [x+dx, z/SCALE-hh+yo, y+dy];
+    var c = [x+dx, z/SCALE+hh+yo, y+dy];
+    var d = [x-dx, z/SCALE+hh+yo, y-dy];
+    vtxs = [a, b, c, d];
+  } else if ((spr.cstat & 0x30) == 0x20) { // floor
+    var dwx = Math.sin(ang)*hw;
+    var dwy = Math.cos(ang)*hw;
+    var dhx = Math.sin(ang+Math.PI/2)*hh;
+    var dhy = Math.cos(ang+Math.PI/2)*hh;
+
+    var a = [x-dwx-dhx, z/SCALE+1, y-dwy-dhy];
+    var b = [x+dwx+dhx, z/SCALE+1, y-dwy-dhy];
+    var c = [x+dwx+dhx, z/SCALE+1, y+dwy+dhy];
+    var d = [x-dwx-dhx, z/SCALE+1, y+dwy+dhy];
+    vtxs = [a, b, c, d];
+  }
+
+  var bbox = MU.bbox(vtxs);
+  builder.begin();
+  builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
+  if ((spr.cstat&0x40)==0) {
+    vtxs.reverse(); tcs.reverse();
+    builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
+  }
+  var mesh = builder.end(mat);
+  return new SpriteInfo(bbox, mesh);
 }
 
 export interface ArtProvider {
@@ -324,8 +368,8 @@ export class BoardProcessor {
 
       var floortex = textureProvider.get(sector.floorpicnum);
       var ceilingtex = textureProvider.get(sector.ceilingpicnum);
-      var floor = addSector(tris, false, sector, walls, floorheinum, floorz, slope, builder, sectorIdx, floortex, materials.solid(floortex));
-      var ceiling = addSector(tris, true, sector, walls, ceilingheinum, ceilingz, slope, builder, sectorIdx, ceilingtex, materials.solid(ceilingtex));
+      var floor = addSector(tris, false, sector, walls, builder, sectorIdx, floortex, materials.solid(floortex));
+      var ceiling = addSector(tris, true, sector, walls, builder, sectorIdx, ceilingtex, materials.solid(ceilingtex));
       this.sectors[s] = new SectorInfo(floor, ceiling);
       this.dss.push(floor.ds, ceiling.ds);
 
@@ -339,39 +383,10 @@ export class BoardProcessor {
           continue;
         var tex = textureProvider.get(spr.picnum);
         var mat = materials.solid(tex);
-        var x = spr.x; var y = spr.y; var z = spr.z;
-        var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
-        var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
-        var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
-        var dx = Math.sin(ang)*hw;
-        var dy = Math.cos(ang)*hw;
-        var xf = (spr.cstat & 0x04) == 0x04;
-        var yf = (spr.cstat & 0x08) == 0x08;
         var tinfo = textureProvider.getInfo(spr.picnum);
-        var xo = (tinfo >> 8) & 0xFF; xo = MU.ubyte2byte(xo)*16 * (spr.xrepeat/64);
-        var yo = (tinfo >> 16) & 0xFF; yo = MU.ubyte2byte(yo)*16 * (spr.yrepeat/64);
-
-        if ((spr.cstat & 0x30) == 0x10) { //wall
-          var a = [x-dx, z/SCALE-hh+yo, y-dy];
-          var b = [x+dx, z/SCALE-hh+yo, y+dy];
-          var c = [x+dx, z/SCALE+hh+yo, y+dy];
-          var d = [x-dx, z/SCALE+hh+yo, y-dy];
-          var vtxs = [a, b, c, d];
-          var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
-          var bbox = MU.bbox(vtxs);
-          builder.begin();
-          builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
-          if ((spr.cstat&0x40)==0) {
-            vtxs.reverse(); tcs.reverse();
-            builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
-          }
-          var mesh = builder.end(mat);
-          this.sprites[sprite] = new SpriteInfo(bbox, mesh);
-          this.dss.push(mesh);
-        } else if ((spr.cstat & 0x30) == 0x20) { // floor
-
-        }
-
+        var spriteInfo = addSprite(spr, builder, tex, mat, tinfo, idx);
+        this.sprites[sprite] = spriteInfo;
+        this.dss.push(spriteInfo.ds);
         idx++;
       }
     }
