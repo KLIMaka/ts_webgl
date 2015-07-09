@@ -15,6 +15,5 @@ void main() {
   vec4 color = texture2D(base, tc);
   if (color.a == 0.0)
     discard;
-
   gl_FragColor = vec4(color.rgb*att*select, color.a);
 }

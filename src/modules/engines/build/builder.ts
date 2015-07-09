@@ -431,15 +431,6 @@ export class BoardProcessor {
         ds.push(sectors[cursecnum].ceiling.ds);
       }
 
-      var sprites = this.spritesBySector[cursecnum];
-      if (sprites != undefined) {
-        for (var s = 0; s < sprites.length; s++) {
-          var spr = this.sprites[sprites[s]];
-          if (spr != undefined)
-            ds.push(spr.ds);
-        }
-      }
-
       var cursec = board.sectors[cursecnum];
       for (var w = 0; w < cursec.wallnum; w++) {
         var wallidx = cursec.wallptr + w;
@@ -464,6 +455,15 @@ export class BoardProcessor {
         var nextsector = wall.nextsector;
         if (pvs.indexOf(nextsector) == -1)
           pvs.push(nextsector);
+      }
+
+      var sprites = this.spritesBySector[cursecnum];
+      if (sprites != undefined) {
+        for (var s = 0; s < sprites.length; s++) {
+          var spr = this.sprites[sprites[s]];
+          if (spr != undefined)
+            ds.push(spr.ds);
+        }
       }
     }
     return ds;
