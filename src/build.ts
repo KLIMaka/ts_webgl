@@ -122,6 +122,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   ms.x = playerstart.x;
   ms.y = playerstart.y;
   ms.z = playerstart.z;
+  control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
 
   var activeIdx = 0;
 
