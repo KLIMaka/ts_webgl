@@ -129,7 +129,7 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
 }
 
 function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture, mat:DS.Material, tinfo:number, idx:number):SpriteInfo {
-  var x = spr.x; var y = spr.y; var z = spr.z;
+  var x = spr.x; var y = spr.y; var z = spr.z / SCALE;
   var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
   var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
   var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
@@ -144,10 +144,10 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
     var dx = Math.sin(ang)*hw;
     var dy = Math.cos(ang)*hw;
     
-    var a = [x-dx, z/SCALE-hh+yo, y-dy];
-    var b = [x+dx, z/SCALE-hh+yo, y+dy];
-    var c = [x+dx, z/SCALE+hh+yo, y+dy];
-    var d = [x-dx, z/SCALE+hh+yo, y-dy];
+    var a = [x-dx, z-hh+yo, y-dy];
+    var b = [x+dx, z-hh+yo, y+dy];
+    var c = [x+dx, z+hh+yo, y+dy];
+    var d = [x-dx, z+hh+yo, y-dy];
     vtxs = [a, b, c, d];
   } else if ((spr.cstat & 0x30) == 0x20) { // floor
     var dwx = Math.sin(ang)*hw;
@@ -155,10 +155,10 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
     var dhx = Math.sin(ang+Math.PI/2)*hh;
     var dhy = Math.cos(ang+Math.PI/2)*hh;
 
-    var a = [x-dwx-dhx, z/SCALE+1, y-dwy-dhy];
-    var b = [x+dwx+dhx, z/SCALE+1, y-dwy-dhy];
-    var c = [x+dwx+dhx, z/SCALE+1, y+dwy+dhy];
-    var d = [x-dwx-dhx, z/SCALE+1, y+dwy+dhy];
+    var a = [x-dwx-dhx, z+1, y-dwy-dhy];
+    var b = [x+dwx+dhx, z+1, y-dwy-dhy];
+    var c = [x+dwx+dhx, z+1, y+dwy+dhy];
+    var d = [x-dwx-dhx, z+1, y+dwy+dhy];
     vtxs = [a, b, c, d];
   }
 
@@ -181,6 +181,16 @@ export interface ArtProvider {
 export interface MaterialFactory {
   solid(tex:DS.Texture):DS.Material;
   sprite(tex:DS.Texture):DS.Material;
+}
+
+class DrawStruct {
+  public ptr = [WebGLRenderingContext.TRIANGLES, 0, 0];
+  public tex = {};
+  constructor(offset:number, length:number, tex:DS.Texture) {
+    this.ptr[1] = offset;
+    this.ptr[2] = length;
+    this.tex['base'] = tex;
+  }
 }
 
 class SolidInfo {
@@ -258,6 +268,20 @@ class DefaultBoardBuilder implements BoardBuilder {
   }
 }
 
+function getVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean) {
+  var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
+  var z2 = (slope(x2, y2, heinum) + z) / SCALE;
+  var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
+  var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
+  if (check && (z4 > z1 || z3 > z2))
+    return null;
+  var a = [x1, z1, y1];
+  var b = [x2, z2, y2];
+  var c = [x2, z3, y2];
+  var d = [x1, z4, y1];
+  return [a, b, c, d];
+}
+
 export class BoardProcessor {
   private walls:WallInfo[] = [];
   private sectors:SectorInfo[] = [];
@@ -297,16 +321,7 @@ export class BoardProcessor {
         var tex = textureProvider.get(wall.picnum);
 
         if (wall.nextwall == -1) {
-          var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
-          var z2 = slope(x2, y2, ceilingheinum) + ceilingz;
-          var z3 = slope(x2, y2, floorheinum) + floorz;
-          var z4 = slope(x1, y1, floorheinum) + floorz;
-
-          var a = [x1, z1 / SCALE, y1];
-          var b = [x2, z2 / SCALE, y2];
-          var c = [x2, z3 / SCALE, y2];
-          var d = [x1, z4 / SCALE, y1];
-          var vtxs = [a, b, c, d];
+          var vtxs = getVtxs(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
           var base = ((wall.cstat & 4) != 0) ? floorz : ceilingz;
           var solid = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
           this.walls[w] = new WallInfo(solid, null);
@@ -319,16 +334,8 @@ export class BoardProcessor {
           var down:SolidInfo = null;
 
           var nextfloorheinum = nextsector.floorheinum;
-          var z1 = nextslope(x1, y1, nextfloorheinum) + nextfloorz;
-          var z2 = nextslope(x2, y2, nextfloorheinum) + nextfloorz;
-          var z3 = slope(x2, y2, floorheinum) + floorz;
-          var z4 = slope(x1, y1, floorheinum) + floorz;
-          if (z4 > z1 || z3 > z2){
-            var a = [x1, z1 / SCALE, y1];
-            var b = [x2, z2 / SCALE, y2];
-            var c = [x2, z3 / SCALE, y2];
-            var d = [x1, z4 / SCALE, y1];
-            var vtxs = [a, b, c, d];
+          var vtxs = getVtxs(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
+          if (vtxs != null) {
             var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
             var tex_ = textureProvider.get(wall_.picnum);
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextfloorz;
@@ -337,16 +344,8 @@ export class BoardProcessor {
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
-          var z1 = slope(x1, y1, ceilingheinum) + ceilingz;
-          var z2 = slope(x2, y2, ceilingheinum) + ceilingz;
-          var z3 = nextslope(x2, y2, nextceilingheinum) + nextceilingz;
-          var z4 = nextslope(x1, y1, nextceilingheinum) + nextceilingz;
-          if (z1 < z4 || z2 < z3){
-            var a = [x1, z1 / SCALE, y1];
-            var b = [x2, z2 / SCALE, y2];
-            var c = [x2, z3 / SCALE, y2];
-            var d = [x1, z4 / SCALE, y1];
-            var vtxs = [a, b, c, d];
+          var vtxs = getVtxs(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
+          if (vtxs != null) {
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextceilingz;
             down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
             this.dss.push(down.ds);
@@ -465,9 +464,9 @@ export class BoardProcessor {
             ds.push(wallinfo.down.ds);
         }
 
-        if (wall.nextsector == -1) continue;
-
         var nextsector = wall.nextsector;
+        if (nextsector == -1) continue;
+
         if (pvs.indexOf(nextsector) == -1)
           pvs.push(nextsector);
       }

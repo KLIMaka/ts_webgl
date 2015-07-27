@@ -1,106 +1,66 @@
 import DS = require('drawstruct');
 
-export interface Command {
-  type():string;
-};
-
-export class VertexBuffers implements Command {
-  get(attr:string):DS.VertexBuffer {throw new Error()}
-  type():string {return "VertexBuffers"}
+export function shader(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
+  var shader = <DS.Shader>data;
+  gl.useProgram(shader.getProgram());
+  return shader;
 }
 
-export class IndexBuffer implements Command {
-  get():DS.IndexBuffer {throw new Error();}
-  type():string {return "IndexBuffer"}
-}
-
-export class Shader implements Command {
-  get():DS.Shader {throw new Error()}
-  type():string {return "Shader"}
-}
-
-export class Uniforms implements Command {
-  bind(shader:DS.Shader, gl:WebGLRenderingContext):void {throw new Error()}
-  type():string {return "Uniforms"}
-}
-
-export class State implements Command {
-  apply(gl:WebGLRenderingContext):void {throw new Error()}
-  type():string {return "State"}
-}
-
-export class DrawCall implements Command {
-  call(gl:WebGLRenderingContext):void {throw new Error()}
-  type():string {return "DrawCall"}
-}
-
-export class BatchState {
-  private shader:Shader;
-  private vtxBuffers:VertexBuffers;
-  private idxBuffer:IndexBuffer;
-  private uniforms:Uniforms;
-
-  public exec(cmds:Command[], gl:WebGLRenderingContext):void {
-    for (var i = 0; i < cmds.length; i++) {
-      var cmd = cmds[i];
-      if (cmd.type() == 'Shader')
-        this.setShader(<Shader>cmd, gl);
-      else if (cmd.type() == 'VertexBuffers')
-        this.setVertexBuffers(<VertexBuffers>cmd, gl);
-      else if (cmd.type() == 'IndexBuffer')
-        this.setIndexBuffer(<IndexBuffer>cmd, gl);
-      else if (cmd.type() == 'Uniforms')
-        this.setUniforms(<Uniforms>cmd, gl);
-      else if (cmd.type() == 'State') 
-        (<State>cmd).apply(gl);
-      else if (cmd.type() == 'DrawCall')
-        (<DrawCall>cmd).call(gl);
-      else 
-        throw new Error("Unknown command");
-    }
+export function vertexBuffers(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
+  if (shader == null)
+    throw new Error('Attempt to set buffers wo shader');
+  var attributes = shader.getAttributes();
+  for (var a = 0; a < attributes.length; a++) {
+    var attr = attributes[a];
+    var buf = data[attr];
+    if (buf == undefined)
+      throw new Error('No buffer for shader attribute <' + attr + '>');
+    var location = shader.getAttributeLocation(attr, gl);
+    if (location == -1)
+      continue;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
+    gl.enableVertexAttribArray(location);
+    gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
   }
+  return shader;
+}
 
-  private setShader(shader:Shader, gl:WebGLRenderingContext):void {
-    this.shader = shader;
-    gl.useProgram(shader.get().getProgram());
-    if (this.vtxBuffers != null)
-      this.setVertexBuffers(this.vtxBuffers, gl);
-    if (this.idxBuffer != null)
-      this.setIndexBuffer(this.idxBuffer, gl);
-    if (this.uniforms != null)
-      this.setUniforms(this.uniforms, gl);
+export function indexBuffer(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, (<DS.IndexBuffer>data).getBuffer());
+  return shader;
+}
+
+export function drawCall(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
+  gl.drawElements(data[0], data[1], gl.UNSIGNED_SHORT, data[2]);
+  return shader;
+}
+
+export var setters = {
+  mat4 : (gl, loc, val) => gl.uniformMatrix4fv(loc, false, val),
+  vec3 : (gl, loc, val) => gl.uniform3fv(loc, val),
+  vec4 : (gl, loc, val) => gl.uniform4fv(loc, val),
+  int1 : (gl, loc, val) => gl.uniform1i(loc, val),
+  flt1 : (gl, loc, val) => gl.uniform1f(loc, val)
+}
+
+export function uniforms(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
+  for (var i = 0; i < data.length; i+=3) {
+    var name = data[i];
+    var setter = data[i+1];
+    var val = data[i+2];
+    var loc = shader.getUniformLocation(name, gl);
+    if (!loc)
+      continue;
+    setter(gl, loc, val);
   }
+  return shader;
+}
 
-  private setVertexBuffers(buffers:VertexBuffers, gl:WebGLRenderingContext):void {
-    if (this.shader == null)
-      throw new Error('Attempt to set buffers wo shader');
-    this.vtxBuffers = buffers;
-    var shader = this.shader.get();
-    var attributes = shader.getAttributes();
-    for (var a = 0; a < attributes.length; a++) {
-      var attr = attributes[a];
-      var buf = buffers.get(attr);
-      if (buf == undefined)
-        throw new Error('No buffer for shader attribute <' + attr + '>');
-      var location = shader.getAttributeLocation(attr, gl);
-      if (location == -1)
-        continue;
-      gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
-      gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, buf.getSpacing(), buf.getType(), buf.getNormalized(), buf.getStride(), buf.getOffset());
-    }
-  }
-
-  private setIndexBuffer(buffer:IndexBuffer, gl:WebGLRenderingContext):void {
-    this.idxBuffer = buffer;
-    var idxBuf = buffer.get();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf.getBuffer());
-  }
-
-  private setUniforms(uniforms:Uniforms, gl:WebGLRenderingContext):void {
-    if (this.shader == null)
-      throw new Error('Attempt to set uniforms wo shader');
-    this.uniforms = uniforms;
-    uniforms.bind(this.shader.get(), gl);
+export function exec(cmds:any[], gl:WebGLRenderingContext):void {
+  var shader:DS.Shader = null;
+  for (var i = 0 ; i < cmds.length; i+=2) {
+    var f = cmds[i];
+    var args = cmds[i+1];
+    shader = f(gl, shader, args);
   }
 }

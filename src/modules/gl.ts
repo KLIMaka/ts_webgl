@@ -99,80 +99,42 @@ export function binder(resolvers:any):UniformBinder {
   return binder;
 }
 
-var batcher = new BATCH.BatchState();
 
-class Shader extends BATCH.Shader {
-  constructor(private shader:DS.Shader) {super()}
-  get():DS.Shader {
-    return this.shader;
-  }
+function globalUniforms(gl:WebGLRenderingContext, shader:DS.Shader, globalBinder:UniformBinder):DS.Shader {
+  globalBinder.bind(gl, shader);
+  return shader;
 }
 
-class VertexBuffers extends BATCH.VertexBuffers {
-  constructor(private model:DS.DrawStruct) {super()}
-  get(attr:string):DS.VertexBuffer {
-    return this.model.getVertexBuffer(attr);
+function drawModel(gl:WebGLRenderingContext, shader:DS.Shader, model:DS.DrawStruct):DS.Shader {
+  var samplers = shader.getSamplers();
+  for (var unit = 0; unit < samplers.length; unit++) {
+    var sampler = samplers[unit];
+    gl.bindTexture(gl.TEXTURE_2D, model.getMaterial().getTexture(sampler).get());
   }
+  gl.drawElements(model.getMode(), model.getLength(), gl.UNSIGNED_SHORT, model.getOffset());
+  return shader;
 }
 
-class IndexBuffer extends BATCH.IndexBuffer {
-  constructor(private model:DS.DrawStruct) {super()}
-  get():DS.IndexBuffer {
-    return this.model.getIndexBuffer();
+function initTextures(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
+  var samplers = shader.getSamplers();
+  for (var unit = 0; unit < samplers.length; unit++) {
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    var sampler = samplers[unit];
+    gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
   }
-}
-
-class GlobalUniforms extends BATCH.Uniforms {
-  constructor(private globalBinder:UniformBinder) {super()}
-  bind(shader:DS.Shader, gl:WebGLRenderingContext):void {
-    return this.globalBinder.bind(gl, shader);
-  }
-}
-
-class TextureUniforms extends BATCH.Uniforms {
-  constructor(private model:DS.DrawStruct) {super()}
-  bind(shader:DS.Shader, gl:WebGLRenderingContext):void {
-    var samplers = shader.getSamplers();
-    for (var unit = 0; unit < samplers.length; unit++) {
-      var sampler = samplers[unit];
-      gl.bindTexture(gl.TEXTURE_2D, this.model.getMaterial().getTexture(sampler).get());
-    }
-  }
-}
-
-class InitTextures extends BATCH.Uniforms {
-  constructor() {super()}
-  bind(shader:DS.Shader, gl:WebGLRenderingContext):void {
-    var samplers = shader.getSamplers();
-    for (var unit = 0; unit < samplers.length; unit++) {
-      gl.activeTexture(gl.TEXTURE0 + unit);
-      var sampler = samplers[unit];
-      gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
-    }
-  }
-}
-
-class DrawCall extends BATCH.DrawCall {
-  constructor(private model:DS.DrawStruct) {super()}
-  call(gl:WebGLRenderingContext):void {
-    var model = this.model;
-    gl.drawElements(model.getMode(), model.getLength(), gl.UNSIGNED_SHORT, model.getOffset());
-  }
+  return shader;
 }
 
 export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBinder:UniformBinder) {
-  var cmds:BATCH.Command[] = [];
-  cmds.push(new Shader(models[0].getMaterial().getShader()));
-  cmds.push(new VertexBuffers(models[0]));
-  cmds.push(new IndexBuffer(models[0]));
-  cmds.push(new GlobalUniforms(globalBinder));
-  cmds.push(new InitTextures());
-  for (var m = 0; m < models.length; m++) {
-    var model = models[m];
-    cmds.push(new TextureUniforms(model));
-    cmds.push(new DrawCall(model));
-  }
-  batcher.exec(cmds, gl);
+  var cmds = [];
+  cmds.push(BATCH.shader, models[0].getMaterial().getShader());
+  cmds.push(BATCH.vertexBuffers, models[0].getVertexBuffers());
+  cmds.push(BATCH.indexBuffer, models[0].getIndexBuffer());
+  cmds.push(globalUniforms, globalBinder);
+  cmds.push(initTextures, null);
+  for (var m = 0; m < models.length; m++)
+    cmds.push(drawModel, models[m]);
+  new BATCH.exec(cmds, gl);
 }
 
 var pixel = new Uint8Array(4);
