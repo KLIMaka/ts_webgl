@@ -361,7 +361,7 @@ export class BoardProcessor {
         idx++;
       }
 
-      var tris:number[][] = triangulate(sector, walls);
+      var tris = triangulate(sector, walls);
       if (tris.length == 0)
         continue;
 
