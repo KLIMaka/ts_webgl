@@ -127,13 +127,19 @@ function initTextures(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.S
 
 export function draw(gl:WebGLRenderingContext, models:DS.DrawStruct[], globalBinder:UniformBinder) {
   var cmds = [];
-  cmds.push(BATCH.shader, models[0].getMaterial().getShader());
-  cmds.push(BATCH.vertexBuffers, models[0].getVertexBuffers());
-  cmds.push(BATCH.indexBuffer, models[0].getIndexBuffer());
-  cmds.push(globalUniforms, globalBinder);
-  cmds.push(initTextures, null);
-  for (var m = 0; m < models.length; m++)
+  var curshader:DS.Shader = null;
+  for (var m = 0; m < models.length; m++) {
+    var model = models[m];
+    if (curshader != model.getMaterial().getShader()) {
+      cmds.push(BATCH.shader, model.getMaterial().getShader());
+      cmds.push(BATCH.vertexBuffers, model.getVertexBuffers());
+      cmds.push(BATCH.indexBuffer, model.getIndexBuffer());
+      cmds.push(globalUniforms, globalBinder);
+      cmds.push(initTextures, null);
+      curshader = model.getMaterial().getShader();
+    }
     cmds.push(drawModel, models[m]);
+  }
   new BATCH.exec(cmds, gl);
 }
 

@@ -128,7 +128,7 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
   return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture, mat:DS.Material, tinfo:number, idx:number):SpriteInfo {
+function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture, materials:MaterialFactory, tinfo:number, idx:number):SpriteInfo {
   var x = spr.x; var y = spr.y; var z = spr.z / SCALE;
   var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
   var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
@@ -139,8 +139,22 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
   var yo = (tinfo >> 16) & 0xFF; yo = MU.ubyte2byte(yo)*16 * (spr.yrepeat/64);
   var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
   var vtxs:number[][] = null;
+  var mat:DS.Material =  null;
 
-  if ((spr.cstat & 0x30) == 0x10 || (spr.cstat & 0x30) == 0x00) { //wall
+  if ((spr.cstat & 0x30) == 0x00) { // face
+    var pos = [x, z, y];
+    var a = [-hw, -hh+yo, 0];
+    var b = [-hw, +hh+yo, 0];
+    var c = [+hw, +hh+yo, 0];
+    var d = [+hw, -hh+yo, 0];
+    vtxs = [d, a, b, c];
+    mat = materials.sprite(tex);
+    var bbox = MU.bbox(vtxs);
+    builder.begin();
+    builder.addSprite(vtxs, pos, tcs, idx, spr.shade);
+    var mesh = builder.end(mat);
+    return new SpriteInfo(bbox, mesh, true);
+  } else if ((spr.cstat & 0x30) == 0x10) { // wall
     var dx = Math.sin(ang)*hw;
     var dy = Math.cos(ang)*hw;
     
@@ -149,6 +163,7 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
     var c = [x+dx, z+hh+yo, y+dy];
     var d = [x-dx, z+hh+yo, y-dy];
     vtxs = [a, b, c, d];
+    mat = materials.solid(tex);
   } else if ((spr.cstat & 0x30) == 0x20) { // floor
     var dwx = Math.sin(ang)*hw;
     var dwy = Math.cos(ang)*hw;
@@ -160,6 +175,7 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
     var c = [x+dwx+dhx, z+1, y+dwy+dhy];
     var d = [x-dwx-dhx, z+1, y+dwy+dhy];
     vtxs = [a, b, c, d];
+    mat = materials.solid(tex);
   }
 
   var bbox = MU.bbox(vtxs);
@@ -206,11 +222,12 @@ class SectorInfo {
 }
 
 class SpriteInfo {
-  constructor(public bbox:MU.BBox, public ds:DS.DrawStruct) {}
+  constructor(public bbox:MU.BBox, public ds:DS.DrawStruct, public face:boolean=false) {}
 }
 
 export interface BoardBuilder {
   addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number):void;
+  addSprite(verts:number[][], pos:number[], tcs:number[][], idx:number, shader:number):void;
   begin():void;
   end(mat:DS.Material):DS.DrawStruct;
   finish(gl:WebGLRenderingContext):void;
@@ -252,6 +269,20 @@ class DefaultBoardBuilder implements BoardBuilder {
     }
     this.builder.end();
     this.len += (type == mb.QUADS ? (6*verts.length/4) : verts.length);
+  }
+
+  public addSprite(verts:number[][], pos:number[], tcs:number[][], idx:number, shade:number):void {
+    this.builder.start(mb.QUADS)
+      .attr('aPos', pos)
+      .attr('aIdx', MU.int2vec4(idx))
+      .attr('aShade', [shade]);
+    for (var i = 0; i < 4; i++){
+      this.builder
+        .attr('aTc', tcs[i])
+        .vtx('aNorm', verts[i]);
+    }
+    this.builder.end();
+    this.len += 6;
   }
 
   public begin() {
@@ -381,9 +412,8 @@ export class BoardProcessor {
         if (spr.picnum == 0)
           continue;
         var tex = textureProvider.get(spr.picnum);
-        var mat = materials.solid(tex);
         var tinfo = textureProvider.getInfo(spr.picnum);
-        var spriteInfo = addSprite(spr, builder, tex, mat, tinfo, idx);
+        var spriteInfo = addSprite(spr, builder, tex, materials, tinfo, idx);
         this.sprites[sprite] = spriteInfo;
         this.dss.push(spriteInfo.ds);
         idx++;
@@ -433,6 +463,7 @@ export class BoardProcessor {
 
   private getInSector(ms:U.MoveStruct):DS.DrawStruct[] {
     var ds:DS.DrawStruct[] = [];
+    var dss:DS.DrawStruct[] = [];
     var board = this.board;
     var sectors = this.sectors;
     var walls = this.walls;
@@ -475,12 +506,13 @@ export class BoardProcessor {
       if (sprites != undefined) {
         for (var s = 0; s < sprites.length; s++) {
           var spr = this.sprites[sprites[s]];
-          if (spr != undefined)
-            ds.push(spr.ds);
+          if (spr != undefined){
+            (spr.face ? dss : ds).push(spr.ds);
+          }
         }
       }
     }
-    return ds;
+    return ds.concat(dss);
   }
 
   public get(ms:U.MoveStruct, eye:number[]):DS.DrawStruct[] {

@@ -29,14 +29,14 @@ class Mat implements DS.Material {
 }
 
 class MF implements builder.MaterialFactory {
-  constructor(private baseShader:DS.Shader, private selectShader:DS.Shader){}
+  constructor(private baseShader:DS.Shader, private selectShader:DS.Shader, private spriteShader:DS.Shader, private spriteSelectShader:DS.Shader){}
 
   solid(tex:DS.Texture) {
     return new Mat(this.baseShader, this.selectShader, {base:tex});
   }
 
   sprite(tex:DS.Texture) {
-    return new Mat(this.baseShader, this.selectShader, {base:tex});
+    return new Mat(this.spriteShader, this.spriteSelectShader, {base:tex});
   }
 }
 
@@ -111,7 +111,9 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var processor = new builder.BoardProcessor(board);
   var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
-  var mf = new MF(baseShader, selectShader);
+  var spriteShader = shaders.createShader(gl, 'resources/shaders/build_sprite');
+  var spriteSelectShader = shaders.createShader(gl, 'resources/shaders/select_sprite');
+  var mf = new MF(baseShader, selectShader, spriteShader, spriteSelectShader);
   var tp = new TP(artFiles, pal, gl);
   processor.build(gl, tp, mf);
 
@@ -128,6 +130,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   var binder = new GL.UniformBinder();
   binder.addResolver('MVP', GL.mat4Setter,       ()=>control.getMatrix());
+  binder.addResolver('MV', GL.mat4Setter,        ()=>control.getModelViewMatrix());
+  binder.addResolver('P', GL.mat4Setter,         ()=>control.getProjectionMatrix());
   binder.addResolver('eyepos', GL.vec3Setter,    ()=>control.getCamera().getPos());
   binder.addResolver('eyedir', GL.vec3Setter,    ()=>control.getCamera().forward());
   binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
