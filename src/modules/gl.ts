@@ -5,6 +5,7 @@ export function createContext(w:number, h:number, opts = {}):WebGLRenderingConte
   var canvas:HTMLCanvasElement = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
+  canvas.id = 'gl';
   var gl = canvas.getContext('webgl', opts);
 
   document.body.appendChild(gl.canvas);
@@ -13,10 +14,26 @@ export function createContext(w:number, h:number, opts = {}):WebGLRenderingConte
   return gl;
 }
 
+function resize(gl:WebGLRenderingContext) {
+  var canvas = gl.canvas;
+ 
+  var displayWidth  = canvas.clientWidth;
+  var displayHeight = canvas.clientHeight;
+ 
+  if (canvas.width  != displayWidth ||  canvas.height != displayHeight) {
+ 
+    canvas.width  = displayWidth;
+    canvas.height = displayHeight;
+ 
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+}
+
 export function animate(gl:WebGLRenderingContext, callback:(gl:WebGLRenderingContext, time:number)=>void) {
   var time = new Date().getTime();
 
   function update() {
+    resize(gl);
     var now = new Date().getTime();
     callback(gl, (now - time) / 1000);
     requestAnimationFrame(update);

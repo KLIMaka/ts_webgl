@@ -143,11 +143,11 @@ function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture
 
   if ((spr.cstat & 0x30) == 0x00) { // face
     var pos = [x, z, y];
-    var a = [-hw, -hh+yo, 0];
-    var b = [-hw, +hh+yo, 0];
-    var c = [+hw, +hh+yo, 0];
-    var d = [+hw, -hh+yo, 0];
-    vtxs = [d, a, b, c];
+    var a = [+hw, -hh+yo, 0];
+    var b = [-hw, -hh+yo, 0];
+    var c = [-hw, +hh+yo, 0];
+    var d = [+hw, +hh+yo, 0];
+    vtxs = [a, b, c, d];
     mat = materials.sprite(tex);
     var bbox = MU.bbox(vtxs);
     builder.begin();

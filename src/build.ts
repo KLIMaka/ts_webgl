@@ -17,8 +17,9 @@ import CFG = require('./libs/config');
 import RFF = require('./modules/engines/build/rff');
 import UI = require('./modules/ui/ui');
 import IU = require('./libs/imgutils');
+import browser = require('./libs/browser');
 
-var rffFile = 'resources/engines/blood/blood.rff';
+var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
 var selectPass = false;
 
@@ -100,7 +101,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   }
 
   var panel = UI.panel('Info');
-  var props = UI.props(info);
+  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:']);
   panel.append(props);
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
@@ -169,6 +170,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;
+    props.refresh(info);
     drawCompass(compass, control.getCamera().forward());
 
     control.move(time);
@@ -201,7 +203,7 @@ for (var a = 0; a < 18; a++)
   arts.push(ART.create(new data.DataViewStream(getter.get(artNames[a]), true)));
 var artFiles = ART.createArts(arts);
 
-var map = rff.get(cfg.map).buffer;
+var map = rff.get(browser.getQueryVariable('map')).buffer;
 render(cfg, map, artFiles, pal);
 
 });

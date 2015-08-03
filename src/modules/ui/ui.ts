@@ -43,6 +43,11 @@ export class Element {
   public elem():HTMLElement {
     return this.element;
   }
+
+  public attr(name:string, val:any):Element {
+    this.element.setAttribute(name, val);
+    return this;
+  }
 }
 
 function create(tag:string) {
@@ -64,35 +69,43 @@ export class Table extends Element {
     this.append(tr);
     return this;
   }
+
+  public removeRow(row:number):Table {
+    (<HTMLTableElement>this.elem()).deleteRow(row);
+    return this;
+  }
 }
 
 export declare module Object {
   export function keys(obj:any):any;
-  export function observe(beingObserved: any, callback: (update: any) => any):void;
 }
 
 export class Properties extends Table {
-  constructor(props:any) {
+  private labels:any;
+
+  constructor(keys) {
     super();
     this.className('props');
-    var keys = Object.keys(props);
-    var labels = {};
+    this.labels = {};
     for (var i = 0; i < keys.length; i++){
       var k = keys[i];
-      var l = label(props[k]);
-      labels[k] = l;
+      var l = label('');
+      this.labels[k] = l;
       this.prop(k, l);
     }
-    Object.observe(props, (changes) => {
-      for (var i = 0; i < changes.length; i++) {
-        var c = changes[i];
-        labels[c.name].text(props[c.name]+'');
-      }
-    });
   }
 
   public prop(name:string, el:Element):Properties {
     this.row([div('property_name').text(name), el]);
+    return this;
+  }
+
+  public refresh(props:any):Properties {
+    var fields = Object.keys(this.labels);
+    for (var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      this.labels[field].text(props[field]+'');
+    }
     return this;
   }
 }
@@ -123,3 +136,47 @@ export function panel(title:string):Element {
     .append(div('hline'))
     .append(div('content'));
 }
+
+export class Progress extends Element {
+  private title:Element;
+  private progress:Element;
+
+  constructor(title:string, max:number=100) {
+    super(create('div'));
+    this.title = div('title').text(title);
+    this.progress = div('pregress').attr('max', max);
+  }
+
+  public max(max:number):Progress {
+    this.progress.attr('max', max);
+    return this;
+  }
+
+  public setValue(val:number):Progress {
+    this.progress.attr('value', val);
+    return this;
+  }
+}
+
+export function progress(title:string, max:number=100) {
+  return new Progress(title, max);
+}
+
+export class VerticalPanel extends Table {
+  private rows = 0;
+  constructor() {
+    super();
+  }
+
+  public add(elem:Element):number {
+    this.row([elem]);
+    return this.rows++;
+  }
+
+  public remove(row:number):VerticalPanel {
+    this.removeRow(row);
+    this.rows--;
+    return this;
+  }
+}
+
