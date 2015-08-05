@@ -144,7 +144,8 @@ export class Progress extends Element {
   constructor(title:string, max:number=100) {
     super(create('div'));
     this.title = div('title').text(title);
-    this.progress = div('pregress').attr('max', max);
+    this.progress = new Element(create('progress')).attr('max', max);
+    this.append(this.title).append(this.progress);
   }
 
   public max(max:number):Progress {
@@ -164,8 +165,9 @@ export function progress(title:string, max:number=100) {
 
 export class VerticalPanel extends Table {
   private rows = 0;
-  constructor() {
+  constructor(className:string) {
     super();
+    this.className(className);
   }
 
   public add(elem:Element):number {
@@ -178,5 +180,9 @@ export class VerticalPanel extends Table {
     this.rows--;
     return this;
   }
+}
+
+export function verticalPanel(className:string):VerticalPanel {
+  return new VerticalPanel(className);
 }
 

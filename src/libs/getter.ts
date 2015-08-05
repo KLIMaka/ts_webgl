@@ -1,14 +1,15 @@
 
 var cache = {};
 
+
 export class Loader {
 
   private callback:() => void;
   private toLoad = 0;
 
-  public load(fname:string):Loader {
+  public load(fname:string, progress:(p:number)=>void=null):Loader {
     var self = this;
-    preload(fname, (b:ArrayBuffer)=>{cache[fname]=b; self.ready(fname)});
+    preload(fname, (b:ArrayBuffer)=>{cache[fname]=b; self.ready(fname)}, progress);
     this.toLoad++;
     return this;
   }
@@ -41,7 +42,7 @@ export function getString(fname:string):string {
   return cache[fname];
 }
 
-export function preload(fname:string, callback:(b:ArrayBuffer)=>void):void {
+export function preload(fname:string, callback:(b:ArrayBuffer)=>void, progressCallback:(percent:number)=>void=null):void {
   var file = cache[fname];
   if (file != undefined){
     callback(file);
@@ -49,6 +50,7 @@ export function preload(fname:string, callback:(b:ArrayBuffer)=>void):void {
   }
   var xhr = new XMLHttpRequest();
   xhr.onload = () => {callback(xhr.response);}
+  xhr.onprogress = (evt) => {if (progressCallback) progressCallback(evt.loaded/evt.total);}
   xhr.open('GET', fname, true);
   xhr.responseType = 'arraybuffer';
   xhr.send();

@@ -86,6 +86,24 @@ function drawCompass(canvas:HTMLCanvasElement, eye:number[]) {
   ctx.fill();
 }
 
+var loadPanel = UI.verticalPanel('loadPanel');
+document.body.appendChild(loadPanel.elem());
+var loaders = {};
+var index = [];
+function progress(fname:string) {
+  return (p:number) => {
+    var loader = loaders[fname];
+    if (loader == undefined) {
+      loader = UI.progress(fname);
+      loadPanel.add(loader);
+      loaders[fname] = loader;
+    }
+    loader.setValue(p*100);
+    if (p == 1)
+      loader.height(0);
+  }
+} 
+
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
@@ -106,7 +124,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
   document.body.appendChild(panel.elem());
-
 
   var board = bloodloader.loadBloodMap(new data.DataViewStream(map, true));
   var processor = new builder.BoardProcessor(board);
@@ -187,12 +204,12 @@ var path = 'resources/engines/blood/';
 var artNames = [];
 for (var a = 0; a < 18; a++) {
   artNames[a] = path + 'TILES0'+("00" + a).slice(-2)+'.ART';
-  getter.loader.load(artNames[a]);
+  getter.loader.load(artNames[a], progress(artNames[a]));
 }
 
 getter.loader
 .loadString(cfgFile)
-.load(rffFile)
+.load(rffFile, progress(rffFile))
 .finish(() => {
 
 var cfg = CFG.create(getter.getString(cfgFile));
