@@ -100,9 +100,18 @@ function progress(fname:string) {
     }
     loader.setValue(p*100);
     if (p == 1)
-      loader.height(0);
+      loader.css('display', 'none');
   }
-} 
+}
+
+var time = 0;
+function tic():void {
+  time = new Date().getTime();
+}
+
+function tac():number {
+  return (new Date().getTime() - time) / 1000;
+}
 
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
@@ -115,11 +124,13 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     'X:':0,
     'Y:':0,
     'Batches:':0,
-    'Sector:':0
+    'Sector:':0,
+    'Processing:':0,
+    'Rendering:':0
   }
 
   var panel = UI.panel('Info');
-  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:']);
+  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:']);
   panel.append(props);
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
@@ -179,9 +190,13 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
     
 
+    tic();
     var models = processor.get(ms, control.getCamera().forward());
+    info['Processing:'] = tac();
     // var models = processor.getAll();
+    tic();
     GL.draw(gl, models, binder);
+    info['Rendering:'] = tac();
     
     info['Batches:'] = models.length;
     info['Sector:'] = ms.sec;

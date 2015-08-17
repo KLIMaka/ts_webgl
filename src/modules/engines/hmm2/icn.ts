@@ -11,17 +11,18 @@ export class Header {
 
 export class Size {constructor(public width:number, public height:number) {}}
 
+var header = data.struct(Header, [
+  ['offsetX', data.short],
+  ['offsetY', data.short],
+  ['width', data.ushort],
+  ['height', data.ushort],
+  ['type', data.ubyte],
+  ['offsetData', data.uint]
+]);
+
 var icnStruct = data.struct(Object, [ 
   ['count', data.ushort],
-  ['size', data.uint],
-  ['headers', data.structArray(data.val('count'), data.struct(Header, [
-    ['offsetX', data.short],
-    ['offsetY', data.short],
-    ['width', data.ushort],
-    ['height', data.ushort],
-    ['type', data.ubyte],
-    ['offsetData', data.uint]
-  ]))]
+  ['size', data.uint]
 ]);
 
 export class IcnFile {
@@ -29,11 +30,11 @@ export class IcnFile {
   private headers:Header[];
   private globoff:number;
 
-  constructor(private data:data.DataViewStream) {
-    this.globoff = this.data.mark();
-    var info:any = icnStruct(this.data);
-    this.count = info.count;
-    this.headers = info.headers;
+  constructor(private stream:data.DataViewStream) {
+    this.globoff = this.stream.mark();
+    this.count = data.ushort.read(this.stream);
+    data.uint.read(this.stream);
+    this.headers = data.array(header, this.count).read(this.stream);
   }
 
   public getCount():number {
@@ -42,11 +43,11 @@ export class IcnFile {
 
   public getFrame(i:number):Uint8Array {
     var h = this.headers[i];
-    this.data.setOffset(this.globoff+h.offsetData+6);
+    this.stream.setOffset(this.globoff+h.offsetData+6);
     if (h.type == 0x20)
-      return renderIcnFrame2(this.data, h.width, h.height);
+      return renderIcnFrame2(this.stream, h.width, h.height);
     else
-      return renderIcnFrame1(this.data, h.width, h.height);
+      return renderIcnFrame1(this.stream, h.width, h.height);
   }
 
   public getInfo(i:number):Header {

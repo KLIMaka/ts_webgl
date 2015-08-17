@@ -48,6 +48,11 @@ export class Element {
     this.element.setAttribute(name, val);
     return this;
   }
+
+  public css(name:string, val:any):Element {
+    this.element.style[name] = val;
+    return this;
+  }
 }
 
 function create(tag:string) {
@@ -163,22 +168,16 @@ export function progress(title:string, max:number=100) {
   return new Progress(title, max);
 }
 
-export class VerticalPanel extends Table {
+export class VerticalPanel extends Element {
   private rows = 0;
   constructor(className:string) {
-    super();
+    super(create('div'));
     this.className(className);
   }
 
   public add(elem:Element):number {
-    this.row([elem]);
+    this.append(elem);
     return this.rows++;
-  }
-
-  public remove(row:number):VerticalPanel {
-    this.removeRow(row);
-    this.rows--;
-    return this;
   }
 }
 

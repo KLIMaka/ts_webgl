@@ -71,9 +71,9 @@ export class Mp2File {
     s.setOffset(420);
     this.width = s.readUInt();
     this.height = s.readUInt();
-    this.tiles = data.structArray(this.width*this.height, tileStruct)(s);
+    this.tiles = data.array(tileStruct, this.width*this.height).read(s);
     var addoncount = s.readUInt();
-    this.addons = data.structArray(addoncount, addonStruct)(s);
+    this.addons = data.array(addonStruct, addoncount).read(s);
   }
 }
 

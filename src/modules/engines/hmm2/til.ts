@@ -15,7 +15,7 @@ export class TilFile {
 
   public getTile(id:number):Uint8Array {
     this.data.setOffset(this.goff+id*this.width*this.height);
-    return data.array(data.ubyte, this.width*this.height)(this.data);
+    return data.array(data.ubyte, this.width*this.height).read(this.data);
   }
 }
 

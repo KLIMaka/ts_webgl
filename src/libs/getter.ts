@@ -50,7 +50,8 @@ export function preload(fname:string, callback:(b:ArrayBuffer)=>void, progressCa
   }
   var xhr = new XMLHttpRequest();
   xhr.onload = () => {callback(xhr.response);}
-  xhr.onprogress = (evt) => {if (progressCallback) progressCallback(evt.loaded/evt.total);}
+  if (progressCallback)
+    xhr.onprogress = (evt) => {progressCallback(evt.loaded/evt.total);}
   xhr.open('GET', fname, true);
   xhr.responseType = 'arraybuffer';
   xhr.send();

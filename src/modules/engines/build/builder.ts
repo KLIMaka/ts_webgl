@@ -299,12 +299,12 @@ class DefaultBoardBuilder implements BoardBuilder {
   }
 }
 
-function getVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean) {
+function getWallVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean) {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
-  if (check && (z4 > z1 || z3 > z2))
+  if (check && (z4 > z1 && z3 > z2))
     return null;
   var a = [x1, z1, y1];
   var b = [x2, z2, y2];
@@ -352,7 +352,7 @@ export class BoardProcessor {
         var tex = textureProvider.get(wall.picnum);
 
         if (wall.nextwall == -1) {
-          var vtxs = getVtxs(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
+          var vtxs = getWallVtxs(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
           var base = ((wall.cstat & 4) != 0) ? floorz : ceilingz;
           var solid = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
           this.walls[w] = new WallInfo(solid, null);
@@ -365,7 +365,7 @@ export class BoardProcessor {
           var down:SolidInfo = null;
 
           var nextfloorheinum = nextsector.floorheinum;
-          var vtxs = getVtxs(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
+          var vtxs = getWallVtxs(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
           if (vtxs != null) {
             var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
             var tex_ = textureProvider.get(wall_.picnum);
@@ -375,7 +375,7 @@ export class BoardProcessor {
           }
 
           var nextceilingheinum = nextsector.ceilingheinum;
-          var vtxs = getVtxs(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
+          var vtxs = getWallVtxs(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
           if (vtxs != null) {
             var base = ((wall.cstat & 4) != 0) ? ceilingz : nextceilingz;
             down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
