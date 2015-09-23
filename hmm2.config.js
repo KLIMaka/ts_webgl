@@ -1,3 +1,3 @@
 var config = {
-  map : 'TEST.MP2'
+  map : 'MINERALW.MP2'
 }

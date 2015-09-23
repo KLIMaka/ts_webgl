@@ -7,10 +7,11 @@ import getter = require('./libs/getter');
 import pixel = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
+import browser = require('./libs/browser');
 
 declare var config;
 var RES = 'resources/engines/h2/heroes2.agg';
-var MAP = 'resources/engines/h2/maps/' + config.map;
+var MAP = 'resources/engines/h2/maps/' + browser.getQueryVariable('map');;
 var shadow = [0,0,0,127];
 
 function getDetails(info:any):any {

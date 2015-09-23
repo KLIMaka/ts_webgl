@@ -58,8 +58,9 @@ gl.canvas.onmousemove = (e) => {
   var pos = control.unproject(e.layerX, e.layerY);
   var x = MU.int(pos[0]);
   var y = MU.int(pos[1]);
-  if (e.button == 1)
+  if (e.button == 0){
     tex.putPixel(x, y, pixel, gl);
+  }
 }
 
 var binder = GL.binder([
