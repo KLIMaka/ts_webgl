@@ -2,8 +2,9 @@
 import GLM = require('../libs_js/glmatrix');
 import MU  = require('../libs/mathutils');
 import DS = require('./drawstruct');
+import BATCH = require('./batcher');
 
-class DynamicVertexBufferBuilder {
+export class DynamicVertexBufferBuilder {
 
   private buffer:ArrayBuffer;
   private lastIdx = 0;
@@ -295,4 +296,31 @@ export class MeshBuilderConstructor {
   public build():MeshBuilder {
     return new MeshBuilder(this.buffers, this.idx);
   }
+}
+
+export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[]):DS.IndexBuffer {
+  var bufIdx = gl.createBuffer();
+  var len = pattern.length;
+  var data = new Uint16Array(count * len);
+  for (var i = 0; i < count; i++) {
+    var off = i * len;
+    for (var j = 0; j < len; j++) {
+      data[off + j] = off + pattern[j];
+    }
+  }
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer>data, gl.STATIC_DRAW);
+  return new IndexBufferImpl(bufIdx, gl.UNSIGNED_SHORT);
+}
+
+export function genVertexBuffer(gl:WebGLRenderingContext, type:number, spacing:number, normalized:boolean, data:ArrayBufferView):DS.VertexBuffer {
+  var bufIdx = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STREAM_DRAW);
+  return new VertexBufferImpl(bufIdx, type, spacing, normalized);
+}
+
+export function updateVertexBuffer(gl: WebGLRenderingContext, buf:DS.VertexBuffer, data: ArrayBufferView):void {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
 }

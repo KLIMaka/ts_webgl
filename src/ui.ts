@@ -17,6 +17,6 @@ document.body.onmousemove = (e) => {
   info['X:'] = e.x;
   info['Y:'] = e.y;
   props.refresh(info);
-  panel.pos(e.x+20+'', e.y+20+'');
+  // panel.pos(e.x+20+'', e.y+20+'');
 }
 document.body.appendChild(panel.elem());

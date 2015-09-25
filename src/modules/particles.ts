@@ -1,5 +1,5 @@
 
-import L = require('./list');
+import L = require('../libs/list');
 
 export class Particle {
   public id:number;

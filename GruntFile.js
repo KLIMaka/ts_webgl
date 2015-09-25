@@ -11,6 +11,7 @@ module.exports = function (grunt) {
     'sound',
     'grp',
     'particles',
+    'particles_gl',
     'hmm2',
     'hmm_bin',
     'app1',
