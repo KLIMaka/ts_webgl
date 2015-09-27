@@ -298,14 +298,15 @@ export class MeshBuilderConstructor {
   }
 }
 
-export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[]):DS.IndexBuffer {
+export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[], size:number):DS.IndexBuffer {
   var bufIdx = gl.createBuffer();
   var len = pattern.length;
   var data = new Uint16Array(count * len);
   for (var i = 0; i < count; i++) {
     var off = i * len;
+    var off1 = i * size;
     for (var j = 0; j < len; j++) {
-      data[off + j] = off + pattern[j];
+      data[off + j] = off1 + pattern[j];
     }
   }
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
@@ -313,10 +314,10 @@ export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:n
   return new IndexBufferImpl(bufIdx, gl.UNSIGNED_SHORT);
 }
 
-export function genVertexBuffer(gl:WebGLRenderingContext, type:number, spacing:number, normalized:boolean, data:ArrayBufferView):DS.VertexBuffer {
+export function genVertexBuffer(gl:WebGLRenderingContext, type:number, spacing:number, normalized:boolean, data:ArrayBufferView, usage:number=WebGLRenderingContext.STREAM_DRAW):DS.VertexBuffer {
   var bufIdx = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
-  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STREAM_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, data, usage);
   return new VertexBufferImpl(bufIdx, type, spacing, normalized);
 }
 
