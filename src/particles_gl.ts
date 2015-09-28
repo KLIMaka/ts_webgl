@@ -1,15 +1,15 @@
 import MU = require('./libs/mathutils');
-import raster = require('modules/rasterizer');
 import P = require('modules/particles');
 import GL = require('modules/gl');
 import MB = require('modules/meshbuilder');
 import C2D = require('./modules/controller2d');
 import SHADERS = require('./modules/shaders');
 import BATCHER = require('./modules/batcher');
+import GLM = require('./libs_js/glmatrix');
 
 var MAX_SIZE = 1000;
 
-var gl = GL.createContext(600, 600);
+var gl = GL.createContext(600, 600, {alpha:false});
 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 gl.enable(gl.BLEND);
 
@@ -55,13 +55,16 @@ function updateBuffers(ps:P.ParticleSystem):number {
   return idx*6;
 }
 
+var startColor = [127, 50, 50, 255];
+var endColor = [50, 50, 50, 0];
+
 function init(p:P.Particle) {
   p.x = x;
   p.y = y;
-  p.ttl = Math.random() * 4;
+  p.ttl = Math.random() * 2;
 
   p.attr.size = 2 + 10 * Math.random();
-  p.attr.color = [255, 255, 255, 255];
+  p.attr.color = [255, 1, 1, 255];
 
   p.vx = (Math.random() - 0.5) * 50;
   p.vy = -Math.random()*100;
@@ -73,7 +76,9 @@ function update(p:P.Particle, dt:number) {
   p.vx *= (1 - dt);
   p.vx += (Math.random()-0.5)*20;
   p.vy -= dt*200;
-  p.attr.color[3] = dt*255;
+
+  GLM.vec4.lerp(p.attr.color, startColor, endColor, p.t);
+  p.attr.size += dt*(10+Math.random()*10);
 }
 
 function die(p:P.Particle):boolean {

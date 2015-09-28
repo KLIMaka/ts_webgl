@@ -40,6 +40,7 @@ module.exports = function (grunt) {
     });
 
     grunt.registerTask(module, ['typescript:' + module]);
+    grunt.registerTask('watch_' + module, ['watch:' + module]);
   }
 
   for (var i = 0; i < nodemodules.length; i++) {

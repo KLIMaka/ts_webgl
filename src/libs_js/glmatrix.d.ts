@@ -85,6 +85,41 @@ export declare module vec3 {
   export function str(a:Vec3Array): string;
 }
 
+export declare module vec4 {
+  export function add(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function create(): Vec4Array;
+  export function clone(a:Vec4Array): Vec4Array;
+  export function fromValues(x:number, y:number, z:number, w:number): Vec4Array;
+  export function copy(out:Vec4Array, a:Vec4Array): Vec4Array;
+  export function set(out:Vec4Array, x:number, y:number, z:number, w:number): Vec4Array;
+  export function sub(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function subtract(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function mul(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function multiply(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function div(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function divide(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function min(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function max(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function scale(out:Vec4Array, a:Vec4Array, b:number): Vec4Array;
+  export function dist(a:Vec4Array, b:Vec4Array): number;
+  export function distance(a:Vec4Array, b:Vec4Array): number;
+  export function sqrDist(a:Vec4Array, b:Vec4Array): number;
+  export function squaredDistance(a:Vec4Array, b:Vec4Array): number;
+  export function len(a:Vec4Array): number;
+  export function length(a:Vec4Array): number;
+  export function sqrLen(a:Vec4Array): number;
+  export function squaredLength(a:Vec4Array): number;
+  export function negate(out:Vec4Array, a:Vec4Array): Vec4Array;
+  export function normalize(out:Vec4Array, a:Vec4Array): Vec4Array;
+  export function dot(a:Vec4Array, b:Vec4Array): number;
+  export function cross(out:Vec4Array, a:Vec4Array, b:Vec4Array): Vec4Array;
+  export function lerp(out:Vec4Array, a:Vec4Array, b:Vec4Array, t:number): Vec4Array;
+  export function transformMat3(out:Vec4Array, a:Vec4Array, m:Mat3Array): Vec4Array;
+  export function transformMat4(out:Vec4Array, a:Vec4Array, m:Mat4Array): Vec4Array;
+  export function transformQuat(out:Vec4Array, a:Vec4Array, q:Vec4Array): Vec4Array;
+  export function str(a:Vec4Array): string;
+}
+
 export declare module mat4 {
   export function create(): Mat4Array;
   export function clone(a:Mat4Array): Mat4Array;
