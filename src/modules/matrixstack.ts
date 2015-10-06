@@ -1,5 +1,4 @@
-
-import GLM = require('./../libs/glmatrix');
+import GLM = require('../libs_js/glmatrix');
 
 export class MatrixStack {
 

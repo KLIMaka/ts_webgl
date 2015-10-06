@@ -56,6 +56,16 @@ export function uniforms(gl:WebGLRenderingContext, shader:DS.Shader, data:any):D
   return shader;
 }
 
+export function bindTexture(gl: WebGLRenderingContext, shader: DS.Shader, data:any):DS.Shader {
+  var unit = data[0];
+  var name = data[1];
+  var texture = data[2];
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.uniform1i(shader.getUniformLocation(name, gl), unit);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  return shader;
+}
+
 export function exec(cmds:any[], gl:WebGLRenderingContext):void {
   var shader:DS.Shader = null;
   for (var i = 0 ; i < cmds.length; i+=2) {
