@@ -50,7 +50,7 @@ export class DynamicVertexBufferBuilder {
   }
 }
 
-class VertexBufferImpl implements DS.VertexBuffer {
+export class VertexBufferImpl implements DS.VertexBuffer {
 
   constructor(
     private buffer:WebGLBuffer, 
@@ -298,9 +298,17 @@ export class MeshBuilderConstructor {
   }
 }
 
-export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[], size:number):DS.IndexBuffer {
+function getMax(arr:number[]) {
+  var max = arr[0];
+  for (var i = 1; i < arr.length; i++)
+     max = Math.max(max, arr[i]);
+  return max;
+}
+
+export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[]):DS.IndexBuffer {
   var bufIdx = gl.createBuffer();
   var len = pattern.length;
+  var size = getMax(pattern) + 1;
   var data = new Uint16Array(count * len);
   for (var i = 0; i < count; i++) {
     var off = i * len;
@@ -314,14 +322,86 @@ export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:n
   return new IndexBufferImpl(bufIdx, gl.UNSIGNED_SHORT);
 }
 
-export function genVertexBuffer(gl:WebGLRenderingContext, type:number, spacing:number, normalized:boolean, data:ArrayBufferView, usage:number=WebGLRenderingContext.STREAM_DRAW):DS.VertexBuffer {
-  var bufIdx = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, bufIdx);
-  gl.bufferData(gl.ARRAY_BUFFER, data, usage);
-  return new VertexBufferImpl(bufIdx, type, spacing, normalized);
+export function GlType2ArrayType(glType:number):any {
+  switch(glType) {
+    case WebGLRenderingContext.BYTE:
+      return Int8Array;
+    case WebGLRenderingContext.UNSIGNED_BYTE:
+      return Uint8Array;
+    case WebGLRenderingContext.SHORT:
+      return Int16Array;
+    case WebGLRenderingContext.UNSIGNED_SHORT:
+      return Uint16Array;
+    case WebGLRenderingContext.INT:
+      return Int32Array;
+    case WebGLRenderingContext.UNSIGNED_INT:
+      return Uint32Array;
+    case WebGLRenderingContext.FLOAT:
+      return Float32Array;
+    default:
+      throw new Error('Unknown GL Type: ' + glType);
+  }
 }
 
-export function updateVertexBuffer(gl: WebGLRenderingContext, buf:DS.VertexBuffer, data: ArrayBufferView):void {
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
-  gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
+export function ArrayType2GlType(arrayType:any):number {
+  switch(arrayType) {
+    case Int8Array:
+      return WebGLRenderingContext.BYTE;
+    case Uint8Array:
+      return WebGLRenderingContext.UNSIGNED_BYTE;
+    case Int16Array:
+      return WebGLRenderingContext.SHORT;
+    case Uint16Array:
+      return WebGLRenderingContext.UNSIGNED_SHORT;
+    case Int32Array:
+      return WebGLRenderingContext.INT;
+    case Uint32Array:
+      return WebGLRenderingContext.UNSIGNED_INT;
+    case Float32Array:
+      return WebGLRenderingContext.FLOAT;
+    default:
+      throw new Error('Unknown Array Type: ' + arrayType);
+  }
+}
+
+export class VertexBufferDynamic extends VertexBufferImpl {
+  private data:ArrayBufferView;
+
+  constructor(
+    gl:WebGLRenderingContext, 
+    type:number, 
+    data:ArrayBufferView,
+    spacing:number,
+    usage:number = WebGLRenderingContext.STREAM_DRAW,
+    normalized:boolean = false
+  ){
+    super(gl.createBuffer(), type, spacing, normalized, 0, 0);
+    this.data = data;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, this.data, usage);
+  }
+
+  public getData():ArrayBufferView {
+    return this.data;
+  }
+
+  public update(gl:WebGLRenderingContext):void {
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.data);
+  }
+}
+
+export function createVertexBuffer(gl:WebGLRenderingContext, type:number, data:any, spacing:number, usage:number=WebGLRenderingContext.STREAM_DRAW, norm:boolean=false):VertexBufferDynamic {
+  var arrtype = GlType2ArrayType(type);
+  if (typeof data == 'number') {
+    data = new arrtype(data*spacing);
+  } else {
+    if (arrtype != data.constructor)
+      throw new Error('GL Type and ArrayBuffer is incompatible');
+  }
+  return new VertexBufferDynamic(gl, type, data, spacing, usage, norm);
+}
+
+export function wrap(gl:WebGLRenderingContext, data:ArrayBufferView, spacing:number, usage:number=WebGLRenderingContext.STREAM_DRAW, norm:boolean=false):VertexBufferDynamic {
+  return new VertexBufferDynamic(gl, ArrayType2GlType(data.constructor), data, spacing, usage, norm);
 }

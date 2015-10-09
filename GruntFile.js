@@ -16,7 +16,8 @@ module.exports = function (grunt) {
     'hmm_bin',
     'app1',
     'ui',
-    'paint'
+    'paint',
+    'tilerenderer'
   ];
 
   var nodemodules = [

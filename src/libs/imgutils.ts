@@ -53,3 +53,15 @@ export function blendRGBA(src:Uint8Array, srcoff:number, dst:Uint8Array, dstoff:
   dst[dstoff+2] = dst[dstoff+2]*t_ + src[srcoff+2]*t;
   dst[dstoff+3] = Math.max(dst[dstoff+3], src[srcoff+3]);
 }
+
+export function loadImage(name:string, cb:(img:Uint8Array)=>void):void {
+  var image = new Image();
+  image.src = name;
+  image.onload = (evt) => {
+    var img = <HTMLImageElement> evt.target;
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    cb(new Uint8Array(ctx.getImageData(0, 0, img.width, img.height).data));
+  }
+}
