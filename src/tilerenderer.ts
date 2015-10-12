@@ -28,7 +28,7 @@ vertexBufs.aPos = MB.wrap(gl, pos, 2, gl.STATIC_DRAW);
 vertexBufs.aTc = MB.wrap(gl, tc, 2, gl.STATIC_DRAW);
 var indexBuffer = MB.genIndexBuffer(gl, 1, [0, 1, 2, 0, 2, 3]);
 var font = TEX.createTexture(128, 128, gl, res.font);
-var map = new Uint8Array(createText('Foo #$% Baz !!! '));
+var map = new Uint8Array(createText("Foo\n#$% Baz !!! "));
 var mapTex = TEX.createTexture(4, 4, gl, map, gl.LUMINANCE, 1);
 
 var control = C2D.create(gl);
@@ -44,9 +44,8 @@ var cmds = [
   BATCHER.indexBuffer, indexBuffer,
   BATCHER.uniforms, [
     'MVP', BATCHER.setters.mat4, MVP,
-    'CELL', BATCHER.setters.vec3, [4, 4, 0],
-    'TILE', BATCHER.setters.vec3, [16, 16, 0],
-    'SIZE', BATCHER.setters.vec3, [128, 128, 0],
+    'CELL', BATCHER.setters.vec2, [4, 4],
+    'TILE', BATCHER.setters.vec2, [16, 16],
   ],
   BATCHER.sampler, [0, 'tiles', font.get()],
   BATCHER.sampler, [1, 'map', mapTex.get()],

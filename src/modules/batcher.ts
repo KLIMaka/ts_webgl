@@ -37,6 +37,8 @@ export function drawCall(gl:WebGLRenderingContext, shader:DS.Shader, data:any):D
 
 export var setters = {
   mat4 : (gl, loc, val) => gl.uniformMatrix4fv(loc, false, val),
+  int2 : (gl, loc, val) => gl.uniform2iv(loc, val),
+  vec2 : (gl, loc, val) => gl.uniform2fv(loc, val),
   vec3 : (gl, loc, val) => gl.uniform3fv(loc, val),
   vec4 : (gl, loc, val) => gl.uniform4fv(loc, val),
   int1 : (gl, loc, val) => gl.uniform1i(loc, val),

@@ -1,6 +1,7 @@
 import Set = require('../libs/set');
 import DS = require('drawstruct');
 import getter = require('../libs/getter');
+import AB = require('../libs/asyncbarrier');
 
 var defaultFSH = 'void main(){gl_FragColor = vec4(0.0);}';
 var defaultVSH = 'void main(){gl_Position = vec4(0.0);}';
@@ -79,11 +80,10 @@ export function createShader(gl:WebGLRenderingContext, name:string):Shader {
   }
 
   var shader = new Shader(defaultProgram);
-  var vsh = null;
-  var fsh = null;
-  getter.preloadString(name+'.vsh', (s:String)=> {vsh=s; if(fsh!=null) initShader(gl, shader, vsh, fsh)});
-  getter.preloadString(name+'.fsh', (s:String)=> {fsh=s; if(vsh!=null) initShader(gl, shader, vsh, fsh)});
-
+  var barrier = AB.create((res) => {initShader(gl, shader, res.vsh, res.fsh)});
+  getter.preloadString(name+'.vsh', barrier.callback('vsh'));
+  getter.preloadString(name+'.fsh', barrier.callback('fsh'));
+  barrier.wait();
   cache[name] = shader;
   return shader;
 }
@@ -95,9 +95,14 @@ export function createShaderFromSrc(gl:WebGLRenderingContext, vsh:string, fsh:st
 }
 
 function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:string) {
-  var program = compileProgram(gl, vsh, fsh);
-  var params = processShaders(vsh, fsh);
-  shader.init(gl, program, params);
+  var barrier = AB.create((res) => {
+    var program = compileProgram(gl, res.vsh, res.fsh);
+    var params = processShaders(res.vsh, res.fsh);
+    shader.init(gl, program, params);
+  });
+  preprocess(vsh, barrier.callback('vsh'));
+  preprocess(fsh, barrier.callback('fsh'));
+  barrier.wait();
 }
 
 function compileProgram(gl:WebGLRenderingContext, vsh:string, fsh:string):WebGLProgram {
@@ -153,4 +158,26 @@ function processShaders(vsh:string, fsh:string):any {
     }
   }
   return params;
+}
+
+function preprocess(shader:string, cb:(sh:string)=>void):void {
+  var lines = shader.split("\n");
+  var barrier = AB.create((incs) => {
+    var res = [];
+    for (var i = 0 ; i < lines.length; i++) {
+      if (incs[i+''] != undefined)
+        res.push(incs[i]);
+      else
+        res.push(lines[i]);
+    }
+    cb(res.join("\n"));
+  });
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    var m = l.match(/^#include +"([^"]+)"/);
+    if (m != null) {
+      getter.preloadString(m[1], barrier.callback(i+''));
+    }
+  }
+  barrier.wait();
 }
