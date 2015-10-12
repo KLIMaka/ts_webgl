@@ -165,10 +165,8 @@ function preprocess(shader:string, cb:(sh:string)=>void):void {
   var barrier = AB.create((incs) => {
     var res = [];
     for (var i = 0 ; i < lines.length; i++) {
-      if (incs[i+''] != undefined)
-        res.push(incs[i]);
-      else
-        res.push(lines[i]);
+      var inc = incs[i+''];
+      res.push(inc == undefined ? lines[i] : inc);
     }
     cb(res.join("\n"));
   });
