@@ -13,16 +13,14 @@ var gl = GL.createContext(600, 600, {alpha:false});
 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 gl.enable(gl.BLEND);
 
-var pos = new Float32Array(MAX_SIZE * 2 * 4);
-var color = new Uint8Array(MAX_SIZE * 4 * 4);
-var aPos = MB.genVertexBuffer(gl, gl.FLOAT, 2, false, pos, gl.DYNAMIC_DRAW);
-var aColor = MB.genVertexBuffer(gl, gl.UNSIGNED_BYTE, 4, true, color, gl.DYNAMIC_DRAW);
+var aPos = MB.createVertexBuffer(gl, gl.FLOAT, MAX_SIZE*4, 2, gl.DYNAMIC_DRAW);
+var aColor = MB.createVertexBuffer(gl, gl.UNSIGNED_BYTE, MAX_SIZE*4, 4, gl.DYNAMIC_DRAW, true);
 
 var vertexBufs = {
   'aPos': aPos,
   'aColor': aColor
 }
-var indexBuffer = MB.genIndexBuffer(gl, MAX_SIZE, [0, 1, 2, 0, 2, 3], 4);
+var indexBuffer = MB.genIndexBuffer(gl, MAX_SIZE, [0, 1, 2, 0, 2, 3]);
 
 
 function updateBuffers(ps:P.ParticleSystem):number {
@@ -34,6 +32,8 @@ function updateBuffers(ps:P.ParticleSystem):number {
     var hs = p.attr.size/2;
     var id = p.id;
     var c = p.attr.color;
+    var pos = aPos.getData();
+    var color = aColor.getData();
 
     var off = idx*8;
     pos[off+0] = p.x-hs; pos[off+1] = p.y-hs; 
@@ -50,8 +50,9 @@ function updateBuffers(ps:P.ParticleSystem):number {
     idx++;
   }
 
-  MB.updateVertexBuffer(gl, aPos, pos);
-  MB.updateVertexBuffer(gl, aColor, color);
+  aPos.update(gl);
+  aColor.update(gl);
+
   return idx*6;
 }
 
@@ -89,10 +90,15 @@ var x = 0;
 var y = 0;
 
 gl.canvas.onmousemove = function(e) {
-  x = e.x;
-  y = e.y;
-  for (var i = 0; i < 100; i++)
+  var dx = e.x - x;
+  var dy = e.y - y;
+  var ox = x;
+  var oy = y;
+  for (var i = 0; i < 10; i++){
+    x = ox + dx*(i/10);
+    y = oy + dy*(i/10);
     particles.emit();
+  }
 }
 
 var particles = new P.ParticleSystem(MAX_SIZE, init, update, die);

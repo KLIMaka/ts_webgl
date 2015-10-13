@@ -37,6 +37,8 @@ export function drawCall(gl:WebGLRenderingContext, shader:DS.Shader, data:any):D
 
 export var setters = {
   mat4 : (gl, loc, val) => gl.uniformMatrix4fv(loc, false, val),
+  int2 : (gl, loc, val) => gl.uniform2iv(loc, val),
+  vec2 : (gl, loc, val) => gl.uniform2fv(loc, val),
   vec3 : (gl, loc, val) => gl.uniform3fv(loc, val),
   vec4 : (gl, loc, val) => gl.uniform4fv(loc, val),
   int1 : (gl, loc, val) => gl.uniform1i(loc, val),
@@ -56,13 +58,13 @@ export function uniforms(gl:WebGLRenderingContext, shader:DS.Shader, data:any):D
   return shader;
 }
 
-export function bindTexture(gl: WebGLRenderingContext, shader: DS.Shader, data:any):DS.Shader {
+export function sampler(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
   var unit = data[0];
-  var name = data[1];
-  var texture = data[2];
+  var sampler = data[1];
+  var tex = data[2];
   gl.activeTexture(gl.TEXTURE0 + unit);
-  gl.uniform1i(shader.getUniformLocation(name, gl), unit);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
   return shader;
 }
 
