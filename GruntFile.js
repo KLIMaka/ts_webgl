@@ -17,6 +17,7 @@ module.exports = function (grunt) {
     'app1',
     'ui',
     'paint',
+    'console',
     'tilerenderer'
   ];
 
