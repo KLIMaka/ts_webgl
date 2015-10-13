@@ -4,6 +4,7 @@ import BIN = require('./modules/engines/hmm2/bin');
 import getter = require('./libs/getter');
 import pixel = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
+import BROWSER = require('./libs/browser');
 
 declare var config;
 
@@ -24,7 +25,7 @@ getter.loader
 var aggFile = AGG.create(getter.get(RES));
 var pal = AGG.createPalette(aggFile.get('KB.PAL'));
 var ip = new IP(aggFile);
-var bin = BIN.create(aggFile.get(config.binname), pal);
+var bin = BIN.create(aggFile.get(BROWSER.getQueryVariable('name')), pal);
 var canvas = bin.render(ip);
 document.body.appendChild(canvas);
 

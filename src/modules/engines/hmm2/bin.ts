@@ -106,6 +106,7 @@ export class BinFile {
     var h = s.readUShort();
     var len = s.readUShort();
     var str = s.readByteString(len);
+    str = str.match(/^ *$/) ? 'test' : str;
     var fontName = s.readByteString(13);
     var unk1 = s.readUShort();
     var flags = s.readUShort();
@@ -163,7 +164,12 @@ export class BinFile {
     var pp:pixel.PixelProvider = new pixel.RGBPalPixelProvider(frame, this.pal, info.width, info.height, 255, 0, 1, shadow);
     if (flags == 9)
       pp = pixel.xflip(pp);
-    // pp = pixel.center(pp, w, h);
+    if (unk1 == 1) {
+      xoff -= info.width + info.offsetX*2 - 1;
+      pp = pixel.xflip(pp);
+    }
+    if (unk2 == 17)
+      pp = pixel.center(pp, w, h);
     IU.blendToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY);
   }
 }
