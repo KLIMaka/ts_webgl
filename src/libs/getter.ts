@@ -64,6 +64,7 @@ export function preloadString(fname:string, callback:(s:string)=>void):void {
     return;
   }
   var xhr = new XMLHttpRequest();
+  xhr.responseType = "text"
   xhr.onload = () => {callback(xhr.response);}
   xhr.open('GET', fname, true);
   xhr.send();

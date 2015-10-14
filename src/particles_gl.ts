@@ -90,8 +90,8 @@ var x = 0;
 var y = 0;
 
 gl.canvas.onmousemove = function(e) {
-  var dx = e.x - x;
-  var dy = e.y - y;
+  var dx = e.clientX - x;
+  var dy = e.clientY - y;
   var ox = x;
   var oy = y;
   for (var i = 0; i < 10; i++){

@@ -44,11 +44,13 @@ export class Controller3D {
   }
 
   private mousemove(e:MouseEvent):boolean {
+    var x = e.clientX;
+    var y = e.clientY;
     if (this.drag) {
-      this.camera.updateAngles(e.x - this.oldX, e.y - this.oldY);
+      this.camera.updateAngles(x - this.oldX, y - this.oldY);
     }
-    this.oldX = e.x;
-    this.oldY = e.y;
+    this.oldX = x;
+    this.oldY = y;
     return false;
   }
 
