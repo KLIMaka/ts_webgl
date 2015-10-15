@@ -55,7 +55,7 @@ class TP implements builder.ArtProvider {
     var arr = new Uint8Array(info.w*info.h*4);
     var pp = pixel.axisSwap(pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
     pp.render(arr);
-    tex = new TEX.TextureImpl(pp.getWidth(), pp.getHeight(), this.gl, arr);
+    tex = TEX.createTexture(pp.getWidth(), pp.getHeight(), this.gl, arr);
 
     this.textures[picnum] = tex;
     return tex;

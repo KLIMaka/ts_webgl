@@ -1,5 +1,5 @@
 
-import buildstructs = require('./structs');
+import BS = require('./structs');
 import MU = require('../../../libs/mathutils');
 import VEC = require('../../../libs/vecmath');
 import GLU = require('../../../libs_js/glutess');
@@ -8,10 +8,8 @@ import DS = require('../../drawstruct');
 import U = require('./utils');
 
 var SCALE = -16;
-var TCBASE = 8192;
 
-
-function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):number[][] {
+function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
   var i = 0;
   var chains = [];
   while (i < sector.wallnum) {
@@ -41,7 +39,7 @@ function triangulate(sector:buildstructs.Sector, walls:buildstructs.Wall[]):numb
   return GLU.tesselate(contours);
 }
 
-function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, mat:DS.Material, base:number):SolidInfo {
+function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, mat:DS.Material, base:number):SolidInfo {
   // a -> b
   // ^    |
   // |    v
@@ -68,15 +66,17 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
   } else if (a[1] < d[1] && b[1] < c[1]){
     builder.addFace(mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
   } else if (a[1] < d[1]) {
-    var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
+    var e = VEC.intersect3d(a,b,c,d);
     var etc = [MU.len2d(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
+    VEC.release3d(e);
   } else if (b[1] < c[1]) {
-    var e = VEC.detach3d(VEC.intersect3d(a,b,c,d));
+    var e = VEC.intersect3d(a,b,c,d);
     var etc = [MU.len2d(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
     builder.addFace(mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
+    VEC.release3d(e);
   } else {
     builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
   }
@@ -88,7 +88,7 @@ function addWall(wall:buildstructs.Wall, builder:BoardBuilder, quad:number[][], 
   return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector, walls:buildstructs.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
+function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
   var heinum = ceiling ? sector.ceilingheinum : sector.floorheinum;
   var z = ceiling ? sector.ceilingz : sector.floorz;
   var slope = U.createSlopeCalculator(sector, walls);
@@ -128,7 +128,7 @@ function addSector(tris:number[][], ceiling:boolean, sector:buildstructs.Sector,
   return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSprite(spr:buildstructs.Sprite, builder:BoardBuilder, tex:DS.Texture, materials:MaterialFactory, tinfo:number, idx:number):SpriteInfo {
+function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, materials:MaterialFactory, tinfo:number, idx:number):SpriteInfo {
   var x = spr.x; var y = spr.y; var z = spr.z / SCALE;
   var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
   var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
@@ -321,7 +321,7 @@ export class BoardProcessor {
   private index:any = [];
   private dss:DS.DrawStruct[] = [];
 
-  constructor(public board:buildstructs.Board) {}
+  constructor(public board:BS.Board) {}
 
   public build(gl:WebGLRenderingContext, textureProvider:ArtProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
 
