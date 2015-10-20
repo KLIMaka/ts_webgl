@@ -205,11 +205,11 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     props.refresh(info);
     drawCompass(compass, control.getCamera().forward());
 
-    control.move(time);
-    // var d = control.move1(time);
-    // builder.move(board, ms, d[0], d[1]);
-    // builder.fall(board, ms, time*8192*4)
-    // control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
+    // control.move(time);
+    var d = control.move1(time);
+    BU.move1(board, ms, d[0], d[1]);
+    BU.fall(board, ms, time*8192*4)
+    control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
   });
 
   gl.canvas.oncontextmenu = () => false;

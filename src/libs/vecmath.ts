@@ -156,7 +156,7 @@ export function intersect2d(p1s:vec2_t, p1e:vec2_t, p2s:vec2_t, p2e:vec2_t):vec2
   var t = intersect2dT(p1s, p1e, p2s, p2e);
   if (t == null)
     return null;
-  return lerpCopy2d(p1s, p2e, t);
+  return lerpCopy2d(p1s, p1e, t);
 }
 
 

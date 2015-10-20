@@ -46,6 +46,8 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
       var ix = wall.x + d * (wall2.x - wall.x);
       if (ix < x)
         inter++;
+      else if (Math.abs(ix-x) < MU.EPS)
+        inter++;
     }
   }
   return inter % 2 != 0;
@@ -197,6 +199,113 @@ export function move(board:BS.Board, ms:MoveStruct, dx:number, dy:number):void {
       break;
     }
   }
+}
+
+class ClipLine {
+  constructor(
+    public x1:number,
+    public y1:number,
+    public x2:number,
+    public y2:number,
+    public wallidx:number
+  ){}
+}
+
+export function move1(board:BS.Board, ms:MoveStruct, gx:number, gy:number, enterwallnum:number=null, walldist:number=128):void {
+  if (gx == 0 && gy == 0){
+    return;
+  }
+
+  var cursecnum = getSector(board, ms);
+  if (cursecnum == -1) {
+    console.log('Not in sector');
+    return;
+  }
+    
+  var walls = board.walls;
+  var sectors = board.sectors;
+  var x = ms.x;
+  var y = ms.y;
+  var nx = x + gx;
+  var ny = y + gy;
+
+  var cursec = sectors[cursecnum];
+  var clipLines:ClipLine[] = [];
+  for (var w = 0; w < cursec.wallnum; w++) {
+    var wallidx = cursec.wallptr + w;
+    var wall = walls[wallidx];
+    var wall2 = walls[wall.point2];
+
+    var x1 = wall.x; var y1 = wall.y;
+    var x2 = wall2.x; var y2 = wall2.y;
+    var dx = x2 - x1; var dy = y2 - x1;
+
+    if (dx*(y-y1) < (x-x1)*dy) continue;  //If wall's not facing you
+
+    if (wall.nextsector == -1) {
+      var bsz = walldist; if (gx < 0) bsz = -bsz;
+      clipLines.push(new ClipLine(x1-bsz,y1-bsz,x1-bsz,y1+bsz,wallidx));
+      clipLines.push(new ClipLine(x2-bsz,y2-bsz,x2-bsz,y2+bsz,wallidx));
+      bsz = walldist; if (gy < 0) bsz = -bsz;
+      clipLines.push(new ClipLine(x1+bsz,y1-bsz,x1-bsz,y1-bsz,wallidx));
+      clipLines.push(new ClipLine(x2+bsz,y2-bsz,x2-bsz,y2-bsz,wallidx));
+
+      var dax = walldist; if (dy > 0) dax = -dax;
+      var day = walldist; if (dx < 0) day = -day;
+      clipLines.push(new ClipLine(x1+dax,y1+day,x2+dax,y2+day,wallidx));
+    }
+
+  }
+
+  var intx = nx; var inty = ny;
+  for (var i = 0; i < clipLines.length; i++) {
+    var cl = clipLines[i];
+    var int = VEC.intersect2d([x, y], [intx, inty], [cl.x1, cl.y1], [cl.x2, cl.y2]);
+    if (int != null) {
+      intx = int[0];
+      inty = int[1];
+    }
+  }
+
+  if (intx != nx || inty != ny) {
+    ms.x = intx;
+    ms.y = inty;
+    console.log('Clip ' + intx + ',' + inty);
+    return;
+  }
+
+  var intwall = null;
+  for (var w = 0; w < cursec.wallnum; w++) {
+    var wallidx = cursec.wallptr + w;
+    if (enterwallnum != null && wallidx == enterwallnum)
+      continue;
+    var wall = walls[wallidx];
+    var wall2 = walls[wall.point2];
+    var x1 = wall.x; var y1 = wall.y;
+    var x2 = wall2.x; var y2 = wall2.y;
+
+    var int = VEC.intersect2d([x, y], [intx, inty], [x1, y1], [x2, y2]);
+    if (int != null) {
+      intx = int[0];
+      inty = int[1];
+      intwall = wallidx;
+    }
+  }
+
+  if (intwall != null) {
+    ms.x = intx;
+    ms.y = inty;
+    ms.sec = walls[intwall].nextsector;
+    var ngx = nx - intx;
+    var ngy = ny - inty;
+    console.log('Intersector. from:' + cursecnum + ' to:' + ms.sec + ' ' + ms.x+','+ms.y);
+    move1(board, ms, ngx, ngy, walls[intwall].nextwall, walldist);
+    return;
+  }
+
+  ms.x = nx;
+  ms.y = ny;
+  console.log('Move ' + intx + ',' + inty);
 }
 
 export function fall(board:BS.Board, ms:MoveStruct, dz:number):void {
