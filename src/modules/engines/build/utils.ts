@@ -28,6 +28,8 @@ export function getSector(board:BS.Board, ms:MoveStruct):number {
 }
 
 export function inSector(board:BS.Board, x:number, y:number, secnum:number):boolean {
+  x = MU.int(x);
+  y = MU.int(y);
   var sec = board.sectors[secnum];
   if (sec == undefined)
     return false;
@@ -38,19 +40,18 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
     var wall2 = board.walls[wall.point2];
     var dy1 = wall.y - y;
     var dy2 = wall2.y - y;
-    if (dy1 == 0 || dy2 == 0)
-        continue;
 
-    if (MU.sign(dy1) != MU.sign(dy2)) {
-      var d = dy1 / (wall.y - wall2.y);
-      var ix = wall.x + d * (wall2.x - wall.x);
-      if (ix < x)
-        inter++;
-      else if (Math.abs(ix-x) < MU.EPS)
-        inter++;
+    if ((dy1 ^ dy2) < 0)
+    {
+      var dx1 = wall.x - x; 
+      var dx2 = wall2.x - x;
+      if ((dx1 ^ dx2) >= 0)
+        inter ^= dx1; 
+      else 
+        inter ^= (dx1*dy2-dx2*dy1)^dy2;
     }
   }
-  return inter % 2 != 0;
+  return (inter>>>31) == 1;
 }
 
 export function findSector(board:BS.Board, x:number, y:number, secnum:number = 0):number {
