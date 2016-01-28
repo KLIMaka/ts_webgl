@@ -44,21 +44,21 @@ class PlaneInternal {
 
   private pos:Float32Array;
   private tc:Float32Array;
-  private aPos:DS.VertexBuffer;
-  private aTc:DS.VertexBuffer;
+  private aPos:MB.VertexBufferDynamic;
+  private aTc:MB.VertexBufferDynamic;
   private vertexBuffers:{};
   private indexBuffer:DS.IndexBuffer;
 
   public init(gl:WebGLRenderingContext, numtiles:number):void {
     this.pos = new Float32Array(numtiles*2*4);
     this.tc = new Float32Array(numtiles*2*4);
-    this.aPos = MB.genVertexBuffer(gl, gl.FLOAT, 2, false, this.pos, gl.DYNAMIC_DRAW);
-    this.aTc = MB.genVertexBuffer(gl, gl.FLOAT, 2, false, this.tc, gl.DYNAMIC_DRAW);
+    this.aPos = MB.wrap(gl, this.pos, 2, gl.STATIC_DRAW);
+    this.aTc = MB.wrap(gl, this.tc, 2, gl.DYNAMIC_DRAW);
     this.vertexBuffers = {
       'aPos': this.aPos,
       'aTc': this.aTc
     }
-    this.indexBuffer = MB.genIndexBuffer(gl, numtiles, [0, 2, 1, 0, 3, 2], 4);
+    this.indexBuffer = MB.genIndexBuffer(gl, numtiles, [0, 2, 1, 0, 3, 2]);
   }
 
   public fill(gl:WebGLRenderingContext, cellWidth:number, cellHeight:number, width:number, height:number, data:number[]) {
@@ -74,12 +74,10 @@ class PlaneInternal {
         pos[off+2] = xoff; pos[off+3] = yoff+cellHeight;
         pos[off+4] = xoff+cellWidth; pos[off+5] = yoff+cellHeight;
         pos[off+6] = xoff+cellWidth; pos[off+7] = yoff;
-
-
       }
     }
-    MB.updateVertexBuffer(gl, this.aPos, this.pos);
-    MB.updateVertexBuffer(gl, this.aTc, this.tc);
+    this.aPos.update(gl);
+    this.aTc.update(gl);
   }
 }
 

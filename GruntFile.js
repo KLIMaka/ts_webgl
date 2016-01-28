@@ -18,7 +18,8 @@ module.exports = function (grunt) {
     'ui',
     'paint',
     'console',
-    'tilerenderer'
+    'tilerenderer',
+    'rasterizer'
   ];
 
   var nodemodules = [
@@ -32,7 +33,7 @@ module.exports = function (grunt) {
       src: ['src/' + module + '.ts'],
       dest: 'distr/',
       options: {
-        basePath: 'src/',
+        rootDir: 'src/',
         module: 'amd'
       }
     });
@@ -52,7 +53,7 @@ module.exports = function (grunt) {
       src: ['src/' + module + '.ts'],
       dest: 'node_distr/',
       options: {
-        basePath: 'src/',
+        rootDir: 'src/',
         module: 'commonjs'
       }
     });

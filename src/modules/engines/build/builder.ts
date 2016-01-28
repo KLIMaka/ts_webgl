@@ -1,4 +1,3 @@
-
 import BS = require('./structs');
 import MU = require('../../../libs/mathutils');
 import VEC = require('../../../libs/vecmath');
