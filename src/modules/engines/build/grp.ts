@@ -38,8 +38,8 @@ export function create(buf:ArrayBuffer):GrpFile {
   return new GrpFile(buf);
 }
 
-export function createPalette(stream:data.DataViewStream):number[] {
-  var pal = new Array<number>(768);
+export function createPalette(stream:data.DataViewStream):Uint8Array {
+  var pal = new Uint8Array(768);
   for (var i = 0; i < 256; i++) {
     pal[i*3+0] = stream.readUByte()*4;
     pal[i*3+1] = stream.readUByte()*4;

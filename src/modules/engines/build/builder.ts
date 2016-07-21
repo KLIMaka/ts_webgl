@@ -14,7 +14,7 @@ function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
   while (i < sector.wallnum) {
     var ws = [];
     var firstwallIdx = i + sector.wallptr;
-    var wall = walls[sector.wallptr + i];
+    var wall = walls[firstwallIdx];
     ws.push(firstwallIdx);
     while (wall.point2 != firstwallIdx){
       ws.push(wall.point2);
@@ -295,6 +295,21 @@ class DefaultBoardBuilder implements BoardBuilder {
 
   public finish(gl:WebGLRenderingContext) {
     this.builder.build(gl, null);
+  }
+}
+
+class Builder1 {
+
+  constructor(private gl:WebGLRenderingContext) {
+
+  }
+
+  public updateWall(wall:number, section:number, verts:number[][], tcs:number[][], idx:number, shade:number):void {
+    
+  }
+
+  public updateSector():void {
+    
   }
 }
 

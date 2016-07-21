@@ -78,7 +78,7 @@ var vecz = GLM.vec3.create();
 var proj = GLM.mat4.clone([
   1, 0, 0, 0,
   0, 1, 0, 0,
-  0, 0, 1, -0.008, 
+  0, 0, 1, -0.006, 
   0, 0, 0, 1, 
 ]);
 
@@ -97,6 +97,10 @@ var tris = [
   [[0xffaa5555], [100, -100, -100], [100, 100, 100], [100, 100, -100], [100, 0, 0]],
 ];
 
+var poss = new Array(300);
+for (var i = 0; i < 300; i++)
+  poss[i] = [256-rand256()*2, 256-rand256()*2, -rand256(), 1+Math.random()*4];
+
 
 var ang = 0;
 var tri = 2*Math.PI/3;
@@ -110,34 +114,68 @@ animate((dt) => {
   // swFastRects(10000, 200);
 
   // swTriangles(100, 50);
+  // cube(dt);
+  cubes(dt);
+
+});
+
+function cubes(dt:number) {
   ang += dt;
   swFill(0xffffffff);
   // zbuf.fill(0x8000, 0, 640*480);
+
+  var list = [];
+  for (var c = 0; c < poss.length; c++) {
+    GLM.mat4.identity(rot);
+    GLM.mat4.translate(rot, rot, [320, 240, 0]);
+    GLM.mat4.mul(rot, rot, proj);
+    GLM.mat4.translate(rot, rot, [poss[c][0], poss[c][1], poss[c][2]]);
+    GLM.mat4.rotateY(rot, rot, ang*poss[c][3]);
+    GLM.mat4.rotateX(rot, rot, ang*poss[c][3]);
+    GLM.mat4.rotateZ(rot, rot, ang*poss[c][3]);
+    GLM.mat4.scale(rot, rot, [0.1, 0.1, 0.1]);
+    for (var i = 0; i < tris.length; i++) {
+      GLM.vec3.transformMat4(vec1, tris[i][1], rot);
+      GLM.vec3.transformMat4(vec2, tris[i][2], rot);
+      GLM.vec3.transformMat4(vec3, tris[i][3], rot);
+      GLM.vec3.transformMat4(vecz, tris[i][4], rot);
+      list.push([vecz[2], tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0], [vec2[0]|0, vec2[1]|0, vec2[2]|0], [vec3[0]|0, vec3[1]|0, vec3[2]|0]]);
+      // triangleZ(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0, vec2[0]|0, vec2[1]|0, vec2[2]|0, vec3[0]|0, vec3[1]|0, vec3[2]|0]);
+      // triangle(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec2[0]|0, vec2[1]|0, vec3[0]|0, vec3[1]|0]);
+    }
+  }
+
+  list.sort((a:number[], b:number[]) => {return a[0]-b[0];})
+  for (var i = 0; i < list.length; i++) {
+    triangleZ(list[i][1], list[i][2], list[i][3], list[i][4]);
+  }
+  ctx.putImageData(data, 0, 0);
+}
+
+function cube(dt:number) {
+  ang += dt/2;
+  swFill(0xffffffff);
   GLM.mat4.identity(rot);
   GLM.mat4.translate(rot, rot, [320, 240, 0]);
   GLM.mat4.mul(rot, rot, proj);
-  GLM.mat4.translate(rot, rot, [0, 0, -200]);
-  GLM.mat4.rotateY(rot, rot, ang);
-  GLM.mat4.rotateX(rot, rot, ang);
+  // GLM.mat4.rotateY(rot, rot, ang);
+  // GLM.mat4.rotateX(rot, rot, ang);
   GLM.mat4.rotateZ(rot, rot, ang);
+  GLM.mat4.scale(rot, rot, [0.5, 0.5, 0.5]);
   var list = [];
-  for (var i = 0; i < tris.length; i++) {
+  for(var i = 0; i < tris.length; i++) {
     GLM.vec3.transformMat4(vec1, tris[i][1], rot);
     GLM.vec3.transformMat4(vec2, tris[i][2], rot);
     GLM.vec3.transformMat4(vec3, tris[i][3], rot);
     GLM.vec3.transformMat4(vecz, tris[i][4], rot);
     list.push([vecz[2], tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0], [vec2[0]|0, vec2[1]|0, vec2[2]|0], [vec3[0]|0, vec3[1]|0, vec3[2]|0]]);
-    // triangleZ(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0, vec2[0]|0, vec2[1]|0, vec2[2]|0, vec3[0]|0, vec3[1]|0, vec3[2]|0]);
-    // triangle(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec2[0]|0, vec2[1]|0, vec3[0]|0, vec3[1]|0]);
   }
   list.sort((a:number[], b:number[]) => {return a[0]-b[0];})
   for (var i = 0; i < list.length; i++) {
     triangleZ(list[i][1], list[i][2], list[i][3], list[i][4]);
   }
-
   ctx.putImageData(data, 0, 0);
-
-});
+}
 
 function rand256():number {
   return MU.int(Math.random()*256);
@@ -217,38 +255,117 @@ function triangle(color:number, points:number[]) {
   }
 }
 
-function triangleZ(color:number, p1:number[], p2:number[], p3:number) {
+function swap(arr:any[], i:number, j:number):void {
+  var tmp = arr[i];
+  arr[i] = arr[j];
+  arr[j] = tmp;
+}
+
+function sort(p1:number[], p2:number[], p3:number[]):number[][] {
+  var r = [p1, p2, p3];
+  if (r[1][1] <= r[0][1] && r[1][1] <= r[2][1]) swap(r, 0, 1);
+  if (r[2][1] <= r[0][1] && r[2][1] <= r[1][1]) swap(r, 0, 2);
+  if (r[2][1] < r[1][1]) swap(r, 1, 2);
+  if (r[2][0] < r[1][0]) swap(r, 1, 2);
+  return r;
+}
+
+function triangle1(color:number, p1:number[], p2:number[], p3:number[]):void {
+  var tri = sort(p1, p2, p3);
+  var miny = tri[0][1];
+  var dxl = tri[1][0]-tri[0][0];
+  var dxr = tri[2][0]-tri[0][0];
+  var dyl = tri[1][1]-tri[0][1];
+  var dyr = tri[2][1]-tri[0][1];
+  var dl = dyl/dxl;
+  var dr = dyr/dxr;
+  for (var y = miny;;) {
+    var lx = tri[1][0];
+    if (dl < 0) lx += (0.5/-dl)|0;
+    var rx = tri[2][0];
+    if (dr > 0) rx += (0.5/dr)|0;
+  }
+}
+
+function delata(p1:number[], p2:number[], p3:number[], attrsCount:number):number[][] {
+  var d = new Array(attrsCount);
+  for (var i = 0; i < attrsCount; i++)
+    d[i] = [p1[i]-p2[i], p2[i]-p3[i], p3[i]-p1[i]];
+  return d;
+}
+
+function range(s:number[], x:number[]):number[] {
+  var idxs = [0, 0, 0];
+  var i = 0;
+  if (s[0] <= 0) idxs[i++] = 0;
+  if (s[1] <= 0) idxs[i++] = 1;
+  if (s[2] <= 0) idxs[i++] = 2;
+  if (i == 2) {
+    var li = x[idxs[0]] < x[idxs[1]] ? idxs[0] : idxs[1];
+    var ri = x[idxs[0]] < x[idxs[1]] ? idxs[1] : idxs[0];
+  } else {
+    var li = x[idxs[0]] < x[idxs[1]] ? x[idxs[0]] < x[idxs[2]] ? idxs[0] : idxs[2] : x[idxs[1]] < x[idxs[2]] ? idxs[1] : idxs[2];
+    var ri = x[idxs[0]] > x[idxs[1]] ? x[idxs[0]] > x[idxs[2]] ? idxs[0] : idxs[0] : x[idxs[1]] > x[idxs[2]] ? idxs[1] : idxs[2];
+  }
+  return [li, ri];
+}
+
+function line(y:number, p1:number[], p2:number[], p3:number[], d:number[][], attrsCount:number) {
+  var s = [y-p1[1], y-p2[1], y-p3[1]];
+  var k = [s[0]/d[1][0], s[1]/d[1][1], s[2]/d[1][2]];
+  var attrs = new Array(attrsCount);
+  for( var a = 0; a < attrsCount; a++) 
+    attrs[a] = [p1[a]+k[0]*d[a][0], p2[a]+k[1]*d[a][1], p3[a]+k[2]*d[a][2]];
+  var ss = [s[0]*s[1], s[1]*s[2], s[2]*s[0]];
+  var lr = range(ss, attrs[0]);
+  return {
+    attrs:attrs,
+    li:lr[0],
+    ri:lr[1],
+  }
+}
+
+function maxmins(p1:number[], p2:number[], p3:number[]):number[] {
+  return [
+    Math.min(p1[0], p2[0]), Math.max(p1[0], p2[0]),
+    Math.min(p2[0], p3[0]), Math.max(p2[0], p3[0]),
+    Math.min(p3[0], p1[0]), Math.max(p3[0], p1[0]),
+  ];
+}
+
+function triangleZ(color:number, p1:number[], p2:number[], p3:number[]) {
   var maxy = Math.min(Math.max(p1[1], p2[1], p3[1]), 480);
   var miny = Math.max(Math.min(p1[1], p2[1], p3[1]), 0);
-  var dx = [p1[0]-p2[0], p2[0]-p3[0], p3[0]-p1[0]];
-  var dy = [p1[1]-p2[1], p2[1]-p3[1], p3[1]-p1[1]];
-  // var dz = [p1[2]-p2[2], p2[2]-p3[2], p3[2]-p1[2]];
-  var idxs = [0, 0, 0];
+  var d = delata(p1, p2, p3, 3);
+  var mm = maxmins(p1, p2, p3);
+  var ang = [d[0][0]/d[1][0], d[0][1]/d[1][1], d[0][2]/d[1][2]];
+  var padd = [Math.abs(ang[0]/2)|0, Math.abs(ang[1]/2)|0, Math.abs(ang[2]/2)|0];
   for(var y = miny; y <= maxy; y++) {
-    var s = [y-p1[1], y-p2[1], y-p3[1]];
-    var k = [s[0]/dy[0], s[1]/dy[1], s[2]/dy[2]];
-    var x = [p1[0] + k[0]*dx[0], p2[0] + k[1]*dx[1], p3[0] + k[2]*dx[2]];
-    // var z = [p1[2] + k[0]*dx[0], p2[2] + k[1]*dx[1], p3[2] + k[2]*dx[2]];
-    var ss = [s[0]*s[1], s[1]*s[2], s[2]*s[0]];
-    var i = 0;
-    if (ss[0] <= 0) idxs[i++] = 0;
-    if (ss[1] <= 0) idxs[i++] = 1;
-    if (ss[2] <= 0) idxs[i++] = 2;
-    if (i == 2) {
-      var li = x[idxs[0]] < x[idxs[1]] ? idxs[0] : idxs[1];
-      var ri = x[idxs[0]] < x[idxs[1]] ? idxs[1] : idxs[0];
-    } else {
-      var li = x[idxs[0]] < x[idxs[1]] ? x[idxs[0]] < x[idxs[2]] ? idxs[0] : idxs[2] : x[idxs[1]] < x[idxs[2]] ? idxs[1] : idxs[2];
-      var ri = x[idxs[0]] > x[idxs[1]] ? x[idxs[0]] > x[idxs[2]] ? idxs[0] : idxs[0] : x[idxs[1]] > x[idxs[2]] ? idxs[1] : idxs[2];
-    }
+    var l = line(y, p1, p2, p3, d, 3);
+    var x = l.attrs[0];
+    var li = l.li;
+    var ri = l.ri;
+    var z = l.attrs[2];
     var yoff = y*640;
-    var lx = Math.round(Math.max(x[li], 0));
-    var rx = Math.round(Math.min(x[ri], 639))+1;
-    // var lz = z[li];
-    // var dzz = (z[ri]-z[li])/(rx-lx);
-    for (; lx < rx; lx++/*, lz+=dzz*/) {
-      // if (zbuf[yoff+lx] < lz) {
+    var lx = Math.round(Math.max(x[li]-padd[li], mm[li*2]));
+    var rx = Math.round(Math.min(x[ri]+padd[ri], mm[ri*2+1]))+1;
+    var lz = z[li];
+    var dzz = (z[ri]-z[li])/(rx-lx);
+    for (; lx < rx; lx++, lz+=dzz) {
+      // if (zbuf[yoff+lx] <= lz) {
+        // var zz =(lz+200)&0xff;
+        // if (zz > 180){
+        //   if ((y&1)&(lx&1))
+        //     fbi[yoff+lx] = color;
+        // } else if (zz > 130) {
+        //   if ((y&1)^(lx&1))
+        //     fbi[yoff+lx] = color;
+        // } else {
+        //     fbi[yoff+lx] = color;
+        // }
+        // if ((y&1)&(lx&1))
         fbi[yoff+lx] = color;
+        // fbi[yoff+lx] = 0xff000000 | ((lz+200)&0xff);
         // zbuf[yoff+lx] = lz;
       // }
     }

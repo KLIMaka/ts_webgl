@@ -19,7 +19,8 @@ module.exports = function (grunt) {
     'paint',
     'console',
     'tilerenderer',
-    'rasterizer'
+    'rasterizer',
+    'psx'
   ];
 
   var nodemodules = [
