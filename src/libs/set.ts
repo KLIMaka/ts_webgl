@@ -9,15 +9,15 @@ export class Set<T> {
   }
 
   public add(val:T):void {
-    this.table[val] = 1;
+    this.table[val.toString()] = 1;
   }
 
   public remove(val:T):void {
-    this.table[val] = 0;
+    this.table[val.toString()] = 0;
   }
 
   public has(val:T):boolean {
-    return this.table[val] == 1;
+    return this.table[val.toString()] == 1;
   }
 
   public values():T[] {

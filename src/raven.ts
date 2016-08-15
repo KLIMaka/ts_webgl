@@ -140,44 +140,44 @@ function render(palbuf:ArrayBuffer, resbuf:ArrayBuffer) {
   var palnum = browser.getQueryVariable('pal');
   var pal = palres.get(palnum);
 
-  // var provider = new Panel.PixelDataProvider(res.size(), (i:number) => {
-  //   return res.get(i, pal);
-  // });
+  var provider = new Panel.PixelDataProvider(res.size(), (i:number) => {
+    return res.get(i, pal);
+  });
 
-  // var p = new Panel.DrawPanel(<HTMLCanvasElement>document.getElementById('panel'), provider);
-  // p.setCellSize(100, 100);
-  // p.draw();
+  var p = new Panel.DrawPanel(<HTMLCanvasElement>document.getElementById('panel'), provider);
+  p.setCellSize(100, 100);
+  p.draw();
 
-  // document.getElementById('next').onclick = (e) => {p.nextPage(); p.draw();}
-  // document.getElementById('prev').onclick = (e) => {p.prevPage(); p.draw();}
-  var canvas = <HTMLCanvasElement>document.getElementById('panel');
-  var off = browser.getQueryVariable('off') | 0;
-  var anims = [
-    new PP.AnimatedPixelProvider([res.get(off+0, pal), res.get(off+8, pal), res.get(off+16, pal), res.get(off+24, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+1, pal), res.get(off+9, pal), res.get(off+17, pal), res.get(off+25, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+2, pal), res.get(off+10, pal), res.get(off+18, pal), res.get(off+26, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+3, pal), res.get(off+11, pal), res.get(off+19, pal), res.get(off+27, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+4, pal), res.get(off+12, pal), res.get(off+20, pal), res.get(off+28, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+5, pal), res.get(off+13, pal), res.get(off+21, pal), res.get(off+29, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+6, pal), res.get(off+14, pal), res.get(off+22, pal), res.get(off+30, pal)], 8),
-    new PP.AnimatedPixelProvider([res.get(off+7, pal), res.get(off+15, pal), res.get(off+23, pal), res.get(off+31, pal)], 8),
-  ];
-  var c = new AnimController(anims);
-  canvas.onclick = e => c.goto(e.x - canvas.offsetLeft, e.y - canvas.offsetTop);
+  document.getElementById('next').onclick = (e) => {p.nextPage(); p.draw();}
+  document.getElementById('prev').onclick = (e) => {p.prevPage(); p.draw();}
+  // var canvas = <HTMLCanvasElement>document.getElementById('panel');
+  // var off = browser.getQueryVariable('off') | 0;
+  // var anims = [
+  //   new PP.AnimatedPixelProvider([res.get(off+0, pal), res.get(off+8, pal), res.get(off+16, pal), res.get(off+24, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+1, pal), res.get(off+9, pal), res.get(off+17, pal), res.get(off+25, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+2, pal), res.get(off+10, pal), res.get(off+18, pal), res.get(off+26, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+3, pal), res.get(off+11, pal), res.get(off+19, pal), res.get(off+27, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+4, pal), res.get(off+12, pal), res.get(off+20, pal), res.get(off+28, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+5, pal), res.get(off+13, pal), res.get(off+21, pal), res.get(off+29, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+6, pal), res.get(off+14, pal), res.get(off+22, pal), res.get(off+30, pal)], 8),
+  //   new PP.AnimatedPixelProvider([res.get(off+7, pal), res.get(off+15, pal), res.get(off+23, pal), res.get(off+31, pal)], 8),
+  // ];
+  // var c = new AnimController(anims);
+  // canvas.onclick = e => c.goto(e.x - canvas.offsetLeft, e.y - canvas.offsetTop);
 
-  var callback = (dt:number) => {
-    var pp = c.animate(dt);
-    IU.clearCanvas(canvas, '#000');
-    IU.drawToCanvas(pp, canvas, c.getX(), c.getY());
-  }
+  // var callback = (dt:number) => {
+  //   var pp = c.animate(dt);
+  //   IU.clearCanvas(canvas, '#000');
+  //   IU.drawToCanvas(pp, canvas, c.getX(), c.getY());
+  // }
 
-  var time = Date.now();
-  function update() {
-    var now = Date.now();
-    callback((now - time) / 1000);
-    requestAnimationFrame(update);
-    time = now;
-  }
+  // var time = Date.now();
+  // function update() {
+  //   var now = Date.now();
+  //   callback((now - time) / 1000);
+  //   requestAnimationFrame(update);
+  //   time = now;
+  // }
 
-  update();
+  // update();
 }

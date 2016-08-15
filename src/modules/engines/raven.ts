@@ -51,7 +51,7 @@ function read(r:data.DataViewStream, size:number, mod:number):Uint8Array {
   }
 }
 
-function createImage(w:number, h:number, data:Uint8Array, trans:number, pal:number[], isFlip:boolean=false):pixel.PixelProvider {
+function createImage(w:number, h:number, data:Uint8Array, trans:number, pal:Uint8Array, isFlip:boolean=false):pixel.PixelProvider {
   var provider:pixel.PixelProvider = new pixel.RGBPalPixelProvider(data, pal, w, h, 255, trans);
   if (isFlip)
     provider = pixel.axisSwap(provider);
@@ -59,7 +59,7 @@ function createImage(w:number, h:number, data:Uint8Array, trans:number, pal:numb
   return provider;
 }
 
-function read3dSprite(d:Uint8Array, pal:number[]):pixel.PixelProvider {
+function read3dSprite(d:Uint8Array, pal:Uint8Array):pixel.PixelProvider {
   var r = new data.DataViewStream(d.buffer, true);
   var w = r.readUShort();
   var left = r.readUShort();
@@ -97,7 +97,7 @@ function read3dSprite(d:Uint8Array, pal:number[]):pixel.PixelProvider {
   return createImage(w, h, img, 254, pal);
 }
 
-function readFile(r:data.DataViewStream, pal:number[]):pixel.PixelProvider {
+function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
   var signature = r.readUShort();
   var type = r.readUByte();
   var headerSize = r.readUShort();
@@ -188,13 +188,13 @@ export class RavenPals {
     this.count = this.pal.readUByte();
   }
 
-  public get(i:number):number[] {
-    var p = new Array<number>(256*3);
+  public get(i:number):Uint8Array {
+    var p = new Uint8Array(256*3);
     this.readPal(i, p);
     return p;
   }
 
-  public readPal(i:number, p:number[]):void {
+  public readPal(i:number, p:Uint8Array):void {
     if (i >= this.count)
       throw new Error('No pal ' + i);
     this.pal.setOffset(i*768 + 1);
@@ -225,7 +225,7 @@ export class RavenRes {
     this.offsets = offsets;
   }
 
-  public get(i:number, pal:number[]):pixel.PixelProvider {
+  public get(i:number, pal:Uint8Array):pixel.PixelProvider {
     if (i >= this.count)
       throw new Error('No res ' + i);
     this.res.setOffset(this.offsets[i]);

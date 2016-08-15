@@ -27,6 +27,10 @@ export function ispow2(x:number):boolean {
   return (x & (x-1)) == 0;
 }
 
+export function fract(x:number):number {
+  return x - int(x);
+}
+
 export function nextpow2(x) {
   --x;
   for (var i = 1; i < 32; i <<= 1) {

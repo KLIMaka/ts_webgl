@@ -12,15 +12,15 @@ lexer.addRule(new LR(/^[_A-Za-z][_A-Za-z0-9]*/, 'ID'));
 lexer.addRule(new LR(/^[0-9]+/, 'INT', 0, parseInt));
 lexer.addRule(new LR(/^[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, parseFloat));
 lexer.addRule(new LR(/^"([^"]*)"/, 'STRING', 1));
-lexer.addRule(new LR(/^[=!<>&\\|][=&\\|]+/), 'COP');
-lexer.addRule(new LR(/^./), 'OP');
+lexer.addRule(new LR(/^[=!<>&\\|][=&\\|]+/, 'COP'));
+lexer.addRule(new LR(/^./, 'OP'));
 
 lexer.setSource(getter.getString('resources/parser/a.txt')); 
 lexer.next();
 
 var itself = () => this;
 
-var literal = (val:any) -> {
+var literal = (val:any) => {
   
 }
 

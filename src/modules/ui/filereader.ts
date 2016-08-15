@@ -28,7 +28,7 @@ export class DropFileReader {
 
     var self = this;
     var reader = new FileReader();
-    reader.onload = (e) => {self.callback(e.target.result)}
+    reader.onload = (e:Event) => {self.callback((<any>e.target).result)}
     reader.readAsArrayBuffer(file);
   }
 
