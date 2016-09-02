@@ -2,10 +2,6 @@ import DS = require('./drawstruct');
 import MU = require('../libs/mathutils')
 import pixel = require('./pixelprovider');
 
-function repeatMode(w:number, h:number) {
-  return MU.ispow2(w) && MU.ispow2(h) ? WebGLRenderingContext.REPEAT : WebGLRenderingContext.CLAMP_TO_EDGE;
-}
-
 export class TextureStub implements DS.Texture {
   constructor(public w:number, public h:number) {}
   public get():WebGLTexture { return null }
@@ -34,8 +30,8 @@ export class TextureImpl implements DS.Texture {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.filter || gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.filter || gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.repeat || repeatMode(width, height));
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.repeat || repeatMode(width, height));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.repeat || gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.repeat || gl.CLAMP_TO_EDGE);
 
     if (img == null) 
       img = new Uint8Array(width*height*bpp);

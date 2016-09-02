@@ -29,15 +29,8 @@ export class RffFile {
     this.header = headerStruct.read(this.data);
     this.data.setOffset(this.header.offFat);
     var len = this.header.numFiles * 48;
-    var fat = data.array(data.ubyte, len).read(this.data);
-    if (this.header.version >= 0x301) {
-      var key = this.header.offFat & 0xff;
-      for (var i = 0; i < len; i+=2) {
-        fat[i    ] ^= key;
-        fat[i + 1] ^= key;
-        key = (key+1) % 256;
-      }
-    }
+    var fat = data.atomic_array(data.ubyte, len).read(this.data);
+    this.decodeFat(fat, this.header);
     var fatBuffer = new data.DataViewStream(fat.buffer, true);
     fatBuffer.setOffset(fat.byteOffset);
     this.loadFat(fatBuffer, this.header.numFiles);
@@ -52,6 +45,17 @@ export class RffFile {
     }
   }
 
+  private decodeFat(fat:Uint8Array, header:any) {
+    if (this.header.version >= 0x301) {
+      var key = this.header.offFat & 0xff;
+      for (var i = 0; i < fat.length; i+=2) {
+        fat[i    ] ^= key;
+        fat[i + 1] ^= key;
+        key = (key+1) % 256;
+      }
+    }
+  }
+
   private convertFname(name:string):string {
     return name.substr(3) + '.' + name.substr(0, 3);
   }
@@ -59,7 +63,7 @@ export class RffFile {
   public get(fname:string):Uint8Array {
     var record = this.fat[this.namesTable[fname]];
     this.data.setOffset(record.offset);
-    var arr = data.array(data.ubyte, record.size).read(this.data);
+    var arr = data.atomic_array(data.ubyte, record.size).read(this.data);
     if (record.flags & 0x10)
       for (var i = 0; i < 256; i++)
         arr[i] ^= (i >> 1);

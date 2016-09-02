@@ -83,7 +83,7 @@ export var boardStruct = data.struct(build.Board, [
 ]);
 
 export function loadBuildMap(stream:data.DataViewStream):build.Board {
-  var brd = <build.Board> boardStruct.read(stream);
+  var brd = boardStruct.read(stream);
   brd.numsectors = data.ushort.read(stream);
   brd.sectors = data.array(sectorStruct, brd.numsectors).read(stream);
   brd.numwalls = data.ushort.read(stream);
