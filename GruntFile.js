@@ -20,7 +20,10 @@ module.exports = function (grunt) {
     'console',
     'tilerenderer',
     'rasterizer',
-    'psx'
+    'psx',
+    'gl_test',
+    'mapper',
+    'sketch'
   ];
 
   var nodemodules = [

@@ -5,7 +5,7 @@ export type PutFunc = (x:number, y:number) => void;
 export function line(put:PutFunc, x1:number, y1:number, x2:number, y2:number):void {
   var dx = Math.abs(x2-x1);
   var sx = x1<x2 ? 1 : -1;
-  var dy =Math.abs(y2-y1);
+  var dy = Math.abs(y2-y1);
   var sy = y1<y2 ? 1 : -1; 
   var err = (dx>dy ? dx : -dy)/2
   var e2 = 0;

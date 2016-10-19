@@ -55,7 +55,8 @@ class TP implements builder.ArtProvider {
     if (info.h <= 0 || info.w <= 0)
        return this.get(0);
     var arr = new Uint8Array(info.w*info.h*4);
-    var pp = pixel.axisSwap(pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
+    var img = pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255);
+    var pp = pixel.axisSwap(img);
     pp.render(arr);
     var repeat = MU.ispow2(pp.getWidth()) && MU.ispow2(pp.getHeight()) ? WebGLRenderingContext.REPEAT : WebGLRenderingContext.CLAMP_TO_EDGE;
     var filter = WebGLRenderingContext.NEAREST;
@@ -193,7 +194,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
-    
 
     tic();
     var models = processor.get(ms, control.getCamera().forward());

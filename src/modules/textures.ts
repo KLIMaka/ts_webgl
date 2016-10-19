@@ -98,8 +98,8 @@ export class RenderTexture extends TextureImpl {
   private framebuffer:WebGLFramebuffer;
   private renderbuffer:WebGLRenderbuffer;
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
-    super(width, height, gl, img);
+  constructor(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array = null) {
+    super(width, height, gl, options, img);
     this.framebuffer = gl.createFramebuffer();
     this.renderbuffer = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderbuffer);
@@ -125,4 +125,8 @@ export class RenderTexture extends TextureImpl {
 
     return this.data;
   }
+}
+
+export function createRenderTexture(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array=null) {
+  return new RenderTexture(width, height, gl, options, img);
 }

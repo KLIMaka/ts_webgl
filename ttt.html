@@ -1,0 +1,85 @@
+<html>
+<head>
+<title>Hello World!</title>
+</head>
+<style type="text/css">
+
+.container {
+	width: 300px;
+	border: 3px solid #eee;
+	box-shadow: 0px 0px 3px rgba(0,0,0,0.5);
+}
+
+.row {
+	display: flex;
+	background: #eee;
+	border-bottom: solid 1px #aaa;
+	border-top: solid 1px #fff;
+	border-left: solid 1px #fff;
+	border-right: solid 1px #aaa;
+}
+
+.label {
+	order: 1;
+	width: 100px;
+	text-align: right;
+	padding: 0px 5px;
+	border-right: 1px solid #aaa;
+}
+
+.value {
+	order: 2;
+	width: 200px;
+	padding: 0px 3px;
+}
+
+.value input {
+	width: 100%;
+}
+
+.padder {
+	padding-left: 20px;
+	background: #aaa;
+}
+
+</style>
+<body>
+	
+<div class='container'>
+	<div class='row'>
+		<div class='label'>foo</div>
+		<div class='value'>
+			<input type='range'>
+		</div>
+	</div>
+	<div class='row'>
+		<div class='label'>dfdfgd f f</div>
+		<div class='value'>
+			<input type='color'>
+		</div>
+	</div>	
+	<div class='row'>
+		<div class='label'>dsdfsdff</div>
+		<div class='value'>
+			<input type='text'>
+		</div>
+	</div>
+	<div class='padder'>
+		<div class='row'>
+			<div class='label'>aadasfad f f</div>
+			<div class='value'>
+				<input type='number'>
+			</div>
+		</div>	
+		<div class='row'>
+			<div class='label'>dasd f f</div>
+			<div class='value'>
+				<input type='text'>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+</body>
+</html>

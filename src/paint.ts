@@ -29,7 +29,28 @@ function createPal() {
   }
   return pal;
 }
+
+function addC64Colors(pal:Uint8Array) {
+  pal[0] = 0;   pal[1] =   0; pal[2] =   0;
+  pal[3] = 62;  pal[4] =  49; pal[5] = 162;
+  pal[6] = 87;  pal[7] =  66; pal[8] =   0;
+  pal[9] = 140; pal[10] =  62; pal[11] =  52;
+  pal[12] = 84;  pal[13] =  84; pal[14] =  84;
+  pal[15] = 141; pal[16] =  72; pal[17] = 179;
+  pal[18] = 144; pal[19] =  95; pal[20] =  37;
+  pal[21] = 124; pal[22] = 112; pal[23] = 218;
+  pal[24] = 128; pal[25] = 128; pal[26] = 128;
+  pal[27] = 104; pal[28] = 169; pal[29] =  65;
+  pal[30] = 187; pal[31] = 119; pal[32] = 109;
+  pal[33] = 122; pal[34] = 191; pal[35] = 199;
+  pal[36] = 171; pal[37] = 171; pal[38] = 171;
+  pal[39] = 208; pal[40] = 220; pal[41] = 113;
+  pal[42] = 172; pal[43] = 234; pal[44] = 136;
+  pal[45] = 255; pal[46] = 255; pal[47] = 255;
+}
+
 var refPalette = createPal();
+addC64Colors(refPalette);
 var pixel = 255;
 
 function cssColor(idx:number):string {
