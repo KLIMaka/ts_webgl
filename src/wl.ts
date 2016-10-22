@@ -47,7 +47,7 @@ for (var i = 0; i < 9; i++) {
   var tileset = i < 4 ? t0.tilesets[i] : t1.tilesets[i-4];
   var imgs = new Array<HTMLCanvasElement>(tileset.pics.length);
   for (var j = 0; j < tileset.pics.length; j++){
-    imgs[j] = IU.createCanvas(new P.fromPal(tileset.pics[j].pixels, egapal, 16, 16));
+    imgs[j] = IU.createCanvas(P.fromPal(tileset.pics[j].pixels, egapal, 16, 16));
   }
   tilesets.push(imgs);
 }

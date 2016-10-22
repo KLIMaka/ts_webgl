@@ -1,10 +1,6 @@
-import DS = require('drawstruct');
+import DS = require('./drawstruct');
 import MU = require('../libs/mathutils')
 import pixel = require('./pixelprovider');
-
-function repeatMode(w:number, h:number) {
-  return MU.ispow2(w) && MU.ispow2(h) ? WebGLRenderingContext.REPEAT : WebGLRenderingContext.CLAMP_TO_EDGE;
-}
 
 export class TextureStub implements DS.Texture {
   constructor(public w:number, public h:number) {}
@@ -24,7 +20,7 @@ export class TextureImpl implements DS.Texture {
   private type:number;
   public data:Uint8Array;
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+  constructor(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
     this.id = gl.createTexture();
     this.width = width;
     this.height = height;
@@ -32,10 +28,10 @@ export class TextureImpl implements DS.Texture {
     this.type = gl.UNSIGNED_BYTE;
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeatMode(width, height));
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeatMode(width, height));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.filter || gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.filter || gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.repeat || gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.repeat || gl.CLAMP_TO_EDGE);
 
     if (img == null) 
       img = new Uint8Array(width*height*bpp);
@@ -63,16 +59,21 @@ export class TextureImpl implements DS.Texture {
   public getType():number {
     return this.type;
   }
+
+  public reload(gl:WebGLRenderingContext):void {
+    gl.bindTexture(gl.TEXTURE_2D, this.id);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.width, this.height, this.getFormat(), this.getType(), this.data);
+  }
 }
 
-export function createTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
-  return new TextureImpl(width, height, gl, img, format, bpp);
+export function createTexture(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+  return new TextureImpl(width, height, gl, options, img, format, bpp);
 }
 
 export class DrawTexture extends TextureImpl {
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
-    super(width, height, gl, img, format, bpp);
+  constructor(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+    super(width, height, gl, options, img, format, bpp);
   }
 
   public putPixel(x:number, y:number, pixel:Uint8Array, gl:WebGLRenderingContext):void {
@@ -88,8 +89,8 @@ export class DrawTexture extends TextureImpl {
   }
 }
 
-export function createDrawTexture(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
-  return new DrawTexture(width, height, gl, img, format, bpp);
+export function createDrawTexture(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array=null, format:number=gl.RGBA, bpp:number=4) {
+  return new DrawTexture(width, height, gl, options, img, format, bpp);
 }
 
 export class RenderTexture extends TextureImpl {
@@ -97,8 +98,8 @@ export class RenderTexture extends TextureImpl {
   private framebuffer:WebGLFramebuffer;
   private renderbuffer:WebGLRenderbuffer;
 
-  constructor(width:number, height:number, gl:WebGLRenderingContext, img:Uint8Array = null) {
-    super(width, height, gl, img);
+  constructor(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array = null) {
+    super(width, height, gl, options, img);
     this.framebuffer = gl.createFramebuffer();
     this.renderbuffer = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderbuffer);
@@ -124,4 +125,8 @@ export class RenderTexture extends TextureImpl {
 
     return this.data;
   }
+}
+
+export function createRenderTexture(width:number, height:number, gl:WebGLRenderingContext, options:any={}, img:Uint8Array=null) {
+  return new RenderTexture(width, height, gl, options, img);
 }

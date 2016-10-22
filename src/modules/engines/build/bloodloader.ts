@@ -3,7 +3,7 @@ import build = require('./structs');
 import loader = require('./loader');
 
 
-function decryptBuffer(buffer:number[], size:number, key:number) {
+function decryptBuffer(buffer:Uint8Array, size:number, key:number) {
   for (var i = 0; i < size; i++)
     buffer[i] = buffer[i] ^ (key + i);
 }
@@ -12,7 +12,7 @@ function createStream(buf:ArrayBuffer) {
   return new data.DataViewStream(new Uint8Array(buf).buffer, true);
 }
 
-var header1Struct = data.struct(Object, [
+var header1Struct = data.struct(build.Header1, [
    ['startX', data.int],
    ['startY', data.int],
    ['startZ', data.int],
@@ -35,7 +35,7 @@ var header3Struct = data.struct(Object,[
 function readSectors(header3:any, stream:data.DataViewStream):build.Sector[] {
   var dec = ((header3.mapRevisions * loader.sectorStruct.sizeof()) & 0xFF);
   var sectors = [];
-  var sectorReader = data.array(data.ubyte, loader.sectorStruct.sizeof());
+  var sectorReader = data.atomic_array(data.ubyte, loader.sectorStruct.sizeof());
   for (var i = 0; i < header3.numSectors; i++) {
     var buf = sectorReader.read(stream);
     decryptBuffer(buf, loader.sectorStruct.sizeof(), dec);
@@ -50,7 +50,7 @@ function readSectors(header3:any, stream:data.DataViewStream):build.Sector[] {
 function readWalls(header3:any, stream:data.DataViewStream):build.Wall[] {
   var dec = (((header3.mapRevisions * loader.sectorStruct.sizeof()) | 0x4d) & 0xFF);
   var walls = [];
-  var wallReader = data.array(data.ubyte, loader.wallStruct.sizeof());
+  var wallReader = data.atomic_array(data.ubyte, loader.wallStruct.sizeof());
   for (var i = 0; i < header3.numWalls; i++) {
     var buf = wallReader.read(stream);
     decryptBuffer(buf, loader.wallStruct.sizeof(), dec);
@@ -65,7 +65,7 @@ function readWalls(header3:any, stream:data.DataViewStream):build.Wall[] {
 function readSprites(header3:any, stream:data.DataViewStream):build.Sprite[] {
   var dec = (((header3.mapRevisions * loader.spriteStruct.sizeof()) | 0x4d) & 0xFF);
   var sprites = [];
-  var spriteReader = data.array(data.ubyte, loader.spriteStruct.sizeof());
+  var spriteReader = data.atomic_array(data.ubyte, loader.spriteStruct.sizeof());
   for (var i = 0; i < header3.numSprites; i++) {
     var buf = spriteReader.read(stream);
     decryptBuffer(buf, loader.spriteStruct.sizeof(), dec);
@@ -97,11 +97,11 @@ function createBoard(version:number, header1:any, header3:any, sectors:build.Sec
 export function loadBloodMap(stream:data.DataViewStream):build.Board {
   var header = data.int.read(stream);
   var version = data.short.read(stream);
-  var buf = data.array(data.ubyte, header1Struct.sizeof()).read(stream);
+  var buf = data.atomic_array(data.ubyte, header1Struct.sizeof()).read(stream);
   decryptBuffer(buf, header1Struct.sizeof(), 0x4d);
   var header1 = header1Struct.read(createStream(buf));
   stream.skip(header2Struct.sizeof());
-  buf = data.array(data.ubyte, header3Struct.sizeof()).read(stream);
+  buf = data.atomic_array(data.ubyte, header3Struct.sizeof()).read(stream);
   decryptBuffer(buf, header3Struct.sizeof(), 0x68);
   var header3 = header3Struct.read(createStream(buf));
   stream.skip(128 + (1 << header1.unk)*2);

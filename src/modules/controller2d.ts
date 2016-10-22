@@ -1,5 +1,6 @@
 import camera = require('./camera');
 import GLM = require('../libs_js/glmatrix');
+import MU = require('../libs/mathutils');
 
 export class Controller2D {
 
@@ -20,13 +21,13 @@ export class Controller2D {
     this.gl.canvas.addEventListener('mousemove', (e:MouseEvent) => self.mousemove(e));
     this.gl.canvas.addEventListener('mouseup', (e:MouseEvent) => self.mouseup(e));
     this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
-    this.gl.canvas.addEventListener('mousewheel', (e:MouseWheelEvent) => self.mousewheel(e));
+    this.gl.canvas.addEventListener('wheel', (e:WheelEvent) => self.mousewheel(e));
   }
 
   private mousemove(e:MouseEvent):boolean {
     if (this.drag) {
-      var dx = (e.x - this.dragStartX) * this.scale;
-      var dy = (e.y - this.dragStartY) * this.scale;
+      var dx = (e.clientX - this.dragStartX) * this.scale;
+      var dy = (e.clientY - this.dragStartY) * this.scale;
       this.camera.setPosXYZ(this.cameraX - dx, this.cameraY - dy, 0);
     }
     return false;
@@ -43,19 +44,19 @@ export class Controller2D {
     if (e.button != this.dragButton)
       return;
     this.drag = true;
-    this.dragStartX = e.x;
-    this.dragStartY = e.y;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
     var campos = this.camera.getPos();
     this.cameraX = campos[0];
     this.cameraY = campos[1];
     return false;
   }
 
-  private mousewheel(e:MouseWheelEvent):boolean {
-    var dx = e.x - this.gl.drawingBufferWidth/2;
-    var dy = e.y - this.gl.drawingBufferHeight/2;
+  private mousewheel(e:WheelEvent):boolean {
+    var dx = e.clientX - this.gl.drawingBufferWidth/2;
+    var dy = e.clientY - this.gl.drawingBufferHeight/2;
 
-    var k = -e.wheelDelta * 1/1200;
+    var k = -MU.sign(e.deltaY) / 10;
     this.scale *= k + 1;
 
     var campos = this.camera.getPos();

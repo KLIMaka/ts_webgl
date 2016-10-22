@@ -115,7 +115,11 @@ export class Properties extends Table {
   }
 }
 
-function div(className:string):Element {
+export function tag(tag:string):Element {
+  return new Element(create(tag));
+}
+
+export function div(className:string):Element {
   return new Element(create('div')).className(className);
 }
 

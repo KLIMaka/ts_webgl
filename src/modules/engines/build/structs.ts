@@ -160,3 +160,12 @@ export class Board {
   public sprites:Sprite[];
 }
 
+export class Header1 {
+  public startX:number;
+  public startY:number;
+  public startZ:number;
+  public startAng:number;
+  public startSec:number;
+  public unk:number;
+}
+

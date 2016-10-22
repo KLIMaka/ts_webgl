@@ -52,10 +52,15 @@ class TP implements builder.ArtProvider {
       return tex;
 
     var info = this.arts.getInfo(picnum);
+    if (info.h <= 0 || info.w <= 0)
+       return this.get(0);
     var arr = new Uint8Array(info.w*info.h*4);
-    var pp = pixel.axisSwap(pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255));
+    var img = pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255);
+    var pp = pixel.axisSwap(img);
     pp.render(arr);
-    tex = TEX.createTexture(pp.getWidth(), pp.getHeight(), this.gl, arr);
+    var repeat = MU.ispow2(pp.getWidth()) && MU.ispow2(pp.getHeight()) ? WebGLRenderingContext.REPEAT : WebGLRenderingContext.CLAMP_TO_EDGE;
+    var filter = WebGLRenderingContext.NEAREST;
+    tex = TEX.createTexture(pp.getWidth(), pp.getHeight(), this.gl, {filter:filter, repeat:repeat}, arr);
 
     this.textures[picnum] = tex;
     return tex;
@@ -136,7 +141,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   panel.append(new UI.Element(compass));
   document.body.appendChild(panel.elem());
 
-  var board = bloodloader.loadBloodMap(new data.DataViewStream(map, true));
+  var stream = new data.DataViewStream(map, true);
+  var board = bloodloader.loadBloodMap(stream);
   var processor = new builder.BoardProcessor(board);
   var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
@@ -188,7 +194,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
-    
 
     tic();
     var models = processor.get(ms, control.getCamera().forward());

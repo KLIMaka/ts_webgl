@@ -46,7 +46,7 @@ export class ArtFile {
     var w = this.ws[id];
     var h = this.hs[id];
     var anum = this.anums[id];
-    var pixels = data.array(data.ubyte, w*h).read(this.stream);
+    var pixels = data.atomic_array(data.ubyte, w*h).read(this.stream);
     return new ArtInfo(w, h, anum, pixels);
   }
 
