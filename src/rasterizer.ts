@@ -59,7 +59,7 @@ export function animate(callback:(time:number)=>void) {
   function update() {
     var now = new Date().getTime();
     var dt = (now - time) / 1000;
-    fpsCounter.innerText = dt + ' ms ' + (10000/dt) + ' rect per sec';
+    fpsCounter.innerText = dt + ' ms';
     callback(dt);
     //requestAnimationFrame(update);
     setTimeout(update);
@@ -73,12 +73,28 @@ var trans = GLM.mat4.create();
 var vec1 = GLM.vec3.create();
 var vec2 = GLM.vec3.create();
 var vec3 = GLM.vec3.create();
+var vecz = GLM.vec3.create();
+
+var proj = GLM.mat4.clone([
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, -0.008, 
+  0, 0, 0, 1, 
+]);
 
 var tris = [
-  [[0xff99aa99], [-100, -100, -100], [100, -100, -100], [100, 100, -100]],
-  [[0xffaa9999], [-100, -100, -100], [100, 100, -100], [-100, 100, -100]],
-  [[0xff9999aa], [-100, -100, 100], [100, -100, 100], [100, 100, 100]],
-  [[0xffaa99aa], [-100, -100, 100], [100, 100, 100], [-100, 100, 100]],
+  [[0xff55aaaa], [-100, -100, -100], [100, -100, -100], [100, 100, -100], [0, 0, -100]],
+  [[0xff55aaaa], [-100, -100, -100], [100, 100, -100], [-100, 100, -100], [0, 0, -100]],
+  [[0xffaa55aa], [-100, -100, 100], [100, -100, 100], [100, 100, 100], [0, 0, 100]],
+  [[0xffaa55aa], [-100, -100, 100], [100, 100, 100], [-100, 100, 100], [0, 0, 100]],
+  [[0xffaaaa55], [-100, -100, -100], [-100, -100, 100], [100, -100, 100], [0, -100, 0]],
+  [[0xffaaaa55], [-100, -100, -100], [100, -100, 100], [100, -100, -100], [0, -100, 0]],
+  [[0xff55aa55], [-100, 100, -100], [-100, 100, 100], [100, 100, 100], [0, 100, 0]],
+  [[0xff55aa55], [-100, 100, -100], [100, 100, 100], [100, 100, -100], [0, 100, 0]],
+  [[0xff5555aa], [-100, -100, -100], [-100, -100, 100], [-100, 100, 100], [-100, 0, 0]],
+  [[0xff5555aa], [-100, -100, -100], [-100, 100, 100], [-100, 100, -100], [-100, 0, 0]],
+  [[0xffaa5555], [100, -100, -100], [100, -100, 100], [100, 100, 100], [100, 0, 0]],
+  [[0xffaa5555], [100, -100, -100], [100, 100, 100], [100, 100, -100], [100, 0, 0]],
 ];
 
 
@@ -93,22 +109,31 @@ animate((dt) => {
   // swRects(10000, 200);
   // swFastRects(10000, 200);
 
-  // swTriangles(1000, 50);
-
+  ang += dt;
   swFill(0xffffffff);
-  zbuf.fill(0x8000, 0, 640*480);
+  // zbuf.fill(0x8000, 0, 640*480);
   GLM.mat4.identity(rot);
   GLM.mat4.translate(rot, rot, [320, 240, 0]);
-  GLM.mat4.rotateY(rot, rot, ang+=dt);
-  // GLM.mat4.rotateX(rot, rot, ang+=dt);
-  // GLM.mat4.rotateZ(rot, rot, ang+=dt);
+  GLM.mat4.mul(rot, rot, proj);
+  GLM.mat4.translate(rot, rot, [0, 0, -200]);
+  GLM.mat4.rotateY(rot, rot, ang);
+  GLM.mat4.rotateX(rot, rot, ang);
+  GLM.mat4.rotateZ(rot, rot, ang);
+  var list = [];
   for (var i = 0; i < tris.length; i++) {
     GLM.vec3.transformMat4(vec1, tris[i][1], rot);
     GLM.vec3.transformMat4(vec2, tris[i][2], rot);
     GLM.vec3.transformMat4(vec3, tris[i][3], rot);
-    triangleZ(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0, vec2[0]|0, vec2[1]|0, vec2[2]|0, vec3[0]|0, vec3[1]|0, vec3[2]|0]);
+    GLM.vec3.transformMat4(vecz, tris[i][4], rot);
+    list.push([vecz[2], tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0], [vec2[0]|0, vec2[1]|0, vec2[2]|0], [vec3[0]|0, vec3[1]|0, vec3[2]|0]]);
+    // triangleZ(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec1[2]|0, vec2[0]|0, vec2[1]|0, vec2[2]|0, vec3[0]|0, vec3[1]|0, vec3[2]|0]);
     // triangle(tris[i][0][0], [vec1[0]|0, vec1[1]|0, vec2[0]|0, vec2[1]|0, vec3[0]|0, vec3[1]|0]);
   }
+  list.sort((a:number[], b:number[]) => {return a[0]-b[0];})
+  for (var i = 0; i < list.length; i++) {
+    triangleZ(list[i][1], list[i][2], list[i][3], list[i][4]);
+  }
+
   ctx.putImageData(data, 0, 0);
 
 });
@@ -191,18 +216,18 @@ function triangle(color:number, points:number[]) {
   }
 }
 
-function triangleZ(color:number, points:number[]) {
-  var maxy = Math.min(Math.max(points[1], points[4], points[7]), 480);
-  var miny = Math.max(Math.min(points[1], points[4], points[7]), 0);
-  var dx = [points[0]-points[3], points[3]-points[6], points[6]-points[0]];
-  var dy = [points[1]-points[4], points[4]-points[7], points[7]-points[1]];
-  var dz = [points[2]-points[5], points[5]-points[8], points[8]-points[2]];
+function triangleZ(color:number, p1:number[], p2:number[], p3:number) {
+  var maxy = Math.min(Math.max(p1[1], p2[1], p3[1]), 480);
+  var miny = Math.max(Math.min(p1[1], p2[1], p3[1]), 0);
+  var dx = [p1[0]-p2[0], p2[0]-p3[0], p3[0]-p1[0]];
+  var dy = [p1[1]-p2[1], p2[1]-p3[1], p3[1]-p1[1]];
+  // var dz = [p1[2]-p2[2], p2[2]-p3[2], p3[2]-p1[2]];
   var idxs = [0, 0, 0];
   for(var y = miny; y <= maxy; y++) {
-    var s = [y-points[1], y-points[4], y-points[7]];
+    var s = [y-p1[1], y-p2[1], y-p3[1]];
     var k = [s[0]/dy[0], s[1]/dy[1], s[2]/dy[2]];
-    var x = [points[0] + k[0]*dx[0], points[3] + k[1]*dx[1], points[6] + k[2]*dx[2]];
-    var z = [points[2] + k[0]*dz[0], points[5] + k[1]*dz[1], points[8] + k[2]*dz[2]];
+    var x = [p1[0] + k[0]*dx[0], p2[0] + k[1]*dx[1], p3[0] + k[2]*dx[2]];
+    // var z = [p1[2] + k[0]*dx[0], p2[2] + k[1]*dx[1], p3[2] + k[2]*dx[2]];
     var ss = [s[0]*s[1], s[1]*s[2], s[2]*s[0]];
     var i = 0;
     if (ss[0] <= 0) idxs[i++] = 0;
@@ -218,13 +243,13 @@ function triangleZ(color:number, points:number[]) {
     var yoff = y*640;
     var lx = Math.round(Math.max(x[li], 0));
     var rx = Math.round(Math.min(x[ri], 639))+1;
-    var lz = z[li];
-    var dzz = (z[ri]-z[li])/(rx-lx);
-    for (; lx < rx; lx++, lz+=dzz) {
-      if (zbuf[yoff+lx] < lz) {
+    // var lz = z[li];
+    // var dzz = (z[ri]-z[li])/(rx-lx);
+    for (; lx < rx; lx++/*, lz+=dzz*/) {
+      // if (zbuf[yoff+lx] < lz) {
         fbi[yoff+lx] = color;
-        zbuf[yoff+lx] = lz;
-      }
+        // zbuf[yoff+lx] = lz;
+      // }
     }
   }
 }

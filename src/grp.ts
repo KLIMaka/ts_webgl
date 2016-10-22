@@ -41,7 +41,7 @@ getter.loader
 .load('resources/engines/blood/palette.dat')
 .finish(() => {
 
-var pal = new Uint8Array(getter.get('resources/engines/blood/palette.dat'));
+var pal = GRP.createPalette(getter.get('resources/engines/blood/palette.dat'));
 
 var arts = [];
 for (var a = 0; a < 18; a++)

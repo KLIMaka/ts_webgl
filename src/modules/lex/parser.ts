@@ -1,4 +1,4 @@
-import lex = require('lexer');
+import lex = require('./lexer');
 
 export class NoopCapture {
   public put(value:any):void {}  

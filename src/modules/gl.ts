@@ -6,7 +6,7 @@ export function createContext(w:number, h:number, opts = {}):WebGLRenderingConte
   canvas.width = w;
   canvas.height = h;
   canvas.id = 'gl';
-  var gl = canvas.getContext('webgl', opts);
+  var gl = <WebGLRenderingContext> canvas.getContext('webgl', opts);
 
   document.body.appendChild(gl.canvas);
   document.body.style.overflow = 'hidden';

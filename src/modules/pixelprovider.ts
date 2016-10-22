@@ -7,8 +7,8 @@ export interface PixelProvider {
   putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void;
   getWidth():number;
   getHeight():number;
-  render(dst:Uint8Array):void;
-  blend(dst:Uint8Array):void;
+  render(dst:Uint8Array|number[]):void;
+  blend(dst:Uint8Array|number[]):void;
 }
 
 export class AbstractPixelProvider implements PixelProvider {
