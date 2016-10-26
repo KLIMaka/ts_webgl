@@ -2,13 +2,21 @@
 import MU = require('../libs/mathutils');
 import Anim = require('./anim');
 
+export type BlendFunc = (dst:Uint8Array, dstoff:number, src:Uint8Array, srcoff:number) => void;
+
+export var BlendNormal = (dst:Uint8Array, dstoff:number, src:Uint8Array, srcoff:number) => { 
+  dst[dstoff] = src[srcoff];
+  dst[dstoff+1] = src[srcoff+1];
+  dst[dstoff+2] = src[srcoff+2];
+  dst[dstoff+3] = src[srcoff+3];
+}
+
 export interface PixelProvider {
   getPixel(x:number, y:number):Uint8Array;
-  putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void;
+  putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void;
   getWidth():number;
   getHeight():number;
-  render(dst:Uint8Array):void;
-  blend(dst:Uint8Array):void;
+  render(dst:Uint8Array, blend:BlendFunc):void;
 }
 
 export class AbstractPixelProvider implements PixelProvider {
@@ -18,11 +26,11 @@ export class AbstractPixelProvider implements PixelProvider {
       throw new Error('Invalid size');
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {}
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {}
 
   public getPixel(x:number, y:number):Uint8Array {
     var dst = new Uint8Array(4);
-    this.putToDst(x, y, dst, 0);
+    this.putToDst(x, y, dst, 0, BlendNormal);
     return dst;
   }
 
@@ -34,31 +42,12 @@ export class AbstractPixelProvider implements PixelProvider {
     return this.h;
   }
 
-  public render(dst:Uint8Array):void {
+  public render(dst:Uint8Array, blend:BlendFunc = BlendNormal):void {
     var off = 0;
+    var tmp = new Uint8Array(4);
     for (var y = 0; y < this.h; y++) {
       for (var x = 0; x < this.w; x++){
-        this.putToDst(x, y, dst, off);
-        off+=4
-      }
-    }
-  }
-
-  public blend(dst:Uint8Array):void {
-    var tmpdst = new Uint8Array(4);
-    var off = 0;
-    for (var y = 0; y < this.h; y++) {
-      for (var x = 0; x < this.w; x++){
-        this.putToDst(x, y, tmpdst, 0);
-        if (tmpdst[3] == 0){
-          off+=4;
-          continue;
-        }
-        var a = tmpdst[3] / 255;
-        dst[off+0] = MU.int(tmpdst[0]*a + dst[off+0]*(1-a));
-        dst[off+1] = MU.int(tmpdst[1]*a + dst[off+1]*(1-a));
-        dst[off+2] = MU.int(tmpdst[2]*a + dst[off+2]*(1-a));
-        dst[off+3] = 255;
+        this.putToDst(x, y, dst, off, blend);
         off+=4;
       }
     }
@@ -67,15 +56,12 @@ export class AbstractPixelProvider implements PixelProvider {
 
 export class ConstPixelProvider extends AbstractPixelProvider {
 
-  constructor(private color:number[], w:number, h:number) {
+  constructor(private color:Uint8Array, w:number, h:number) {
     super(w, h);
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
-    dst[dstoff] = this.color[0];
-    dst[dstoff+1] = this.color[1];
-    dst[dstoff+2] = this.color[2];
-    dst[dstoff+3] = this.color[3];
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number,  blend:BlendFunc):void {
+    blend(dst, dstoff, this.color, 0);
   }
 }
 
@@ -87,12 +73,9 @@ export class RGBAArrayPixelProvider extends AbstractPixelProvider {
       throw new Error('Invalid array size. Need ' + (w*h*4) + ' but provided ' + arr.length);
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
     var w = this.getWidth();
-    dst[dstoff] = this.arr[(x+y*w)*4];
-    dst[dstoff+1] = this.arr[(x+y*w)*4+1];
-    dst[dstoff+2] = this.arr[(x+y*w)*4+2];
-    dst[dstoff+3] = this.arr[(x+y*w)*4+3];
+    blend(dst, dstoff, this.arr, (x+y*w)*4)
   }
 }
 
@@ -105,21 +88,18 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
     private alpha:number=255, 
     private transIdx:number=-1, 
     private shadow:number=-1, 
-    private shadowColor:number[]=[0,0,0,0]
+    private shadowColor:Uint8Array=new Uint8Array([0,0,0,0]);
   ) {
     super(w, h);
     if (arr.length != w*h)
       throw new Error('Invalid array size. Need ' + (w*h*4) + ' but provided ' + arr.length);
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
     var w = this.getWidth();
     var idx = this.arr[x+y*w];
     if (idx == this.shadow) {
-      dst[dstoff+0] = this.shadowColor[0];
-      dst[dstoff+1] = this.shadowColor[1];
-      dst[dstoff+2] = this.shadowColor[2];
-      dst[dstoff+3] = this.shadowColor[3];
+      blend(dst, dstoff, this.shadowColor, 0);
       return;
     }
     var paloff = idx*3;

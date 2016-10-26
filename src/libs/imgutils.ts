@@ -20,7 +20,7 @@ export function drawToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElem
   var ctx = canvas.getContext('2d');
   var data = new Uint8ClampedArray(provider.getWidth()*provider.getHeight()*4);
   var id = new ImageData(data, provider.getWidth(), provider.getHeight());
-  provider.render(data);
+  provider.render(data, pixel.BlendNormal);
   ctx.putImageData(id, x, y);
 }
 
