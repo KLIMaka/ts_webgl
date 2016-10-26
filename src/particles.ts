@@ -1,6 +1,6 @@
 import MU = require('./libs/mathutils');
 import raster = require('./modules/rasterizer');
-import P = require('modules/particles');
+import P = require('./modules/particles');
 
 function updateBuffers(ps:P.ParticleSystem, buffer:number[]):number {
   var plist = ps.getParticles();

@@ -110,10 +110,9 @@ animate((dt) => {
   // swFill();
   // hwNoise();
   // swNoise();
-  // hwRects(10000, 50);
+  // hwRects(10000, 200);
   // swRects(10000, 200);
   // swFastRects(10000, 200);
-
   // swTriangles(100, 50);
   // cube(dt);
   cubes(dt);

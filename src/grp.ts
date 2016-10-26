@@ -41,7 +41,6 @@ for (var a = 0; a < 20; a++) {
 // getter.loader
 // .load('resources/engines/blood/palette.dat')
 // .finish(() => {
-
 // var pal = new Uint8Array(getter.get('resources/engines/blood/palette.dat'));
 
 // var arts = [];
@@ -55,5 +54,4 @@ for (var a = 0; a < 20; a++) {
 //   var pp = pixel.axisSwap(pixel.fromPal(info.img, pal, info.w, info.h, 255, 255));
 //   document.body.appendChild(IU.createCanvas(pp));
 // }
-
 // });

@@ -1,5 +1,5 @@
 import MU = require('./libs/mathutils');
-import P = require('/.modules/particles');
+import P = require('./modules/particles');
 import GL = require('./modules/gl');
 import MB = require('./modules/meshbuilder');
 import C2D = require('./modules/controller2d');
@@ -7,7 +7,7 @@ import SHADERS = require('./modules/shaders');
 import BATCHER = require('./modules/batcher');
 import GLM = require('./libs_js/glmatrix');
 
-var MAX_SIZE = 1000;
+var MAX_SIZE = 10000;
 
 var gl = GL.createContext(600, 600, {alpha:false});
 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
