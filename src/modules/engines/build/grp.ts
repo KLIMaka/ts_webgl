@@ -26,7 +26,7 @@ export class GrpFile {
  
   public get(fname:string):data.DataViewStream {
     var off = this.files[fname];
-    if (off != undefined){
+    if (off != undefined) {
        this.data.setOffset(off);
       return this.data.subView();
     }

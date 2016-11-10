@@ -18,27 +18,27 @@ import RFF = require('./modules/engines/build/rff');
 import pixel = require('./modules/pixelprovider');
 import getter = require('./libs/getter');
 
-// var pal = new Uint8Array(256*3);
-// var hslPal = new Uint8Array(256*3);
-// pal[0] = 0;   pal[1] =   0; pal[2] =   0;
-// pal[3] = 62;  pal[4] =  49; pal[5] = 162;
-// pal[6] = 87;  pal[7] =  66; pal[8] =   0;
-// pal[9] = 140; pal[10] =  62; pal[11] =  52;
-// pal[12] = 84;  pal[13] =  84; pal[14] =  84;
-// pal[15] = 141; pal[16] =  72; pal[17] = 179;
-// pal[18] = 144; pal[19] =  95; pal[20] =  37;
-// pal[21] = 124; pal[22] = 112; pal[23] = 218;
-// pal[24] = 128; pal[25] = 128; pal[26] = 128;
-// pal[27] = 104; pal[28] = 169; pal[29] =  65;
-// pal[30] = 187; pal[31] = 119; pal[32] = 109;
-// pal[33] = 122; pal[34] = 191; pal[35] = 199;
-// pal[36] = 171; pal[37] = 171; pal[38] = 171;
-// pal[39] = 208; pal[40] = 220; pal[41] = 113;
-// pal[42] = 172; pal[43] = 234; pal[44] = 136;
-// pal[45] = 255; pal[46] = 255; pal[47] = 255;
+var pal = new Uint8Array(256*3);
+pal[0] = 0;   pal[1] =   0; pal[2] =   0;
+pal[3] = 62;  pal[4] =  49; pal[5] = 162;
+pal[6] = 87;  pal[7] =  66; pal[8] =   0;
+pal[9] = 140; pal[10] =  62; pal[11] =  52;
+pal[12] = 84;  pal[13] =  84; pal[14] =  84;
+pal[15] = 141; pal[16] =  72; pal[17] = 179;
+pal[18] = 144; pal[19] =  95; pal[20] =  37;
+pal[21] = 124; pal[22] = 112; pal[23] = 218;
+pal[24] = 128; pal[25] = 128; pal[26] = 128;
+pal[27] = 104; pal[28] = 169; pal[29] =  65;
+pal[30] = 187; pal[31] = 119; pal[32] = 109;
+pal[33] = 122; pal[34] = 191; pal[35] = 199;
+pal[36] = 171; pal[37] = 171; pal[38] = 171;
+pal[39] = 208; pal[40] = 220; pal[41] = 113;
+pal[42] = 172; pal[43] = 234; pal[44] = 136;
+pal[45] = 255; pal[46] = 255; pal[47] = 255;
 
 class ConverterPixelProvider extends P.AbstractPixelProvider {
   private labPal:number[];
+  private palTmp = new Uint8Array([0,0,0,255]);
 
   constructor(private provider:P.PixelProvider, private pal:number[]) {
     super(provider.getWidth(), provider.getHeight());
@@ -46,15 +46,16 @@ class ConverterPixelProvider extends P.AbstractPixelProvider {
     this.labPal = COLOR.convertPal(xyzPal, COLOR.xyz2lab);
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
-    this.provider.putToDst(x, y, dst, dstoff);
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:P.BlendFunc):void {
+    this.provider.putToDst(x, y, dst, dstoff, blend);
     var xyz = COLOR.rgb2xyz(dst[dstoff+0],dst[dstoff+1],dst[dstoff+2]);
     var lab = COLOR.xyz2lab(xyz[0], xyz[1], xyz[2]);
     var [i, i1, t] = COLOR.findHsl(this.labPal, lab[0], lab[1], lab[2]);
     var idx = COLOR.dither(x, y, 0.5*t) ? i : i1;
-    dst[dstoff+0] = this.pal[idx*3+0];
-    dst[dstoff+1] = this.pal[idx*3+1];
-    dst[dstoff+2] = this.pal[idx*3+2];
+    this.palTmp[0] = this.pal[idx*3+0];
+    this.palTmp[1] = this.pal[idx*3+1];
+    this.palTmp[2] = this.pal[idx*3+2];
+    blend(dst, dstoff, this.palTmp, 0);
   }
 }
 
@@ -64,7 +65,7 @@ getter.loader
 
 var file = getter.get('resources/engines/duke/duke3d.grp');
 var grpFile = GRP.create(file);
-var pal = GRP.createPalette(grpFile.get('PALETTE.DAT'));
+// var pal = GRP.createPalette(grpFile.get('PALETTE.DAT'));
 var pal1 = new Array<number>(256*3);
 for (var i = 0; i < 256*3; i++) pal1[i] = pal[i];
 

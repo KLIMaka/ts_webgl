@@ -80,6 +80,7 @@ export class RGBAArrayPixelProvider extends AbstractPixelProvider {
 }
 
 export class RGBPalPixelProvider extends AbstractPixelProvider {
+  private palTmp = new Uint8Array(4);
 
   constructor(
     private arr:Uint8Array, 
@@ -88,7 +89,7 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
     private alpha:number=255, 
     private transIdx:number=-1, 
     private shadow:number=-1, 
-    private shadowColor:Uint8Array=new Uint8Array([0,0,0,0]);
+    private shadowColor:Uint8Array=new Uint8Array([0,0,0,0])
   ) {
     super(w, h);
     if (arr.length != w*h)
@@ -103,10 +104,11 @@ export class RGBPalPixelProvider extends AbstractPixelProvider {
       return;
     }
     var paloff = idx*3;
-    dst[dstoff] = this.pal[paloff];
-    dst[dstoff+1] = this.pal[paloff+1];
-    dst[dstoff+2] = this.pal[paloff+2];
-    dst[dstoff+3] = idx == this.transIdx ? 0 : this.alpha;
+    this.palTmp[0] = this.pal[paloff];
+    this.palTmp[1] = this.pal[paloff+1];
+    this.palTmp[2] = this.pal[paloff+2];
+    this.palTmp[3] = idx == this.transIdx ? 0 : this.alpha;
+    blend(dst, dstoff, this.palTmp, 0);
   }
 }
 
@@ -115,7 +117,14 @@ export class RectPixelProvider extends AbstractPixelProvider {
   private origw:number;
   private origh:number;
 
-  constructor(private provider:PixelProvider, private sx:number, private sy:number, private ex:number, private ey:number, private paddColor:number[]=[0,0,0,0]) {
+  constructor(
+    private provider:PixelProvider, 
+    private sx:number, 
+    private sy:number, 
+    private ex:number, 
+    private ey:number, 
+    private paddColor:Uint8Array=new Uint8Array([0,0,0,0])) 
+  {
     super(ex-sx, ey-sy);
     this.origw = provider.getWidth();
     this.origh = provider.getHeight();
@@ -123,20 +132,13 @@ export class RectPixelProvider extends AbstractPixelProvider {
       throw new Error('Invalid subrect');
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
     var nx = this.sx+x;
     var ny = this.sy+y;
     if (nx < 0 || ny < 0 || nx >= this.origw || ny >= this.origh)
-      this.putPadding(dst, dstoff);
+      blend(dst, dstoff, this.paddColor, 0);
     else
-      this.provider.putToDst(nx, ny, dst, dstoff);
-  }
-
-  private putPadding(dst:Uint8Array, dstoff:number) {
-    dst[dstoff] = this.paddColor[0];
-    dst[dstoff+1] = this.paddColor[1];
-    dst[dstoff+2] = this.paddColor[2];
-    dst[dstoff+3] = this.paddColor[3];
+      this.provider.putToDst(nx, ny, dst, dstoff, blend);
   }
 }
 
@@ -151,8 +153,8 @@ export class ResizePixelProvider extends AbstractPixelProvider {
       this.dy = provider.getHeight() / h;
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
-    this.provider.putToDst(MU.int(x*this.dx), MU.int(y*this.dy), dst, dstoff);
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
+    this.provider.putToDst(MU.int(x*this.dx), MU.int(y*this.dy), dst, dstoff, blend);
   }
 }
 
@@ -162,8 +164,8 @@ export class AxisSwapPixelProvider extends AbstractPixelProvider {
     super(provider.getHeight() ,provider.getWidth());
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
-    this.provider.putToDst(y, x, dst, dstoff);
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
+    this.provider.putToDst(y, x, dst, dstoff, blend);
   }
 }
 
@@ -177,12 +179,12 @@ export class FlipPixelProvider extends AbstractPixelProvider {
     this.ys = yswap ? provider.getHeight()-1 : 0;
   }
 
-  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number):void {
-    this.provider.putToDst(Math.abs(x-this.xs), Math.abs(y-this.ys), dst, dstoff);
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
+    this.provider.putToDst(Math.abs(x-this.xs), Math.abs(y-this.ys), dst, dstoff, blend);
   }
 }
 
-export function fromPal(arr:Uint8Array, pal:Uint8Array, w:number, h:number, alpha:number=255, transIdx:number=-1, shadow:number=-1, shadowColor:number[]=[0,0,0,0]) {
+export function fromPal(arr:Uint8Array, pal:Uint8Array, w:number, h:number, alpha:number=255, transIdx:number=-1, shadow:number=-1, shadowColor:Uint8Array=new Uint8Array([0,0,0,0])) {
   return new RGBPalPixelProvider(arr, pal, w, h, alpha, transIdx, shadow, shadowColor);
 }
 
@@ -202,13 +204,13 @@ export function xyflip(provider:PixelProvider) {
   return new FlipPixelProvider(provider, true, true);
 }
 
-export function rect(provider:PixelProvider, sx:number, sy:number, ex:number, ey:number, paddColod:number[]=[0,0,0,0]) {
+export function rect(provider:PixelProvider, sx:number, sy:number, ex:number, ey:number, paddColod:Uint8Array=new Uint8Array([0,0,0,0])) {
   if (sx == 0 && sy == 0 && provider.getHeight() == ey && provider.getWidth() == ex)
     return provider;
   return new RectPixelProvider(provider, sx, sy, ex, ey, paddColod);
 }
 
-export function center(provider:PixelProvider, w:number, h:number, paddColod:number[]=[0,0,0,0]) {
+export function center(provider:PixelProvider, w:number, h:number, paddColod:Uint8Array=new Uint8Array([0,0,0,0])) {
   var dw = MU.int((provider.getWidth() - w)/2);
   var dh = MU.int((provider.getHeight() - h)/2);
   return rect(provider, dw, dh, w+dw, h+dh);
@@ -221,7 +223,7 @@ export function resize(provider:PixelProvider, w:number, h:number) {
   return new ResizePixelProvider(provider, w, h);
 }
 
-export function fit(w:number, h:number, provider:PixelProvider, paddColor:number[]=[0,0,0,0]) {
+export function fit(w:number, h:number, provider:PixelProvider, paddColor:Uint8Array=new Uint8Array([0,0,0,0])) {
   if (provider.getHeight() == h && provider.getWidth() == w)
     return provider;
   if (provider.getWidth() <= w && provider.getHeight() <= h) {

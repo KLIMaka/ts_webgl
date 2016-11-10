@@ -8,27 +8,19 @@ export function createEmptyCanvas(width:number, height:number):HTMLCanvasElement
   return canvas;
 }
 
-export function createCanvas(provider:pixel.PixelProvider):HTMLCanvasElement {
+export function createCanvas(provider:pixel.PixelProvider, blend:pixel.BlendFunc=pixel.BlendNormal):HTMLCanvasElement {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
   canvas.width = provider.getWidth();
   canvas.height = provider.getHeight();
-  drawToCanvas(provider, canvas);
+  drawToCanvas(provider, canvas, 0, 0, blend);
   return canvas;
 }
 
-export function drawToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElement, x:number=0, y:number=0) {
+export function drawToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElement, x:number=0, y:number=0, blend:pixel.BlendFunc=pixel.BlendNormal) {
   var ctx = canvas.getContext('2d');
   var data = new Uint8ClampedArray(provider.getWidth()*provider.getHeight()*4);
   var id = new ImageData(data, provider.getWidth(), provider.getHeight());
-  provider.render(data, pixel.BlendNormal);
-  ctx.putImageData(id, x, y);
-}
-
-export function blendToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElement, x:number=0, y:number=0) {
-  var ctx = canvas.getContext('2d');
-  var data = new Uint8ClampedArray(provider.getWidth()*provider.getHeight()*4);
-  var id = new ImageData(data, provider.getWidth(), provider.getHeight());
-  provider.blend(data);
+  provider.render(data, blend);
   ctx.putImageData(id, x, y);
 }
 
