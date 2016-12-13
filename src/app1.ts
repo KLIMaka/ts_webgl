@@ -18,8 +18,8 @@ import IU = require('./libs/imgutils');
 import tcpack = require('./modules/texcoordpacker');
 import raster = require('./modules/rasterizer');
 
-var w = 600;
-var h = 400;
+var w = 1024;
+var h = 768;
 
 var base = null;
 class Mat implements ds.Material {
@@ -59,9 +59,9 @@ function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture)
 
   builder.start(mb.QUADS)
     .attr('norm', [0, 0]).vtx('pos', [0, 0])
-    .attr('norm', [1, 0]).vtx('pos', [128, 0])
-    .attr('norm', [1, 1]).vtx('pos', [128, 128])
-    .attr('norm', [0, 1]).vtx('pos', [0, 128])
+    .attr('norm', [1, 0]).vtx('pos', [256, 0])
+    .attr('norm', [1, 1]).vtx('pos', [256, 256])
+    .attr('norm', [0, 1]).vtx('pos', [0, 256])
     .end();
   return builder.build(gl, new Mat(shader, {texture:tex}));
 }
@@ -180,7 +180,7 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       var idx = (y*w+x)*4;
-      var c = (lm[idx] + (lm1==null ? 0 : lm1[idx]))/ (lm1==null ? 1 : 2);
+      var c = lm[idx];
       var a = lm[idx+3];
       if (a == 0) {
         var sum = 0;
@@ -195,6 +195,7 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
         if (x < w-1 && y < h-1) {sum += lm[idx+dw+dh]; count += lm[idx+dw+dh+3]!=0?1:0;}
         c = sum / count;
       }
+      c = c*(lm1==null ? 1 : 0.6) + (lm1==null ? 0 : lm1[idx])*0.4;
       ret[idx] = c;
       ret[idx+1] = c;
       ret[idx+2] = c;
@@ -349,8 +350,10 @@ traceContext.processor = processor;
 traceContext.light = light;
 var lmdata = processLM(builder.bake(gl, R, R), R, R);
 lm.putSubImage(0, 0, R, R, lmdata, gl);
-// lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
-// lm.putSubImage(0, 0, R, R, lmdata, gl);
+lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
+lm.putSubImage(0, 0, R, R, lmdata, gl);
+lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
+lm.putSubImage(0, 0, R, R, lmdata, gl);
 
 
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');

@@ -125,6 +125,5 @@ export function dither(x:number, y:number, t:number):boolean {
   if (t == 1.0) return false;
   var idx = (y%8)*8+x%8;
   var d = (ditherMatrix[idx]+1) / 64;
-  if (idx = 0) d = 0;
   return t <= d;
 }
