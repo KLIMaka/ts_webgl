@@ -318,7 +318,7 @@ function getWallVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, next
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
-  if (check && (z4 > z1 && z3 > z2))
+  if (check && (z4 >= z1 && z3 >= z2))
     return null;
   var a = [x1, z1, y1];
   var b = [x2, z2, y2];

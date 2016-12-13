@@ -204,7 +204,7 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
   return ret;
 }
 
-var S = 4096*5;
+var S = 4096*6;
 var R = 128;
 class MyBoardBuilder implements builder_.BoardBuilder {
   private builder:mb.MeshBuilder;
@@ -235,7 +235,8 @@ class MyBoardBuilder implements builder_.BoardBuilder {
   }
 
   public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
-    var proj = VEC.project3d(verts);
+    var normal = VEC.polygonNormal(verts);
+    var proj = VEC.project3d(verts, normal);
     var hull = tcpack.getHull(proj);
     var r = this.packer.pack(new tcpack.Rect(hull.maxx-hull.minx, hull.maxy-hull.miny));
     if (r == null)
@@ -246,7 +247,6 @@ class MyBoardBuilder implements builder_.BoardBuilder {
       var v = (r.yoff+proj[i][1]-hull.miny)/S;
       lmtcs.push([u, v]);
     }
-    var normal = VEC.polygonNormal(verts);
 
     this.builder.start(type)
       .attr('aNorm', normal)
@@ -293,17 +293,17 @@ class MyBoardBuilder implements builder_.BoardBuilder {
   }
 
   public addSprite(verts:number[][], pos:number[], tcs:number[][], idx:number, shade:number):void {
-    this.builder.start(mb.QUADS)
-      .attr('aPos', pos)
-      .attr('aIdx', MU.int2vec4(idx))
-      .attr('aShade', [shade]);
-    for (var i = 0; i < 4; i++){
-      this.builder
-        .attr('aTc', tcs[i])
-        .vtx('aNorm', verts[i]);
-    }
-    this.builder.end();
-    this.len += 6;
+    // this.builder.start(mb.QUADS)
+    //   .attr('aPos', pos)
+    //   .attr('aIdx', MU.int2vec4(idx))
+    //   .attr('aShade', [shade]);
+    // for (var i = 0; i < 4; i++){
+    //   this.builder
+    //     .attr('aTc', tcs[i])
+    //     .vtx('aNorm', verts[i]);
+    // }
+    // this.builder.end();
+    // this.len += 6;
   }
 
   public begin() {
@@ -337,7 +337,7 @@ gl.enable(gl.DEPTH_TEST);
 var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
 
 base = new TEX.DrawTexture(1, 1, gl);
-var lm = new TEX.DrawTexture(R, R, gl);
+var lm = new TEX.DrawTexture(R, R, gl, {filter:gl.LINEAR});
 var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_base.vsh'), getter.getString('resources/shaders/trace_base.fsh'));
 var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
 var builder = new MyBoardBuilder(gl);

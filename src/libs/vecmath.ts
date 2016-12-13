@@ -300,11 +300,9 @@ function findOrigin(vtxs:vec3_t[]):number[] {
   return [findOther(vtxs, res[0], res[1], res[2]), res[1], res[2]];
 }
 
-export function projectionSpace(vtxs:vec3_t[]) {
-  var o = findOrigin(vtxs);
-  var a = subCopy3d(vtxs[o[1]], vtxs[o[2]]);
-  var b = subCopy3d(vtxs[o[1]], vtxs[o[0]]);
-  var n = normalize3d(crossCopy3d(b, a));
+export function projectionSpace(vtxs:vec3_t[], n:vec3_t) {
+  // var o = findOrigin(vtxs);
+  var a = normalize3d(subCopy3d(vtxs[0], vtxs[1]));
   var c = normalize3d(crossCopy3d(n, a));
   normalize3d(a);
   var ret = [
@@ -312,12 +310,12 @@ export function projectionSpace(vtxs:vec3_t[]) {
     a[1], c[1], n[1],
     a[2], c[2], n[2]
   ];
-  release3d(a); release3d(b); release3d(n); release3d(c); 
+  release3d(a); release3d(c); 
   return ret;
 }
 
-export function project3d(vtxs:vec3_t[]):vec2_t[] {
-  var mat = projectionSpace(vtxs);
+export function project3d(vtxs:vec3_t[], normal:vec3_t):vec2_t[] {
+  var mat = projectionSpace(vtxs, normal);
   var ret = [];
   for (var i = 0; i < vtxs.length; i++) {
     var vtx = GLM.vec3.transformMat3(GLM.vec3.create(), vtxs[i], mat);
