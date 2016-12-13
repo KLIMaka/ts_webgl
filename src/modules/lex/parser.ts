@@ -1,37 +1,11 @@
 import lex = require('./lexer');
 
-export class NoopCapture {
-  public put(value:any):void {}  
-}
-
-export class SetCapture {
-
-  constructor(private name:string, private map = {}) {}
-
-  public put(value:any):void {
-    this.map[this.name] = value;
-  }
-}
-
-export class AddCapture {
-
-  constructor(private name:string, private map = {}) {}
-
-  public put(value:any):void {
-    var arr = this.map[this.name];
-    if (arr == undefined) {
-      arr = [value];
-      this.map[this.name] = arr;
-    } else {
-      arr.push(value);
-    }
-  }
-}
-
-
 export class Capture {
 
-  constructor(private value:any=null, private name:string=null) {}
+  constructor(
+    public value:any=null, 
+    public name:string=null) 
+  {}
 
   public isValid():boolean {
     return this.value != null
@@ -159,4 +133,13 @@ export class CountParserRule implements ParserRule {
     }
     return new Capture(arr); 
   }
+}
+
+export function captureParser(capt:Capture, res={}):any {
+  if (capt.name == null) {
+
+  } else if {
+    res[capt.name] = captureParser(capt.value);
+  }
+  return res;
 }

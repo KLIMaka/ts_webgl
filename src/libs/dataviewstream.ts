@@ -118,7 +118,6 @@ export var float = reader((s:DataViewStream) => s.readFloat(), 4, Float32Array);
 export var string = (len:any) => {return reader((s:DataViewStream) => s.readByteString(len), len)};
 
 export var array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):Array<T> => {
-  var arrayType = type.arrType();
   var arr = new Array<T>(); 
   for(var i = 0; i < len; i++) 
     arr[i] = type.read(s); 

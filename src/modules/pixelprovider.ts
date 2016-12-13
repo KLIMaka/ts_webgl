@@ -11,6 +11,15 @@ export var BlendNormal = (dst:Uint8Array, dstoff:number, src:Uint8Array, srcoff:
   dst[dstoff+3] = src[srcoff+3];
 }
 
+export var BlendAlpha = (dst:Uint8Array, dstoff:number, src:Uint8Array, srcoff:number) => {
+  var a = src[srcoff+3] / 255;
+  var _a = 1 - a;
+  dst[dstoff] = src[srcoff]*a + dst[dstoff]*_a;
+  dst[dstoff+1] = src[srcoff+1]*a + dst[dstoff+1]*_a;
+  dst[dstoff+2] = src[srcoff+2]*a + dst[dstoff+2]*_a;
+  dst[dstoff+3] = 255;
+}
+
 export interface PixelProvider {
   getPixel(x:number, y:number):Uint8Array;
   putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void;

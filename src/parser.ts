@@ -26,9 +26,9 @@ lexer.addRule(new LR(/^\(/,  '('));
 lexer.addRule(new LR(/^\)/,  ')'));
 lexer.addRule(new LR(/^\,/,  ','));
 
-lexer.setSource(getter.getString('resources/parser/parsdef.txt')); 
+getter.preloadString('resources/parser/parsdef.txt', (s) => {
 
-
+lexer.setSource(s); 
 var skipper = (id:string) => {
   if (id == 'WS' || id == 'NL' || id == 'LINECOMM' || id == 'CCOMM')
     return true;
@@ -53,3 +53,6 @@ var r = AND([FUNC, BIND('fname', ID), LP, MAY(BIND('args', AND([BIND('arg', ID),
 
 
 console.log(p.exec(r)); 
+  
+});
+

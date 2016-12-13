@@ -27,13 +27,14 @@ function updateBuffers(ps:P.ParticleSystem):number {
   var plist = ps.getParticles();
   var term = plist.last().next;
   var idx = 0;
+  var pos = aPos.getData();
+  var color = aColor.getData();
+  
   for (var node = plist.first(); node != term; node = node.next) {
     var p = node.obj;
     var hs = p.attr.size/2;
     var id = p.id;
     var c = p.attr.color;
-    var pos = aPos.getData();
-    var color = aColor.getData();
 
     var off = idx*8;
     pos[off+0] = p.x-hs; pos[off+1] = p.y-hs; 
@@ -123,7 +124,6 @@ GL.animate(gl, function (gl:WebGLRenderingContext, dt:number) {
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   particles.update(dt);
-  var count = updateBuffers(particles);
-  struct[1] = count;
+  struct[1] = updateBuffers(particles);
   BATCHER.exec(cmds, gl);
 });

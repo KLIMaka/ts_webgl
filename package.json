@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "grunt": "~0.4.5",
-    "typescript": "~1.6.2",
+    "typescript": "~2.0.0",
     "grunt-typescript": "~0.8.0",
     "grunt-contrib-watch": "~0.6.1",
     "grunt-contrib-nodeunit": "~0.4.1"

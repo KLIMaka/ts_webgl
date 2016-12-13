@@ -149,7 +149,7 @@ export class TexturePixelProvider {
 
   private w:number;
   private h:number;
-  private data:Uint8Array;
+  private data:Uint8ClampedArray;
 
   constructor(tex) {
     var texcanvas = document.createElement('canvas');

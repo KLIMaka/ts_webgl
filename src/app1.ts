@@ -78,6 +78,10 @@ class TP implements builder_.ArtProvider {
   get(picnum:number): ds.Texture {
     return this.tex;
   }
+
+  getInfo(picnum:number):number {
+    return 0;
+  }
 }
 
 var traceContext = {
@@ -207,9 +211,13 @@ class MyBoardBuilder implements builder_.BoardBuilder {
   private packer = new tcpack.Packer(S, S, S/R, S/R);
   private buf:number[] = [];
   private idxs:number[] = [];
+  private vtxBuf:ds.VertexBuffer[];
+  private idxBuf:ds.IndexBuffer;
+  private mode:number;
+  private off = 0;
+  private len = 0;
 
-  constructor() {
-    var gl = WebGLRenderingContext;
+  constructor(gl:WebGLRenderingContext) {
     this.builder = new mb.MeshBuilderConstructor()
       .buffer('aPos', Float32Array, gl.FLOAT, 3)
       .buffer('aNorm', Float32Array, gl.FLOAT, 3)
@@ -219,6 +227,11 @@ class MyBoardBuilder implements builder_.BoardBuilder {
       .buffer('aShade', Int8Array, gl.BYTE, 1)
       .index(Uint16Array, gl.UNSIGNED_SHORT)
       .build();
+
+    var tmp = this.builder.build(gl, null);
+    this.vtxBuf = tmp.getVertexBuffers();
+    this.idxBuf = tmp.getIndexBuffer();
+    this.mode = tmp.getMode();
   }
 
   public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
@@ -255,14 +268,11 @@ class MyBoardBuilder implements builder_.BoardBuilder {
         this.buf.push(normal[2]);
     }
     this.builder.end();
+    this.len += (type == mb.QUADS ? (6*verts.length/4) : verts.length);
   }
 
   public getOffset(): number {
     return this.builder.offset() * 2;
-  }
-
-  public build(gl:WebGLRenderingContext):ds.DrawStruct {
-    return this.builder.build(gl, null);
   }
 
   public bake(gl:WebGLRenderingContext, w:number, h:number):Uint8Array {
@@ -280,6 +290,33 @@ class MyBoardBuilder implements builder_.BoardBuilder {
     rast.drawTriangles(this.builder.idxbuf().buf(), 0, this.builder.idxbuf().length());
     ctx.putImageData(img, 0, 0);
     return new Uint8Array(img.data);
+  }
+
+  public addSprite(verts:number[][], pos:number[], tcs:number[][], idx:number, shade:number):void {
+    this.builder.start(mb.QUADS)
+      .attr('aPos', pos)
+      .attr('aIdx', MU.int2vec4(idx))
+      .attr('aShade', [shade]);
+    for (var i = 0; i < 4; i++){
+      this.builder
+        .attr('aTc', tcs[i])
+        .vtx('aNorm', verts[i]);
+    }
+    this.builder.end();
+    this.len += 6;
+  }
+
+  public begin() {
+    this.off = this.builder.offset()*2;
+    this.len = 0;
+  }
+
+  public end(mat:ds.Material):ds.DrawStruct {
+    return new mb.Mesh(mat, this.vtxBuf, this.idxBuf, this.mode, this.len, this.off);
+  }
+
+  public finish(gl:WebGLRenderingContext) {
+    this.builder.build(gl, null);
   }
 }
 
@@ -303,7 +340,7 @@ base = new TEX.DrawTexture(1, 1, gl);
 var lm = new TEX.DrawTexture(R, R, gl);
 var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_base.vsh'), getter.getString('resources/shaders/trace_base.fsh'));
 var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
-var builder = new MyBoardBuilder();
+var builder = new MyBoardBuilder(gl);
 var processor = new builder_.BoardProcessor(board).build(gl, new TP(), new MF(new Mat(trace_baseShader, {lm:lm})), builder);
 var control = new controller.Controller3D(gl);
 var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
@@ -317,7 +354,7 @@ lm.putSubImage(0, 0, R, R, lmdata, gl);
 
 
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
-builder = new MyBoardBuilder();
+builder = new MyBoardBuilder(gl);
 var processor1 = new builder_.BoardProcessor(board).build(gl, new TP(), new MF(new Mat(base_shader, {lm:lm})), builder);
 var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), lm);
 

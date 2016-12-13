@@ -20,8 +20,8 @@ export class Set<T> {
     return this.table[val.toString()] == 1;
   }
 
-  public values():T[] {
-    var arr:T[] = [];
+  public values():string[] {
+    var arr:string[] = [];
     for (var i in this.table)
       if (this.table[i] == 1)
         arr.push(i);

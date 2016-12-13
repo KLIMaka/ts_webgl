@@ -4,7 +4,7 @@ import IU = require('../../../libs/imgutils');
 import MU = require('../../../libs/mathutils');
 import pixel = require('../../pixelprovider');
 
-var shadow = [0, 0, 0, 127];
+var shadow = new Uint8Array([0, 0, 0, 127]);
 
 export interface IcnProvider {
   get(name:string):ICN.IcnFile;
@@ -13,7 +13,10 @@ export interface IcnProvider {
 export class BinFile {
   private goff:number;
 
-  constructor(private data:data.DataViewStream, private pal:Uint8Array) {
+  constructor(
+    private data:data.DataViewStream, 
+    private pal:Uint8Array) 
+  {
     this.goff = data.mark();
   }
 
@@ -78,7 +81,7 @@ export class BinFile {
     var info = icn.getInfo(0);
     var bg = icn.getFrame(0);
     var pp:pixel.PixelProvider = new pixel.RGBPalPixelProvider(bg, this.pal, info.width, info.height, 255, 0, 1, shadow);
-    IU.blendToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY);
+    IU.drawToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY, pixel.BlendAlpha);
   }
 
   private parseButton(canvas:HTMLCanvasElement, icnProvider:IcnProvider):void {
@@ -95,7 +98,7 @@ export class BinFile {
     var info = icn.getInfo(press);
     var frame = icn.getFrame(press);
     var pp:pixel.PixelProvider = new pixel.RGBPalPixelProvider(frame, this.pal, info.width, info.height, 255, 0, 1, shadow);
-    IU.blendToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY);
+    IU.drawToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY, pixel.BlendAlpha);
   }
 
   private parseText(canvas:HTMLCanvasElement, icnProvider:IcnProvider):void {
@@ -141,7 +144,7 @@ export class BinFile {
       var info = icn.getInfo(c);
       var frame = icn.getFrame(c);
       var pp:pixel.PixelProvider = new pixel.RGBPalPixelProvider(frame, this.pal, info.width, info.height, 255, 0, 1, shadow);
-      IU.blendToCanvas(pp, canvas, x, yoff+info.offsetY);
+      IU.drawToCanvas(pp, canvas, x, yoff+info.offsetY, pixel.BlendAlpha);
       x += info.width;
     }
   }
@@ -170,7 +173,7 @@ export class BinFile {
     }
     if (unk2 == 17)
       pp = pixel.center(pp, w, h);
-    IU.blendToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY);
+    IU.drawToCanvas(pp, canvas, xoff+info.offsetX, yoff+info.offsetY, pixel.BlendAlpha);
   }
 }
 

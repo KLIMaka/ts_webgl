@@ -23,7 +23,8 @@ module.exports = function (grunt) {
     'psx',
     'gl_test',
     'mapper',
-    'sketch'
+    'sketch',
+    'parser'
   ];
 
   var nodemodules = [

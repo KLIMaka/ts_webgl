@@ -9,7 +9,12 @@ export class Header {
   public offsetData:number;
 }
 
-export class Size {constructor(public width:number, public height:number) {}}
+export class Size {
+  constructor(
+    public width:number, 
+    public height:number) 
+  {}
+}
 
 var header = data.struct(Header, [
   ['offsetX', data.short],
@@ -30,7 +35,9 @@ export class IcnFile {
   private headers:Header[];
   private globoff:number;
 
-  constructor(private stream:data.DataViewStream) {
+  constructor(
+    private stream:data.DataViewStream) 
+  {
     this.globoff = this.stream.mark();
     this.count = data.ushort.read(this.stream);
     data.uint.read(this.stream);
