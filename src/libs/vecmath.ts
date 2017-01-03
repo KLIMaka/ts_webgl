@@ -265,46 +265,9 @@ export function polygonNormal(verts:vec3_t[]) {
   return res;
 }
 
-function findOther(vtxs:vec3_t[], start:number, v1:number, v2:number) {
-  var vec = subCopy3d(vtxs[v1], vtxs[v2]);
-  var len = vtxs.length;
-  for (var i = 0; i < len; i++) {
-    var v3 = MU.cyclic(start+i, len);
-    var vec1 = subCopy3d(vtxs[v1], vtxs[v3]);
-    var d = dot3d(vec1, vec) / (len3d(vec)*len3d(vec1));
-    if (Math.abs(Math.abs(d)-1.0) < MU.EPS)
-      continue;
-    release3d(vec); release3d(vec1);
-    return v3;
-  }
-}
-
-function findOrigin(vtxs:vec3_t[]):number[] {
-  var len = vtxs.length;
-  var res = [2, 0, 1];
-  var maxlen = 0;
-  for (var i = 0; i < len; i++) {
-    var next2 = MU.cyclic(i+2, len);
-    var next = MU.cyclic(i+1, len);
-    var vi = vtxs[i];
-    var vn = vtxs[next];
-
-    var d = subCopy3d(vi, vn);
-    var dl = len3d(d);
-    if (((d[0]==0 && d[1]==0)||(d[0]==0 && d[2]==0)||(d[1]==0 && d[2]==0)) && dl > maxlen) {
-      maxlen = dl;
-      res = [next2, i, next];
-    }
-    release3d(d);
-  } 
-  return [findOther(vtxs, res[0], res[1], res[2]), res[1], res[2]];
-}
-
 export function projectionSpace(vtxs:vec3_t[], n:vec3_t) {
-  // var o = findOrigin(vtxs);
   var a = normalize3d(subCopy3d(vtxs[0], vtxs[1]));
   var c = normalize3d(crossCopy3d(n, a));
-  normalize3d(a);
   var ret = [
     a[0], c[0], n[0],
     a[1], c[1], n[1],

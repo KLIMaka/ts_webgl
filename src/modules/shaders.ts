@@ -1,5 +1,5 @@
 import Set = require('../libs/set');
-import DS = require('drawstruct');
+import DS = require('./drawstruct');
 import getter = require('../libs/getter');
 import AB = require('../libs/asyncbarrier');
 

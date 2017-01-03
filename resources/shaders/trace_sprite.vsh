@@ -10,9 +10,9 @@ attribute vec3 pos;
 varying vec3 toEye;
 
 void main() {
-    toEye = eyepos - pos;
+  toEye = eyepos - pos;
 	vec4 wpos = vec4(pos, 1.0);
-    vec4 epos = MV * wpos;
-    epos.xy += norm.xy * size;
-    gl_Position = P * epos;
+  vec4 epos = MV * wpos;
+  epos.xy += norm.xy * size;
+  gl_Position = P * epos;
 }

@@ -196,9 +196,7 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
         c = sum / count;
       }
       c = c*(lm1==null ? 1 : 0.6) + (lm1==null ? 0 : lm1[idx])*0.4;
-      ret[idx] = c;
-      ret[idx+1] = c;
-      ret[idx+2] = c;
+      ret[idx] = ret[idx+1] = ret[idx+2] = c;
       ret[idx+3] = a == 0 ? 0 : 255;
     }
   }
@@ -235,8 +233,7 @@ class MyBoardBuilder implements builder_.BoardBuilder {
     this.mode = tmp.getMode();
   }
 
-  public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
-    var normal = VEC.polygonNormal(verts);
+  private calcLmap(normal:number[], verts:number[][]):number[][] {
     var proj = VEC.project3d(verts, normal);
     var hull = tcpack.getHull(proj);
     var r = this.packer.pack(new tcpack.Rect(hull.maxx-hull.minx, hull.maxy-hull.miny));
@@ -248,7 +245,23 @@ class MyBoardBuilder implements builder_.BoardBuilder {
       var v = (r.yoff+proj[i][1]-hull.miny)/S;
       lmtcs.push([u, v]);
     }
+    return lmtcs;
+  }
 
+  private fillBuffer(lmtcs:number[], verts:number[], normal:number[]) {
+     this.buf.push(lmtcs[0]);
+      this.buf.push(lmtcs[1]);
+      this.buf.push(verts[0]);
+      this.buf.push(verts[1]);
+      this.buf.push(verts[2]);
+      this.buf.push(normal[0]);
+      this.buf.push(normal[1]);
+      this.buf.push(normal[2]);
+  }
+
+  public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
+    var normal = VEC.polygonNormal(verts);
+    var lmtcs = this.calcLmap(normal, verts);
     this.builder.start(type)
       .attr('aNorm', normal)
       .attr('aIdx', MU.int2vec4(idx))
@@ -259,14 +272,7 @@ class MyBoardBuilder implements builder_.BoardBuilder {
         .attr('aLMTc', lmtcs[i])
         .vtx('aPos', verts[i]);
 
-        this.buf.push(lmtcs[i][0]);
-        this.buf.push(lmtcs[i][1]);
-        this.buf.push(verts[i][0]);
-        this.buf.push(verts[i][1]);
-        this.buf.push(verts[i][2]);
-        this.buf.push(normal[0]);
-        this.buf.push(normal[1]);
-        this.buf.push(normal[2]);
+        this.fillBuffer(lmtcs[i], verts[i], normal);
     }
     this.builder.end();
     this.len += (type == mb.QUADS ? (6*verts.length/4) : verts.length);
@@ -352,8 +358,8 @@ var lmdata = processLM(builder.bake(gl, R, R), R, R);
 lm.putSubImage(0, 0, R, R, lmdata, gl);
 lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
 lm.putSubImage(0, 0, R, R, lmdata, gl);
-lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
-lm.putSubImage(0, 0, R, R, lmdata, gl);
+// lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
+// lm.putSubImage(0, 0, R, R, lmdata, gl);
 
 
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');

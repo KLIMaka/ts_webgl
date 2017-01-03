@@ -6,6 +6,7 @@ import C2D = require('./modules/controller2d');
 import SHADERS = require('./modules/shaders');
 import BATCHER = require('./modules/batcher');
 import GLM = require('./libs_js/glmatrix');
+import INTER = require('./modules/interpolator');
 
 var MAX_SIZE = 10000;
 
@@ -57,8 +58,8 @@ function updateBuffers(ps:P.ParticleSystem):number {
   return idx*6;
 }
 
-var startColor = [127, 50, 50, 255];
-var endColor = [50, 50, 50, 0];
+var color = new INTER.Range([255, 255, 255, 255], [0,0,0,0], INTER.Vec4Interpolator);
+color.insert([255, 164, 89, 255*0.8], 0.2);
 
 function init(p:P.Particle) {
   p.x = x;
@@ -66,7 +67,7 @@ function init(p:P.Particle) {
   p.ttl = Math.random() * 2;
 
   p.attr.size = 2 + 10 * Math.random();
-  p.attr.color = [255, 1, 1, 255];
+  p.attr.color = [255, 255, 255, 255];
 
   p.vx = (Math.random() - 0.5) * 50;
   p.vy = -Math.random()*100;
@@ -79,7 +80,7 @@ function update(p:P.Particle, dt:number) {
   p.vx += (Math.random()-0.5)*20;
   p.vy -= dt*200;
 
-  GLM.vec4.lerp(p.attr.color, startColor, endColor, p.t);
+  p.attr.color = color.get(p.t);
   p.attr.size += dt*(10+Math.random()*10);
 }
 
@@ -87,19 +88,21 @@ function die(p:P.Particle):boolean {
   return true;
 }
 
-var x = 0;
-var y = 0;
+var x = 200;
+var y = 200;
 
 gl.canvas.onmousemove = function(e) {
-  var dx = e.clientX - x;
-  var dy = e.clientY - y;
-  var ox = x;
-  var oy = y;
-  for (var i = 0; i < 10; i++){
-    x = ox + dx*(i/10);
-    y = oy + dy*(i/10);
-    particles.emit();
-  }
+  // var dx = e.clientX - x;
+  // var dy = e.clientY - y;
+  // var ox = x;
+  // var oy = y;
+  // for (var i = 0; i < 10; i++){
+  //   x = ox + dx*(i/10);
+  //   y = oy + dy*(i/10);
+  //   particles.emit();
+  // }
+  // x = e.clientX;
+  // y = e.clientY;
 }
 
 var particles = new P.ParticleSystem(MAX_SIZE, init, update, die);
@@ -126,4 +129,8 @@ GL.animate(gl, function (gl:WebGLRenderingContext, dt:number) {
   particles.update(dt);
   struct[1] = updateBuffers(particles);
   BATCHER.exec(cmds, gl);
+  particles.emit();
+  particles.emit();
+  particles.emit();
+  particles.emit();
 });

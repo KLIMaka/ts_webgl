@@ -395,11 +395,9 @@ export class BoardProcessor {
             down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
             this.dss.push(down.ds);
           }
+          
           if (up != null || down != null) {
-            if (up == null)
-              this.walls[w] = new WallInfo(down, up);
-            else 
-              this.walls[w] = new WallInfo(up, down);
+            this.walls[w] = new WallInfo(up, down);
           }
         }
         i++;
@@ -504,7 +502,8 @@ export class BoardProcessor {
 
         var wallinfo = walls[wallidx];
         if (wallinfo != undefined) {
-          ds.push(wallinfo.up.ds);
+          if (wallinfo.up != null)
+            ds.push(wallinfo.up.ds);
           if (wallinfo.down != null)
             ds.push(wallinfo.down.ds);
         }
