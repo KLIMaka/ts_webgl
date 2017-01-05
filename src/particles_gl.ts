@@ -7,6 +7,7 @@ import SHADERS = require('./modules/shaders');
 import BATCHER = require('./modules/batcher');
 import GLM = require('./libs_js/glmatrix');
 import INTER = require('./modules/interpolator');
+import RNG = require('./modules/random');
 
 var MAX_SIZE = 10000;
 
@@ -14,34 +15,31 @@ var gl = GL.createContext(600, 600, {alpha:false});
 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 gl.enable(gl.BLEND);
 
-var aPos = MB.createVertexBuffer(gl, gl.FLOAT, MAX_SIZE*4, 2, gl.DYNAMIC_DRAW);
-var aColor = MB.createVertexBuffer(gl, gl.UNSIGNED_BYTE, MAX_SIZE*4, 4, gl.DYNAMIC_DRAW, true);
-
 var vertexBufs = {
-  'aPos': aPos,
-  'aColor': aColor
+  'aPos': MB.createVertexBuffer(gl, gl.FLOAT, MAX_SIZE*4, 2, gl.DYNAMIC_DRAW),
+  'aColor': MB.createVertexBuffer(gl, gl.UNSIGNED_BYTE, MAX_SIZE*4, 4, gl.DYNAMIC_DRAW, true)
 }
 var indexBuffer = MB.genIndexBuffer(gl, MAX_SIZE, [0, 1, 2, 0, 2, 3]);
-
+var p4 = Math.PI/4;
 
 function updateBuffers(ps:P.ParticleSystem):number {
   var plist = ps.getParticles();
   var term = plist.last().next;
   var idx = 0;
-  var pos = aPos.getData();
-  var color = aColor.getData();
+  var pos = vertexBufs.aPos.getData();
+  var color = vertexBufs.aColor.getData();
   
   for (var node = plist.first(); node != term; node = node.next) {
     var p = node.obj;
     var hs = p.attr.size/2;
-    var id = p.id;
     var c = p.attr.color;
+    var ang = p.attr.ang;
 
     var off = idx*8;
-    pos[off+0] = p.x-hs; pos[off+1] = p.y-hs; 
-    pos[off+2] = p.x-hs; pos[off+3] = p.y+hs; 
-    pos[off+4] = p.x+hs; pos[off+5] = p.y+hs; 
-    pos[off+6] = p.x+hs; pos[off+7] = p.y-hs;
+    pos[off+0] = p.x+Math.sin(ang+p4)*hs; pos[off+1] = p.y+Math.cos(ang+p4)*hs; 
+    pos[off+2] = p.x+Math.sin(ang+3*p4)*hs; pos[off+3] = p.y+Math.cos(ang+3*p4)*hs; 
+    pos[off+4] = p.x+Math.sin(ang+5*p4)*hs; pos[off+5] = p.y+Math.cos(ang+5*p4)*hs; 
+    pos[off+6] = p.x+Math.sin(ang+7*p4)*hs; pos[off+7] = p.y+Math.cos(ang+7*p4)*hs; 
 
     var off = idx*16;
     color[off+0] = c[0]; color[off+1] = c[1]; color[off+2] = c[2]; color[off+3] = c[3];
@@ -52,44 +50,57 @@ function updateBuffers(ps:P.ParticleSystem):number {
     idx++;
   }
 
-  aPos.update(gl);
-  aColor.update(gl);
+  vertexBufs.aPos.update(gl);
+  vertexBufs.aColor.update(gl);
 
   return idx*6;
 }
 
 var color = new INTER.Range([255, 255, 255, 255], [0,0,0,0], INTER.Vec4Interpolator);
 color.insert([255, 164, 89, 255*0.8], 0.2);
+color.insert([0, 0, 0, 255*0.2], 0.8);
+var ang = 0;
 
 function init(p:P.Particle) {
-  p.x = x;
-  p.y = y;
-  p.ttl = Math.random() * 2;
+  var dx = Math.sin(ang);
+  var dy = Math.cos(ang);
+  var w = RNG.rand(-100, 100);
+  if (RNG.coin()) {
+    p.x = x + dx * w;
+    p.y = y + dy * w;
+  } else {
+    p.x = x - dy * w;
+    p.y = y + dx * w;
+  }
+  p.ttl = RNG.rand0(2);
 
-  p.attr.size = 2 + 10 * Math.random();
-  p.attr.color = [255, 255, 255, 255];
+  p.attr.size = RNG.rand(2, 10);
+  p.attr.color = color.get(0);
+  p.attr.ang = RNG.rand0(3.14);
+  p.attr.vang = RNG.rand(-10, 10);
 
-  p.vx = (Math.random() - 0.5) * 50;
-  p.vy = -Math.random()*100;
+  p.vx = RNG.rand(-25, 25);
+  p.vy = -RNG.rand0(100);
 }
 
 function update(p:P.Particle, dt:number) {
   p.x += p.vx*dt;
   p.y += p.vy*dt;
   p.vx *= (1 - dt);
-  p.vx += (Math.random()-0.5)*20;
+  p.vx += RNG.rand(-10, 10);;
   p.vy -= dt*200;
 
   p.attr.color = color.get(p.t);
-  p.attr.size += dt*(10+Math.random()*10);
+  p.attr.size += dt*RNG.rand(-10, 30);
+  p.attr.ang += dt*p.attr.vang;
 }
 
 function die(p:P.Particle):boolean {
   return true;
 }
 
-var x = 200;
-var y = 200;
+var x = 300;
+var y = 300;
 
 gl.canvas.onmousemove = function(e) {
   // var dx = e.clientX - x;
@@ -123,14 +134,14 @@ var cmds = [
 ];
 
 GL.animate(gl, function (gl:WebGLRenderingContext, dt:number) {
-  gl.clearColor(0.1, 0.1, 0.1, 1.0);
+  gl.clearColor(0.3, 0.3, 0.3, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   particles.update(dt);
   struct[1] = updateBuffers(particles);
   BATCHER.exec(cmds, gl);
-  particles.emit();
-  particles.emit();
-  particles.emit();
-  particles.emit();
+
+  ang += dt;
+  for(var i = 0; i < 40; i++)
+    particles.emit();
 });
