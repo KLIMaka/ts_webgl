@@ -3,10 +3,7 @@ export class AsyncBarrier {
   private results = {};
   private requests = 0;
   private isWaiting = false;
-
-  constructor(
-    private cb:(v:any)=>void
-  ){}
+  private cb:(v:any)=>void;
 
   public callback(name:string) {
     var self = this;
@@ -23,13 +20,14 @@ export class AsyncBarrier {
       this.cb(this.results);
   }
 
-  public wait() {
+  public wait(cb:(v:any)=>void) {
+    this.cb = cb;
     if (this.requests == 0)
       this.cb(this.results);
     this.isWaiting = true;
   }
 }
 
-export function create(cb:(v:any)=>void):AsyncBarrier {
-  return new AsyncBarrier(cb);
+export function create():AsyncBarrier {
+  return new AsyncBarrier();
 }

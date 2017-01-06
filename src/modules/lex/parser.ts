@@ -134,12 +134,3 @@ export class CountParserRule implements ParserRule {
     return new Capture(arr); 
   }
 }
-
-export function captureParser(capt:Capture, res={}):any {
-  if (capt.name == null) {
-
-  } else if {
-    res[capt.name] = captureParser(capt.value);
-  }
-  return res;
-}
