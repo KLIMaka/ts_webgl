@@ -24,11 +24,11 @@ module.exports = function (grunt) {
     'gl_test',
     'mapper',
     'sketch',
-    'parser',
-    'parser1'
+    'parser'
   ];
 
   var nodemodules = [
+    'lisp',
     'rff'
   ];
 
@@ -63,6 +63,11 @@ module.exports = function (grunt) {
         module: 'commonjs'
       }
     });
+    grunt.config(['watch', module], {
+      files: '**/*.ts',
+      tasks: ['typescript:' + module]
+    });
     grunt.registerTask(module, ['typescript:' + module]);
+    grunt.registerTask('watch_' + module, ['watch:' + module]);
   }
 }
