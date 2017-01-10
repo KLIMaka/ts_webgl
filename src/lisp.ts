@@ -112,6 +112,27 @@ scope.add('cons', (list) => {
   return cons(evaluate(list.head()), evaluate(list.get(1)));
 });
 
+scope.add('append', (list) => {
+  var lst = [];
+  for (var i = 0; i < list.length(); i++) {
+    var l = evaluate(list.get(i));
+    for (var j = 0; j < l.length(); j++) {
+      lst.push(l.get(j));
+    }
+  }
+  return createList(lst);
+});
+
+scope.add('print', (list) => {
+  for (var i = 0; i < list.length(); i++)
+    console.log(evaluate(list.get(i)));
+  return "";
+});
+
+scope.add('==', (list) => {
+  return evaluate(list.head()) == evaluate(list.get(1));
+});
+
 scope.add('lambda', (formals) => {
   return (list) => {
     scope = scope.push();
@@ -129,7 +150,7 @@ scope.add('if', (list) => {
   if (cond){
     return evaluate(list.get(1));
   } else {
-   return evaluate(list.get(2));
+    return evaluate(list.get(2));
   }
 })
 
