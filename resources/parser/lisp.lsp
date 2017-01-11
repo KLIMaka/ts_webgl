@@ -30,4 +30,9 @@
   )
 ))
 
-(filter '(1 2 3 4 5 6) (lambda x (+ x -2)))
+(set bind (lambda f a
+  (lambda x (f a x))
+))
+
+(filter '(1 2 3 4 5 6) (bind < 0))
+((bind < 0) 0)

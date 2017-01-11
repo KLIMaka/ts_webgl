@@ -89,6 +89,26 @@ scope.add('set', (list) => {
   return val;
 });
 
+scope.add('>', (list) => {
+  return evaluate(list.get(0)) > evaluate(list.get(1));
+});
+
+scope.add('<', (list) => {
+  return evaluate(list.get(0)) < evaluate(list.get(1));
+});
+
+scope.add('<=', (list) => {
+  return evaluate(list.get(0)) <= evaluate(list.get(1));
+});
+
+scope.add('>=', (list) => {
+  return evaluate(list.get(0)) >= evaluate(list.get(1));
+});
+
+scope.add('!=', (list) => {
+  return evaluate(list.get(0)) != evaluate(list.get(1));
+});
+
 scope.add('head', (list) => {
   return evaluate(list.head()).head();
 });
