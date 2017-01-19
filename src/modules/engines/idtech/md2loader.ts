@@ -55,16 +55,11 @@ export var triangleStruct = D.struct(MD2.Triangle, [
 ]);
 
 export function loadMd2(stream:D.DataViewStream):MD2.Md2File {
-  var header = md2HeaderStruct.read(stream);
-  var skins = D.string(header.num_skins*64).read(stream);
-  var tcs = D.array(texCoordStruct, header.num_st).read(stream);
-  var tris = D.array(triangleStruct, header.num_frames * header.num_tris).read(stream);
-  var frames = D.array(frameStruct(header.num_xyz), header.num_frames).read(stream);
   var file = new MD2.Md2File();
-  file.header = header;
-  file.skins = skins;
-  file.tcs = tcs;
-  file.tris = tris;
-  file.frames = frames;
+  file.header = md2HeaderStruct.read(stream);
+  file.skins = D.string(file.header.num_skins*64).read(stream);
+  file.tcs = D.array(texCoordStruct, file.header.num_st).read(stream);
+  file.tris = D.array(triangleStruct, file.header.num_frames * file.header.num_tris).read(stream);
+  file.frames = D.array(frameStruct(file.header.num_xyz), file.header.num_frames).read(stream);
   return file;
 }

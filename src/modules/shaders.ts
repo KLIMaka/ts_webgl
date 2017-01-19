@@ -80,10 +80,10 @@ export function createShader(gl:WebGLRenderingContext, name:string):Shader {
   }
 
   var shader = new Shader(defaultProgram);
-  var barrier = AB.create((res) => {initShader(gl, shader, res.vsh, res.fsh)});
+  var barrier = AB.create();
   getter.preloadString(name+'.vsh', barrier.callback('vsh'));
   getter.preloadString(name+'.fsh', barrier.callback('fsh'));
-  barrier.wait();
+  barrier.wait((res) => {initShader(gl, shader, res.vsh, res.fsh)});
   cache[name] = shader;
   return shader;
 }
@@ -95,14 +95,14 @@ export function createShaderFromSrc(gl:WebGLRenderingContext, vsh:string, fsh:st
 }
 
 function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:string) {
-  var barrier = AB.create((res) => {
+  var barrier = AB.create();
+  preprocess(vsh, barrier.callback('vsh'));
+  preprocess(fsh, barrier.callback('fsh'));
+  barrier.wait((res) => {
     var program = compileProgram(gl, res.vsh, res.fsh);
     var params = processShaders(res.vsh, res.fsh);
     shader.init(gl, program, params);
   });
-  preprocess(vsh, barrier.callback('vsh'));
-  preprocess(fsh, barrier.callback('fsh'));
-  barrier.wait();
 }
 
 function compileProgram(gl:WebGLRenderingContext, vsh:string, fsh:string):WebGLProgram {
@@ -162,14 +162,7 @@ function processShaders(vsh:string, fsh:string):any {
 
 function preprocess(shader:string, cb:(sh:string)=>void):void {
   var lines = shader.split("\n");
-  var barrier = AB.create((incs) => {
-    var res = [];
-    for (var i = 0 ; i < lines.length; i++) {
-      var inc = incs[i+''];
-      res.push(inc == undefined ? lines[i] : inc);
-    }
-    cb(res.join("\n"));
-  });
+  var barrier = AB.create();
   for (var i = 0; i < lines.length; i++) {
     var l = lines[i];
     var m = l.match(/^#include +"([^"]+)"/);
@@ -177,5 +170,12 @@ function preprocess(shader:string, cb:(sh:string)=>void):void {
       getter.preloadString(m[1], barrier.callback(i+''));
     }
   }
-  barrier.wait();
+  barrier.wait((incs) => {
+    var res = [];
+    for (var i = 0 ; i < lines.length; i++) {
+      var inc = incs[i+''];
+      res.push(inc == undefined ? lines[i] : inc);
+    }
+    cb(res.join("\n"));
+  });
 }

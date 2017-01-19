@@ -8,15 +8,21 @@ import getter = require('./libs/getter');
 class Scope {
   private symbols = {};
 
-  constructor(private parent:Scope){}
+  constructor(private parent:Scope, private closure:Scope){}
 
   public add(name:string, value:any) {
+    if (this.closure != null && this.closure[name] != undefined) {
+      this.closure[name] = value;
+      return;
+    }
     this.symbols[name] = value;
   }
 
   public get(name:string):any {
+    var smb = this.closure==null ? undefined : this.closure.get(name);
+    if (smb != undefined)
+      return smb;
     var scope = <Scope> this;
-    var smb = undefined;
     while (smb == undefined && scope != null) {
       smb = scope.symbols[name];
       scope = scope.parent;
@@ -28,8 +34,8 @@ class Scope {
     return this.parent;
   }
 
-  public push():Scope {
-    return new Scope(this);
+  public push(closure:Scope):Scope {
+    return new Scope(this, closure);
   }
 }
 
@@ -43,7 +49,7 @@ class ArrayView {
 var EMPTY = createList([]);
 
 function createList(arr:Object[], start:number=0) {
-  return new ArrayView(arr, start);
+  return arr.length == 0 ? EMPTY : new ArrayView(arr, start);
 }
 
 function cons(head, rest) {
@@ -69,7 +75,7 @@ lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, par
 lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT', 0, parseInt));
 lexer.addRule(new LR(/^"([^"]*)"/,                            'STRING', 1));
 
-var scope = new Scope(null);
+var scope = new Scope(null, null);
 var RP = new Object();
 var EOF = new Object();
 
@@ -144,9 +150,12 @@ scope.add('append', (list) => {
 });
 
 scope.add('print', (list) => {
-  for (var i = 0; i < list.length(); i++)
-    console.log(evaluate(list.get(i)));
-  return "";
+  var val = null;
+  for (var i = 0; i < list.length(); i++){
+    val = evaluate(list.get(i));
+    console.log(val);
+  }
+  return val;
 });
 
 scope.add('==', (list) => {
@@ -154,15 +163,26 @@ scope.add('==', (list) => {
 });
 
 scope.add('lambda', (formals) => {
+  var closure = scope;
   return (list) => {
-    scope = scope.push();
+    scope = scope.push(null);
     for (var i = 0; i < list.length(); i++) {
       scope.add(formals.get(i), evaluate(list.get(i)));
     }
+    scope = scope.push(closure);
     var result = evaluate(formals.get(i));
+    scope = scope.pop();
     scope = scope.pop();
     return result;
   }
+});
+
+scope.add('seq', (list) => {
+  var res = null;
+  for (var i = 0; i < list.length(); i++) {
+    res = evaluate(list.get(i));
+  }
+  return res;
 });
 
 scope.add('if', (list) => {

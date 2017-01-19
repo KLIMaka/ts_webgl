@@ -1,11 +1,3 @@
-(set fact (lambda n 
-  (if n 
-    (+ n (fact (+ n -1)))
-    0
-  )
-))
-(fact 500)
-
 (set rev (lambda l
 	(if (length l)
 		(append (rev (rest l)) (cons (head l) '()))
@@ -30,9 +22,41 @@
   )
 ))
 
+(set partition (lambda l n
+  (append
+    (print (filter l (bind > (nth l n))))
+    (print (filter l (bind == (nth l n))))
+    (print (filter l (bind < (nth l n))))
+  )
+))
+
+(set qsort (lambda l
+  (if (length l)
+    (append
+      (qsort (filter l (bind > (head l))))
+      (filter l (bind == (head l)))
+      (qsort (filter l (bind < (head l))))
+    )
+    '()
+  )
+))
+
 (set bind (lambda f a
   (lambda x (f a x))
 ))
 
-(filter '(1 2 3 4 5 6) (bind < 0))
-((bind < 0) 0)
+(set generate (lambda g s
+  (if s
+    (cons (g) (generate g (+ s -1)))
+    '()
+  )
+))
+
+(qsort '(4 8 4 2 6 5 4 4 7 5 2 54 4 7 4 4  7 5 4 1 1 2 5 4 4  8  5 4 4 4 5 6 99 3 2 1 4 ))
+(set createGen (lambda
+  (seq
+    (set x 0)
+    (lambda (set x (+ x 1)))
+  )
+))
+(generate (createGen) 10)
