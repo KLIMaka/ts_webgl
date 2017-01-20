@@ -5,9 +5,9 @@ import getter = require('./libs/getter');
 import data = require('./libs/dataviewstream');
 import AB = require('./libs/asyncbarrier');
 
-var ab = AB.create((results) => start(results));
+var ab = AB.create();
 getter.preload('resources/psx/vram1.bin', ab.callback('vram'));
-ab.wait();
+ab.wait((results) => start(results));
 
 class PSX16PixelProvider extends pixel.AbstractPixelProvider {
 

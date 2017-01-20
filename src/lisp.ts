@@ -4,6 +4,7 @@ import fs = require('fs');
 import lex = require('./modules/lex/lexer');
 import pars = require('./modules/lex/parser');
 import getter = require('./libs/getter');
+import obj = require('./modules/formats/obj');
 
 class Scope {
   private symbols = {};
@@ -242,6 +243,8 @@ function evaluate(form) {
     return form;
   return symbol;
 }
+
+obj.readObj(fs.readFileSync('../resources/Stormtrooper.obj', {encoding:'UTF-8'}));
 
 var file = fs.readFileSync('../resources/parser/lisp.lsp', {encoding:'UTF-8'});
 lexer.setSource(file);

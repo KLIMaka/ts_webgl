@@ -60,3 +60,6 @@
   )
 ))
 (generate (createGen) 10)
+
+(set f (lambda a b (+ a b)))
+(f 1)
