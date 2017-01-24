@@ -2,9 +2,6 @@
 
 import fs = require('fs');
 import lex = require('./modules/lex/lexer');
-import pars = require('./modules/lex/parser');
-import getter = require('./libs/getter');
-import obj = require('./modules/formats/obj');
 
 class Scope {
   private symbols = {};
@@ -64,7 +61,6 @@ function cons(head, rest) {
 
 var LST = new Object();
 function lst() {return LST}
-
 var LR = lex.LexerRule;
 var lexer = new lex.Lexer();
 lexer.addRule(new LR(/^[ \t\r\v\n]+/,                         'WS'));
@@ -96,37 +92,17 @@ scope.add('set', (list) => {
   return val;
 });
 
-scope.add('>', (list) => {
-  return evaluate(list.get(0)) > evaluate(list.get(1));
-});
-
-scope.add('<', (list) => {
-  return evaluate(list.get(0)) < evaluate(list.get(1));
-});
-
-scope.add('<=', (list) => {
-  return evaluate(list.get(0)) <= evaluate(list.get(1));
-});
-
-scope.add('>=', (list) => {
-  return evaluate(list.get(0)) >= evaluate(list.get(1));
-});
-
-scope.add('!=', (list) => {
-  return evaluate(list.get(0)) != evaluate(list.get(1));
-});
-
-scope.add('head', (list) => {
-  return evaluate(list.head()).head();
-});
-
-scope.add('rest', (list) => {
-  return evaluate(list.head()).rest();
-});
-
-scope.add('length', (list) => {
-  return evaluate(list.head()).length();
-});
+scope.add('if', (list) => { if (evaluate(list.get(0))) return evaluate(list.get(1)); else return evaluate(list.get(2));});
+scope.add('>', (list) => { return evaluate(list.get(0)) > evaluate(list.get(1));});
+scope.add('<', (list) => { return evaluate(list.get(0)) < evaluate(list.get(1));});
+scope.add('<=', (list) => { return evaluate(list.get(0)) <= evaluate(list.get(1));});
+scope.add('>=', (list) => { return evaluate(list.get(0)) >= evaluate(list.get(1));});
+scope.add('!=', (list) => { return evaluate(list.get(0)) != evaluate(list.get(1));});
+scope.add('==', (list) => { return evaluate(list.head()) == evaluate(list.get(1));});
+scope.add('head', (list) => { return evaluate(list.head()).head();});
+scope.add('rest', (list) => { return evaluate(list.head()).rest();});
+scope.add('length', (list) => { return evaluate(list.head()).length();});
+scope.add('cons', (list) => { return cons(evaluate(list.head()), evaluate(list.get(1)));});
 
 scope.add('list', (list) => {
   var lst = [];
@@ -135,9 +111,6 @@ scope.add('list', (list) => {
   return createList(lst);
 });
 
-scope.add('cons', (list) => {
-  return cons(evaluate(list.head()), evaluate(list.get(1)));
-});
 
 scope.add('append', (list) => {
   var lst = [];
@@ -159,9 +132,6 @@ scope.add('print', (list) => {
   return val;
 });
 
-scope.add('==', (list) => {
-  return evaluate(list.head()) == evaluate(list.get(1));
-});
 
 scope.add('lambda', (formals) => {
   var closure = scope;
@@ -186,14 +156,6 @@ scope.add('seq', (list) => {
   return res;
 });
 
-scope.add('if', (list) => {
-  var cond = evaluate(list.get(0));
-  if (cond){
-    return evaluate(list.get(1));
-  } else {
-    return evaluate(list.get(2));
-  }
-})
 
 function next() {
   var next = lexer.next();
@@ -243,8 +205,6 @@ function evaluate(form) {
     return form;
   return symbol;
 }
-
-obj.readObj(fs.readFileSync('../resources/Stormtrooper.obj', {encoding:'UTF-8'}));
 
 var file = fs.readFileSync('../resources/parser/lisp.lsp', {encoding:'UTF-8'});
 lexer.setSource(file);

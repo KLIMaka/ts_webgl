@@ -1,7 +1,7 @@
 import MU = require('./libs/mathutils');
-import P = require('modules/particles');
-import GL = require('modules/gl');
-import MB = require('modules/meshbuilder');
+import P = require('./modules/particles');
+import GL = require('./modules/gl');
+import MB = require('./modules/meshbuilder');
 import C2D = require('./modules/controller2d');
 import SHADERS = require('./modules/shaders');
 import BATCHER = require('./modules/batcher');
@@ -12,15 +12,15 @@ import TEX = require('./modules/textures');
 import PU = require('./modules/pixel/utils');
 import DS = require('./modules/drawstruct');
 
-var ab = AB.create((results) => start(results));
+var ab = AB.create();
 IU.loadImage('resources/img/font.png', ab.callback('font'));
-ab.wait();
+ab.wait((results) => start(results));
 
 class Atlas {
   private tex:DS.Texture;
 
   constructor(gl:WebGLRenderingContext, img:Uint8Array, private w:number, private h:number, private sw:number, private sh:number) {
-    this.tex = TEX.createTexture(w, h, gl, img);
+    this.tex = TEX.createTexture(w, h, gl, {}, img);
   }
 }
 
@@ -30,7 +30,7 @@ class Plane {
 
   constructor(gl:WebGLRenderingContext, private w:number, private h:number, private atlas:Atlas) {
     this.data = new Uint8Array(w*h);
-    this.tex = TEX.createTexture(w, h, gl, this.data, gl.LUMINANCE, 1);
+    this.tex = TEX.createTexture(w, h, gl, {}, this.data, gl.LUMINANCE, 1);
     
   }
 }
@@ -51,11 +51,11 @@ var vertexBufs:any = {};
 vertexBufs.aPos = MB.wrap(gl, pos, 2, gl.STATIC_DRAW);
 vertexBufs.aTc = MB.wrap(gl, tc, 2, gl.STATIC_DRAW);
 var indexBuffer = MB.genIndexBuffer(gl, 1, [0, 1, 2, 0, 2, 3]);
-var font = TEX.createTexture(128, 128, gl, res.font);
+var font = TEX.createTexture(128, 128, gl, {}, res.font);
 var map = new Uint8Array(w*h);
 PU.printString(0, 0, w, 4, map, "Foo\n#$% Baz !!! ");
-PU.printString(10, 10, w, 22, map, "\1\2\3 Hello folks!!!");
-var mapTex = TEX.createTexture(w, h, gl, map, gl.LUMINANCE, 1);
+PU.printString(10, 10, w, 22, map, "    Hello folks!!!");
+var mapTex = TEX.createTexture(w, h, gl, {}, map, gl.LUMINANCE, 1);
 
 var control = C2D.create(gl);
 control.setPos(150, 150);
