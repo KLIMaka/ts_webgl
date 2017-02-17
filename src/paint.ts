@@ -232,6 +232,12 @@ document.onkeypress = (e:KeyboardEvent) => {
     control.setPos(cw/2, ch/2);
     control.setUnitsPerPixel(1);
   }
+  if (e.key == '9') {
+    setColor((pixel-1)%255);
+  }
+  if (e.key == '0') {
+    setColor((pixel+1)%255);
+  }
 }
 
 var pos = new Float32Array([0, 0, cw, 0, cw, ch, 0, ch]);

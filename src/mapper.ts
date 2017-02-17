@@ -19,43 +19,6 @@ GET.preloadString('resources/models/corner2.obj', ab.callback('corner'));
 GET.preloadString('resources/models/wall2.obj', ab.callback('wall'));
 ab.wait((res) => start(res));
 
-class Model {
-  public vertexBuffers;
-  public indexBuffer;
-  public lengths:number[] = [];
-  public offsets:number[] = [];
-
-  constructor(objs:OBJ.ObjFile[], gl:WebGLRenderingContext) {
-    var vtxs = [];
-    var normals = [];
-    var tcs = [];
-    var off = 0;
-    for (var o = 0; o < objs.length; o++) {
-      var obj = objs[o];
-      for (var i = 0; i < obj.tris.length; i++) {
-        for (var v = 0; v < 3; v++) {
-          var vidx = obj.tris[i][v][0]-1;
-          var tidx = obj.tris[i][v][1]-1;
-          var nidx = obj.tris[i][v][2]-1;
-          vtxs.push(obj.vtxs[vidx][0], obj.vtxs[vidx][1], obj.vtxs[vidx][2]);
-          normals.push(obj.normals[nidx][0], obj.normals[nidx][1], obj.normals[nidx][2]);
-          tcs.push(obj.tcs[tidx][0], obj.tcs[tidx][1]);
-        }
-      }
-      this.offsets.push(off);
-      this.lengths.push(obj.tris.length*3);
-      off += obj.tris.length*3*2;
-    }
-
-    this.vertexBuffers = {
-      'aPos' : MB.wrap(gl, new Float32Array(vtxs), 3, gl.STATIC_DRAW),
-      'aNorm' : MB.wrap(gl, new Float32Array(normals), 3, gl.STATIC_DRAW),
-      'aTc' : MB.wrap(gl, new Float32Array(tcs), 2, gl.STATIC_DRAW),
-    }
-    this.indexBuffer = MB.genIndexBuffer(gl, off, [0, 1, 2]);
-  }
-}
-
 function modelMatrix(x:number, y:number, ang:number) {
   var mat = GLM.mat4.create();
   mat = GLM.mat4.translate(mat, mat, GLM.vec3.fromValues(x, 0, y));
@@ -64,15 +27,11 @@ function modelMatrix(x:number, y:number, ang:number) {
 }
 
 function start(res) {
-var floor = OBJ.readObj(res.floor);
-var wall = OBJ.readObj(res.wall);
-var corner = OBJ.readObj(res.corner);
-
 var gl = GL.createContext(1200, 800, {alpha:false});
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var model = new Model([corner, floor, wall], gl);
+var model = OBJ.loadObjs([res.corner, res.floor, res.wall], gl);
 var shader = SHADERS.createShader(gl, 'resources/shaders/simple');
 var ctrl = new CTRL3.Controller3D(gl);
 

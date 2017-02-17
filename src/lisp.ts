@@ -44,10 +44,14 @@ class ArrayView {
   public rest() { return this.length() == 1 ? EMPTY : createList(this.arr, this.start+1) }
   public length() { return this.arr.length - this.start }
 }
-var EMPTY = createList([]);
+var EMPTY = new ArrayView([], 0);
 
 function createList(arr:Object[], start:number=0) {
   return arr.length == 0 ? EMPTY : new ArrayView(arr, start);
+}
+
+class Placeholder {
+  constructor(public idx:number) {}
 }
 
 function cons(head, rest) {
@@ -59,18 +63,62 @@ function cons(head, rest) {
   return createList(arr);
 }
 
+function getPlaceholder(arg):number {
+  if (arg instanceof Placeholder)
+    return (<Placeholder>arg).idx;
+  return -1;
+}
+
+function curry(f, args) {
+  var curried = false;
+  for (var i = 0; i < args.length(); i++) {
+    var arg = args.get(i);
+    if (getPlaceholder(arg) != -1) {
+      curried = true;
+      break;
+    }
+  }
+
+  if (curried) {
+    var evaluated = [];
+    for (var i = 0; i < args.length(); i++) {
+      var arg = args.get(i);
+      if (getPlaceholder(arg) == -1) {
+        evaluated[i] = evaluate(arg);
+      }
+    }
+    return (l) => {
+      var nargs = [];
+      for (var i = 0; i < args.length(); i++) {
+        var arg = args.get(i);
+        var placeholderIdx = getPlaceholder(arg);
+        if (placeholderIdx == -1) {
+          nargs[i] = evaluated[i];
+        } else {
+          nargs[i] = l.get(placeholderIdx);
+        }
+      }
+      return f(createList(nargs))
+    } 
+  } else {
+    return f(args);
+  }
+}
+
 var LST = new Object();
 function lst() {return LST}
+function placeholder(idx)  { return new Placeholder(parseInt(idx)) };
 var LR = lex.LexerRule;
 var lexer = new lex.Lexer();
-lexer.addRule(new LR(/^[ \t\r\v\n]+/,                         'WS'));
-lexer.addRule(new LR(/^\(/,                                   'LP'));
-lexer.addRule(new LR(/^\)/,                                   'RP'));
-lexer.addRule(new LR(/^'/,                                    'LST', 0, lst));
-lexer.addRule(new LR(/^[^ \t\r\v\n\(\)'"]+/,                  'ID'));
+lexer.addRule(new LR(/^[ \t\r\v\n]+/,                            'WS'));
+lexer.addRule(new LR(/^\(/,                                      'LP'));
+lexer.addRule(new LR(/^\)/,                                      'RP'));
+lexer.addRule(new LR(/^'/,                                       'LST', 0, lst));
+lexer.addRule(new LR(/^[^ \t\r\v\n\(\)'"]+/,                     'ID'));
+lexer.addRule(new LR(/^_([0-9])+/,                               'PLH', 1, placeholder));
 lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, parseFloat));
 lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT', 0, parseInt));
-lexer.addRule(new LR(/^"([^"]*)"/,                            'STRING', 1));
+lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1));
 
 var scope = new Scope(null, null);
 var RP = new Object();
@@ -92,17 +140,17 @@ scope.add('set', (list) => {
   return val;
 });
 
-scope.add('if', (list) => { if (evaluate(list.get(0))) return evaluate(list.get(1)); else return evaluate(list.get(2));});
-scope.add('>', (list) => { return evaluate(list.get(0)) > evaluate(list.get(1));});
-scope.add('<', (list) => { return evaluate(list.get(0)) < evaluate(list.get(1));});
-scope.add('<=', (list) => { return evaluate(list.get(0)) <= evaluate(list.get(1));});
-scope.add('>=', (list) => { return evaluate(list.get(0)) >= evaluate(list.get(1));});
-scope.add('!=', (list) => { return evaluate(list.get(0)) != evaluate(list.get(1));});
-scope.add('==', (list) => { return evaluate(list.head()) == evaluate(list.get(1));});
-scope.add('head', (list) => { return evaluate(list.head()).head();});
-scope.add('rest', (list) => { return evaluate(list.head()).rest();});
-scope.add('length', (list) => { return evaluate(list.head()).length();});
-scope.add('cons', (list) => { return cons(evaluate(list.head()), evaluate(list.get(1)));});
+scope.add('if', (l) => { if (evaluate(l.get(0))) return evaluate(l.get(1)); else return evaluate(l.get(2));});
+scope.add('>', (l) => { return evaluate(l.get(0)) > evaluate(l.get(1));});
+scope.add('<', (l) => { return evaluate(l.get(0)) < evaluate(l.get(1));});
+scope.add('<=', (l) => { return evaluate(l.get(0)) <= evaluate(l.get(1));});
+scope.add('>=', (l) => { return evaluate(l.get(0)) >= evaluate(l.get(1));});
+scope.add('!=', (l) => { return evaluate(l.get(0)) != evaluate(l.get(1));});
+scope.add('==', (l) => { return evaluate(l.head()) == evaluate(l.get(1));});
+scope.add('head', (l) => { return evaluate(l.head()).head();});
+scope.add('rest', (l) => { return evaluate(l.head()).rest();});
+scope.add('length', (l) => { return evaluate(l.head()).length();});
+scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));});
 
 scope.add('list', (list) => {
   var lst = [];
@@ -197,7 +245,7 @@ function evaluate(form) {
       return form.get(1);
 
     var func = evaluate(head);
-    return func(form.rest());
+    return curry(func, form.rest());
   }
 
   var symbol = scope.get(form);
