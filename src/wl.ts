@@ -4,16 +4,14 @@ import P = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
 import browser = require('./libs/browser');
+import AB = require('./libs/asyncbarrier');
 
 var gn = browser.getQueryVariable('game');
-var R = 'resources/engines/wl/GAME'+gn;
-var T0 = 'resources/engines/wl/ALLHTDS1';
-var T1 = 'resources/engines/wl/ALLHTDS2';
-getter.loader
-.load(R)
-.load(T0)
-.load(T1)
-.finish(() => {
+var ab = AB.create();
+getter.preload('resources/engines/wl/GAME'+gn, ab.callback('R'));
+getter.preload('resources/engines/wl/ALLHTDS1', ab.callback('T0'));
+getter.preload('resources/engines/wl/ALLHTDS2', ab.callback('T1'));
+ab.wait((res) => {
 
 var egapal = new Uint8Array([
   0x00, 0x00, 0x00, 
@@ -34,9 +32,9 @@ var egapal = new Uint8Array([
   0xff, 0xff, 0xff
 ]);
 
-var game = new WL.Game(getter.get(R));
-var t0 = new WL.HTDS(getter.get(T0));
-var t1 = new WL.HTDS(getter.get(T1));
+var game = new WL.Game(res.R);
+var t0 = new WL.HTDS(res.T0);
+var t1 = new WL.HTDS(res.T1);
 
 console.log(game);
 console.log(t0);

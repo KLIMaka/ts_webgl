@@ -54,6 +54,10 @@ class Placeholder {
   constructor(public idx:number) {}
 }
 
+class System {
+  constructor(private name:string) {}
+}
+
 function cons(head, rest) {
   var arr = new Array<Object>(rest.length() + 1);
   arr[0] = head;
@@ -105,7 +109,7 @@ function curry(f, args) {
   }
 }
 
-var LST = new Object();
+var LST = new System('LST');
 function lst() {return LST}
 function placeholder(idx)  { return new Placeholder(parseInt(idx)) };
 var LR = lex.LexerRule;
@@ -121,8 +125,8 @@ lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT', 0, parse
 lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1));
 
 var scope = new Scope(null, null);
-var RP = new Object();
-var EOF = new Object();
+var RP = new System('RP');
+var EOF = new System('EOF');
 
 scope.add('+', (list) => {
   if (list.length() == 0)
@@ -154,8 +158,10 @@ scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));}
 
 scope.add('list', (list) => {
   var lst = [];
-  for (var i = 0; i < list.length(); i++)
-    lst.push(evaluate(list.get(i)));
+  for (var i = 0; i < list.length(); i++) {
+    var val = evaluate(list.get(i));
+    lst.push(val);
+  }
   return createList(lst);
 });
 
@@ -196,6 +202,10 @@ scope.add('lambda', (formals) => {
   }
 });
 
+scope.add('eval', (l) => {
+  return evaluate(evaluate(l));
+});
+
 scope.add('seq', (list) => {
   var res = null;
   for (var i = 0; i < list.length(); i++) {
@@ -212,7 +222,7 @@ function next() {
   return next;
 }
 
-function parse() {
+function parse(): any {
   var token = next();
   var value = lexer.value();
   

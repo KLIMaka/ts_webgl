@@ -8,10 +8,34 @@ import BATCHER = require('./modules/batcher');
 import SHADERS = require('./modules/shaders');
 import MB = require('./modules/meshbuilder');
 import UI = require('./modules/ui/ui');
-import CANV = require('./modules/pixel/canvas');
 import AB = require('./libs/asyncbarrier');
 import GET = require('./libs/getter');
 import OBJ = require('./modules/formats/obj');
+import PP = require('./modules/pixelprovider');
+
+class Tile {
+  constructor(
+    private length:number,
+    private offset:number,
+    private icon:PP.PixelProvider)
+  {}
+}
+
+class Cell {
+  constructor(
+    private tileId:number,
+    private ang:number=0)
+  {}
+}
+
+class Layer {
+  constructor(
+    private objs:OBJ.ObjData,
+    private tileset:Tile[],
+    private cellW:number,
+    private cellH:number)
+  {}
+}
 
 var ab = AB.create();
 GET.preloadString('resources/models/floor.obj', ab.callback('floor'));
