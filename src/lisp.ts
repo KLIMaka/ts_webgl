@@ -247,7 +247,6 @@ function parse(): any {
 }
 
 function evaluate(form) {
-
   if (form instanceof ArrayView) {
     var head = form.head();
 

@@ -74,21 +74,22 @@ var ab = AB.create();
 GET.preloadString('resources/models/floor.obj', ab.callback('floor'));
 GET.preloadString('resources/models/corner2.obj', ab.callback('corner'));
 GET.preloadString('resources/models/wall2.obj', ab.callback('wall'));
+GET.preloadString('resources/models/Stormtrooper.obj', ab.callback('troper'));
 ab.wait((res) => start(res));
 
 function modelMatrix(x:number, y:number, z:number, ang:number) {
   var mat = GLM.mat4.create();
-  mat = GLM.mat4.translate(mat, mat, GLM.vec3.fromValues(x, 0, y));
+  mat = GLM.mat4.translate(mat, mat, GLM.vec3.fromValues(x, z, y));
   mat = GLM.mat4.rotateY(mat, mat, MU.deg2rad(ang));
   return mat;
 }
 
 function start(res) {
-var gl = GL.createContext(800, 600, {antialias:false, alpha:false});
+var gl = GL.createContext(800, 600, {alpha:false});
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var model = OBJ.loadObjs([res.corner, res.floor, res.wall], gl);
+var model = OBJ.loadObjs([res.corner, res.floor, res.wall, res.troper], gl);
 var shader = SHADERS.createShader(gl, 'resources/shaders/simple');
 var ctrl = new CTRL3.Controller3D(gl);
 var map = [];
@@ -103,6 +104,7 @@ map[1+10*2] = new Cell(2, 90);
 map[2+10*1] = new Cell(2, 180);
 map[1+10*0] = new Cell(2, 270);
 map[1+10*1] = new Cell(1, 0);
+map[5+10*5] = new Cell(3, 0);
 
 var tileId = 0;
 var tileset = UI.panel('tileset')
@@ -129,7 +131,15 @@ for (var x = 0; x < 10; x++) {
     var cell = UI.div('cell')
       .size('16', '16')
       .css('background-color', 'white');
-    cell.elem().onclick = ((x,y) => {return (e:MouseEvent) => {if (map[x+y*10] == undefined) {map[x+y*10] = new Cell(tileId, 0)} map[x+y*10].tileId = tileId; map[x+y*10].ang += 90 }}) (x ,y);
+    cell.elem().onclick = ((x,y) => {
+      return (e:MouseEvent) => {
+        if (map[x+y*10] == undefined) {
+          map[x+y*10] = new Cell(tileId, 0)
+        } 
+        map[x+y*10].tileId = tileId; 
+        map[x+y*10].ang += 90 
+      }
+    }) (x ,y);
     row.push(cell);
   }
   tiles.row(row);
