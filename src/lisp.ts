@@ -129,12 +129,17 @@ var RP = new System('RP');
 var EOF = new System('EOF');
 
 scope.add('+', (list) => {
-  if (list.length() == 0)
-    return 0;
-  var sum = evaluate(list.get(0));
-  for (var i = 1; i < list.length(); i++)
+  var sum = 0
+  for (var i = 0; i < list.length(); i++)
     sum += evaluate(list.get(i));
   return sum;
+});
+
+scope.add('*', (list) => {
+  var mul = 1
+  for (var i = 0; i < list.length(); i++)
+    mul *= evaluate(list.get(i));
+  return mul;
 });
 
 scope.add('set', (list) => {

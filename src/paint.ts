@@ -31,10 +31,10 @@ function createPal() {
 }
 
 function addC64Colors(pal:Uint8Array) {
-  pal[0] = 0;   pal[1] =   0; pal[2] =   0;
-  pal[3] = 62;  pal[4] =  49; pal[5] = 162;
-  pal[6] = 87;  pal[7] =  66; pal[8] =   0;
-  pal[9] = 140; pal[10] =  62; pal[11] =  52;
+  pal[0]  = 0;   pal[1]  =   0; pal[2]  =   0;
+  pal[3]  = 62;  pal[4]  =  49; pal[5]  = 162;
+  pal[6]  = 87;  pal[7]  =  66; pal[8]  =   0;
+  pal[9]  = 140; pal[10] =  62; pal[11] =  52;
   pal[12] = 84;  pal[13] =  84; pal[14] =  84;
   pal[15] = 141; pal[16] =  72; pal[17] = 179;
   pal[18] = 144; pal[19] =  95; pal[20] =  37;
