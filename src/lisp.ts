@@ -37,6 +37,18 @@ class Scope {
   }
 }
 
+class LazyValue {
+  private val;
+  constructor(private form) {}
+
+  public get() {
+    if (this.val == null) {
+      this.val = evaluate(this.form);
+    }
+    return this.val;
+  }
+}
+
 class ArrayView {
   constructor(private arr:Object[], private start:number) {}
   public get(idx:number) { return this.arr[this.start + idx] }
@@ -117,8 +129,8 @@ var lexer = new lex.Lexer();
 lexer.addRule(new LR(/^[ \t\r\v\n]+/,                            'WS'));
 lexer.addRule(new LR(/^\(/,                                      'LP'));
 lexer.addRule(new LR(/^\)/,                                      'RP'));
-lexer.addRule(new LR(/^'/,                                       'LST', 0, lst));
-lexer.addRule(new LR(/^[^ \t\r\v\n\(\)'"]+/,                     'ID'));
+lexer.addRule(new LR(/^`/,                                       'LST', 0, lst));
+lexer.addRule(new LR(/^[^ \t\r\v\n\(\)`"]+/,                     'ID'));
 lexer.addRule(new LR(/^_([0-9])+/,                               'PLH', 1, placeholder));
 lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, parseFloat));
 lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT', 0, parseInt));
@@ -208,7 +220,12 @@ scope.add('lambda', (formals) => {
 });
 
 scope.add('eval', (l) => {
-  return evaluate(evaluate(l));
+  return evaluate(evaluate(l.head()));
+});
+
+scope.add('evaljs', (l) => {
+  var f = Function("l", "evaluate", l.head());
+  return (l) => {return f(l, evaluate)};
 });
 
 scope.add('seq', (list) => {
@@ -217,6 +234,20 @@ scope.add('seq', (list) => {
     res = evaluate(list.get(i));
   }
   return res;
+});
+
+scope.add('let', (l) => {
+  var len = l.length();
+  var i = 0;
+  scope = scope.push(null);
+  while (i < len-1) {
+    var name = l.get(i++);
+    var value = new LazyValue(l.get(i++));
+    scope.add(name, value);
+  }
+  var ret = evaluate(l.get(len-1));
+  scope = scope.pop();
+  return ret;
 });
 
 
@@ -259,13 +290,17 @@ function evaluate(form) {
       return form.get(1);
 
     var func = evaluate(head);
+    if (!(func instanceof Function)){
+      console.error(func);
+      throw new Error(func + ' not a function');
+    }
     return curry(func, form.rest());
   }
 
   var symbol = scope.get(form);
   if (symbol == undefined)
     return form;
-  return symbol;
+  return symbol instanceof LazyValue ? symbol.get() : symbol;
 }
 
 var file = fs.readFileSync('../resources/parser/lisp.lsp', {encoding:'UTF-8'});
