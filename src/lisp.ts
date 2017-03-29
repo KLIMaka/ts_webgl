@@ -67,7 +67,7 @@ class Placeholder {
 }
 
 class System {
-  constructor(private name:string) {}
+  constructor(public name:string) {}
 }
 
 function cons(head, rest) {
@@ -198,7 +198,7 @@ scope.add('print', (list) => {
   var val = null;
   for (var i = 0; i < list.length(); i++){
     val = evaluate(list.get(i));
-    console.log(val);
+    console.log(print(val));
   }
   return val;
 });
@@ -207,11 +207,11 @@ scope.add('print', (list) => {
 scope.add('lambda', (formals) => {
   var closure = scope;
   return (list) => {
-    scope = scope.push(null);
+    var nscope = scope.push(null);
     for (var i = 0; i < list.length(); i++) {
-      scope.add(formals.get(i), evaluate(list.get(i)));
+      nscope.add(formals.get(i), evaluate(list.get(i)));
     }
-    scope = scope.push(closure);
+    scope = nscope.push(closure);
     var result = evaluate(formals.get(i));
     scope = scope.pop();
     scope = scope.pop();
@@ -250,6 +250,20 @@ scope.add('let', (l) => {
   return ret;
 });
 
+function print(form):string {
+  if (form instanceof ArrayView) {
+    var str = '( ';
+    for (var i = 0; i < form.length(); i++) {
+      str += print(form.get(i)) + ' ';
+    }
+    return str + ')';
+  } else if (form instanceof Function) {
+    return "[Function]";
+  } else if (form instanceof System) {
+    return "[" + form.name + "]";
+  }
+  return form+'';
+}
 
 function next() {
   var next = lexer.next();
@@ -291,8 +305,7 @@ function evaluate(form) {
 
     var func = evaluate(head);
     if (!(func instanceof Function)){
-      console.error(func);
-      throw new Error(func + ' not a function');
+      throw new Error(print(func) + ' not a function');
     }
     return curry(func, form.rest());
   }
@@ -309,7 +322,7 @@ for(;;) {
   var value = parse();
   if (value === EOF)
     break;
-  console.log(evaluate(value));
+  console.log(print(evaluate(value)));
 }
 
 

@@ -1,18 +1,20 @@
-(set rev (lambda l
+(set \ lambda)
+
+(set rev (\ l
 	(if (length l)
-		(append (rev (rest l)) (cons (head l) `()))
+		(append (rev (rest l)) (list (head l)))
 		`()
 	)
 ))
 
-(set nth (lambda l n
+(set nth (\ l n
   (if n
     (nth (rest l) (+ n -1))
     (head l)
   )
 ))
 
-(set filter (lambda l f
+(set filter (\ l f
   (let 
     nonempty (length l)
     next     (filter (rest l) f)
@@ -29,20 +31,20 @@
   )
 ))
 
-(set qsort (lambda l
+(set qsort (\ l
   (let
     nonempty (length l)
     pivot    (head l)
-    pred     (lambda op p (op _0 p))
-    ls       (lambda p (filter l (pred < p)))
-    eq       (lambda p (filter l (pred == p)))
-    gt       (lambda p (filter l (pred > p)))
+    pred     (\ op (op _0 pivot))
+    ls       (filter l (pred <))
+    eq       (filter l (pred ==))
+    gt       (filter l (pred >))
 
     (if nonempty
       (append 
-        (qsort (ls pivot)) 
-        (eq pivot) 
-        (qsort (gt pivot))
+        (qsort ls) 
+        eq 
+        (qsort gt)
       )
       `()
     )
@@ -50,21 +52,14 @@
 ))
 
 (qsort `(4 8 4 2 6 5 4 4 7 5 2 54 4 7 4 4 7 5 4 1 1 2 5 4 4 8 5 4 4 4 5 6 99 3 2 1 4))
-(set . (lambda f g
-  (lambda a (f (g a)))
-))
-(set inc (+ _0 1))
-(set double (* _0 2))
-((. double inc) 1)
 
-(set match (lambda arg ms
+(set match (\ arg ms
   (let
     nonempty (length ms)
     first    (head ms)
-    second   (head (rest ms))
+    result   ((head (rest ms)))
     tail     (rest (rest ms))
-    cond     ((eval first) arg)
-    result   (eval second)
+    cond     (first arg)
     next     (match arg tail)
    
     (if nonempty
@@ -77,16 +72,74 @@
   )
 ))
 
-(set - (evaljs "return -evaluate(l.get(0))"))
-(set rand (evaljs "return Math.random()"))
-(- (+ 1 2))
-(match (rand) `(
-  (> _0 0.5) "gt"
-  (< _0 0.5) "le"
+(set left_subtree  (\ t (head t)))
+(set right_subtree (\ t (head (rest (rest t)))))
+(set node_value    (\ t (head (rest t))))
+
+(set tree_add (\ t e 
+  (let
+    nonempty (length t)
+    left     (left_subtree t)
+    value    (node_value t)
+    right    (right_subtree t)
+
+    (if nonempty
+      (match value (list
+        (== _0 e) (\ t)
+        (>  _0 e) (\ (list (tree_add left e) value right))
+        (<  _0 e) (\ (list left value (tree_add right e)))
+      ))
+      (list `() e `())
+    )
+  )
 ))
 
-(let 
-  a 12
-  b 22
-  (+ a b)
-)
+(set build_tree (\ l t
+  (let 
+    nonempty (length l)
+    first    (head l)
+    tail     (rest l)
+    addnode  (tree_add t first)
+
+    (if nonempty
+      (build_tree tail addnode)
+      t
+    )
+  )
+))
+
+(set visit_tree (\ t
+  (let
+    nonempty (length t)
+    tail     (rest t)
+    left     (visit_tree (left_subtree t))
+    right    (visit_tree (right_subtree t))
+    nodeval  (list (node_value t))
+
+    (if nonempty
+      (append left nodeval right)
+      `()
+    )
+  )
+))
+
+(set max (\ a b
+  (if (> a b) a b)
+))
+
+(set tree_height (\ t
+  (let
+    nonempty (length t)
+    left     (+ 1 (tree_height (left_subtree t)))
+    right    (+ 1 (tree_height (right_subtree t)))
+
+    (if nonempty
+      (max left right)
+      0
+    )
+  )
+))
+
+(set tree (build_tree `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4) `()))
+(tree_height tree)
+(rev (visit_tree tree))
