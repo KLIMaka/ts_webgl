@@ -1,4 +1,7 @@
 (set \ lambda)
+(set strlen (evaljs "return evaluate(l.head()).length"))
+(set tostr (evaljs "return evaluate(l.head()) + ''"))
+(set concat (evaljs "return evaluate(l.get(0)) + '' + evaluate(l.get(1))"))
 
 (set rev (\ l
 	(if (length l)
@@ -72,6 +75,14 @@
   )
 ))
 
+(set reduce (\ f l
+  (match (length l) (list
+    (== _0 0) (\ 0)
+    (== _0 1) (\ (head l))
+    (!= _0 1) (\ (f (head l) (reduce f (rest l))))
+  ))
+))
+
 (set left_subtree  (\ t (head t)))
 (set right_subtree (\ t (head (rest (rest t)))))
 (set node_value    (\ t (head (rest t))))
@@ -124,7 +135,7 @@
 ))
 
 (set max (\ a b
-  (if (> a b) a b)
+  (if (>= a b) a b)
 ))
 
 (set tree_height (\ t
@@ -140,6 +151,23 @@
   )
 ))
 
-(set tree (build_tree `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4) `()))
+(set tree (build_tree (rev `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4)) `()))
+(reduce (tree_add _1 _0) `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4 ()))
 (tree_height tree)
 (rev (visit_tree tree))
+
+(set genspaces (\ n 
+  (if n
+    (concat " " (genspaces (+ n -1)))
+    ""
+  )
+))
+
+(set print_tree (\ t
+  (let
+    left (strlen )
+    ()
+  )
+))
+
+(reduce concat `("1" "2" "3" "4"))
