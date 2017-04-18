@@ -1,7 +1,10 @@
 (set \ lambda)
-(set strlen (evaljs "return evaluate(l.head()).length"))
-(set tostr (evaljs "return evaluate(l.head()) + ''"))
-(set concat (evaljs "return evaluate(l.get(0)) + '' + evaluate(l.get(1))"))
+(set tostr (evaljs "return str(evaluate(l.head()) + '')"))
+(set concat (evaljs "return str(evaluate(l.get(0)).str + '' + evaluate(l.get(1)).str)"))
+(set / (evaljs "return evaluate(l.get(0)) / evaluate(l.get(1))"))
+(set apply (\ f a (eval (append (list f) (list  (append (list  LST) a))))))
+(set . (\ f g (\ (f (apply g _args)))))
+(set times (\ e n (if n (append (list e) (times e (+ n -1))) `())))
 
 (set rev (\ l
 	(if (length l)
@@ -45,7 +48,7 @@
 
     (if nonempty
       (append 
-        (qsort ls) 
+        (qsort ls)
         eq 
         (qsort gt)
       )
@@ -75,14 +78,44 @@
   )
 ))
 
-(set reduce (\ f l
+(set fold (\ f l s
   (match (length l) (list
-    (== _0 0) (\ 0)
-    (== _0 1) (\ (head l))
-    (!= _0 1) (\ (f (head l) (reduce f (rest l))))
+    (== _0 0) (\ s)
+    (>  _0 0) (\ (f (head l) (fold f (rest l) s)))
   ))
 ))
 
+(set fold1 (\ f l
+  (match (length l) (list
+    (== _0 0) (\ 0)
+    (== _0 1) (\ (head l))
+    (>  _0 1) (\ (f (head l) (fold1 f (rest l))))
+  ))
+))
+(set join (fold1 concat _0))
+
+(set foldr (\ f l s
+  (match (length l) (list
+    (== _0 0) (\ s)
+    (>  _0 0) (\ (foldr f (rest l) (f s (head l))))
+  ))
+))
+
+(set foldr1 (\ f l
+  (if (length l)
+    (foldr f (rest l) (head l))
+    0
+  )
+))
+
+(set map (\ f l
+  (if (length l)
+    (append (list (f (head l))) (map f (rest l)))
+    `()
+  )
+))
+
+(set create_node   (\ l e r (list l e r)))
 (set left_subtree  (\ t (head t)))
 (set right_subtree (\ t (head (rest (rest t)))))
 (set node_value    (\ t (head (rest t))))
@@ -97,10 +130,10 @@
     (if nonempty
       (match value (list
         (== _0 e) (\ t)
-        (>  _0 e) (\ (list (tree_add left e) value right))
-        (<  _0 e) (\ (list left value (tree_add right e)))
+        (>  _0 e) (\ (create_node (tree_add left e) value right))
+        (<  _0 e) (\ (create_node left value (tree_add right e)))
       ))
-      (list `() e `())
+      (create_node `() e `())
     )
   )
 ))
@@ -151,23 +184,31 @@
   )
 ))
 
+(set flatten (\ l
+  (let
+    nonempty (length l)
+    first    (head l)
+    tail     (rest l)
+
+    (if nonempty
+      (match first (list
+        (list? _0) (\ (append (flatten first) (flatten tail)))
+        (\ 1)      (\ (append (list first) (flatten tail)))
+      ))
+      `()
+    )
+  )
+))
+
 (set tree (build_tree (rev `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4)) `()))
-(reduce (tree_add _1 _0) `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4 ()))
+(fold (tree_add _1 _0) `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4) `())
 (tree_height tree)
 (rev (visit_tree tree))
+(rev (flatten tree))
 
-(set genspaces (\ n 
-  (if n
-    (concat " " (genspaces (+ n -1)))
-    ""
-  )
-))
-
-(set print_tree (\ t
-  (let
-    left (strlen )
-    ()
-  )
-))
-
-(reduce concat `("1" "2" "3" "4"))
+(join `("1" "2" "3" "4"))
+(/ (/ 100 10) 2)
+(/ 100 (/ 10 2))
+(foldr1 / `(100 10 2))
+(join (map tostr (flatten `(1 2 3 (4 (5 6) 7) 8))))
+((. join (map (. (concat _0 "_") tostr) _0)) `(1 2 3 4))

@@ -17,7 +17,7 @@ class Scope {
   }
 
   public get(name:string):any {
-    var smb = this.closure==null ? undefined : this.closure.get(name);
+    var smb = this.closure==null||name=='_args' ? undefined : this.closure.get(name);
     if (smb != undefined)
       return smb;
     var scope = <Scope> this;
@@ -68,6 +68,31 @@ class Placeholder {
 
 class System {
   constructor(public name:string) {}
+}
+
+class Str {
+  constructor(public str:string) {}
+}
+
+function head(obj) {
+  if (obj instanceof ArrayView)
+    return obj.head();
+  else if (obj instanceof Str)
+    return str(obj.str[0]);
+}
+
+function rest(obj): any {
+  if (obj instanceof ArrayView)
+    return obj.rest();
+  else if (obj instanceof Str)
+    return str(obj.str.substr(1));
+}
+
+function length(obj) {
+  if (obj instanceof ArrayView)
+    return obj.length();
+  else if (obj instanceof Str)
+    return obj.str.length;
 }
 
 function cons(head, rest) {
@@ -123,7 +148,8 @@ function curry(f, args) {
 
 var LST = new System('LST');
 function lst() {return LST}
-function placeholder(idx)  { return new Placeholder(parseInt(idx)) };
+function placeholder(idx)  { return new Placeholder(parseInt(idx)) }
+function str(str) {return new Str(str) }
 var LR = lex.LexerRule;
 var lexer = new lex.Lexer();
 lexer.addRule(new LR(/^[ \t\r\v\n]+/,                            'WS'));
@@ -134,7 +160,7 @@ lexer.addRule(new LR(/^[^ \t\r\v\n\(\)`"]+/,                     'ID'));
 lexer.addRule(new LR(/^_([0-9])+/,                               'PLH', 1, placeholder));
 lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, parseFloat));
 lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT', 0, parseInt));
-lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1));
+lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1, str));
 
 var scope = new Scope(null, null);
 var RP = new System('RP');
@@ -168,10 +194,14 @@ scope.add('<=', (l) => { return evaluate(l.get(0)) <= evaluate(l.get(1));});
 scope.add('>=', (l) => { return evaluate(l.get(0)) >= evaluate(l.get(1));});
 scope.add('!=', (l) => { return evaluate(l.get(0)) != evaluate(l.get(1));});
 scope.add('==', (l) => { return evaluate(l.head()) == evaluate(l.get(1));});
-scope.add('head', (l) => { return evaluate(l.head()).head();});
-scope.add('rest', (l) => { return evaluate(l.head()).rest();});
-scope.add('length', (l) => { return evaluate(l.head()).length();});
+scope.add('head', (l) => { return head(evaluate(l.head()));});
+scope.add('rest', (l) => { return rest(evaluate(l.head()));});
+scope.add('length', (l) => { return length(evaluate(l.head()));});
 scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));});
+scope.add('list?', (l) => { return evaluate(l.head()) instanceof ArrayView });
+scope.add('LST', LST);
+scope.add(':>', (l) => { scope = scope.push(null); return 0; });
+scope.add(':<', (l) => { scope = scope.pop(); return 0; });
 
 scope.add('list', (list) => {
   var lst = [];
@@ -182,8 +212,7 @@ scope.add('list', (list) => {
   return createList(lst);
 });
 
-
-scope.add('append', (list) => {
+function append(list):any {
   var lst = [];
   for (var i = 0; i < list.length(); i++) {
     var l = evaluate(list.get(i));
@@ -192,6 +221,9 @@ scope.add('append', (list) => {
     }
   }
   return createList(lst);
+}
+scope.add('append', (list) => {
+  return append(list);
 });
 
 scope.add('print', (list) => {
@@ -208,11 +240,17 @@ scope.add('lambda', (formals) => {
   var closure = scope;
   return (list) => {
     var nscope = scope.push(null);
+    var facts = [];
     for (var i = 0; i < list.length(); i++) {
-      nscope.add(formals.get(i), evaluate(list.get(i)));
+      var fact = evaluate(list.get(i));
+      facts.push(fact);
+      if (formals.length() - 1 > i) {
+        nscope.add(formals.get(i), fact);
+      }
     }
+    nscope.add('_args', createList(facts));
     scope = nscope.push(closure);
-    var result = evaluate(formals.get(i));
+    var result = evaluate(formals.get(formals.length()-1));
     scope = scope.pop();
     scope = scope.pop();
     return result;
@@ -224,8 +262,8 @@ scope.add('eval', (l) => {
 });
 
 scope.add('evaljs', (l) => {
-  var f = Function("l", "evaluate", l.head());
-  return (l) => {return f(l, evaluate)};
+  var f = Function("l", "evaluate", "str", l.head().str);
+  return (l) => {return f(l, evaluate, str)};
 });
 
 scope.add('seq', (list) => {
@@ -261,6 +299,8 @@ function print(form):string {
     return "[Function]";
   } else if (form instanceof System) {
     return "[" + form.name + "]";
+  } else if (form instanceof Str) {
+    return "'" + form.str + "'";
   }
   return form+'';
 }
@@ -304,7 +344,7 @@ function evaluate(form) {
       return form.get(1);
 
     var func = evaluate(head);
-    if (!(func instanceof Function)){
+    if (!(func instanceof Function)) {
       throw new Error(print(func) + ' not a function');
     }
     return curry(func, form.rest());
