@@ -40,13 +40,7 @@ class Scope {
 class LazyValue {
   private val;
   constructor(private form) {}
-
-  public get() {
-    if (this.val == null) {
-      this.val = evaluate(this.form);
-    }
-    return this.val;
-  }
+  public get() { if (this.val == null) this.val = evaluate(this.form); return this.val;}
 }
 
 class ArrayView {
@@ -166,22 +160,8 @@ var scope = new Scope(null, null);
 var RP = new System('RP');
 var EOF = new System('EOF');
 
-scope.add('+', (list) => {
-  var sum = 0
-  for (var i = 0; i < list.length(); i++)
-    sum += evaluate(list.get(i));
-  return sum;
-});
-
-scope.add('*', (list) => {
-  var mul = 1
-  for (var i = 0; i < list.length(); i++)
-    mul *= evaluate(list.get(i));
-  return mul;
-});
-
 scope.add('set', (list) => {
-  var id = evaluate(list.get(0));
+  var id = list.get(0);
   var val = evaluate(list.get(1));
   scope.add(id, val);
   return val;

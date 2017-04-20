@@ -1,10 +1,15 @@
 (set \ lambda)
 (set tostr (evaljs "return str(evaluate(l.head()) + '')"))
+(set strcmp (evaljs "var lf = evaluate(l.get(0)).str; var r = evaluate(l.get(1)).str; return lf == r ? 0 : lf < r ? -1 : 1;"))
 (set concat (evaljs "return str(evaluate(l.get(0)).str + '' + evaluate(l.get(1)).str)"))
 (set / (evaljs "return evaluate(l.get(0)) / evaluate(l.get(1))"))
-(set apply (\ f a (eval (append (list f) (list  (append (list  LST) a))))))
+(set + (evaljs "return evaluate(l.get(0)) + evaluate(l.get(1))"))
+(set * (evaljs "return evaluate(l.get(0)) * evaluate(l.get(1))"))
+(set - (evaljs "return evaluate(l.get(0)) - evaluate(l.get(1))"))
+(set apply (\ f a (eval  (print (append (list f) (list (append (list  LST) a)))))))
 (set . (\ f g (\ (f (apply g _args)))))
-(set times (\ e n (if n (append (list e) (times e (+ n -1))) `())))
+(set times (\ e n (if n (append (list e) (times e (- n 1))) `())))
+(set decorate_arg (\ f a (\ (apply f (map a _args)))))
 
 (set rev (\ l
 	(if (length l)
@@ -120,34 +125,40 @@
 (set right_subtree (\ t (head (rest (rest t)))))
 (set node_value    (\ t (head (rest t))))
 
-(set tree_add (\ t e 
+(set tree_add (\ t e c
   (let
     nonempty (length t)
     left     (left_subtree t)
     value    (node_value t)
+    cmp      (c e value)
     right    (right_subtree t)
 
     (if nonempty
-      (match value (list
-        (== _0 e) (\ t)
-        (>  _0 e) (\ (create_node (tree_add left e) value right))
-        (<  _0 e) (\ (create_node left value (tree_add right e)))
+      (match cmp (list
+        (== _0 0) (\ (create_node left e right))
+        (>  _0 0) (\ (create_node (tree_add left e c) value right))
+        (<  _0 0) (\ (create_node left value (tree_add right e c)))
       ))
       (create_node `() e `())
     )
   )
 ))
 
-(set build_tree (\ l t
-  (let 
-    nonempty (length l)
-    first    (head l)
-    tail     (rest l)
-    addnode  (tree_add t first)
+(set tree_get (\ t k c
+  (let
+    nonempty (length t)
+    value    (node_value t)
+    cmp      (c k value)
+    left     (left_subtree t)
+    right    (right_subtree t)
 
     (if nonempty
-      (build_tree tail addnode)
-      t
+      (match cmp (list
+        (== _0 0) (\ value)
+        (>  _0 0) (\ (tree_get left k c))
+        (<  _0 0) (\ (tree_get right k c))
+      ))
+      `()
     )
   )
 ))
@@ -200,11 +211,16 @@
   )
 ))
 
-(set tree (build_tree (rev `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4)) `()))
-(fold (tree_add _1 _0) `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4) `())
+(set tree (fold (tree_add _1 _0 -) `(10 55 87 4 5 45 9 88 4 66 8 5 4 55 9 5 1 2 5 4 77  4) `()))
 (tree_height tree)
 (rev (visit_tree tree))
 (rev (flatten tree))
+
+(set tree_cmp (decorate_arg - head))
+(set mtree (fold (tree_add _1 _0 tree_cmp) `((1 "one") (2 "two") (3 "three")) `()))
+(set mtree (tree_add mtree `(5 "five") tree_cmp))
+(set mtree (tree_add mtree `(5 "five1") tree_cmp))
+(tree_get mtree `(5) tree_cmp)
 
 (join `("1" "2" "3" "4"))
 (/ (/ 100 10) 2)
@@ -212,3 +228,13 @@
 (foldr1 / `(100 10 2))
 (join (map tostr (flatten `(1 2 3 (4 (5 6) 7) 8))))
 ((. join (map (. (concat _0 "_") tostr) _0)) `(1 2 3 4))
+
+(set createTyped (\ t v (list t v)))
+(set getType (\ v (head v)))
+(set checkType (\ t v (== t (getType v))))
+
+(createTyped Integer 11)
+(getType (createTyped Integer 11))
+(checkType Integer (createTyped Integer 12))
+
+(apply + `(1 2))
