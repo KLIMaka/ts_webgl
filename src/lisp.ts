@@ -2,6 +2,7 @@
 
 import fs = require('fs');
 import lex = require('./modules/lex/lexer');
+import BAG = require('./libs/bag');
 
 class Scope {
   private symbols = {};
@@ -59,6 +60,7 @@ function createList(arr:Object[], start:number=0) {
 class Placeholder {
   constructor(public idx:number) {}
 }
+var placeholder = (idx:string) => { return new Placeholder(parseInt(idx)) }
 
 class System {
   constructor(public name:string) {}
@@ -67,6 +69,7 @@ class System {
 class Str {
   constructor(public str:string) {}
 }
+var str = (str:string) => { return new Str(str) }
 
 function head(obj) {
   if (obj instanceof ArrayView)
@@ -104,17 +107,18 @@ function getPlaceholder(arg):number {
   return -1;
 }
 
-function curry(f, args) {
-  var curried = false;
+function isCurried(args) {
   for (var i = 0; i < args.length(); i++) {
     var arg = args.get(i);
     if (getPlaceholder(arg) != -1) {
-      curried = true;
-      break;
+      return true;
     }
   }
+  return false;
+}
 
-  if (curried) {
+function curry(f, args) {
+  if (isCurried(args)) {
     var evaluated = [];
     for (var i = 0; i < args.length(); i++) {
       var arg = args.get(i);
@@ -140,23 +144,21 @@ function curry(f, args) {
   }
 }
 
-var LST = new System('LST');
-function lst() {return LST}
-function placeholder(idx)  { return new Placeholder(parseInt(idx)) }
-function str(str) {return new Str(str) }
 var LR = lex.LexerRule;
 var lexer = new lex.Lexer();
 lexer.addRule(new LR(/^[ \t\r\v\n]+/,                            'WS'));
 lexer.addRule(new LR(/^\(/,                                      'LP'));
 lexer.addRule(new LR(/^\)/,                                      'RP'));
-lexer.addRule(new LR(/^`/,                                       'LST', 0, lst));
+lexer.addRule(new LR(/^`/,                                       'LST',    0, () => { return LST }));
 lexer.addRule(new LR(/^[^ \t\r\v\n\(\)`"]+/,                     'ID'));
-lexer.addRule(new LR(/^_([0-9])+/,                               'PLH', 1, placeholder));
-lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, parseFloat));
-lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT', 0, parseInt));
+lexer.addRule(new LR(/^_([0-9])+/,                               'PLH',    1, placeholder));
+lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT',  0, parseFloat));
+lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT',    0, parseInt));
 lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1, str));
 
 var scope = new Scope(null, null);
+
+var LST = new System('LST');
 var RP = new System('RP');
 var EOF = new System('EOF');
 
@@ -168,20 +170,12 @@ scope.add('set', (list) => {
 });
 
 scope.add('if', (l) => { if (evaluate(l.get(0))) return evaluate(l.get(1)); else return evaluate(l.get(2));});
-scope.add('>', (l) => { return evaluate(l.get(0)) > evaluate(l.get(1));});
-scope.add('<', (l) => { return evaluate(l.get(0)) < evaluate(l.get(1));});
-scope.add('<=', (l) => { return evaluate(l.get(0)) <= evaluate(l.get(1));});
-scope.add('>=', (l) => { return evaluate(l.get(0)) >= evaluate(l.get(1));});
-scope.add('!=', (l) => { return evaluate(l.get(0)) != evaluate(l.get(1));});
-scope.add('==', (l) => { return evaluate(l.head()) == evaluate(l.get(1));});
 scope.add('head', (l) => { return head(evaluate(l.head()));});
 scope.add('rest', (l) => { return rest(evaluate(l.head()));});
 scope.add('length', (l) => { return length(evaluate(l.head()));});
 scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));});
 scope.add('list?', (l) => { return evaluate(l.head()) instanceof ArrayView });
 scope.add('LST', LST);
-scope.add(':>', (l) => { scope = scope.push(null); return 0; });
-scope.add(':<', (l) => { scope = scope.pop(); return 0; });
 
 scope.add('list', (list) => {
   var lst = [];
@@ -335,6 +329,14 @@ function evaluate(form) {
     return form;
   return symbol instanceof LazyValue ? symbol.get() : symbol;
 }
+
+var bag = BAG.create(10);
+console.log(bag.get(5));
+console.log(bag.get(3));
+console.log(bag.get(2));
+bag.put(0, 5);
+bag.put(5, 5);
+bag.get(10);
 
 var file = fs.readFileSync('../resources/parser/lisp.lsp', {encoding:'UTF-8'});
 lexer.setSource(file);

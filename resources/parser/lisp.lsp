@@ -1,15 +1,24 @@
 (set \ lambda)
 (set tostr (evaljs "return str(evaluate(l.head()) + '')"))
-(set strcmp (evaljs "var lf = evaluate(l.get(0)).str; var r = evaluate(l.get(1)).str; return lf == r ? 0 : lf < r ? -1 : 1;"))
+(set tonum (evaljs "return parseFloat(evaluate(l.head()).str)"))
+(set strcmp (evaljs "var lf = evaluate(l.get(0)).str; var r = evaluate(l.get(1)).str; return lf == r ? 0 : lf < r ? -1 : 1"))
 (set concat (evaljs "return str(evaluate(l.get(0)).str + '' + evaluate(l.get(1)).str)"))
 (set / (evaljs "return evaluate(l.get(0)) / evaluate(l.get(1))"))
+(set % (evaljs "return evaluate(l.get(0)) % evaluate(l.get(1))"))
 (set + (evaljs "return evaluate(l.get(0)) + evaluate(l.get(1))"))
 (set * (evaljs "return evaluate(l.get(0)) * evaluate(l.get(1))"))
 (set - (evaljs "return evaluate(l.get(0)) - evaluate(l.get(1))"))
-(set apply (\ f a (eval  (print (append (list f) (list (append (list  LST) a)))))))
+(set > (evaljs "return evaluate(l.get(0)) > evaluate(l.get(1))"))
+(set < (evaljs "return evaluate(l.get(0)) < evaluate(l.get(1))"))
+(set >= (evaljs "return evaluate(l.get(0)) >= evaluate(l.get(1))"))
+(set <= (evaljs "return evaluate(l.get(0)) <= evaluate(l.get(1))"))
+(set == (evaljs "return evaluate(l.get(0)) == evaluate(l.get(1))"))
+(set != (evaljs "return evaluate(l.get(0)) != evaluate(l.get(1))"))
+(set apply (\ f a (eval (cons f (map (\ x (list LST x)) a)))))
 (set . (\ f g (\ (f (apply g _args)))))
-(set times (\ e n (if n (append (list e) (times e (- n 1))) `())))
+(set times (\ e n (if n (cons e (times e (- n 1))) `())))
 (set decorate_arg (\ f a (\ (apply f (map a _args)))))
+(set strpad (\ s p n (if (>= (length s) n) s (concat (join (times p (- n (length s)))) s))))
 
 (set rev (\ l
 	(if (length l)
@@ -20,7 +29,7 @@
 
 (set nth (\ l n
   (if n
-    (nth (rest l) (+ n -1))
+    (nth (rest l) (- n 1))
     (head l)
   )
 ))
@@ -115,7 +124,7 @@
 
 (set map (\ f l
   (if (length l)
-    (append (list (f (head l))) (map f (rest l)))
+    (cons (f (head l)) (map f (rest l)))
     `()
   )
 ))
@@ -204,7 +213,7 @@
     (if nonempty
       (match first (list
         (list? _0) (\ (append (flatten first) (flatten tail)))
-        (\ 1)      (\ (append (list first) (flatten tail)))
+        (\ 1)      (\ (cons first (flatten tail)))
       ))
       `()
     )
@@ -226,7 +235,7 @@
 (/ (/ 100 10) 2)
 (/ 100 (/ 10 2))
 (foldr1 / `(100 10 2))
-(join (map tostr (flatten `(1 2 3 (4 (5 6) 7) 8))))
+((fold1 . (list join (map tostr _0) flatten)) `(1 2 3 (4 (5 6) 7) 8))
 ((. join (map (. (concat _0 "_") tostr) _0)) `(1 2 3 4))
 
 (set createTyped (\ t v (list t v)))
@@ -237,4 +246,6 @@
 (getType (createTyped Integer 11))
 (checkType Integer (createTyped Integer 12))
 
-(apply + `(1 2))
+((. join filter) "123456" (fold1 . (list (== _0 0) (% _0 2) (+ _0 1) tonum)))
+
+(strpad "123" "0" 10)

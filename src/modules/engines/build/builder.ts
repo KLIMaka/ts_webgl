@@ -180,7 +180,7 @@ function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, material
   var bbox = MU.bbox(vtxs);
   builder.begin();
   builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
-  if ((spr.cstat&0x40)==0) {
+  if ((spr.cstat&0x40)==0) { //twosided
     vtxs.reverse(); tcs.reverse();
     builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
   }
@@ -458,7 +458,7 @@ export class BoardProcessor {
       var wallinfo = walls[i];
       if (wallinfo == undefined)
         continue;
-      if (bboxVisible(ms, eye, wallinfo.up.bbox, wallinfo.up.normal))
+      if (wallinfo.up != null && bboxVisible(ms, eye, wallinfo.up.bbox, wallinfo.up.normal))
         ds.push(wallinfo.up.ds);
       if (wallinfo.down != null && bboxVisible(ms, eye, wallinfo.down.bbox, wallinfo.down.normal))
         ds.push(wallinfo.down.ds);

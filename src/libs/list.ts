@@ -21,6 +21,10 @@ export class List<T> {
     return this.nil.prev;
   }
 
+  public terminator():Node<T> {
+    return this.nil;
+  }
+
   public pop():T {
     var ret = this.last().obj;
     this.remove(this.last());
