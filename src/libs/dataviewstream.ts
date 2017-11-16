@@ -86,7 +86,7 @@ export class DataViewStream {
     return ret;
   }
 
-  public array(bytes:number) {
+  public array(bytes:number):DataView {
     return new DataView(this.view.buffer, this.offset, bytes)
   }
 }
@@ -94,14 +94,14 @@ export class DataViewStream {
 export interface Reader<T, AT> {
   read(s:DataViewStream):T;
   sizeof():number;
-  arrType():{new(T):AT};
+  arrType():{new(buffer: ArrayBuffer, byteOffset: number, length: number):AT};
 }
 
 export class BasicReader<T, AT> implements Reader<T, AT> {
   constructor(private f:(s:DataViewStream)=>T, private size:number, private arr:{new(T):AT}) {}
   read(s:DataViewStream):T {return this.f(s)}
   sizeof():number {return this.size}
-  arrType():{new(T):AT} {return this.arr}
+  arrType():{new(buffer: ArrayBuffer, byteOffset: number, length: number):AT} {return this.arr}
 }
 
 export function reader<T,AT>(rf:(s:DataViewStream)=>T, size:number, arr:{new(T):AT}=null) {
@@ -129,10 +129,9 @@ export var atomic_array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:num
   var arrayType = type.arrType();
   if (arrayType == null)
     throw new Error('type is not atomic');
-  var arr = new Array<T>(len);
-  for (var i = 0; i < len; i++)
-    arr[i] = type.read(s);
-  return new arrayType(arr);
+  var arr = s.array(len * type.sizeof());
+  var copy = arr.buffer.slice(arr.byteOffset, arr.byteOffset+arr.byteLength);
+  return new arrayType(copy, 0, len * type.sizeof());
 }
 export var atomic_array = <T,AT>(type:Reader<T,AT>, len:number) => {return reader((s:DataViewStream) => atomic_array_(s, type, len), type.sizeof()*len)};
 

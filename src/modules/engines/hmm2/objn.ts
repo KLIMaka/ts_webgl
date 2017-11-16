@@ -182,7 +182,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNWAT2':
 
@@ -196,7 +195,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNCRCK':
 
@@ -221,7 +219,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNDIRT':
 
@@ -243,7 +240,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNDSRT':
 
@@ -257,7 +253,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNGRA2':
 
@@ -294,7 +289,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNLAV2':
 
@@ -321,7 +315,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNLAV3':
 
@@ -351,7 +344,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNLAVA':
 
@@ -366,7 +358,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNMUL2':
 
@@ -400,7 +391,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNMULT':
 
@@ -432,7 +422,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNSNOW':
 
@@ -465,7 +454,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     case 'OBJNSWMP':
 
@@ -489,7 +477,6 @@ export function getAnimFrame(icn:string, start:number, ticket:number, quantity:n
         default:
             return 0;
         }
-        break;
 
     default: return 0;
     }

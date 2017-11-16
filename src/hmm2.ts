@@ -12,7 +12,7 @@ import browser = require('./libs/browser');
 declare var config;
 var RES = 'resources/engines/h2/heroes2.agg';
 var MAP = 'resources/engines/h2/maps/' + browser.getQueryVariable('map');;
-var shadow = [0,0,0,127];
+var shadow = new Uint8Array([0,0,0,127]);
 
 function getDetails(info:any):any {
   var w = 0;
@@ -61,7 +61,7 @@ function renderOffset(pp:pixel.PixelProvider, x:number, y:number, off:number, cu
     tmpblend[off+3] = curr;
     return;
   }
-  pp.putToDst(x, y, tmpblend, off);
+  pp.putToDst(x, y, tmpblend, off, pixel.BlendNormal);
 }
 
 class ShadowBlendPixelProvider extends pixel.AbstractPixelProvider {
@@ -114,7 +114,7 @@ class TilePixelProvider extends pixel.AbstractPixelProvider {
       if (nx < 0 || ny < 0 || nx >= info.pp.getWidth() || ny >= info.pp.getHeight())
         continue;
       
-      info.pp.putToDst(nx, ny, dst, dstoff);
+      info.pp.putToDst(nx, ny, dst, dstoff, pixel.BlendNormal);
 
       if (dst[dstoff+3] == 255) break;
 
@@ -279,21 +279,6 @@ for (var i = 0; i < tiles.length; i++) {
   }
   tilesInfo[i] = adds;
 }
-
-// var list = aggFile.getList();
-// for (var f = 0; f < list.length; f++) {
-//   var fname = list[f];
-//   if (!fname.match(/.ICN$/))
-//     continue;
-//   var icnFile = ICN.create(aggFile.get(fname));
-//   for (var i = 0; i < icnFile.getCount(); i++) {
-//     var frame = icnFile.getFrame(i);
-//     var size = icnFile.getInfo(i);
-//     var pp = new pixel.RGBPalPixelProvider(frame, pal, size.width, size.height, 255, 0);
-//     document.body.appendChild(IU.createCanvas(pp));
-//   }
-// }
-
 
 console.log(aggFile);
 console.log(mapFile);

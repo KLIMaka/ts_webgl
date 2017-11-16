@@ -405,3 +405,27 @@ export function createVertexBuffer(gl:WebGLRenderingContext, type:number, data:a
 export function wrap(gl:WebGLRenderingContext, data:ArrayBufferView, spacing:number, usage:number=WebGLRenderingContext.STREAM_DRAW, norm:boolean=false):VertexBufferDynamic {
   return new VertexBufferDynamic(gl, ArrayType2GlType(data.constructor), data, spacing, usage, norm);
 }
+/*
+class VertexObject {
+  attr(name, value);
+  write(offset);
+  get(): 
+}
+
+var pool = new VertexPool()
+  .buffer('aPos', Float32Array, gl.FLOAT, 3)
+  .buffer('aNorm', Float32Array, gl.FLOAT, 3)
+  .buffer('aIdx', Uint8Array, gl.UNSIGNED_BYTE, 4, true)
+  .buffer('aTc', Float32Array, gl.FLOAT, 2)
+  .buffer('aShade', Int8Array, gl.BYTE, 1)
+  .index(Uint16Array, gl.UNSIGNED_SHORT)
+  .build();
+var vertexObj = pool.allocate();
+vertexObject
+  .attr('aNorm', norm)
+  .attr('aIdx', idx)
+  .attr('aShade', shade);
+for (var i = 0; i < x; i++) {
+  vertexObj.attr('aPos', pos[i]).insert();
+}
+*/

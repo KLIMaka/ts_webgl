@@ -42,8 +42,7 @@ export function readObj(file:string):ObjFile {
        ]);
       continue;
     }
-
-    console.log('skipping ' + line);
+    // console.log('skipping ' + line);
   }
   return new ObjFile(vtxs, tcs, normals, tris);
 }

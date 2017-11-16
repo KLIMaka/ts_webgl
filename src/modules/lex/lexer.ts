@@ -90,7 +90,7 @@ export class Lexer {
     return this.matchedRule;
   }
 
-  public value():string {
+  public value():any {
     return this.rule().conv(this.matchedValue[this.rule().mid]);
   }
 }

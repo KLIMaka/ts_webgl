@@ -2,7 +2,6 @@
 
 import fs = require('fs');
 import lex = require('./modules/lex/lexer');
-import BAG = require('./libs/bag');
 
 class Scope {
   private symbols = {};
@@ -38,6 +37,62 @@ class Scope {
   }
 }
 
+class Value {
+  constructor(public type, public value) {}
+}
+
+var types = {};
+
+var Type = val(Type, 'Type'); Type.type = Type;
+var Any = val(Type, 'Any');
+var Number = val(Type, 'Number');
+var String = val(Type, 'String');
+var Symbol = val(Type, 'Symbol');
+var List = val(Type, 'List');
+var Lst = val(Type, 'LST');
+var Placeholder = val(Type, 'Placeholder');
+var Func = val(Type, 'Func');
+
+function val(type, value):Value {
+  return new Value(type, value);
+}
+
+function str(s:string) {
+  return val(String, s);
+}
+
+var LST = val(LST, null);
+var RP = val(')', null);
+var LP = val('(', null);
+var EOF = val('EOF', null);
+
+
+function register(type, method, func) {
+  var sig = type.value;
+  var algebra = types[sig];
+  if (algebra == undefined) {
+    algebra = {};
+    types[sig] = algebra;    
+  }
+  algebra[method] = func;
+}
+
+function call(func:string, value:Value) {
+  var sig = value.type.value
+  var algebra = types[sig];
+  if (algebra == undefined) {
+    algebra = types[Any.value];
+  }
+  var f = algebra[func];
+  if (f == undefined) {
+    f = types[Any.value][func];
+  }
+  if (f == undefined) {
+    throw new Error('Function ' + func + ' is undefined for Type ' + value.type);
+  }
+  return f(value);
+}
+
 class LazyValue {
   private val;
   constructor(private form) {}
@@ -54,42 +109,7 @@ class ArrayView {
 var EMPTY = new ArrayView([], 0);
 
 function createList(arr:Object[], start:number=0) {
-  return arr.length == 0 ? EMPTY : new ArrayView(arr, start);
-}
-
-class Placeholder {
-  constructor(public idx:number) {}
-}
-var placeholder = (idx:string) => { return new Placeholder(parseInt(idx)) }
-
-class System {
-  constructor(public name:string) {}
-}
-
-class Str {
-  constructor(public str:string) {}
-}
-var str = (str:string) => { return new Str(str) }
-
-function head(obj) {
-  if (obj instanceof ArrayView)
-    return obj.head();
-  else if (obj instanceof Str)
-    return str(obj.str[0]);
-}
-
-function rest(obj): any {
-  if (obj instanceof ArrayView)
-    return obj.rest();
-  else if (obj instanceof Str)
-    return str(obj.str.substr(1));
-}
-
-function length(obj) {
-  if (obj instanceof ArrayView)
-    return obj.length();
-  else if (obj instanceof Str)
-    return obj.str.length;
+  return val(List, arr.length == 0 ? EMPTY : new ArrayView(arr, start));
 }
 
 function cons(head, rest) {
@@ -101,9 +121,9 @@ function cons(head, rest) {
   return createList(arr);
 }
 
-function getPlaceholder(arg):number {
-  if (arg instanceof Placeholder)
-    return (<Placeholder>arg).idx;
+function getPlaceholder(arg:Value):number {
+  if (arg.type == Placeholder)
+    return arg.value;
   return -1;
 }
 
@@ -118,6 +138,7 @@ function isCurried(args) {
 }
 
 function curry(f, args) {
+  args = args.value;
   if (isCurried(args)) {
     var evaluated = [];
     for (var i = 0; i < args.length(); i++) {
@@ -147,32 +168,58 @@ function curry(f, args) {
 var LR = lex.LexerRule;
 var lexer = new lex.Lexer();
 lexer.addRule(new LR(/^[ \t\r\v\n]+/,                            'WS'));
-lexer.addRule(new LR(/^\(/,                                      'LP'));
-lexer.addRule(new LR(/^\)/,                                      'RP'));
-lexer.addRule(new LR(/^`/,                                       'LST',    0, () => { return LST }));
-lexer.addRule(new LR(/^[^ \t\r\v\n\(\)`"]+/,                     'ID'));
-lexer.addRule(new LR(/^_([0-9])+/,                               'PLH',    1, placeholder));
-lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT',  0, parseFloat));
-lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT',    0, parseInt));
-lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1, str));
+lexer.addRule(new LR(/^\(/,                                      'LP',     0, ()  => { return LP }));
+lexer.addRule(new LR(/^\)/,                                      'RP',     0, ()  => { return RP }));
+lexer.addRule(new LR(/^`/,                                       'LST',    0, ()  => { return LST }));
+lexer.addRule(new LR(/^[^ \t\r\v\n\(\)`"]+/,                     'ID',     0, (s) => { return val(Symbol, s)}));
+lexer.addRule(new LR(/^_([0-9])+/,                               'PLH',    1, (s) => { return val(Placeholder, parseInt(s)) }));
+lexer.addRule(new LR(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT',  0, (s) => { return val(Number, parseFloat(s)) } ));
+lexer.addRule(new LR(/^\-?[0-9]+/,                               'INT',    0, (s) => { return val(Number, parseInt(s)) }   ));
+lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1, (s) => { return val(String, s) }             ));
 
 var scope = new Scope(null, null);
 
-var LST = new System('LST');
-var RP = new System('RP');
-var EOF = new System('EOF');
-
-scope.add('set', (list) => {
-  var id = list.get(0);
+scope.add('set', val(Func, (list) => {
+  var id = list.get(0).value;
   var val = evaluate(list.get(1));
   scope.add(id, val);
   return val;
+}));
+
+scope.add('type', val(Func, (v) => {
+  return evaluate(v.get(0)).type;
+}));
+
+register(List, 'evaluate', (l:Value) => {
+  var head = l.value.head();
+  if (head === LST)
+    return l.value.get(1);
+
+  var func = call('evaluate', head);
+  if (func.type != Func) {
+    throw new Error(print(func) + ' not a function');
+  }
+  return curry(func.value, l.value.rest());
 });
+register(Symbol, 'evaluate', (s:Value) => {
+  var symbol = scope.get(s.value);
+  if (symbol == undefined)
+    return s;
+  return symbol;
+});
+register(Any, 'evaluate', (a:Value) => { return a });
+
+function evaluate(v:Value) {
+  return call('evaluate', v);
+}
+
+register(List, 'head', (l:Value) => { return l.value.head() });
+register(String, 'head', (l:Value) => { return l.value.substr(0, 1) });
 
 scope.add('if', (l) => { if (evaluate(l.get(0))) return evaluate(l.get(1)); else return evaluate(l.get(2));});
-scope.add('head', (l) => { return head(evaluate(l.head()));});
-scope.add('rest', (l) => { return rest(evaluate(l.head()));});
-scope.add('length', (l) => { return length(evaluate(l.head()));});
+scope.add('head', (l) => { return call('head', evaluate(l.head()));});
+scope.add('rest', (l) => { return call('rest', evaluate(l.head()));});
+scope.add('length', (l) => { return call('length', evaluate(l.head()));});
 scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));});
 scope.add('list?', (l) => { return evaluate(l.head()) instanceof ArrayView });
 scope.add('LST', LST);
@@ -262,21 +309,21 @@ scope.add('let', (l) => {
   return ret;
 });
 
-function print(form):string {
-  if (form instanceof ArrayView) {
-    var str = '( ';
-    for (var i = 0; i < form.length(); i++) {
-      str += print(form.get(i)) + ' ';
-    }
-    return str + ')';
-  } else if (form instanceof Function) {
-    return "[Function]";
-  } else if (form instanceof System) {
-    return "[" + form.name + "]";
-  } else if (form instanceof Str) {
-    return "'" + form.str + "'";
+function print(val:Value):string {
+  switch (val.type) {
+    case List:
+      var str = '( ';
+      for (var i = 0; i < val.value.length(); i++) {
+        str += print(val.value.get(i)) + ' ';
+      }
+      return str + ')';    
+    case Func:
+      return "[Function]";
+    case String:
+      return "'" + val.value + "'";
+    default:
+      return val.value + '' ;
   }
-  return form+'';
 }
 
 function next() {
@@ -290,11 +337,11 @@ function parse(): any {
   var token = next();
   var value = lexer.value();
   
-  if (token == 'LST') {
+  if (value === LST) {
     return createList([LST, parse()]);
   }
 
-  if (token == 'LP') {
+  if (value == LP) {
     var lst = [];
     for (var e = parse(); e != RP; e = parse()) {
       if (e == EOF)
@@ -303,40 +350,10 @@ function parse(): any {
     }
     return createList(lst);
   }
-  if (token == 'RP')
-    return RP;
   if (token == null)
     return EOF;
   return value;
 }
-
-function evaluate(form) {
-  if (form instanceof ArrayView) {
-    var head = form.head();
-
-    if (head === LST)
-      return form.get(1);
-
-    var func = evaluate(head);
-    if (!(func instanceof Function)) {
-      throw new Error(print(func) + ' not a function');
-    }
-    return curry(func, form.rest());
-  }
-
-  var symbol = scope.get(form);
-  if (symbol == undefined)
-    return form;
-  return symbol instanceof LazyValue ? symbol.get() : symbol;
-}
-
-var bag = BAG.create(10);
-console.log(bag.get(5));
-console.log(bag.get(3));
-console.log(bag.get(2));
-bag.put(0, 5);
-bag.put(5, 5);
-bag.get(10);
 
 var file = fs.readFileSync('../resources/parser/lisp.lsp', {encoding:'UTF-8'});
 lexer.setSource(file);

@@ -1,14 +1,14 @@
 import L = require('./list');
 
-class Place {
+export class Place {
   constructor(public offset:number, public size:number) {}
 }
 
 export class Bag {
-  private holes:L.List<Place> = new L.List<Place>();
+  private holes:L.List<Place>;
 
   constructor(private size:number) {
-    this.holes.insertAfter(new Place(0, size));
+    this.reset();
   }
 
   private getSuitablePlace(size:number): L.Node<Place> {
@@ -57,6 +57,8 @@ export class Bag {
 
   public get(size:number):number {
     var hole = this.getSuitablePlace(size);
+    if (hole == null)
+      throw new Error('no space');
     if (hole.obj.size == size) {
       var prev = hole.prev;
       this.holes.remove(hole);
@@ -69,8 +71,54 @@ export class Bag {
       return off;
     }
   }
+
+  public reset() {
+    this.holes = new L.List<Place>();
+    this.holes.insertAfter(new Place(0, this.size));
+  }
+}
+
+export class BagController {
+  private bag:Bag;
+  private places = {};
+
+  constructor(size:number) {
+    this.bag = new Bag(size);
+  }
+
+  public get(size:number):Place {
+    var offset = this.bag.get(size);
+    var result = new Place(offset, size);
+    this.places[offset] = result;
+    return result;
+  }
+
+  public put(place:Place):void {
+    this.bag.put(place.offset, place.size);
+    delete this.places[place.offset];
+  }
+
+  public optimize() {
+    var places = this.places;
+    var keys = Object.keys(places);
+    this.places = {};
+    this.bag.reset();
+    var offset = 0;
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var place = places[key];
+      this.places[offset] = place;
+      place.offset = offset;
+      offset += place.size;
+    }
+    this.bag.get(offset);
+  }
 }
 
 export function create(size:number):Bag {
   return new Bag(size);
+}
+
+export function createController(size:number):BagController {
+  return new BagController(size);
 }

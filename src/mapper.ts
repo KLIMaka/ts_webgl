@@ -95,16 +95,16 @@ var ctrl = new CTRL3.Controller3D(gl);
 var map = [];
 var layer = new Layer(model, shader, 10, 10, 10, 10, map, [0, 0, 0]);
 
-map[0+10*0] = new Cell(0, 0);
-map[0+10*2] = new Cell(0, 90);
-map[2+10*2] = new Cell(0, 180);
-map[2+10*0] = new Cell(0, 270);
-map[0+10*1] = new Cell(2, 0);
-map[1+10*2] = new Cell(2, 90);
-map[2+10*1] = new Cell(2, 180);
-map[1+10*0] = new Cell(2, 270);
-map[1+10*1] = new Cell(1, 0);
-map[5+10*5] = new Cell(3, 0);
+// map[0+10*0] = new Cell(0, 0);
+// map[0+10*2] = new Cell(0, 90);
+// map[2+10*2] = new Cell(0, 180);
+// map[2+10*0] = new Cell(0, 270);
+// map[0+10*1] = new Cell(2, 0);
+// map[1+10*2] = new Cell(2, 90);
+// map[2+10*1] = new Cell(2, 180);
+// map[1+10*0] = new Cell(2, 270);
+// map[1+10*1] = new Cell(1, 0);
+// map[5+10*5] = new Cell(3, 0);
 
 var tileId = 0;
 var tileset = UI.panel('tileset')
@@ -116,9 +116,12 @@ var wall = UI.button('Wall');
 wall.elem().onclick = (e:MouseEvent) => {tileId = 2}
 var floor = UI.button('Floor');
 floor.elem().onclick = (e:MouseEvent) => {tileId = 1}
+var st = UI.button('stroop');
+st.elem().onclick = (e:MouseEvent) => {tileId = 3}
 tileset.append(corner);
 tileset.append(wall);
 tileset.append(floor);
+tileset.append(st);
 document.body.appendChild(tileset.elem());
 
 var layerMap = UI.panel('Map')
@@ -131,15 +134,16 @@ for (var x = 0; x < 10; x++) {
     var cell = UI.div('cell')
       .size('16', '16')
       .css('background-color', 'white');
-    cell.elem().onclick = ((x,y) => {
+    cell.elem().onclick = ((x,y,cell) => {
       return (e:MouseEvent) => {
         if (map[x+y*10] == undefined) {
           map[x+y*10] = new Cell(tileId, 0)
         } 
         map[x+y*10].tileId = tileId; 
         map[x+y*10].ang += 90 
+        cell.text(tileId+'');
       }
-    }) (x ,y);
+    }) (x, y, cell);
     row.push(cell);
   }
   tiles.row(row);
