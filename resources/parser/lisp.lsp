@@ -1,3 +1,3 @@
-(set a 12)
-(type a)
-(type (type (type a)))
+(set \ lambda)
+(set f (\ x (type x)))
+(f 12)

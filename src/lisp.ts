@@ -106,10 +106,10 @@ class ArrayView {
   public rest() { return this.length() == 1 ? EMPTY : createList(this.arr, this.start+1) }
   public length() { return this.arr.length - this.start }
 }
-var EMPTY = new ArrayView([], 0);
+var EMPTY = val(List, new ArrayView([], 0));
 
 function createList(arr:Object[], start:number=0) {
-  return val(List, arr.length == 0 ? EMPTY : new ArrayView(arr, start));
+  return arr.length == 0 ? EMPTY : val(List, new ArrayView(arr, start));
 }
 
 function cons(head, rest) {
@@ -128,6 +128,7 @@ function getPlaceholder(arg:Value):number {
 }
 
 function isCurried(args) {
+  args = args.value;
   for (var i = 0; i < args.length(); i++) {
     var arg = args.get(i);
     if (getPlaceholder(arg) != -1) {
@@ -138,7 +139,6 @@ function isCurried(args) {
 }
 
 function curry(f, args) {
-  args = args.value;
   if (isCurried(args)) {
     var evaluated = [];
     for (var i = 0; i < args.length(); i++) {
@@ -180,14 +180,14 @@ lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1, (s
 var scope = new Scope(null, null);
 
 scope.add('set', val(Func, (list) => {
-  var id = list.get(0).value;
-  var val = evaluate(list.get(1));
+  var id = list.value.get(0).value;
+  var val = evaluate(list.value.get(1));
   scope.add(id, val);
   return val;
 }));
 
 scope.add('type', val(Func, (v) => {
-  return evaluate(v.get(0)).type;
+  return evaluate(v.value.get(0)).type;
 }));
 
 register(List, 'evaluate', (l:Value) => {
@@ -224,16 +224,18 @@ scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));}
 scope.add('list?', (l) => { return evaluate(l.head()) instanceof ArrayView });
 scope.add('LST', LST);
 
-scope.add('list', (list) => {
+scope.add('list', val(Func, (list) => {
+  list = list.value;
   var lst = [];
   for (var i = 0; i < list.length(); i++) {
     var val = evaluate(list.get(i));
     lst.push(val);
   }
   return createList(lst);
-});
+}));
 
 function append(list):any {
+  list = list.value;
   var lst = [];
   for (var i = 0; i < list.length(); i++) {
     var l = evaluate(list.get(i));
@@ -247,19 +249,22 @@ scope.add('append', (list) => {
   return append(list);
 });
 
-scope.add('print', (list) => {
+scope.add('print', val(Func, (list) => {
+  list = list.value;
   var val = null;
   for (var i = 0; i < list.length(); i++){
     val = evaluate(list.get(i));
     console.log(print(val));
   }
   return val;
-});
+}));
 
 
-scope.add('lambda', (formals) => {
+scope.add('lambda', val(Func, (formals) => {
+  formals = formals.value;
   var closure = scope;
-  return (list) => {
+  return val(Func, (list) => {
+    list = list.value;
     var nscope = scope.push(null);
     var facts = [];
     for (var i = 0; i < list.length(); i++) {
@@ -275,8 +280,8 @@ scope.add('lambda', (formals) => {
     scope = scope.pop();
     scope = scope.pop();
     return result;
-  }
-});
+  });
+}));
 
 scope.add('eval', (l) => {
   return evaluate(evaluate(l.head()));
