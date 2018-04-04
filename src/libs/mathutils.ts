@@ -47,6 +47,21 @@ export function len2d(x:number, y:number) {
   return Math.sqrt(x*x + y*y);
 }
 
+export function ang(x:number, y:number):number {
+  if (x > 0 && y >= 0)
+    return Math.atan(x/y);
+  else if (x > 0 && y < 0)
+    return Math.atan(x/y) + 2 * Math.PI;
+  else if (x < 0)
+    return Math.atan(x/y) + Math.PI;
+  else if (x == 0 && y > 0)
+    return Math.PI / 2;
+  else if (x == 0 && y < 0)
+    return (3 * Math.PI) / 2;
+  else 
+    return null;
+}
+
 export function cyclic(x:number, max:number):number {
   return x > 0 ? (x%max) : (max + x%max);
 }

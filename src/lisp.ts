@@ -8,24 +8,34 @@ class Scope {
 
   constructor(private parent:Scope, private closure:Scope){}
 
-  public add(name:string, value:any) {
-    if (this.closure != null && this.closure[name] != undefined) {
+  public add(symbol:Value, value:any) {
+    var name = symbol.value;
+    if (this.existInClosure(symbol)) {
       this.closure[name] = value;
       return;
     }
     this.symbols[name] = value;
   }
 
-  public get(name:string):any {
-    var smb = this.closure==null||name=='_args' ? undefined : this.closure.get(name);
+  private existInClosure(symbol:Value):boolean {
+    return this.closure != null && this.closure[symbol.value] != undefined;
+  }
+
+  public get(symbol:Value):any {
+    var smb = this.tryToGetFromClosure(symbol);
     if (smb != undefined)
       return smb;
+    var name = symbol.value;
     var scope = <Scope> this;
     while (smb == undefined && scope != null) {
       smb = scope.symbols[name];
       scope = scope.parent;
     }
     return smb;
+  }
+
+  private tryToGetFromClosure(symbol:Value) {
+    return this.closure == null || symbol.value == '_args' ? undefined : this.closure.get(symbol);
   }
 
   public pop():Scope {
@@ -57,8 +67,37 @@ function val(type, value):Value {
   return new Value(type, value);
 }
 
-function str(s:string) {
+function symb(value:string):Value {
+  return val(Symbol, value);
+}
+
+function str(s:string):Value {
   return val(String, s);
+}
+
+function func(f):Value {
+  return val(Func, f);
+}
+
+function typeMatch(sig:Value, value:Value):boolean {
+  if (sig.type == Type) {
+    if (sig.value == value.type.value)
+      return true;
+    if (sig.value instanceof Value && sig.value.type == List && value.type == List) {
+      for(var i = 0; i < value.value.length(); i++) {
+        var val = value.value.get(i);
+        var type = sig.value.value.get(i);
+        var match = typeMatch(type, val);
+        if (!match)
+          return false;
+      }
+      return true;
+    }
+  } else {
+    return sig.type.value == value.type.value && sig.value == value.value;
+  }
+  return t1.value == t2.value;
+  return false;
 }
 
 var LST = val(LST, null);
@@ -66,15 +105,17 @@ var RP = val(')', null);
 var LP = val('(', null);
 var EOF = val('EOF', null);
 
+interface Method {
+  match(val:Value):number;
+}
 
-function register(type, method, func) {
-  var sig = type.value;
-  var algebra = types[sig];
-  if (algebra == undefined) {
-    algebra = {};
-    types[sig] = algebra;    
+function register(name:string, matcher:Matcher, f) {
+  var matchers = types[name];
+  if (matcher == undefined) {
+    matchers = new Array<Matcher>();
+    types[name] = matchers;
   }
-  algebra[method] = func;
+  matchers.add(matcher)
 }
 
 function call(func:string, value:Value) {
@@ -127,8 +168,8 @@ function getPlaceholder(arg:Value):number {
   return -1;
 }
 
-function isCurried(args) {
-  args = args.value;
+function isCurried(val:Value) {
+  var args = val.value;
   for (var i = 0; i < args.length(); i++) {
     var arg = args.get(i);
     if (getPlaceholder(arg) != -1) {
@@ -179,14 +220,14 @@ lexer.addRule(new LR(/^"([^"]*)"/,                               'STRING', 1, (s
 
 var scope = new Scope(null, null);
 
-scope.add('set', val(Func, (list) => {
-  var id = list.value.get(0).value;
+scope.add(symb('set'), val(Func, (list) => {
+  var id = list.value.get(0);
   var val = evaluate(list.value.get(1));
   scope.add(id, val);
   return val;
 }));
 
-scope.add('type', val(Func, (v) => {
+scope.add(symb('type'), val(Func, (v) => {
   return evaluate(v.value.get(0)).type;
 }));
 
@@ -195,14 +236,14 @@ register(List, 'evaluate', (l:Value) => {
   if (head === LST)
     return l.value.get(1);
 
-  var func = call('evaluate', head);
+  var func = evaluate(head);
   if (func.type != Func) {
     throw new Error(print(func) + ' not a function');
   }
   return curry(func.value, l.value.rest());
 });
 register(Symbol, 'evaluate', (s:Value) => {
-  var symbol = scope.get(s.value);
+  var symbol = scope.get(s);
   if (symbol == undefined)
     return s;
   return symbol;
@@ -214,17 +255,11 @@ function evaluate(v:Value) {
 }
 
 register(List, 'head', (l:Value) => { return l.value.head() });
-register(String, 'head', (l:Value) => { return l.value.substr(0, 1) });
+register(String, 'head', (l:Value) => { return str(l.value.substr(0, 1)) });
 
-scope.add('if', (l) => { if (evaluate(l.get(0))) return evaluate(l.get(1)); else return evaluate(l.get(2));});
-scope.add('head', (l) => { return call('head', evaluate(l.head()));});
-scope.add('rest', (l) => { return call('rest', evaluate(l.head()));});
-scope.add('length', (l) => { return call('length', evaluate(l.head()));});
-scope.add('cons', (l) => { return cons(evaluate(l.head()), evaluate(l.get(1)));});
-scope.add('list?', (l) => { return evaluate(l.head()) instanceof ArrayView });
-scope.add('LST', LST);
+scope.add(symb('if'), func((l) => { if (evaluate(l.get(0))) return evaluate(l.get(1)); else return evaluate(l.get(2));}));
 
-scope.add('list', val(Func, (list) => {
+scope.add(symb('list'), val(Func, (list) => {
   list = list.value;
   var lst = [];
   for (var i = 0; i < list.length(); i++) {
@@ -245,11 +280,11 @@ function append(list):any {
   }
   return createList(lst);
 }
-scope.add('append', (list) => {
+scope.add(symb('append'), (list) => {
   return append(list);
 });
 
-scope.add('print', val(Func, (list) => {
+scope.add(symb('print'), val(Func, (list) => {
   list = list.value;
   var val = null;
   for (var i = 0; i < list.length(); i++){
@@ -260,7 +295,7 @@ scope.add('print', val(Func, (list) => {
 }));
 
 
-scope.add('lambda', val(Func, (formals) => {
+scope.add(symb('lambda'), val(Func, (formals) => {
   formals = formals.value;
   var closure = scope;
   return val(Func, (list) => {
@@ -274,7 +309,7 @@ scope.add('lambda', val(Func, (formals) => {
         nscope.add(formals.get(i), fact);
       }
     }
-    nscope.add('_args', createList(facts));
+    nscope.add(symb('_args'), createList(facts));
     scope = nscope.push(closure);
     var result = evaluate(formals.get(formals.length()-1));
     scope = scope.pop();
@@ -283,16 +318,16 @@ scope.add('lambda', val(Func, (formals) => {
   });
 }));
 
-scope.add('eval', (l) => {
+scope.add(symb('eval'), (l) => {
   return evaluate(evaluate(l.head()));
 });
 
-scope.add('evaljs', (l) => {
+scope.add(symb('evaljs'), (l) => {
   var f = Function("l", "evaluate", "str", l.head().str);
   return (l) => {return f(l, evaluate, str)};
 });
 
-scope.add('seq', (list) => {
+scope.add(symb('seq'), (list) => {
   var res = null;
   for (var i = 0; i < list.length(); i++) {
     res = evaluate(list.get(i));
@@ -300,7 +335,7 @@ scope.add('seq', (list) => {
   return res;
 });
 
-scope.add('let', (l) => {
+scope.add(symb('let'), (l) => {
   var len = l.length();
   var i = 0;
   scope = scope.push(null);

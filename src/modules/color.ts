@@ -11,7 +11,7 @@ export function rgb2hsl(r:number, g:number, b:number):number[] {
   var delta = max-min;
   var s = 0;
   var h = 0;
-  if(max != min) {
+  if (max != min) {
     s = delta / (1-Math.abs(2*l-1));
     if (max == rd) h = 42.5 * (gd-bd)/(delta);
     else if (max == gd)  h = 42.5 * ((bd-rd)/(delta)+2);
@@ -120,10 +120,17 @@ var ditherMatrix = [
   15, 47, 7, 39, 13, 45, 5, 37,
   63, 31, 55, 23, 61, 29, 53, 21];
 
-export function dither(x:number, y:number, t:number):boolean {
-  if (t == 0.0) return true;
-  if (t == 1.0) return false;
-  var idx = (y%8)*8+x%8;
-  var d = (ditherMatrix[idx]+1) / 64;
+export function dither(x:number, y:number, t:number, matrix:number[]):boolean {
+  var size = matrix.length;
+  var rsize = 1 / size;
+  if (t < (0.0 + rsize/2)) return true;
+  if (t > (1.0 - rsize/2)) return false;
+  var sqrsize = Math.sqrt(size);
+  var idx = (y%sqrsize)*sqrsize+(x%sqrsize);
+  var d = matrix[idx] / (size-1);
   return t <= d;
+}
+
+export function rgb2lum(r:number, g:number, b:number):number {
+  return r*0.2126 + g*0.7152 + b*0.0722;
 }
