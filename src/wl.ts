@@ -1,5 +1,6 @@
 import getter = require('./libs/getter');
-import WL = require('./modules/engines/wl/wl');
+import WLG = require('./modules/engines/wl/game');
+import HTDS = require('./modules/engines/wl/htds');
 import P = require('./modules/pixelprovider');
 import IU = require('./libs/imgutils');
 import MU = require('./libs/mathutils');
@@ -32,9 +33,9 @@ var egapal = new Uint8Array([
   0xff, 0xff, 0xff
 ]);
 
-var game = new WL.Game(res.R);
-var t0 = new WL.HTDS(res.T0);
-var t1 = new WL.HTDS(res.T1);
+var game = WLG.create(res.R);
+var t0 = HTDS.create(res.T0);
+var t1 = HTDS.create(res.T1);
 
 console.log(game);
 console.log(t0);

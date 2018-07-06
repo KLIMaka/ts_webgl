@@ -1,3 +1,5 @@
+import B = require('../modules/bitreader');
+
 export class DataViewStream {
   private view:DataView;
   private offset:number;
@@ -135,11 +137,26 @@ export var atomic_array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:num
 }
 export var atomic_array = <T,AT>(type:Reader<T,AT>, len:number) => {return reader((s:DataViewStream) => atomic_array_(s, type, len), type.sizeof()*len)};
 
+export var bit_field_ = <T>(s:DataViewStream, fields:Array<number>) => {
+  var br = new B.BitReader(s);
+  return fields.map((val) => br.readBits(val));
+}
+export var bit_field = (fields:Array<number>) => {return reader((s:DataViewStream) => bit_field_(s, fields), (fields.reduce((l,r) => l+r, 0)/8)|0)}
+
 export var struct_ = <T>(s:DataViewStream, fields:any, type:{new(): T}):T => {
   var struct = new type();
   for (var i = 0; i < fields.length; i++) {
-    var field = fields[i];
-    struct[field[0]] = field[1].read(s);
+    var [name, reader] = fields[i];
+    var parts = name.split(',');
+    if (parts.length == 1) {
+      struct[name] = reader.read(s);
+    } else {
+      var values = reader.read(s);
+      for (var r = 0; r < parts.length; r++) {
+        var pname = parts[r];
+        struct[pname] = values[r];
+      }
+    }
   }
   return struct;
 };

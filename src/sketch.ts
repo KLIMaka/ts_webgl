@@ -71,6 +71,26 @@ var dither2 = [
 15, 47, 7, 39, 13, 45, 5, 37,
 63, 31, 55, 23, 61, 29, 53, 21];
 
+function triangle(s:number):number[] {
+  var arr = new Array<number>(s*s);
+  var c = 0;
+  for (var d = 0; d < s; d++) {
+    for (var i = 0; i <= d; i++) {
+      var y = i;
+      var x = d - i;
+      arr[y*s+x] = c++;
+    }
+  }
+  for (var d = 1; d < s; d++) {
+    for (var i = 0; i <= s-d; i++) {
+      var y = i;
+      var x = d - i;
+      arr[y*s+x] = c++;
+    }
+  }
+  return arr;
+}
+
 class ConverterPixelProvider extends P.AbstractPixelProvider {
   private labPal:number[];
   private palTmp = new Uint8Array([0,0,0,255]);
@@ -99,6 +119,25 @@ class ConverterPixelProvider extends P.AbstractPixelProvider {
   }
 }
 
+class MyPixelProvider extends P.AbstractPixelProvider {
+  private arr:Uint8Array;
+  private colTmp = new Uint8Array([0,0,0,255]);
+
+  constructor(private buff:ArrayBuffer) {
+    super(16,16*32);
+    this.arr = new Uint16Array(buff);
+  }
+
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:P.BlendFunc):void {
+    var idx = x+y*16;
+    var col = this.arr[idx];
+    this.colTmp[2] = (col & 0x1f) << 3;
+    this.colTmp[1] = ((col >> 5) & 0x3f) << 2;
+    this.colTmp[0] = ((col >> 11) & 0x1f) << 3;
+    blend(dst, dstoff, this.colTmp, 0);
+  }
+}
+
 getter.loader
 .load('resources/engines/duke/duke3d.grp')
 .finish(() => {
@@ -118,6 +157,12 @@ new FR.DropFileReader(
 });
 
 function processFile(buff:ArrayBuffer, pal:number[]) {
+  var provider = new MyPixelProvider(buff);
+  var canvas = IU.createCanvas(provider);
+  document.body.appendChild(canvas);
+}
+
+function processFile1(buff:ArrayBuffer, pal:number[]) {
   IU.loadImageFromBuffer(buff, (provider:P.PixelProvider) => {
     provider = new ConverterPixelProvider(provider, pal);
     var canvas = IU.createCanvas(provider);
