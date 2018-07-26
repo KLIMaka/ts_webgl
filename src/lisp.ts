@@ -395,6 +395,26 @@ function parse(): any {
   return value;
 }
 
+function evaluate(form) {
+  if (form instanceof ArrayView) {
+    var head = form.head();
+
+    if (head === LST)
+      return form.get(1);
+
+    var func = evaluate(head);
+    if (!(func instanceof Function)) {
+      throw new Error(print(func) + ' not a function');
+    }
+    return curry(func, form.rest());
+  }
+
+  var symbol = scope.get(form);
+  if (symbol == undefined)
+    return form;
+  return symbol instanceof LazyValue ? symbol.get() : symbol;
+}
+
 var file = fs.readFileSync('../resources/parser/lisp.lsp', {encoding:'UTF-8'});
 lexer.setSource(file);
 for(;;) {

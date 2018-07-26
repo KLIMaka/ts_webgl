@@ -25,40 +25,112 @@ var p4 = Math.PI/4;
 function updateBuffers(ps:P.ParticleSystem):number {
   var plist = ps.getParticles();
   var term = plist.last().next;
-  var idx = 0;
+  var idx = 8;
   var pos = vertexBufs.aPos.getData();
   var color = vertexBufs.aColor.getData();
-  
-  for (var node = plist.first(); node != term; node = node.next) {
-    var p = node.obj;
-    var hs = p.attr.size/2;
-    var c = p.attr.color;
-    var ang = p.attr.ang;
 
-    var off = idx*8;
-    pos[off+0] = p.x+Math.sin(ang+p4)*hs; pos[off+1] = p.y+Math.cos(ang+p4)*hs; 
-    pos[off+2] = p.x+Math.sin(ang+3*p4)*hs; pos[off+3] = p.y+Math.cos(ang+3*p4)*hs; 
-    pos[off+4] = p.x+Math.sin(ang+5*p4)*hs; pos[off+5] = p.y+Math.cos(ang+5*p4)*hs; 
-    pos[off+6] = p.x+Math.sin(ang+7*p4)*hs; pos[off+7] = p.y+Math.cos(ang+7*p4)*hs; 
+  // line(pos, 0, 100, 100, 500, 200, 1);
 
-    var off = idx*16;
-    color[off+0] = c[0]; color[off+1] = c[1]; color[off+2] = c[2]; color[off+3] = c[3];
-    color[off+4] = c[0]; color[off+5] = c[1]; color[off+6] = c[2]; color[off+7] = c[3];
-    color[off+8] = c[0]; color[off+9] = c[1]; color[off+10] = c[2]; color[off+11] = c[3];
-    color[off+12] = c[0]; color[off+13] = c[1]; color[off+14] = c[2]; color[off+15] = c[3];
+  rope(pos, 0, [100, 200, 200, 100, 100], [300, 300, 200, 200, 300], 1);
+  fillQuad(color, 0, 255, 255, 255, 255);
+  fillQuad(color, 16, 255, 255, 255, 255);
+  fillQuad(color, 32, 255, 255, 255, 255);
+  fillQuad(color, 48, 255, 255, 255, 255);
+  fillQuad(color, 64, 255, 255, 255, 255);
+  fillQuad(color, 80, 255, 255, 255, 255);
+  fillQuad(color, 96, 255, 255, 255, 255);
+  fillQuad(color, 112, 255, 255, 255, 255);
+  fillQuad(color, 128, 255, 255, 255, 255);
 
-    idx++;
-  }
+  // for (var node = plist.first(); node != term; node = node.next) {
+  //   var p = node.obj;
+  //   var c = p.attr.color;
+
+  //   centredQuad(pos, idx*8, p.x, p.y, p.attr.size, p.attr.ang);
+  //   fillQuad(color, idx*16, c[0], c[1], c[2], c[3]);
+
+  //   idx++;
+  // }
 
   vertexBufs.aPos.update(gl);
   vertexBufs.aColor.update(gl);
 
-  return idx*6;
+  return 50*6;
+}
+
+function quad(pos:ArrayBufferView, off:number, x1, y1, x2, y2, x3, y3, x4, y4) {
+  pos[off+0] = x1; pos[off+1] = y1;
+  pos[off+2] = x2; pos[off+3] = y2;
+  pos[off+4] = x3; pos[off+5] = y3;
+  pos[off+6] = x4; pos[off+7] = y4;
+}
+
+function line(pos:ArrayBufferView, posoff:number, x1:number, y1:number, x2:number, y2:number, w:number) {
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  var l = Math.sqrt(dx*dx + dy*dy);
+  dx /= l; dy /= l;
+  w /= 2;
+
+  quad(pos, posoff,
+    x1 - dy*w, y1 + dx*w,
+    x2 - dy*w, y2 + dx*w,
+    x2 + dy*w, y2 - dx*w,
+    x1 + dy*w, y1 - dx*w,
+  );
+}
+
+function fillQuad(color:ArrayBufferView, off:number, r:number, g:number, b:number, a:number) {
+  color[off+0] = r; color[off+1] = g; color[off+2] = b; color[off+3] = a;
+  color[off+4] = r; color[off+5] = g; color[off+6] = b; color[off+7] = a;
+  color[off+8] = r; color[off+9] = g; color[off+10] = b; color[off+11] = a;
+  color[off+12] = r; color[off+13] = g; color[off+14] = b; color[off+15] = a;
+}
+
+function centredQuad(pos:ArrayBufferView, off:number, x:number, y:number, size:number, ang:number) {
+  var hs = size/2;
+  quad(pos, off,
+    x+Math.sin(ang+p4)*hs, y+Math.cos(ang+p4)*hs,
+    x+Math.sin(ang+3*p4)*hs, y+Math.cos(ang+3*p4)*hs,
+    x+Math.sin(ang+5*p4)*hs, y+Math.cos(ang+5*p4)*hs,
+    x+Math.sin(ang+7*p4)*hs, y+Math.cos(ang+7*p4)*hs
+  );
+}
+
+function rope(pos:ArrayBufferView, off:number, xs:number[], ys:number[], w:number) {
+  var hw = w / 2;
+  var pdx = xs[1] - xs[0];
+  var pdy = ys[1] - ys[0];
+  var pl = Math.sqrt(pdx*pdx + pdy*pdy);
+  var npdx = pdx / pl;
+  var npdy = pdy / pl;
+
+  for (var i = 0; i < xs.length-1; i++) {
+    line(pos, off += 8, xs[i], ys[i], xs[i+1], ys[i+1], w);
+    if (i == xs.length-2)
+      break;
+
+    var dx = xs[i+2] - xs[i+1];
+    var dy = ys[i+2] - ys[i+1];
+    var l = Math.sqrt(dx*dx + dy*dy);
+    var ndx = dx / l;
+    var ndy = dy / l;
+
+    quad(pos, off += 8,
+      xs[i+1] - npdy*hw, ys[i+1] + npdx*hw,
+      xs[i+1] - ndy*hw, ys[i+1] + ndx*hw,
+      xs[i+1] + ndy*hw, ys[i+1] - ndx*hw,
+      xs[i+1] + npdy*hw, ys[i+1] - npdx*hw
+    );
+
+    npdx = ndx;
+    npdy = ndy;
+  }
 }
 
 var color = new INTER.Range([255, 255, 255, 255], [0,0,0,0], INTER.Vec4Interpolator);
-color.insert([255, 164, 89, 255*0.8], 0.2);
-color.insert([0, 0, 0, 255*0.2], 0.8);
+color.insert([255, 164, 89, 255*0.8], 0.2, INTER.Vec4Interpolator);
+color.insert([0, 0, 0, 255*0.2], 0.8, INTER.Vec4Interpolator);
 var ang = 0;
 
 function init(p:P.Particle) {
