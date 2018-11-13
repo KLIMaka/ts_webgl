@@ -46,12 +46,14 @@ function FastMath(stdlib, foreign, buffer) {
     rect:rect
   };
 }
+var W = 640;
+var H = 480;
 var heap = new ArrayBuffer(0x200000);
 var fast = FastMath(window, null, heap);  
-var framebuffer = new Uint8ClampedArray(heap, 0, 640*480*4);
-var fbi = new Int32Array(heap, 0, 640*480);
-var data = new ImageData(framebuffer, 640, 480);
-var zbuf = new Int16Array(640*480);
+var framebuffer = new Uint8ClampedArray(heap, 0, W*H*4);
+var fbi = new Int32Array(heap, 0, W*H);
+var data = new ImageData(framebuffer, W, H);
+var zbuf = new Int16Array(W*H);
 
 export function animate(callback:(time:number)=>void) {
   var time = new Date().getTime();
@@ -74,6 +76,115 @@ var vec1 = GLM.vec3.create();
 var vec2 = GLM.vec3.create();
 var vec3 = GLM.vec3.create();
 var vecz = GLM.vec3.create();
+
+
+class State {
+  private model = GLM.mat4.create();
+  private view = GLM.mat4.create();
+  private proj = GLM.mat4.create();
+  private mvp = GLM.mat4.create();
+  private verts = Array<number[]>();
+  private color = 0xffaaaaaa;
+
+  private ta = GLM.vec3.create();
+  private tb = GLM.vec3.create();
+  private tc = GLM.vec3.create();
+
+  private buffer:ArrayBuffer;
+  private framebuffer :Uint8ClampedArray;
+  private fbi :Int32Array;
+  private idata :ImageData;
+
+  constructor(private ctx:CanvasRenderingContext2D, private width:number, private height:number) {
+    this.buffer = new ArrayBuffer(width*height*4);
+    this.framebuffer = new Uint8ClampedArray(this.buffer, 0, width*height*4);
+    this.fbi = new Int32Array(this.buffer, 0, width*height);
+    this.idata = new ImageData(this.framebuffer, width, height);
+
+    GLM.mat4.identity(this.view);
+    GLM.mat4.identity(this.model);
+    GLM.mat4.identity(this.proj);
+    GLM.mat4.translate(this.proj, this.proj, [width/2, height/2, 0]);
+    GLM.mat4.mul(this.proj, this.proj, proj);
+  }
+
+  private transform(a:number, b:number, c:number) {
+    var vtxa = this.verts[a];
+    var vtxb = this.verts[b];
+    var vtxc = this.verts[c];
+    var mvp = this.mvp;
+
+    GLM.vec3.transformMat4(this.ta, vtxa, mvp);
+    GLM.vec3.transformMat4(this.tb, vtxb, mvp);
+    GLM.vec3.transformMat4(this.tc, vtxc, mvp);
+  }
+
+  public triangle(a:number, b:number, c:number) {
+    this.transform(a, b, c);
+    triangle(this.color, this.ta, this.tb, this.tc, this.fbi, this.width, this.height);
+  }
+
+  public setColor(r:number, g:number, b:number, a:number=255) {
+    this.color 
+    = (r & 0xff)
+    | ((g & 0xff) << 8)
+    | ((b & 0xff) << 16)
+    | ((a & 0xff) << 24);
+  }
+
+  public calcMvp() {
+    GLM.mat4.copy(this.mvp, this.proj);
+    GLM.mat4.mul(this.mvp, this.mvp, this.view);
+    GLM.mat4.mul(this.mvp, this.mvp, this.model);
+  }
+
+  public vertex(x:number, y:number, z:number):number {
+    this.verts.push([x, y, z]);
+    return this.verts.length;
+  }
+
+  public getModelMatrix():GLM.Mat4Array {
+    return this.model;
+  }
+
+  public flip() {
+    this.ctx.putImageData(this.idata, 0, 0);
+  }
+
+  public clear() {
+    this.fbi.fill(0xffffffff, 0, this.height*this.width);
+  }
+}
+
+function triangle(color:number, p1:number[], p2:number[], p3:number[], fbi:Int32Array, w:number, h:number) {
+  var maxy = Math.min(Math.max(p1[1], p2[1], p3[1]), h-1);
+  var miny = Math.max(Math.min(p1[1], p2[1], p3[1]), 0);
+  var dx1 = p1[0]-p2[0], 
+      dx2 = p2[0]-p3[0], 
+      dx3 = p3[0]-p1[0];
+  var dy1 = p1[1]-p2[1], 
+      dy2 = p2[1]-p3[1], 
+      dy3 = p3[1]-p1[1];
+  for(var y = miny; y <= maxy; y++) {
+    var yy = y + 0.5;
+    var s1 = yy-p1[1], 
+        s2 = yy-p2[1], 
+        s3 = yy-p3[1];
+    var x1 = p1[0] + s1/dy1*dx1, 
+        x2 = p2[0] + s2/dy2*dx2,
+        x3 = p3[0] + s3/dy3*dx3;
+    var lx = Math.max(Math.min(
+        s1*s2 <= 0 ? x1 : Infinity,
+        s2*s3 <= 0 ? x2 : Infinity,
+        s3*s1 <= 0 ? x3 : Infinity), 0);
+    var rx = Math.min(Math.max(
+        s1*s2 <= 0 ? x1 : -Infinity,
+        s2*s3 <= 0 ? x2 : -Infinity,
+        s3*s1 <= 0 ? x3 : -Infinity), w-1);
+    var yoff = y*w;
+    fbi.fill(color, yoff+Math.round(lx), yoff+Math.round(rx)+1);
+  }
+}
 
 var proj = GLM.mat4.clone([
   1, 0, 0, 0,
@@ -102,6 +213,11 @@ var poss = new Array(n);
 for (var i = 0; i < n; i++)
   poss[i] = [256-rand256()*2, 256-rand256()*2, -rand256(), 1+Math.random()*4];
 
+var s = new State(ctx, W, H);
+s.setColor(100, 20, 20);
+s.vertex(-100, 100, 0);
+s.vertex(100, 100, 0);
+s.vertex(100, -100, 0);
 
 var ang = 0;
 var tri = 2*Math.PI/3;
@@ -115,9 +231,32 @@ animate((dt) => {
   // swFastRects(10000, 200);
   // swTriangles(100, 50);
   // cube(dt);
-  cubes(dt);
-
+  // cubes(dt);
+  state(dt);
 });
+
+
+function state(dt:number) {
+  s.clear();
+  var model = s.getModelMatrix();
+  // GLM.mat4.identity(model);
+  s.setColor(100, 20, 20);
+  GLM.mat4.rotateZ(model, model, dt/100);
+  s.calcMvp();
+  s.triangle(0, 1, 2);
+  
+  s.setColor(20, 100, 20);
+  GLM.mat4.rotateZ(model, model, (dt+10)/100);
+  s.calcMvp();
+  s.triangle(0, 1, 2);
+
+  s.setColor(20, 20, 100);
+  GLM.mat4.rotateZ(model, model, (dt+20)/100);
+  s.calcMvp();
+  s.triangle(0, 1, 2);
+
+  s.flip();
+}
 
 var sortF = (a:number[], b:number[]) => {return a[0]-b[0];};
 
@@ -226,35 +365,6 @@ function rect(color:number, x:number, y:number, w:number, h:number) {
   for (var dy = 0; dy < h; dy++) {
     fbi.fill(color, off, off+w);
     off += 640;
-  }
-}
-
-function triangle(color:number, points:number[]) {
-  var maxy = Math.min(Math.max(points[1], points[3], points[5]), 480);
-  var miny = Math.max(Math.min(points[1], points[3], points[5]), 0);
-  var dx1 = points[0]-points[2], 
-      dx2 = points[2]-points[4], 
-      dx3 = points[4]-points[0];
-  var dy1 = points[1]-points[3], 
-      dy2 = points[3]-points[5], 
-      dy3 = points[5]-points[1];
-  for(var y = miny; y <= maxy; y++) {
-    var s1 = y-points[1], 
-        s2 = y-points[3], 
-        s3 = y-points[5];
-    var x1 = points[0] + s1/dy1*dx1, 
-        x2 = points[2] + s2/dy2*dx2,
-        x3 = points[4] + s3/dy3*dx3;
-    var lx = Math.max(Math.min(
-        s1*s2 <= 0 ? x1 : Infinity,
-        s2*s3 <= 0 ? x2 : Infinity,
-        s3*s1 <= 0 ? x3 : Infinity), 0);
-    var rx = Math.min(Math.max(
-        s1*s2 <= 0 ? x1 : -Infinity,
-        s2*s3 <= 0 ? x2 : -Infinity,
-        s3*s1 <= 0 ? x3 : -Infinity), 639);
-    var yoff = y*640;
-    fbi.fill(color, yoff+Math.round(lx), yoff+Math.round(rx)+1);
   }
 }
 
@@ -404,7 +514,7 @@ function swTriangles(count:number, size:number) {
     var c3 = (Math.cos(ang+2*tri)*s)|0;
     var x = randi(640);
     var y = randi(480);
-    triangle(color, [x+s1, y+c1, x+s2, y+c2, x+s3, y+c3]);
+    // triangle(color, [x+s1, y+c1, x+s2, y+c2, x+s3, y+c3]);
   }
   ctx.putImageData(data, 0, 0);
 }

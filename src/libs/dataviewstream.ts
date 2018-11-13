@@ -73,7 +73,7 @@ export class DataViewStream {
     var str = new Array<string>(len);
     for (var i = 0; i < len; i++) {
       var c = this.readByte();
-      if (c == 0){
+      if (c == 0) {
         this.skip(len-i-1);
         break;
       }
@@ -119,7 +119,7 @@ export var uint = reader((s:DataViewStream) => s.readUInt(), 4, Uint32Array);
 export var float = reader((s:DataViewStream) => s.readFloat(), 4, Float32Array);
 export var string = (len:any) => {return reader((s:DataViewStream) => s.readByteString(len), len)};
 
-export var array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):Array<T> => {
+var array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):Array<T> => {
   var arr = new Array<T>(); 
   for(var i = 0; i < len; i++) 
     arr[i] = type.read(s); 
@@ -127,7 +127,7 @@ export var array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):Ar
 }
 export var array = <T,AT>(type:Reader<T,AT>, len:number) => {return reader((s:DataViewStream) => array_(s, type, len), type.sizeof()*len)};
 
-export var atomic_array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):AT => {
+var atomic_array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):AT => {
   var arrayType = type.arrType();
   if (arrayType == null)
     throw new Error('type is not atomic');
@@ -137,13 +137,13 @@ export var atomic_array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:num
 }
 export var atomic_array = <T,AT>(type:Reader<T,AT>, len:number) => {return reader((s:DataViewStream) => atomic_array_(s, type, len), type.sizeof()*len)};
 
-export var bit_field_ = <T>(s:DataViewStream, fields:Array<number>) => {
+var bit_field_ = <T>(s:DataViewStream, fields:Array<number>) => {
   var br = new B.BitReader(s);
   return fields.map((val) => br.readBits(val));
 }
 export var bit_field = (fields:Array<number>) => {return reader((s:DataViewStream) => bit_field_(s, fields), (fields.reduce((l,r) => l+r, 0)/8)|0)}
 
-export var struct_ = <T>(s:DataViewStream, fields:any, type:{new(): T}):T => {
+var struct_ = <T>(s:DataViewStream, fields:any, type:{new(): T}):T => {
   var struct = new type();
   for (var i = 0; i < fields.length; i++) {
     var [name, reader] = fields[i];

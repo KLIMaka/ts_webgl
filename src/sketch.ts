@@ -71,6 +71,24 @@ var dither2 = [
 15, 47, 7, 39, 13, 45, 5, 37,
 63, 31, 55, 23, 61, 29, 53, 21];
 
+var ditherTri = [
+0, 1, 5, 6, 14, 15, 27, 28,
+2, 4, 7, 13, 16, 26, 29, 42,
+3, 8, 12, 17, 25, 30, 41, 43,
+9, 11, 18, 24, 31, 40, 44, 53,
+10, 19, 23, 32, 39, 45, 52, 54,
+20, 22, 33, 38, 46, 51, 55, 60,
+21, 34, 37, 47, 50, 56, 59, 61,
+35, 36, 48, 49, 57, 58, 62, 63,
+]
+
+var dither111 = [
+0,8,4,14,
+11,1,9,5,
+6,12,2,10,
+15,7,13,3,
+];
+
 function triangle(s:number):number[] {
   var arr = new Array<number>(s*s);
   var c = 0;
@@ -95,7 +113,7 @@ class ConverterPixelProvider extends P.AbstractPixelProvider {
   private labPal:number[];
   private palTmp = new Uint8Array([0,0,0,255]);
 
-  constructor(private provider:P.PixelProvider, private pal:number[]) {
+  constructor(private provider:P.PixelProvider, private pal:number[], private dim:number) {
     super(provider.getWidth(), provider.getHeight());
     var xyzPal = COLOR.convertPal(pal, COLOR.rgb2xyz);
     this.labPal = COLOR.convertPal(xyzPal, COLOR.xyz2lab);
@@ -107,11 +125,14 @@ class ConverterPixelProvider extends P.AbstractPixelProvider {
     // var lab = COLOR.xyz2lab(xyz[0], xyz[1], xyz[2]);
     // var [i, i1, t] = COLOR.findHsl(this.labPal, lab[0], lab[1], lab[2]);
     var t = COLOR.rgb2lum(dst[dstoff+0], dst[dstoff+1], dst[dstoff+2]) / 255;
+    t *= this.dim;
+    var min = t <= 0.5 ? 0 : 0.5; 
+    var max = t <= 0.5 ? 0.5 : 1; 
     // var idx = COLOR.dither(x, y, t, dither1) ? i : i1;
     // this.palTmp[0] = this.pal[idx*3+0];
     // this.palTmp[1] = this.pal[idx*3+1];
     // this.palTmp[2] = this.pal[idx*3+2];
-    var col =  COLOR.dither(x, y, t, dither1) ? 20 : 164;
+    var col =  COLOR.dither(x, y, (t-min)*2, ditherTri) ? min*255 : max*255;
     this.palTmp[0] = col;
     this.palTmp[1] = col;
     this.palTmp[2] = col;
@@ -156,16 +177,30 @@ new FR.DropFileReader(
 
 });
 
-function processFile(buff:ArrayBuffer, pal:number[]) {
+function processFile1(buff:ArrayBuffer, pal:number[]) {
   var provider = new MyPixelProvider(buff);
   var canvas = IU.createCanvas(provider);
   document.body.appendChild(canvas);
 }
 
-function processFile1(buff:ArrayBuffer, pal:number[]) {
+function processFile(buff:ArrayBuffer, pal:number[]) {
   IU.loadImageFromBuffer(buff, (provider:P.PixelProvider) => {
-    provider = new ConverterPixelProvider(provider, pal);
-    var canvas = IU.createCanvas(provider);
+    var canvas = IU.createEmptyCanvas(provider.getWidth(), provider.getHeight());
     document.body.appendChild(canvas);
+
+    // var time = new Date().getTime();
+    // function update() {
+    //   var now = new Date().getTime();
+    //   var dt = (now - time) / 1000;
+      
+      provider = new ConverterPixelProvider(provider, pal, 1.0);
+      IU.drawToCanvas(provider, canvas);
+      
+    //   requestAnimationFrame(update);
+    // }
+
+    // update();
+
+    
   });
 }

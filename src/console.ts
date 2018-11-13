@@ -154,7 +154,7 @@ function render(img:Uint8Array) {
     'aPos': aPos,
     'aTc': aTc
   }
-  var indexBuffer = MB.genIndexBuffer(gl, 1, [0, 2, 1, 0, 3, 2], 4);
+  var indexBuffer = MB.genIndexBuffer(gl, 1, [0, 2, 1, 0, 3, 2]);
   var shader = SHADERS.createShader(gl, 'resources/shaders/indexed');
   var MVP = control.getMatrix();
   var struct = [gl.TRIANGLES, 6, 0];

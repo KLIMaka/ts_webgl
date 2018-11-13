@@ -26,28 +26,40 @@ function updateBuffers(ps:P.ParticleSystem):number {
   var plist = ps.getParticles();
   var term = plist.last().next;
   var idx = 0;
-  var pos = vertexBufs.aPos.getData();
-  var color = vertexBufs.aColor.getData();
+  var pos = new Float32Array(vertexBufs.aPos.getData().buffer);
+  var color = new Uint8Array(vertexBufs.aColor.getData().buffer);
   
   for (var node = plist.first(); node != term; node = node.next) {
-    var p = node.obj;
-    var hs = p.attr.size/2;
-    var c = p.attr.color;
-    var ang = p.attr.ang;
+    if (idx >= MAX_SIZE)
+        break;
 
-    var off = idx*8;
-    pos[off+0] = p.x+Math.sin(ang+p4)*hs; pos[off+1] = p.y+Math.cos(ang+p4)*hs; 
-    pos[off+2] = p.x+Math.sin(ang+3*p4)*hs; pos[off+3] = p.y+Math.cos(ang+3*p4)*hs; 
-    pos[off+4] = p.x+Math.sin(ang+5*p4)*hs; pos[off+5] = p.y+Math.cos(ang+5*p4)*hs; 
-    pos[off+6] = p.x+Math.sin(ang+7*p4)*hs; pos[off+7] = p.y+Math.cos(ang+7*p4)*hs; 
+    var p = node.obj.attr;
+    var trace = p.trace;
+    var prevx = node.obj.x;
+    var prevy = node.obj.y;
+    var maxtraces = 10;
+    for (var i = trace.length - 1; i >= 0 && maxtraces >= 0; i--) {
+      if (idx >= MAX_SIZE)
+        break;
 
-    var off = idx*16;
-    color[off+0] = c[0]; color[off+1] = c[1]; color[off+2] = c[2]; color[off+3] = c[3];
-    color[off+4] = c[0]; color[off+5] = c[1]; color[off+6] = c[2]; color[off+7] = c[3];
-    color[off+8] = c[0]; color[off+9] = c[1]; color[off+10] = c[2]; color[off+11] = c[3];
-    color[off+12] = c[0]; color[off+13] = c[1]; color[off+14] = c[2]; color[off+15] = c[3];
+      var maxt = trace[trace.length-1][2];
+      var t = trace[i];
+      var off = idx*8;
+      var rect = line(prevx, prevy, t[0], t[1], p.size);
+      pos.set(rect, off);
+      prevx = t[0];
+      prevy = t[1];
 
-    idx++;
+      var off = idx*16;
+      var c = color1.get(maxt-t[2]);
+      color.set(c, off);
+      color.set(c, off+4);
+      color.set(c, off+8);
+      color.set(c, off+12);
+
+      idx++;
+      maxtraces--;
+    }
   }
 
   vertexBufs.aPos.update(gl);
@@ -56,43 +68,45 @@ function updateBuffers(ps:P.ParticleSystem):number {
   return idx*6;
 }
 
-var color = new INTER.Range([255, 255, 255, 255], [0,0,0,0], INTER.Vec4Interpolator);
-color.insert([255, 164, 89, 255*0.8], 0.2);
-color.insert([0, 0, 0, 255*0.2], 0.8);
-var ang = 0;
+function line(x1:number, y1:number, x2:number, y2:number, w:number) {
+  var ortx = (y2-y1);
+  var orty = (x2-x1);
+  var ortl = Math.sqrt(ortx*ortx+orty*orty);
+  ortx = (ortx/ortl)*(w/2);
+  orty = (orty/ortl)*(w/2);
+  return [
+    x1+ortx, y1+orty,
+    x2+ortx, y2+orty,
+    x2-ortx, y2-orty,
+    x1-ortx, y1-orty
+  ];
+}
 
-function init(p:P.Particle) {
-  var dx = Math.sin(ang);
-  var dy = Math.cos(ang);
-  var w = RNG.rand(-100, 100);
-  if (RNG.coin()) {
-    p.x = x + dx * w;
-    p.y = y + dy * w;
-  } else {
-    p.x = x - dy * w;
-    p.y = y + dx * w;
-  }
-  p.ttl = RNG.rand0(2);
+var color1 = new INTER.Range([255, 255, 255, 255], [0,0,0,0], INTER.Vec4Interpolator);
+color1.insert([255, 164, 89, 255*0.05], 0.05);
+color1.insert([0, 0, 0, 255*0.1], 0.1);
 
-  p.attr.size = RNG.rand(2, 10);
-  p.attr.color = color.get(0);
-  p.attr.ang = RNG.rand0(3.14);
-  p.attr.vang = RNG.rand(-10, 10);
+function init(p:P.Particle, ctx:any) {
+  p.ttl = RNG.rand0(1);
+  p.x = 300;
+  p.y = 600;
+  p.vx = RNG.rand(-600, 600);
+  p.vy = -RNG.rand(100,1200);
 
-  p.vx = RNG.rand(-25, 25);
-  p.vy = -RNG.rand0(100);
+  p.attr.size = RNG.rand(1, 4);
+  p.attr.color = color1.get(0);
+  p.attr.trace = [];
 }
 
 function update(p:P.Particle, dt:number) {
+  p.attr.trace.push([p.x, p.y, p.t]);
   p.x += p.vx*dt;
   p.y += p.vy*dt;
-  p.vx *= (1 - dt);
-  p.vx += RNG.rand(-10, 10);;
-  p.vy -= dt*200;
+  p.vx += dt*RNG.rand(-10, 10)*60;
+  p.vx *= Math.pow(0.985/60, dt);
+  p.vy += dt*1400;
 
-  p.attr.color = color.get(p.t);
-  p.attr.size += dt*RNG.rand(-10, 30);
-  p.attr.ang += dt*p.attr.vang;
+  p.attr.color = color1.get(p.t);
 }
 
 function die(p:P.Particle):boolean {
@@ -116,32 +130,30 @@ gl.canvas.onmousemove = function(e) {
   // y = e.clientY;
 }
 
-var particles = new P.ParticleSystem(MAX_SIZE, init, update, die);
+var particles = new P.ParticleSystem(MAX_SIZE/10, init, update, die);
 
 var control = C2D.create(gl);
 control.setUnitsPerPixel(1);
 control.setPos(300, 300);
 var shader = SHADERS.createShader(gl, 'resources/shaders/particle');
-var MVP = control.getMatrix();
+var MVP = ['MVP', BATCHER.setters.mat4, control.getMatrix()];
 var struct = [gl.TRIANGLES, 0, 0];
 
 var cmds = [
+  BATCHER.clear, [0.3, 0.3, 0.3, 1.0],
   BATCHER.shader, shader,
   BATCHER.vertexBuffers, vertexBufs,
   BATCHER.indexBuffer, indexBuffer,
-  BATCHER.uniforms, ['MVP', BATCHER.setters.mat4, MVP],
+  BATCHER.uniforms, MVP,
   BATCHER.drawCall, struct
 ];
 
 GL.animate(gl, function (gl:WebGLRenderingContext, dt:number) {
-  gl.clearColor(0.3, 0.3, 0.3, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
 
   particles.update(dt);
   struct[1] = updateBuffers(particles);
   BATCHER.exec(cmds, gl);
 
-  ang += dt;
-  for(var i = 0; i < 40; i++)
-    particles.emit();
+  for(var i = 0; i < 100; i++)
+    particles.emit(null);
 });
