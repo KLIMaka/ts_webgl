@@ -298,17 +298,10 @@ export class MeshBuilderConstructor {
   }
 }
 
-function getMax(arr:number[]) {
-  var max = arr[0];
-  for (var i = 1; i < arr.length; i++)
-     max = Math.max(max, arr[i]);
-  return max;
-}
-
 export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[]):DS.IndexBuffer {
   var bufIdx = gl.createBuffer();
   var len = pattern.length;
-  var size = getMax(pattern) + 1;
+  var size =  Math.max.apply(null, pattern) + 1;
   var data = new Uint16Array(count * len);
   for (var i = 0; i < count; i++) {
     var off = i * len;

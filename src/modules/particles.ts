@@ -65,13 +65,12 @@ export class ParticleSystem {
     return this.idMap[id];
   }
 
-  public emit():void {
+  public emit(ctx:any):void {
     if (this.pool.isEmpty())
       return;
     var node = this.pool.remove(this.pool.last());
-    this.initf(node.obj);
+    this.initf(node.obj, ctx);
     node.obj.t = 0;
     this.active.insertNodeAfter(node);
   }
-
 }
