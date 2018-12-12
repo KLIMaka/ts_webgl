@@ -23,7 +23,7 @@ export var Vec4Interpolator = (lh:number[], rh:number[], t:number) => {
 }
 
 export class Point<T> {
-  constructor(public val:T, public pos:number) {}
+  constructor(public val:T, public pos:number, public interpolator:Interpolator<T>) {}
 }
 
 export function PointComparator<T>(lh:Point<T>, rh:Point<T>) {
@@ -33,22 +33,22 @@ export function PointComparator<T>(lh:Point<T>, rh:Point<T>) {
 export class Range<T> {
   private points:Array<Point<T>> = [];
 
-  constructor(start:T, end:T, private interpolator:Interpolator<T>) {
-    this.points.push(new Point<T>(start, 0));
-    this.points.push(new Point<T>(end, 1));
+  constructor(start:T, end:T, interpolator:Interpolator<T>) {
+    this.points.push(new Point<T>(start, 0, interpolator));
+    this.points.push(new Point<T>(end, 1, null));
   }
 
-  public insert(val:T, t:number):void {
-    var idx = binaryIndexOf(this.points, new Point<T>(null, t), PointComparator);
-    this.points.splice(idx+1, 0, new Point<T>(val, t));
+  public insert(val:T, t:number, interpolator:Interpolator<T>):void {
+    var idx = binaryIndexOf(this.points, new Point<T>(null, t, null), PointComparator);
+    this.points.splice(idx+1, 0, new Point<T>(val, t, interpolator));
   }
 
   public get(t:number):T {
-    var idx = binaryIndexOf(this.points, new Point<T>(null, t), PointComparator);
+    var idx = binaryIndexOf(this.points, new Point<T>(null, t, null), PointComparator);
     var lh = this.points[idx];
     var rh = this.points[idx+1];
     var localT = (t-lh.pos)/(rh.pos-lh.pos);
-    return this.interpolator(lh.val, rh.val, localT);
+    return lh.interpolator(lh.val, rh.val, localT);
   }
 }
 

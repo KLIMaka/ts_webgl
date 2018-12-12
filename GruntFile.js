@@ -24,7 +24,8 @@ module.exports = function (grunt) {
     'gl_test',
     'mapper',
     'sketch',
-    'parser'
+    'parser',
+    'midi'
   ];
 
   var nodemodules = [

@@ -61,11 +61,10 @@ function updateBuffers(ps:P.ParticleSystem):number {
       maxtraces--;
     }
   }
-
   vertexBufs.aPos.update(gl);
   vertexBufs.aColor.update(gl);
 
-  return idx*6;
+  return 50*6;
 }
 
 function line(x1:number, y1:number, x2:number, y2:number, w:number) {
