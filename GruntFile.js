@@ -40,7 +40,8 @@ module.exports = function (grunt) {
       dest: 'distr/',
       options: {
         rootDir: 'src/',
-        module: 'amd'
+        module: 'amd',
+        target: 'es6'
       }
     });
     grunt.config(['watch', module], {

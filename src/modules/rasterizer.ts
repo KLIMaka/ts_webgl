@@ -237,7 +237,7 @@ function blend(src:Uint8Array, off:number, dst:number[]) {
 
 export class Rasterizer {
 
-  private img:ImageData;
+  private img:Uint8Array;
   private shader:(a:number[])=>number[];
   private w:number;
   private h:number;
@@ -253,13 +253,13 @@ export class Rasterizer {
 
   private texs:ImageData[] = [];
 
-  constructor(img:ImageData, shader:(a:number[])=>number[]) {
+  constructor(img:Uint8Array, w:number, h:number, shader:(a:number[])=>number[]) {
     this.shader = shader;
     this.img = img;
-    this.w = img.width;
-    this.h = img.height;
-    this.dx = 1 / img.width;
-    this.dy = 1 / img.height;
+    this.w = w;
+    this.h = h;
+    this.dx = 1 / w;
+    this.dy = 1 / h;
     this.sx = this.dx / 2;
     this.sy = this.dy / 2;
   }
@@ -321,7 +321,7 @@ export class Rasterizer {
 
   public clear(color:number[], d:number):void {
     var _d = 1 - d;
-    var data = this.img.data;
+    var data = this.img;
     for (var i = 0; i < data.length; i+=4) {
       data[i+0] = data[i+0]*d + color[0]*_d;
       data[i+1] = data[i+1]*d + color[1]*_d;
@@ -330,7 +330,7 @@ export class Rasterizer {
     }
   }
 
-  public drawTriangles(indices:number[], start:number=0, length:number=indices.length):void {
+  public *drawTriangles(indices:number[], start:number=0, length:number=indices.length):IterableIterator<number[]> {
     var dx = this.dx;
     var dy = this.dy;
     var sx = this.sx;
@@ -343,7 +343,7 @@ export class Rasterizer {
     var latrs = new Array<number>(numattrs);
     var atrs = new Array<number>(numattrs);
     var polygon = [[0, 1], [1, 2], [2, 0]];
-    var data = this.img.data;
+    var data = this.img;
     var intersect = new TriIntersection();
     var end = start + length;
 
@@ -392,6 +392,7 @@ export class Rasterizer {
               atrs[a] = latrs[a] + (ratrs[a] - latrs[a]) * adx;
 
             var px = this.shader(atrs);
+            yield px;
             
             var off = (yi * this.w + xi)*4;
             blend(data, off, px);

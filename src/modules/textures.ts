@@ -83,7 +83,7 @@ export class DrawTexture extends TextureImpl {
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, 1, 1, this.getFormat(), this.getType(), pixel);
   }
 
-  public putSubImage(x:number, y:number, w:number, h:number, img:Uint8Array, gl:WebGLRenderingContext):void {
+  public putSubImage(x:number, y:number, w:number, h:number, img:ArrayBufferView, gl:WebGLRenderingContext):void {
     gl.bindTexture(gl.TEXTURE_2D, this.id);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, this.getFormat(), this.getType(), img);
   }

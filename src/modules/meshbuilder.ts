@@ -311,7 +311,7 @@ export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:n
     }
   }
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer>data, gl.STATIC_DRAW);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer>data.buffer, gl.STATIC_DRAW);
   return new IndexBufferImpl(bufIdx, gl.UNSIGNED_SHORT);
 }
 

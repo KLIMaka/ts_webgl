@@ -17,15 +17,22 @@ import VEC = require('./libs/vecmath');
 import IU = require('./libs/imgutils');
 import tcpack = require('./modules/texcoordpacker');
 import raster = require('./modules/rasterizer');
+import AB = require('./libs/asyncbarrier');
+import RNG = require('./modules/random');
 
 var w = 1024;
 var h = 768;
+var LM_SCALE = 4096*6;
+var LM_SIZE = 128;
 
 var base = null;
-class Mat implements ds.Material {
+class Material implements ds.Material {
   constructor(private shader:ds.Shader, private tex:{[index:string]:ds.Texture} = {}) {}
   getShader():ds.Shader {return this.shader}
   getTexture(sampler:string):ds.Texture {return (sampler=='base' && this.tex[sampler]==undefined) ? base : this.tex[sampler]}
+}
+function createMaterial(shader:ds.Shader, tex:{[index:string]:ds.Texture} = {}): Material {
+  return new Material(shader, tex);
 }
 
 
@@ -47,7 +54,7 @@ function buildSprite(sprite:buildstructs.Sprite, gl:WebGLRenderingContext, shade
     .attr('norm', [ 1, -1]).vtx('pos', [x, z, y])
     .attr('norm', [-1, -1]).vtx('pos', [x, z, y])
     .end();
-  return builder.build(gl, new Mat(shader));
+  return builder.build(gl, createMaterial(shader));
 }
 
 function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture) {
@@ -63,26 +70,22 @@ function buildScreen(gl:WebGLRenderingContext, shader:ds.Shader, tex:ds.Texture)
     .attr('norm', [1, 1]).vtx('pos', [256, 256])
     .attr('norm', [0, 1]).vtx('pos', [0, 256])
     .end();
-  return builder.build(gl, new Mat(shader, {texture:tex}));
+  return builder.build(gl, createMaterial(shader, {texture:tex}));
 }
 
-class MF implements builder_.MaterialFactory {
-  constructor(private mat:Mat) {}
+class SimpleMateralFactory implements builder_.MaterialFactory {
+  constructor(private mat:Material) {}
   solid(tex:ds.Texture) {return this.mat}
   sprite(tex:ds.Texture) {return this.mat}
 }
 
 
-class TP implements builder_.ArtProvider {
+class NullArtProvider implements builder_.ArtProvider {
   private tex:ds.Texture = new TEX.TextureStub(1,1);
-  get(picnum:number): ds.Texture {
-    return this.tex;
-  }
-
-  getInfo(picnum:number):number {
-    return 0;
-  }
+  get(picnum:number): ds.Texture { return this.tex; }
+  getInfo(picnum:number):number { return 0; }
 }
+var nullArtProvider = new NullArtProvider();
 
 var traceContext = {
   MVP: GLM.mat4.create(),
@@ -101,7 +104,7 @@ traceBinder.addResolver('MV', GL.mat4Setter,      ()=>traceContext.MV);
 traceBinder.addResolver('P', GL.mat4Setter,       ()=>traceContext.P);
 traceBinder.addResolver('eyepos', GL.vec3Setter,  ()=>traceContext.pos);
 traceBinder.addResolver('eyedir', GL.vec3Setter,  ()=>traceContext.dir);
-traceBinder.addResolver('size', GL.float1Setter,  ()=>100);
+traceBinder.addResolver('size', GL.float1Setter,  ()=>200);
 
 function trace(gl:WebGLRenderingContext) {
   gl.clearColor(0, 0, 0, 1);
@@ -136,8 +139,7 @@ function gather(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[], di
   var count = 0;
   for (var i = 0; i < rt.getWidth()*rt.getHeight()*4; i += 4){
     sum += data[i];
-    if (data[i] != 0)
-      count++;
+    count += data[i] != 0 ? 1 : 0 
   }
   return [sum, count];
 }
@@ -173,6 +175,18 @@ function radiosity(gl:WebGLRenderingContext, rt:TEX.RenderTexture, pos:number[],
   return pixel;
 }
 
+function blendLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8Array {
+  if (lm1 == null)
+    return lm;
+  var ret = new Uint8Array(w*h*4);
+  for (var i = 0; i < w*h*4; i +=4) {
+    var c = lm[i] * 0.6 + lm1[i] * 0.4;
+    ret[i] = ret[i+1] = ret[i+2] = c;
+    ret[i+3] = lm[i+3];
+  }
+  return ret;
+}
+
 function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8Array {
   var ret = new Uint8Array(w*h*4);
   var dw = 4;
@@ -203,11 +217,9 @@ function processLM(lm:Uint8Array, w:number, h:number, lm1:Uint8Array=null):Uint8
   return ret;
 }
 
-var S = 4096*6;
-var R = 128;
 class MyBoardBuilder implements builder_.BoardBuilder {
   private builder:mb.MeshBuilder;
-  private packer = new tcpack.Packer(S, S, S/R, S/R);
+  private packer = new tcpack.Packer(LM_SCALE, LM_SCALE, LM_SCALE/LM_SIZE, LM_SCALE/LM_SIZE);
   private buf:number[] = [];
   private idxs:number[] = [];
   private vtxBuf:ds.VertexBuffer[];
@@ -241,22 +253,22 @@ class MyBoardBuilder implements builder_.BoardBuilder {
       throw new Error("Can not pack face");
     var lmtcs = [];
     for (var i = 0; i < verts.length; i++) {
-      var u = (r.xoff+proj[i][0]-hull.minx)/S;
-      var v = (r.yoff+proj[i][1]-hull.miny)/S;
+      var u = (r.xoff+proj[i][0]-hull.minx)/LM_SCALE;
+      var v = (r.yoff+proj[i][1]-hull.miny)/LM_SCALE;
       lmtcs.push([u, v]);
     }
     return lmtcs;
   }
 
   private fillBuffer(lmtcs:number[], verts:number[], normal:number[]) {
-     this.buf.push(lmtcs[0]);
-      this.buf.push(lmtcs[1]);
-      this.buf.push(verts[0]);
-      this.buf.push(verts[1]);
-      this.buf.push(verts[2]);
-      this.buf.push(normal[0]);
-      this.buf.push(normal[1]);
-      this.buf.push(normal[2]);
+    this.buf.push(lmtcs[0]);
+    this.buf.push(lmtcs[1]);
+    this.buf.push(verts[0]);
+    this.buf.push(verts[1]);
+    this.buf.push(verts[2]);
+    this.buf.push(normal[0]);
+    this.buf.push(normal[1]);
+    this.buf.push(normal[2]);
   }
 
   public addFace(type:number, verts:number[][], tcs:number[][], idx:number, shade:number) {
@@ -271,8 +283,7 @@ class MyBoardBuilder implements builder_.BoardBuilder {
         .attr('aTc', tcs[i])
         .attr('aLMTc', lmtcs[i])
         .vtx('aPos', verts[i]);
-
-        this.fillBuffer(lmtcs[i], verts[i], normal);
+      this.fillBuffer(lmtcs[i], verts[i], normal);
     }
     this.builder.end();
     this.len += (type == mb.QUADS ? (6*verts.length/4) : verts.length);
@@ -282,36 +293,30 @@ class MyBoardBuilder implements builder_.BoardBuilder {
     return this.builder.offset() * 2;
   }
 
-  public bake(gl:WebGLRenderingContext, w:number, h:number):Uint8Array {
-    var canvas:HTMLCanvasElement = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    var img = ctx.getImageData(0, 0, w, h);
-    var RT = new TEX.RenderTexture(128, 128, gl);
-    var rast = new raster.Rasterizer(img, (attrs:number[]) => {
+  public *bake(gl:WebGLRenderingContext, w:number, h:number, lm:TEX.DrawTexture, lmBaked:TEX.DrawTexture):IterableIterator<number> {
+    var img = new Uint8Array(w*h*4);
+    var bakedLm = null;
+    var RT = new TEX.RenderTexture(64, 64, gl);
+    var rast = new raster.Rasterizer(img, w, h, (attrs:number[]) => {
       return radiosity(gl, RT, [attrs[2], attrs[3], attrs[4]], [attrs[5], attrs[6], attrs[7]]);
     });
-    rast.bindAttributes(0, this.buf, 8);
-    rast.clear([0,0,0,0], 0);
-    rast.drawTriangles(this.builder.idxbuf().buf(), 0, this.builder.idxbuf().length());
-    ctx.putImageData(img, 0, 0);
-    return new Uint8Array(img.data);
+
+    for(;;) {
+      rast.bindAttributes(0, this.buf, 8);
+      rast.clear([0,0,0,0], 0);
+      var iterator = rast.drawTriangles(this.builder.idxbuf().buf(), 0, this.builder.idxbuf().length());
+      for(;;) {
+        if (iterator.next().done)
+          break;
+        lm.putSubImage(0, 0, w, h, blendLM(img, w, h, bakedLm), gl);
+        yield 0;
+      }
+      bakedLm = processLM(img, w, h, bakedLm);
+      lmBaked.putSubImage(0, 0, w, h, bakedLm, gl);
+    }
   }
 
-  public addSprite(verts:number[][], pos:number[], tcs:number[][], idx:number, shade:number):void {
-    // this.builder.start(mb.QUADS)
-    //   .attr('aPos', pos)
-    //   .attr('aIdx', MU.int2vec4(idx))
-    //   .attr('aShade', [shade]);
-    // for (var i = 0; i < 4; i++){
-    //   this.builder
-    //     .attr('aTc', tcs[i])
-    //     .vtx('aNorm', verts[i]);
-    // }
-    // this.builder.end();
-    // this.len += 6;
-  }
+  public addSprite(verts:number[][], pos:number[], tcs:number[][], idx:number, shade:number):void {  }
 
   public begin() {
     this.off = this.builder.offset()*2;
@@ -342,32 +347,38 @@ gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
 var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
+var trace_baseShader = shaders.createShader(gl, 'resources/shaders/trace_base');
+var trace_spriteShader = shaders.createShader(gl, 'resources/shaders/trace_sprite');
+var base_shader = shaders.createShader(gl, 'resources/shaders/base');
+var base1_shader = shaders.createShader(gl, 'resources/shaders/base1');
 
 base = new TEX.DrawTexture(1, 1, gl);
-var lm = new TEX.DrawTexture(R, R, gl, {filter:gl.LINEAR});
-var trace_baseShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_base.vsh'), getter.getString('resources/shaders/trace_base.fsh'));
-var trace_spriteShader = shaders.createShaderFromSrc(gl, getter.getString('resources/shaders/trace_sprite.vsh'), getter.getString('resources/shaders/trace_sprite.fsh'));
-var builder = new MyBoardBuilder(gl);
-var processor = new builder_.BoardProcessor(board).build(gl, new TP(), new MF(new Mat(trace_baseShader, {lm:lm})), builder);
-var control = new controller.Controller3D(gl);
+var lm = new TEX.DrawTexture(LM_SIZE, LM_SIZE, gl, {filter:gl.LINEAR});
+var lm_baked = new TEX.DrawTexture(LM_SIZE, LM_SIZE, gl, {filter:gl.LINEAR});
+
+var traceBuilder = new MyBoardBuilder(gl);
+var traceMaterialFactory = new SimpleMateralFactory(createMaterial(trace_baseShader, {lm:lm_baked}));
+var traceProcessor = new builder_.BoardProcessor(board).build(gl, nullArtProvider, traceMaterialFactory, traceBuilder);
 var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 
-traceContext.processor = processor;
+traceContext.processor = traceProcessor;
 traceContext.light = light;
-var lmdata = processLM(builder.bake(gl, R, R), R, R);
-lm.putSubImage(0, 0, R, R, lmdata, gl);
-lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
-lm.putSubImage(0, 0, R, R, lmdata, gl);
-// lmdata = processLM(builder.bake(gl, R, R), R, R, lmdata);
-// lm.putSubImage(0, 0, R, R, lmdata, gl);
+
+// var oldLmdata = null;
+// for (var i = 0; i < 1; i++) {
+//   var newLmData = traceBuilder.bake(gl, LM_SIZE, LM_SIZE, lm);
+//   oldLmdata = processLM(newLmData, LM_SIZE, LM_SIZE, oldLmdata);
+//   lm.putSubImage(0, 0, LM_SIZE, LM_SIZE, oldLmdata, gl);
+// }
+var rad = traceBuilder.bake(gl, LM_SIZE, LM_SIZE, lm, lm_baked);
+
+var renderBuilder = new MyBoardBuilder(gl);
+var renderMaterailFactory = new SimpleMateralFactory(createMaterial(base_shader, {lm:lm}));
+var renderProcessor = new builder_.BoardProcessor(board).build(gl, nullArtProvider, renderMaterailFactory, renderBuilder);
+var screen = buildScreen(gl, base1_shader, lm);
 
 
-var base_shader = shaders.createShader(gl, 'resources/shaders/base');
-builder = new MyBoardBuilder(gl);
-var processor1 = new builder_.BoardProcessor(board).build(gl, new TP(), new MF(new Mat(base_shader, {lm:lm})), builder);
-var screen = buildScreen(gl, shaders.createShader(gl, 'resources/shaders/base1'), lm);
-
-
+var control = new controller.Controller3D(gl);
 var binder = new GL.UniformBinder();
 binder.addResolver('MVP', GL.mat4Setter,     ()=>control.getMatrix());
 binder.addResolver('MV', GL.mat4Setter,      ()=>control.getModelViewMatrix());
@@ -390,10 +401,11 @@ GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  var models = processor1.get(ms, control.getCamera().forward());
+  var models = renderProcessor.get(ms, control.getCamera().forward());
   GL.draw(gl, models, binder);
   GL.draw(gl, [light], binder);
   GL.draw(gl, [screen], screenBinder);
+  rad.next();
 });
 
 gl.canvas.oncontextmenu = () => false;
