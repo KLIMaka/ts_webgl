@@ -62,18 +62,20 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
   // d <- c
   var xflip = wall.cstat.xflip ? -1 : 1;
   var yflip = wall.cstat.yflip ? -1 : 1;
-  var tcscalex = wall.xrepeat / 8.0 / (tex.getWidth() / 64.0) * xflip;
-  var tcscaley = (tex.getHeight() * 16) / (wall.yrepeat / 8.0) * yflip;
+  var tw = tex.getWidth();
+  var th = tex.getHeight();
+  var tcscalex = wall.xrepeat / (tw * 8.0 * xflip);
+  var tcscaley = wall.yrepeat / (th * 8.0 * yflip * 16.0);
   var shade = wall.shade;
-  var tcxoff = wall.xpanning / tex.getWidth();
-  var tcyoff = wall.ypanning * wall.yrepeat;
+  var tcxoff = wall.xpanning;
+  var tcyoff = wall.ypanning;
 
   builder.begin();
 
-  var a = quad[0]; var atc = [tcxoff,          (tcyoff+base-a[1])/tcscaley];
-  var b = quad[1]; var btc = [tcxoff+tcscalex, (tcyoff+base-b[1])/tcscaley];
-  var c = quad[2]; var ctc = [tcxoff+tcscalex, (tcyoff+base-c[1])/tcscaley];
-  var d = quad[3]; var dtc = [tcxoff,          (tcyoff+base-d[1])/tcscaley];
+  var a = quad[0]; var atc = [(tcxoff)*tcscalex,    (tcyoff+base-a[1])*tcscaley];
+  var b = quad[1]; var btc = [(tcxoff+tw)*tcscalex, (tcyoff+base-b[1])*tcscaley];
+  var c = quad[2]; var ctc = [(tcxoff+tw)*tcscalex, (tcyoff+base-c[1])*tcscaley];
+  var d = quad[3]; var dtc = [(tcxoff)*tcscalex,    (tcyoff+base-d[1])*tcscaley];
 
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
@@ -324,7 +326,6 @@ export class BoardProcessor {
   constructor(public board:BS.Board) {}
 
   public build(gl:WebGLRenderingContext, textureProvider:ArtProvider, materials:MaterialFactory, builder:BoardBuilder=new DefaultBoardBuilder(gl)):BoardProcessor {
-
     var idx = 1;
     var sectors = this.board.sectors;
     var walls = this.board.walls;

@@ -21,6 +21,7 @@ import browser = require('./libs/browser');
 
 var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
+var drawSelect =  browser.getQueryVariable('select');
 var selectPass = false;
 
 class BuildMaterial implements DS.Material {
@@ -157,7 +158,9 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var spriteSelectShader = shaders.createShader(gl, 'resources/shaders/select_sprite');
   var mf = new BuildMaterialFactory(baseShader, selectShader, spriteShader, spriteSelectShader);
   var tp = new BuildArtProvider(artFiles, pal, gl);
+  tic();
   processor.build(gl, tp, mf);
+  console.log('parsing board: ' + tac() + 's');
 
   var control = new controller.Controller3D(gl);
   var playerstart = BU.getPlayerStart(board);
@@ -180,7 +183,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
-    if (true) {
+    if (drawSelect) {
       //select draw
       selectPass = true;
       gl.clearColor(0, 0, 0, 0);
@@ -205,7 +208,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     tic();
     var models = processor.get(ms, control.getCamera().forward());
     info['Processing:'] = tac();
-    // var models = processor.getAll();
     tic();
     GL.draw(gl, models, binder);
     info['Rendering:'] = tac();

@@ -94,9 +94,7 @@ export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
   var wall1 = walls[sector.wallptr];
   var wall2 = walls[wall1.point2];
 
-  var normal = VEC.fromValues2d(-(wall2.y - wall1.y), wall2.x - wall1.x);
-  normal = VEC.detach2d(normal);
-  VEC.normalize2d(normal);
+  var normal = VEC.detach2d(VEC.normalize2d(VEC.fromValues2d(-(wall2.y - wall1.y), wall2.x - wall1.x)));
   var wall1Vec = VEC.fromValues2d(wall1.x , wall1.y)
   var w = -VEC.dot2d(normal, wall1Vec);
   VEC.release2d(wall1Vec);
