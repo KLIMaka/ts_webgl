@@ -89,6 +89,36 @@ var dither111 = [
 15,7,13,3,
 ];
 
+var ditherSpir = [
+36,37,38,39,40,41,42,
+35,6,7,8,9,10,43,
+34,5,22,23,24,11,44,
+33,4,21,0,25,12,45,
+32,3,2,1,26,13,46,
+31,30,29,28,27,14,47,
+20,19,18,17,16,15,48,
+];
+
+var ditherFan = [
+42,44,48, 3, 7,13,16, 
+38,41,47, 2,10,15,19, 
+32,35,36, 1, 9,21,23, 
+30,29,28, 0,25,26,27, 
+24,22,11, 4,33,34,31, 
+20,17,12, 5,45,39,37, 
+18,14, 8, 6,46,43,40, 
+];
+
+var dithStar = [
+24,43,47, 9,29,36,21,
+39,20, 0, 5,25,17,40,
+32,28,16, 1,13,33,44,
+12, 8, 4, 0, 2, 6,10,
+46,35,15, 3,14,26,30,
+42,19,27, 7,34,18,37,
+23,38,31,11,45,41,22,
+];
+
 function triangle(s:number):number[] {
   var arr = new Array<number>(s*s);
   var c = 0;
@@ -132,7 +162,7 @@ class ConverterPixelProvider extends P.AbstractPixelProvider {
     // this.palTmp[0] = this.pal[idx*3+0];
     // this.palTmp[1] = this.pal[idx*3+1];
     // this.palTmp[2] = this.pal[idx*3+2];
-    var col =  COLOR.dither(x, y, (t-min)*2, ditherTri) ? min*255 : max*255;
+    var col =  COLOR.dither(x, y, (t-min)*2, dithStar) ? min*255 : max*255;
     this.palTmp[0] = col;
     this.palTmp[1] = col;
     this.palTmp[2] = col;
@@ -190,17 +220,17 @@ function processFile(buff:ArrayBuffer, pal:number[]) {
 
     // var time = new Date().getTime();
     // function update() {
-    //   var now = new Date().getTime();
-    //   var dt = (now - time) / 1000;
-      
-      provider = new ConverterPixelProvider(provider, pal, 1.0);
-      IU.drawToCanvas(provider, canvas);
-      
+    //   var now = window.performance.now();
+    //   var p = new ConverterPixelProvider(provider, pal, (Math.sin(now/1000)+1)/2);
+    //   console.log(now);
+    //   IU.drawToCanvas(p, canvas);
     //   requestAnimationFrame(update);
     // }
 
     // update();
 
+    provider = new ConverterPixelProvider(provider, pal, 1);
+    IU.drawToCanvas(provider, canvas);
     
   });
 }
