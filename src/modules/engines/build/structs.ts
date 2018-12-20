@@ -20,13 +20,23 @@
 //  filler - useless byte to make structure aligned
 //  lotag, hitag, extra - These variables used by the game programmer only
 
+export class SectorStats {
+  public parallaxing:number;
+  public slopped:number;
+  public swapXY:number;
+  public doubleSmooshiness:number;
+  public xflip:number;
+  public yflip:number;
+  public alignToFirstWall:number;
+}
+
 export class Sector {
   public wallptr:number;
   public wallnum:number;
   public ceilingz:number;
   public floorz:number;
-  public ceilingstat:number;
-  public floorstat:number;
+  public ceilingstat:SectorStats;
+  public floorstat:SectorStats;
   public ceilingpicnum:number;
   public ceilingheinum:number;
   public ceilingshade:number;
@@ -70,13 +80,26 @@ export class Sector {
 //  pannings - used to align textures or to do texture panning
 //  lotag, hitag, extra - These variables used by the game programmer only
 
+export class WallStats {
+  public blocking:number;
+  public swapBottoms:number;
+  public alignBottom:number;
+  public xflip:number;
+  public masking:number;
+  public oneWay:number;
+  public blocking2:number;
+  public translucent:number;
+  public yflip:number;
+  public translucentReversed:number;
+}
+
 export class Wall {
   public x:number;
   public y:number;
   public point2:number;
   public nextwall:number;
   public nextsector:number;
-  public cstat:number;
+  public cstat:WallStats;
   public picnum:number;
   public overpicnum:number;
   public shade:number;
@@ -119,11 +142,26 @@ export class Wall {
 //  owner, xvel, yvel, zvel, lotag, hitag, extra - These variables used by the
 //  game programmer only
 
+export class SpriteStats {
+  public blocking:number;
+  public translucent:number;
+  public xflip:number;
+  public yflip:number;
+  public type:number; // 0 - FACE, 1 - WALL, 2 - FLOOR
+  public onesided:number;
+  public realCenter:number;
+  public blocking2:number;
+  public tranclucentReversed:number;
+  public reserved:number;
+  public invicible:number;
+
+}
+
 export class Sprite {
   public x:number;
   public y:number;
   public z:number;
-  public cstat:number;
+  public cstat:SpriteStats;
   public picnum:number;
   public shade:number;
   public pal:number;

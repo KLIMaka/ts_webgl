@@ -23,28 +23,35 @@ var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
 var selectPass = false;
 
-class Mat implements DS.Material {
+class BuildMaterial implements DS.Material {
   constructor(private baseShader:DS.Shader, private selectShader:DS.Shader, private tex:{[index:string]:DS.Texture}) {}
   getShader():DS.Shader {return selectPass ? this.selectShader : this.baseShader}
   getTexture(sampler:string):DS.Texture {return this.tex[sampler]}
 }
 
-class MF implements builder.MaterialFactory {
-  constructor(private baseShader:DS.Shader, private selectShader:DS.Shader, private spriteShader:DS.Shader, private spriteSelectShader:DS.Shader){}
+class BuildMaterialFactory implements builder.MaterialFactory {
+  constructor(
+    private baseShader:DS.Shader, 
+    private selectShader:DS.Shader, 
+    private spriteShader:DS.Shader, 
+    private spriteSelectShader:DS.Shader){}
 
   solid(tex:DS.Texture) {
-    return new Mat(this.baseShader, this.selectShader, {base:tex});
+    return new BuildMaterial(this.baseShader, this.selectShader, {base:tex});
   }
 
   sprite(tex:DS.Texture) {
-    return new Mat(this.spriteShader, this.spriteSelectShader, {base:tex});
+    return new BuildMaterial(this.spriteShader, this.spriteSelectShader, {base:tex});
   }
 }
 
-class TP implements builder.ArtProvider {
+class BuildArtProvider implements builder.ArtProvider {
   private textures:DS.Texture[] = [];
   
-  constructor(private arts:ART.ArtFiles, private pal:Uint8Array, private gl:WebGLRenderingContext) {}
+  constructor(
+    private arts:ART.ArtFiles, 
+    private pal:Uint8Array,
+    private gl:WebGLRenderingContext) {}
 
   get(picnum:number): DS.Texture {
     var tex = this.textures[picnum];
@@ -58,7 +65,9 @@ class TP implements builder.ArtProvider {
     var img = pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255);
     var pp = pixel.axisSwap(img);
     pp.render(arr);
-    var repeat = MU.ispow2(pp.getWidth()) && MU.ispow2(pp.getHeight()) ? WebGLRenderingContext.REPEAT : WebGLRenderingContext.CLAMP_TO_EDGE;
+    var repeat = MU.ispow2(pp.getWidth()) && MU.ispow2(pp.getHeight()) 
+      ? WebGLRenderingContext.REPEAT 
+      : WebGLRenderingContext.CLAMP_TO_EDGE;
     var filter = WebGLRenderingContext.NEAREST;
     tex = TEX.createTexture(pp.getWidth(), pp.getHeight(), this.gl, {filter:filter, repeat:repeat}, arr);
 
@@ -122,8 +131,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
-  //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  //gl.enable(gl.BLEND);
 
   var info = {
     'X:':0,
@@ -148,8 +155,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
   var spriteShader = shaders.createShader(gl, 'resources/shaders/build_sprite');
   var spriteSelectShader = shaders.createShader(gl, 'resources/shaders/select_sprite');
-  var mf = new MF(baseShader, selectShader, spriteShader, spriteSelectShader);
-  var tp = new TP(artFiles, pal, gl);
+  var mf = new BuildMaterialFactory(baseShader, selectShader, spriteShader, spriteSelectShader);
+  var tp = new BuildArtProvider(artFiles, pal, gl);
   processor.build(gl, tp, mf);
 
   var control = new controller.Controller3D(gl);
@@ -173,7 +180,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
-    if (cfg.select) {
+    if (true) {
       //select draw
       selectPass = true;
       gl.clearColor(0, 0, 0, 0);

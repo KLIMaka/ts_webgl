@@ -88,8 +88,10 @@ export class DataViewStream {
     return ret;
   }
 
-  public array(bytes:number):DataView {
-    return new DataView(this.view.buffer, this.offset, bytes)
+  public array(bytes:number):ArrayBuffer {
+    var slice = this.view.buffer.slice(this.offset, this.offset + bytes);
+    this.offset += bytes;
+    return slice;
   }
 }
 
@@ -131,17 +133,16 @@ var atomic_array_ = <T, AT>(s:DataViewStream, type:Reader<T, AT>, len:number):AT
   var arrayType = type.arrType();
   if (arrayType == null)
     throw new Error('type is not atomic');
-  var arr = s.array(len * type.sizeof());
-  var copy = arr.buffer.slice(arr.byteOffset, arr.byteOffset+arr.byteLength);
-  return new arrayType(copy, 0, len * type.sizeof());
+  var array = s.array(len * type.sizeof());
+  return new arrayType(array, 0, len * type.sizeof());
 }
 export var atomic_array = <T,AT>(type:Reader<T,AT>, len:number) => {return reader((s:DataViewStream) => atomic_array_(s, type, len), type.sizeof()*len)};
 
-var bit_field_ = <T>(s:DataViewStream, fields:Array<number>) => {
+var bit_field_ = <T>(s:DataViewStream, fields:Array<number>, reverse:boolean) => {
   var br = new B.BitReader(s);
-  return fields.map((val) => br.readBits(val));
+  return fields.map((val) => br.readBits(val, reverse));
 }
-export var bit_field = (fields:Array<number>) => {return reader((s:DataViewStream) => bit_field_(s, fields), (fields.reduce((l,r) => l+r, 0)/8)|0)}
+export var bit_field = (fields:Array<number>, reverse:boolean) => {return reader((s:DataViewStream) => bit_field_(s, fields, reverse), (fields.reduce((l,r) => l+r, 0)/8)|0)}
 
 var struct_ = <T>(s:DataViewStream, fields:any, type:{new(): T}):T => {
   var struct = new type();

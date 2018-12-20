@@ -22,7 +22,7 @@ import RNG = require('./modules/random');
 
 var w = 1024;
 var h = 768;
-var LM_SCALE = 4096*6;
+var LM_SCALE = 4096*10;
 var LM_SIZE = 128;
 
 var base = null;
@@ -332,21 +332,19 @@ class MyBoardBuilder implements builder_.BoardBuilder {
   }
 }
 
-var MAP = 'resources/buildmaps/cube.map';
-
-getter.loader
-.load(MAP)
-.loadString('resources/shaders/trace_base.vsh')
-.loadString('resources/shaders/trace_base.fsh')
-.loadString('resources/shaders/trace_sprite.vsh')
-.loadString('resources/shaders/trace_sprite.fsh')
-.finish(() => {
+var ab = AB.create();
+getter.preloadString('resources/shaders/trace_base.vsh', ab.callback("_"));
+getter.preloadString('resources/shaders/trace_base.fsh', ab.callback("_"));
+getter.preloadString('resources/shaders/trace_sprite.vsh', ab.callback("_"));
+getter.preloadString('resources/shaders/trace_sprite.fsh', ab.callback("_"));
+getter.preload('resources/buildmaps/cube.map', ab.callback("map"));
+ab.wait((files) => {
 
 var gl = GL.createContext(w, h);
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
-var board = build.loadBuildMap(new data.DataViewStream(getter.get(MAP), true));
+var board = build.loadBuildMap(new data.DataViewStream(files['map'], true));
 var trace_baseShader = shaders.createShader(gl, 'resources/shaders/trace_base');
 var trace_spriteShader = shaders.createShader(gl, 'resources/shaders/trace_sprite');
 var base_shader = shaders.createShader(gl, 'resources/shaders/base');
@@ -358,18 +356,8 @@ var lm_baked = new TEX.DrawTexture(LM_SIZE, LM_SIZE, gl, {filter:gl.LINEAR});
 
 var traceBuilder = new MyBoardBuilder(gl);
 var traceMaterialFactory = new SimpleMateralFactory(createMaterial(trace_baseShader, {lm:lm_baked}));
-var traceProcessor = new builder_.BoardProcessor(board).build(gl, nullArtProvider, traceMaterialFactory, traceBuilder);
-var light = buildSprite(board.sprites[0], gl, trace_spriteShader);
-
-traceContext.processor = traceProcessor;
-traceContext.light = light;
-
-// var oldLmdata = null;
-// for (var i = 0; i < 1; i++) {
-//   var newLmData = traceBuilder.bake(gl, LM_SIZE, LM_SIZE, lm);
-//   oldLmdata = processLM(newLmData, LM_SIZE, LM_SIZE, oldLmdata);
-//   lm.putSubImage(0, 0, LM_SIZE, LM_SIZE, oldLmdata, gl);
-// }
+traceContext.processor = new builder_.BoardProcessor(board).build(gl, nullArtProvider, traceMaterialFactory, traceBuilder);
+traceContext.light = buildSprite(board.sprites[0], gl, trace_spriteShader);
 var rad = traceBuilder.bake(gl, LM_SIZE, LM_SIZE, lm, lm_baked);
 
 var renderBuilder = new MyBoardBuilder(gl);
@@ -403,7 +391,7 @@ GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   var models = renderProcessor.get(ms, control.getCamera().forward());
   GL.draw(gl, models, binder);
-  GL.draw(gl, [light], binder);
+  GL.draw(gl, [traceContext.light], binder);
   GL.draw(gl, [screen], screenBinder);
   rad.next();
 });

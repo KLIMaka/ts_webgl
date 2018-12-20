@@ -8,8 +8,8 @@ function decryptBuffer(buffer:Uint8Array, size:number, key:number) {
     buffer[i] = buffer[i] ^ (key + i);
 }
 
-function createStream(buf:ArrayBuffer) {
-  return new data.DataViewStream(new Uint8Array(buf).buffer, true);
+function createStream(arr:Uint8Array) {
+  return new data.DataViewStream(arr.buffer, true);
 }
 
 var header1Struct = data.struct(build.Header1, [

@@ -8,6 +8,23 @@ import U = require('./utils');
 
 var SCALE = -16;
 
+
+class SolidInfo {
+  constructor(public bbox:MU.BBox, public normal:number[], public ds:DS.DrawStruct) {}
+}
+
+class WallInfo {
+  constructor(public up:SolidInfo, public down:SolidInfo){}
+}
+
+class SectorInfo {
+  constructor(public floor:SolidInfo, public ceiling:SolidInfo){}
+}
+
+class SpriteInfo {
+  constructor(public bbox:MU.BBox, public ds:DS.DrawStruct, public face:boolean=false) {}
+}
+
 function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
   var i = 0;
   var chains = [];
@@ -43,8 +60,8 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
   // ^    |
   // |    v
   // d <- c
-  var xflip = ((wall.cstat & 8) != 0) ? -1 : 1;
-  var yflip = ((wall.cstat & 256) != 0) ? -1 : 1;
+  var xflip = wall.cstat.xflip ? -1 : 1;
+  var yflip = wall.cstat.yflip ? -1 : 1;
   var tcscalex = wall.xrepeat / 8.0 / (tex.getWidth() / 64.0) * xflip;
   var tcscaley = (tex.getHeight() * 16) / (wall.yrepeat / 8.0) * yflip;
   var shade = wall.shade;
@@ -132,15 +149,15 @@ function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, material
   var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
   var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
   var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
-  var xf = (spr.cstat & 0x04) == 0x04;
-  var yf = (spr.cstat & 0x08) == 0x08;
+  var xf = spr.cstat.xflip;
+  var yf = spr.cstat.yflip;
   var xo = (tinfo >> 8) & 0xFF; xo = MU.ubyte2byte(xo)*16 * (spr.xrepeat/64);
   var yo = (tinfo >> 16) & 0xFF; yo = MU.ubyte2byte(yo)*16 * (spr.yrepeat/64);
   var tcs = [[xf?0:1, yf?0:1], [xf?1:0, yf?0:1], [xf?1:0, yf?1:0], [xf?0:1, yf?1:0]];
   var vtxs:number[][] = null;
   var mat:DS.Material =  null;
 
-  if ((spr.cstat & 0x30) == 0x00) { // face
+  if (spr.cstat.type == 0) { // face
     var pos = [x, z, y];
     var a = [+hw, -hh+yo, 0];
     var b = [-hw, -hh+yo, 0];
@@ -153,7 +170,7 @@ function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, material
     builder.addSprite(vtxs, pos, tcs, idx, spr.shade);
     var mesh = builder.end(mat);
     return new SpriteInfo(bbox, mesh, true);
-  } else if ((spr.cstat & 0x30) == 0x10) { // wall
+  } else if (spr.cstat.type == 1) { // wall
     var dx = Math.sin(ang)*hw;
     var dy = Math.cos(ang)*hw;
     
@@ -163,7 +180,7 @@ function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, material
     var d = [x-dx, z+hh+yo, y-dy];
     vtxs = [a, b, c, d];
     mat = materials.solid(tex);
-  } else if ((spr.cstat & 0x30) == 0x20) { // floor
+  } else if (spr.cstat.type == 2) { // floor
     var dwx = Math.sin(ang)*hw;
     var dwy = Math.cos(ang)*hw;
     var dhx = Math.sin(ang+Math.PI/2)*hh;
@@ -180,7 +197,7 @@ function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, material
   var bbox = MU.bbox(vtxs);
   builder.begin();
   builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
-  if ((spr.cstat&0x40)==0) { //twosided
+  if (!spr.cstat.onesided) { //twosided
     vtxs.reverse(); tcs.reverse();
     builder.addFace(mb.QUADS, vtxs, tcs, idx, spr.shade);
   }
@@ -206,22 +223,6 @@ class DrawStruct {
     this.ptr[2] = length;
     this.tex['base'] = tex;
   }
-}
-
-class SolidInfo {
-  constructor(public bbox:MU.BBox, public normal:number[], public ds:DS.DrawStruct) {}
-}
-
-class WallInfo {
-  constructor(public up:SolidInfo, public down:SolidInfo){}
-}
-
-class SectorInfo {
-  constructor(public floor:SolidInfo, public ceiling:SolidInfo){}
-}
-
-class SpriteInfo {
-  constructor(public bbox:MU.BBox, public ds:DS.DrawStruct, public face:boolean=false) {}
 }
 
 export interface BoardBuilder {
@@ -298,21 +299,6 @@ class DefaultBoardBuilder implements BoardBuilder {
   }
 }
 
-class Builder1 {
-
-  constructor(private gl:WebGLRenderingContext) {
-
-  }
-
-  public updateWall(wall:number, section:number, verts:number[][], tcs:number[][], idx:number, shade:number):void {
-    
-  }
-
-  public updateSector():void {
-    
-  }
-}
-
 function getWallVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean) {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
@@ -367,7 +353,7 @@ export class BoardProcessor {
 
         if (wall.nextwall == -1) {
           var vtxs = getWallVtxs(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
-          var base = ((wall.cstat & 4) != 0) ? floorz : ceilingz;
+          var base = wall.cstat.alignBottom ? floorz : ceilingz;
           var solid = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
           this.walls[w] = new WallInfo(solid, null);
         } else {
@@ -381,9 +367,9 @@ export class BoardProcessor {
           var nextfloorheinum = nextsector.floorheinum;
           var vtxs = getWallVtxs(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
           if (vtxs != null) {
-            var wall_ = ((wall.cstat & 2) != 0) ? walls[wall.nextwall] : wall;
+            var wall_ = wall.cstat.swapBottoms ? walls[wall.nextwall] : wall;
             var tex_ = textureProvider.get(wall_.picnum);
-            var base = ((wall.cstat & 4) != 0) ? ceilingz : nextfloorz;
+            var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
             up = addWall(wall_, builder, vtxs, idx, tex_, materials.solid(tex_), base / SCALE);
             this.dss.push(up.ds);
           }
@@ -391,7 +377,7 @@ export class BoardProcessor {
           var nextceilingheinum = nextsector.ceilingheinum;
           var vtxs = getWallVtxs(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
           if (vtxs != null) {
-            var base = ((wall.cstat & 4) != 0) ? ceilingz : nextceilingz;
+            var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
             down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
             this.dss.push(down.ds);
           }
@@ -421,7 +407,7 @@ export class BoardProcessor {
         var sprite = sprites[i];
         var spr = this.board.sprites[sprite];
         this.index[idx] = [spr, sprite];
-        if (spr.picnum == 0)
+        if (spr.picnum == 0 || spr.cstat.invicible)
           continue;
         var tex = textureProvider.get(spr.picnum);
         var tinfo = textureProvider.getInfo(spr.picnum);
