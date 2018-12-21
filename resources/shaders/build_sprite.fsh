@@ -4,12 +4,16 @@ uniform int activeIdx;
 uniform sampler2D base;
 
 varying float att;
-varying float idx;
+varying vec4 idx;
 varying vec2 tc;
 
+int unpack (vec4 c) {
+  return int(c.r*256.0) + int(c.g*256.0)*256 + int(c.b*256.0)*65536;
+}
+
 void main() {
-  int current = int(idx);
-  vec3 select = activeIdx==current 
+  int currIdx = unpack(idx);
+  vec3 select = activeIdx==currIdx 
     ? vec3(1,0.5,0.2) 
     : vec3(1,1,1);
   vec4 color = texture2D(base, tc);

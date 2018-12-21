@@ -9,8 +9,8 @@ import MB = require('./modules/meshbuilder');
 import UI = require('./modules/ui/ui');
 import CANV = require('./modules/pixel/canvas');
 
-var w = 800;
-var h = 600;
+var w = 512;
+var h = 512;
 var cw = w;
 var ch = h;
 
@@ -135,9 +135,9 @@ function genPut(buf:Uint8Array):CANV.PutFunc {
   return (x:number, y:number) => {
     if (x >= 0 && y >= 0 && x < cw && y < ch) {
       buf[y*cw+x] = pixel;
-      buf[y*cw+cw-x] = pixel;
-      buf[(ch-y)*cw+x] = pixel;
-      buf[(ch-y)*cw+cw-x] = pixel;
+      // buf[y*cw+cw-x] = pixel;
+      // buf[(ch-y)*cw+x] = pixel;
+      // buf[(ch-y)*cw+cw-x] = pixel;
       // buf[(y+1)*cw+x+1] = pixel;
       // buf[(y-1)*cw+x-1] = pixel;
     }
@@ -160,7 +160,7 @@ function redrawOverlay(x:number, y:number):void {
   // CANV.circle(overPut, cw/2, ch/2, r|0, -20+40*k);
   // CANV.line(over, cw, ch, cw/2, ch/2, x, y, 12);
 }
-var options = {filter:gl.NEAREST, repeat:gl.CLAMP_TO_EDGE};
+var options = {filter:gl.NEAREST, repeat:gl.REPEAT};
 var img = createImage();
 var control = CTRL.create(gl);
 var tex = TEX.createDrawTexture(cw, ch, gl, options, img, gl.LUMINANCE, 1);
@@ -241,7 +241,7 @@ document.onkeypress = (e:KeyboardEvent) => {
 }
 
 var pos = new Float32Array([0, 0, cw, 0, cw, ch, 0, ch]);
-var tc = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+var tc = new Float32Array([0, 0, -1, 0, -1, 1, 0, 1]);
 var aPos = MB.wrap(gl, pos, 2, gl.DYNAMIC_DRAW);
 var aTc = MB.wrap(gl, tc, 2, gl.DYNAMIC_DRAW);
 var vertexBufs = {'aPos': aPos,'aTc': aTc};

@@ -60,22 +60,29 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
   // ^    |
   // |    v
   // d <- c
-  var xflip = wall.cstat.xflip ? -1 : 1;
-  var yflip = wall.cstat.yflip ? -1 : 1;
   var tw = tex.getWidth();
   var th = tex.getHeight();
-  var tcscalex = wall.xrepeat / (tw * 8.0 * xflip);
-  var tcscaley = wall.yrepeat / (th * 8.0 * yflip * 16.0);
+  var tcscalex = 1 / tw;
+  var tcscaley = 1 / (th * 16.0);
   var shade = wall.shade;
   var tcxoff = wall.xpanning;
-  var tcyoff = wall.ypanning;
+  var tcxoff2 = wall.xrepeat * 8.0;
+  var tcyoff = wall.ypanning * 8.0;
+  var tcscaleyw = (wall.yrepeat / 8.0);
 
   builder.begin();
 
-  var a = quad[0]; var atc = [(tcxoff)*tcscalex,    (tcyoff+base-a[1])*tcscaley];
-  var b = quad[1]; var btc = [(tcxoff+tw)*tcscalex, (tcyoff+base-b[1])*tcscaley];
-  var c = quad[2]; var ctc = [(tcxoff+tw)*tcscalex, (tcyoff+base-c[1])*tcscaley];
-  var d = quad[3]; var dtc = [(tcxoff)*tcscalex,    (tcyoff+base-d[1])*tcscaley];
+  var a = quad[0]; var atc = [(tcxoff)*tcscalex,         (tcyoff+(base-a[1])*tcscaleyw)*tcscaley];
+  var b = quad[1]; var btc = [(tcxoff+tcxoff2)*tcscalex, (tcyoff+(base-b[1])*tcscaleyw)*tcscaley];
+  var c = quad[2]; var ctc = [(tcxoff+tcxoff2)*tcscalex, (tcyoff+(base-c[1])*tcscaleyw)*tcscaley];
+  var d = quad[3]; var dtc = [(tcxoff)*tcscalex,         (tcyoff+(base-d[1])*tcscaleyw)*tcscaley];
+
+  if (wall.cstat.xflip) {
+    [atc,btc,ctc,dtc] = [btc,atc,dtc,ctc];
+  }
+  if (wall.cstat.yflip) {
+    [atc,btc,ctc,dtc] = [dtc,ctc,atc,btc];
+  }
 
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
@@ -148,8 +155,8 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
 
 function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, materials:MaterialFactory, tinfo:number, idx:number):SpriteInfo {
   var x = spr.x; var y = spr.y; var z = spr.z / SCALE;
-  var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 2 / 4;
-  var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 2 / 4;
+  var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 8;
+  var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 8;
   var ang = MU.PI2 - (spr.ang / 2048)*MU.PI2;
   var xf = spr.cstat.xflip;
   var yf = spr.cstat.yflip;
