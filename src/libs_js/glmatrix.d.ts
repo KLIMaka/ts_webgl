@@ -11,6 +11,9 @@ export interface Vec4Array extends Array<number> {
 export interface Mat2Array extends Array<number> {
 }
 
+export interface Mat2dArray extends Array<number> {
+}
+
 export interface Mat3Array extends Array<number> {
 }
 
@@ -47,6 +50,7 @@ export declare module vec2 {
   export function cross(out:Vec2Array, a:Vec2Array, b:Vec2Array): Vec2Array;
   export function lerp(out:Vec2Array, a:Vec2Array, b:Vec2Array, t:number): Vec2Array;
   export function transformMat2(out:Vec2Array, a:Vec2Array, m:Mat2Array): Vec2Array;
+  export function transformMat2d(out:Vec2Array, a:Vec2Array, m:Mat2dArray): Vec2Array;
   export function str(a:Vec2Array): string;
 }
 
@@ -143,4 +147,32 @@ export declare module mat4 {
   export function perspective(out:Mat4Array, fovy:number, aspect:number, near:number, far:number): Mat4Array;
   export function ortho(out:Mat4Array, left:number, right:number, bottom:number, top:number, near:number, far:number): Mat4Array;
   export function lookAt(out:Mat4Array, eye:Vec3Array, center:Vec3Array, up:Vec3Array): Mat4Array;
+}
+
+export declare module mat2d {
+  export function create():Mat2dArray;
+  export function add(out:Mat2dArray, a:Mat2dArray, b:Mat2dArray):Mat2dArray;
+  export function clone(a:Mat2dArray):Mat2dArray;
+  export function copy(out:Mat2dArray, a:Mat2dArray):Mat2dArray;
+  export function copy(out:Mat2dArray, a:Mat2dArray):Mat2dArray;
+  export function determinant(a:Mat2dArray):number;
+  export function equals(a:Mat2dArray, b:Mat2dArray):boolean;
+  export function exactEquals(a:Mat2dArray, b:Mat2dArray):boolean;
+  export function fromRotation(out:Mat2dArray, rad:number):Mat2dArray;
+  export function fromScaling(out:Mat2dArray, v:Vec2Array):Mat2dArray;
+  export function fromTranslation(out:Mat2dArray, v:Vec2Array):Mat2dArray;
+  export function fromValues(a:number, b:number, c:number, d:number, tx:number, ty:number):Mat2dArray;
+  export function identity(out:Mat2dArray):Mat2dArray;
+  export function invert(out:Mat2dArray, a:Mat2dArray):Mat2dArray;
+  export function mul(out:Mat2dArray, a:Mat2dArray, b:Mat2dArray):Mat2dArray;
+  export function multiply(out:Mat2dArray, a:Mat2dArray, b:Mat2dArray):Mat2dArray;
+  export function multiplyScalar(out:Mat2dArray, a:Mat2dArray, b:number):Mat2dArray;
+  export function multiplyScalarAndAdd(out:Mat2dArray, a:Mat2dArray, b:Mat2dArray, scale:number):Mat2dArray;
+  export function rotate(out:Mat2dArray, a:Mat2dArray, rad:number):Mat2dArray;
+  export function scale(out:Mat2dArray, a:Mat2dArray, v:Vec2Array):Mat2dArray;
+  export function set(out:Mat2dArray, a:number, b:number, c:number, d:number, tx:number, ty:number):Mat2dArray;
+  export function str(a:Mat2dArray):string;
+  export function sub(out:Mat2dArray, a:Mat2dArray, b:Mat2dArray):Mat2dArray;
+  export function substract(out:Mat2dArray, a:Mat2dArray, b:Mat2dArray):Mat2dArray;
+  export function translate(out:Mat2dArray, a:Mat2dArray, v:Vec2Array):Mat2dArray;
 }

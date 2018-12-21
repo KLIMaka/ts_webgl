@@ -116,10 +116,29 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
 function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
   var heinum = ceiling ? sector.ceilingheinum : sector.floorheinum;
   var z = ceiling ? sector.ceilingz : sector.floorz;
-  var slope = U.createSlopeCalculator(sector, walls);
-  var tcscalex = tex.getWidth() * 16;
-  var tcscaley = tex.getHeight() * 16;
   var shade = ceiling ? sector.ceilingshade : sector.floorshade;
+  var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
+  var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
+  var stats = ceiling ? sector.ceilingstat : sector.floorstat;
+  
+  var tcscalex = 1 / (tex.getWidth() * 16);
+  var tcscaley = 1 / (tex.getHeight() * 16);
+  var trans = VEC.create2dTransform();
+  trans = VEC.translate2dTransform(trans, [xpan, ypan]);
+  trans = VEC.scale2dTransform(trans, [tcscalex, tcscaley]);
+  if (stats.alignToFirstWall) {
+    var w1 = walls[sector.wallptr];
+    var w2 = walls[w1.point2];
+    var dx = w2.x - w1.x;
+    var dy = w2.y - w1.y;
+    var rad = Math.atan2(dx, dy);
+    trans = VEC.rotate2dTransform(trans, rad);
+  }
+  if (stats.swapXY) {
+    trans = VEC.swapXY2dTransform(trans);
+  }
+  
+  var slope = U.createSlopeCalculator(sector, walls);
   var vtxs = [];
   var tcs = [];
   var normal:number[] = null;
@@ -137,9 +156,10 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
     var v1 = [t0x, z1 / SCALE, t0y];
     var v2 = [t1x, z2 / SCALE, t1y];
     var v3 = [t2x, z3 / SCALE, t2y];
-    var v1tc = [t0x/tcscalex, t0y/tcscaley];
-    var v2tc = [t1x/tcscalex, t1y/tcscaley];
-    var v3tc = [t2x/tcscalex, t2y/tcscaley];
+
+    var v1tc = VEC.apply2dTransform([t0x, t0y], trans);
+    var v2tc = VEC.apply2dTransform([t1x, t1y], trans);
+    var v3tc = VEC.apply2dTransform([t2x, t2y], trans);
 
     vtxs = vtxs.concat(ceiling ? [v3,v2,v1] : [v1,v2,v3]); 
     tcs = tcs.concat(ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]);
@@ -149,7 +169,6 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
   builder.addFace(mb.TRIANGLES, vtxs, tcs, idx, shade);
   var mesh = builder.end(mat);
   var bbox = MU.bbox(vtxs);
-
   return new SolidInfo(bbox, normal, mesh);
 }
 
@@ -415,7 +434,7 @@ export class BoardProcessor {
         var sprite = sprites[i];
         var spr = this.board.sprites[sprite];
         this.index[idx] = [spr, sprite];
-        if (spr.picnum == 0 || spr.cstat.invicible)
+        if (spr.picnum == 0)
           continue;
         var tex = textureProvider.get(spr.picnum);
         var tinfo = textureProvider.getInfo(spr.picnum);

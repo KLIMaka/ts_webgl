@@ -4,6 +4,7 @@ import pool = require('./pool');
 import MU = require('./mathutils');
 import vec2_t = GLM.Vec2Array;
 import vec3_t = GLM.Vec3Array;
+import mat2d_t = GLM.Mat2dArray;
 
 var vec2dPool = new pool.Pool<vec2_t>(100, GLM.vec2.create);
 var vec3dPool = new pool.Pool<vec3_t>(100, GLM.vec3.create);
@@ -286,3 +287,29 @@ export function project3d(vtxs:vec3_t[], normal:vec3_t):vec2_t[] {
   }
   return ret;
 }
+
+export function create2dTransform():mat2d_t {
+  return GLM.mat2d.create();
+}
+
+export function scale2dTransform(mat:mat2d_t, v:vec2_t):mat2d_t {
+  return GLM.mat2d.scale(mat, mat, v);
+}
+
+export function rotate2dTransform(mat:mat2d_t, rad:number):mat2d_t {
+  return GLM.mat2d.rotate(mat, mat, rad);
+}
+
+export function translate2dTransform(mat:mat2d_t, v:vec2_t):mat2d_t {
+  return GLM.mat2d.translate(mat, mat, v);
+}
+
+export function apply2dTransform(v:vec2_t, mat:mat2d_t):vec2_t {
+  return GLM.vec2.transformMat2d(v, v, mat);
+}
+
+export function swapXY2dTransform(mat:mat2d_t):mat2d_t {
+  return [mat[1], mat[0], mat[3], mat[2], mat[5], mat[4]];
+}
+
+
