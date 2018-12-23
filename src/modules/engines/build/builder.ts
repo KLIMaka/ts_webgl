@@ -60,22 +60,21 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
   // ^    |
   // |    v
   // d <- c
+  var shade = wall.shade;
   var tw = tex.getWidth();
   var th = tex.getHeight();
   var tcscalex = 1 / tw;
-  var tcscaley = 1 / (th * 16.0);
-  var shade = wall.shade;
+  var tcscaley = (wall.yrepeat / 8.0) / (th * 16.0);
   var tcxoff = wall.xpanning;
   var tcxoff2 = wall.xrepeat * 8.0;
-  var tcyoff = wall.ypanning * 8.0;
-  var tcscaleyw = (wall.yrepeat / 8.0);
+  var tcyoff = wall.ypanning / 256.0;
 
   builder.begin();
 
-  var a = quad[0]; var atc = [(tcxoff)*tcscalex,         (tcyoff+(base-a[1])*tcscaleyw)*tcscaley];
-  var b = quad[1]; var btc = [(tcxoff+tcxoff2)*tcscalex, (tcyoff+(base-b[1])*tcscaleyw)*tcscaley];
-  var c = quad[2]; var ctc = [(tcxoff+tcxoff2)*tcscalex, (tcyoff+(base-c[1])*tcscaleyw)*tcscaley];
-  var d = quad[3]; var dtc = [(tcxoff)*tcscalex,         (tcyoff+(base-d[1])*tcscaleyw)*tcscaley];
+  var a = quad[0]; var atc = [(tcxoff)*tcscalex,         tcyoff+(base-a[1])*tcscaley];
+  var b = quad[1]; var btc = [(tcxoff+tcxoff2)*tcscalex, tcyoff+(base-b[1])*tcscaley];
+  var c = quad[2]; var ctc = [(tcxoff+tcxoff2)*tcscalex, tcyoff+(base-c[1])*tcscaley];
+  var d = quad[3]; var dtc = [(tcxoff)*tcscalex,         tcyoff+(base-d[1])*tcscaley];
 
   if (wall.cstat.xflip) {
     [atc,btc,ctc,dtc] = [btc,atc,dtc,ctc];
@@ -113,31 +112,39 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
   return new SolidInfo(bbox, normal, mesh);
 }
 
-function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
-  var heinum = ceiling ? sector.ceilingheinum : sector.floorheinum;
-  var z = ceiling ? sector.ceilingz : sector.floorz;
-  var shade = ceiling ? sector.ceilingshade : sector.floorshade;
+function applyAlignToFirsWall(trans:VEC.mat2d_t, sector:BS.Sector, walls:BS.Wall[]):VEC.mat2d_t {
+  var w1 = walls[sector.wallptr];
+  var w2 = walls[w1.point2];
+  var dx = w2.x - w1.x;
+  var dy = w2.y - w1.y;
+  var rad = Math.atan2(dy, dx);
+  trans = VEC.translate2dTransform(trans, [-w1.x, -w1.y]);
+  return VEC.rotate2dTransform(trans, rad);
+}
+
+function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture):VEC.mat2d_t {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
-  
-  var tcscalex = 1 / (tex.getWidth() * 16);
-  var tcscaley = 1 / (tex.getHeight() * 16);
+  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * 16);
+  var tcscaley = (stats.xflip ? -1.0 :  1.0) / (tex.getHeight() * 16);
   var trans = VEC.create2dTransform();
-  trans = VEC.translate2dTransform(trans, [xpan, ypan]);
-  trans = VEC.scale2dTransform(trans, [tcscalex, tcscaley]);
   if (stats.alignToFirstWall) {
-    var w1 = walls[sector.wallptr];
-    var w2 = walls[w1.point2];
-    var dx = w2.x - w1.x;
-    var dy = w2.y - w1.y;
-    var rad = Math.atan2(dx, dy);
-    trans = VEC.rotate2dTransform(trans, rad);
+    trans = applyAlignToFirsWall(trans, sector, walls);
   }
   if (stats.swapXY) {
     trans = VEC.swapXY2dTransform(trans);
   }
-  
+  trans = VEC.scale2dTransform(trans, [tcscalex, tcscaley]);
+  trans = VEC.translate2dTransform(trans, [xpan / 256.0, ypan / 256.0]);
+  return trans;
+}
+
+function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
+  var heinum = ceiling ? sector.ceilingheinum : sector.floorheinum;
+  var z = ceiling ? sector.ceilingz : sector.floorz;
+  var shade = ceiling ? sector.ceilingshade : sector.floorshade;
+  var trans = getTextureTransform(sector, ceiling, walls, tex);
   var slope = U.createSlopeCalculator(sector, walls);
   var vtxs = [];
   var tcs = [];
