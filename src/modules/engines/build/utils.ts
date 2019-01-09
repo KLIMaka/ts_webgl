@@ -107,6 +107,14 @@ export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
   };
 }
 
+export function getFirstWallAngle(sector:BS.Sector, walls:BS.Wall[]):number {
+  var w1 = walls[sector.wallptr];
+  var w2 = walls[w1.point2];
+  var dx = w2.x - w1.x;
+  var dy = w2.y - w1.y;
+  return  Math.atan2(dy, dx);
+}
+
 
 class SectorIntersect {
   constructor(

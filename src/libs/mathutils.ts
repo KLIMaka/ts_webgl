@@ -68,7 +68,7 @@ export function cyclic(x:number, max:number):number {
 
 export function ubyte2byte(n:number) {
   var minus = (n&0x80) != 0;
-  return minus ? -(~n&0xFF)+1 : n;
+  return minus ? -(~n&0xFF)-1 : n;
 }
 
 export class BBox {

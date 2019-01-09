@@ -14,7 +14,7 @@ class SolidInfo {
 }
 
 class WallInfo {
-  constructor(public up:SolidInfo, public down:SolidInfo){}
+  constructor(public up:SolidInfo, public down:SolidInfo, public middle:SolidInfo){}
 }
 
 class SectorInfo {
@@ -114,20 +114,17 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
 
 function applyAlignToFirsWall(trans:VEC.mat2d_t, sector:BS.Sector, walls:BS.Wall[]):VEC.mat2d_t {
   var w1 = walls[sector.wallptr];
-  var w2 = walls[w1.point2];
-  var dx = w2.x - w1.x;
-  var dy = w2.y - w1.y;
-  var rad = Math.atan2(dy, dx);
   trans = VEC.translate2dTransform(trans, [-w1.x, -w1.y]);
-  return VEC.rotate2dTransform(trans, rad);
+  return VEC.rotate2dTransform(trans, U.getFirstWallAngle(sector, walls));
 }
 
 function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture):VEC.mat2d_t {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
-  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * 16);
-  var tcscaley = (stats.xflip ? -1.0 :  1.0) / (tex.getHeight() * 16);
+  var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
+  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * scale);
+  var tcscaley = (stats.yflip ? -1.0 :  1.0) / (tex.getHeight() * scale);
   var trans = VEC.create2dTransform();
   if (stats.alignToFirstWall) {
     trans = applyAlignToFirsWall(trans, sector, walls);
@@ -138,6 +135,11 @@ function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[],
   trans = VEC.scale2dTransform(trans, [tcscalex, tcscaley]);
   trans = VEC.translate2dTransform(trans, [xpan / 256.0, ypan / 256.0]);
   return trans;
+}
+
+function getVertex(x:number, y:number, slope, heinum:number, z:number):number[] {
+  z = slope(x, y, heinum) + z;
+  return [x, z / SCALE, y];
 }
 
 function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.Wall[], builder:BoardBuilder, idx:number, tex:DS.Texture, mat:DS.Material):SolidInfo {
@@ -151,22 +153,13 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
   var normal:number[] = null;
   builder.begin();
   for (var i = 0; i < tris.length; i += 3) {
-    var t0x = tris[i+0][0];
-    var t1x = tris[i+1][0];
-    var t2x = tris[i+2][0];
-    var t0y = tris[i+0][1];
-    var t1y = tris[i+1][1];
-    var t2y = tris[i+2][1];
-    var z1 = slope(t0x, t0y, heinum) + z;
-    var z2 = slope(t1x, t1y, heinum) + z;
-    var z3 = slope(t2x, t2y, heinum) + z;
-    var v1 = [t0x, z1 / SCALE, t0y];
-    var v2 = [t1x, z2 / SCALE, t1y];
-    var v3 = [t2x, z3 / SCALE, t2y];
+    var v1 = getVertex(tris[i+0][0], tris[i+0][1], slope, heinum, z);
+    var v2 = getVertex(tris[i+1][0], tris[i+1][1], slope, heinum, z);
+    var v3 = getVertex(tris[i+2][0], tris[i+2][1], slope, heinum, z);
 
-    var v1tc = VEC.apply2dTransform([t0x, t0y], trans);
-    var v2tc = VEC.apply2dTransform([t1x, t1y], trans);
-    var v3tc = VEC.apply2dTransform([t2x, t2y], trans);
+    var v1tc = VEC.apply2dTransform([v1[0], v1[2]], trans);
+    var v2tc = VEC.apply2dTransform([v2[0], v2[2]], trans);
+    var v3tc = VEC.apply2dTransform([v3[0], v3[2]], trans);
 
     vtxs = vtxs.concat(ceiling ? [v3,v2,v1] : [v1,v2,v3]); 
     tcs = tcs.concat(ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]);
@@ -177,6 +170,28 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
   var mesh = builder.end(mat);
   var bbox = MU.bbox(vtxs);
   return new SolidInfo(bbox, normal, mesh);
+}
+
+function getWallSpriteVtxs(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number) {
+  var dx = Math.sin(ang)*hw;
+  var dy = Math.cos(ang)*hw;
+  var a = [x-dx, z-hh+yo, y-dy];
+  var b = [x+dx, z-hh+yo, y+dy];
+  var c = [x+dx, z+hh+yo, y+dy];
+  var d = [x-dx, z+hh+yo, y-dy];
+  return  [a, b, c, d];
+}
+
+function getFloorSpriteVtxs(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number) {
+  var dwx = Math.sin(ang)*hw;
+  var dwy = Math.cos(ang)*hw;
+  var dhx = Math.sin(ang+Math.PI/2)*hh;
+  var dhy = Math.cos(ang+Math.PI/2)*hh;
+  var a = [x-dwx-dhx, z+1, y-dwy-dhy];
+  var b = [x+dwx+dhx, z+1, y-dwy-dhy];
+  var c = [x+dwx+dhx, z+1, y+dwy+dhy];
+  var d = [x-dwx-dhx, z+1, y+dwy+dhy];
+  return [a, b, c, d];
 }
 
 function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, materials:MaterialFactory, tinfo:number, idx:number):SpriteInfo {
@@ -206,26 +221,10 @@ function addSprite(spr:BS.Sprite, builder:BoardBuilder, tex:DS.Texture, material
     var mesh = builder.end(mat);
     return new SpriteInfo(bbox, mesh, true);
   } else if (spr.cstat.type == 1) { // wall
-    var dx = Math.sin(ang)*hw;
-    var dy = Math.cos(ang)*hw;
-    
-    var a = [x-dx, z-hh+yo, y-dy];
-    var b = [x+dx, z-hh+yo, y+dy];
-    var c = [x+dx, z+hh+yo, y+dy];
-    var d = [x-dx, z+hh+yo, y-dy];
-    vtxs = [a, b, c, d];
+    vtxs = getWallSpriteVtxs(x, y, z, xo, yo, hw, hh, ang);
     mat = materials.solid(tex);
   } else if (spr.cstat.type == 2) { // floor
-    var dwx = Math.sin(ang)*hw;
-    var dwy = Math.cos(ang)*hw;
-    var dhx = Math.sin(ang+Math.PI/2)*hh;
-    var dhy = Math.cos(ang+Math.PI/2)*hh;
-
-    var a = [x-dwx-dhx, z+1, y-dwy-dhy];
-    var b = [x+dwx+dhx, z+1, y-dwy-dhy];
-    var c = [x+dwx+dhx, z+1, y+dwy+dhy];
-    var d = [x-dwx-dhx, z+1, y+dwy+dhy];
-    vtxs = [a, b, c, d];
+    vtxs = getFloorSpriteVtxs(x, y, z, xo, yo, hw, hh, ang);
     mat = materials.solid(tex);
   }
 
@@ -348,6 +347,28 @@ function getWallVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, next
   return [a, b, c, d];
 }
 
+function getMaskedWallVtxs(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, 
+  ceilheinum:number, ceilnextheinum:number, ceilz:number, ceilnextz:number,
+  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number) {
+  var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE; 
+  var currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
+  var currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
+  var currz4 = (slope(x1, y1, floorheinum) + floorz) / SCALE;
+  var nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / SCALE; 
+  var nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / SCALE;
+  var nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / SCALE;
+  var nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / SCALE;
+  var z1 = Math.min(currz1, nextz1);
+  var z2 = Math.min(currz2, nextz2);
+  var z3 = Math.max(currz3, nextz3);
+  var z4 = Math.max(currz4, nextz4);
+  var a = [x1, z1, y1];
+  var b = [x2, z2, y2];
+  var c = [x2, z3, y2];
+  var d = [x1, z4, y1];
+  return [a, b, c, d];
+}
+
 export class BoardProcessor {
   private walls:WallInfo[] = [];
   private sectors:SectorInfo[] = [];
@@ -385,11 +406,11 @@ export class BoardProcessor {
         var y2 = wall2.y;
         var tex = textureProvider.get(wall.picnum);
 
-        if (wall.nextwall == -1) {
+        if (wall.nextwall == -1 || wall.cstat.oneWay) {
           var vtxs = getWallVtxs(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
           var base = wall.cstat.alignBottom ? floorz : ceilingz;
           var solid = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
-          this.walls[w] = new WallInfo(solid, null);
+          this.walls[w] = new WallInfo(solid, null, null);
         } else {
           var nextsector = sectors[wall.nextsector];
           var nextslope = U.createSlopeCalculator(nextsector, walls);
@@ -397,6 +418,7 @@ export class BoardProcessor {
           var nextceilingz = nextsector.ceilingz;
           var up:SolidInfo = null;
           var down:SolidInfo = null;
+          var middle:SolidInfo = null;
 
           var nextfloorheinum = nextsector.floorheinum;
           var vtxs = getWallVtxs(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
@@ -415,9 +437,19 @@ export class BoardProcessor {
             down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
             this.dss.push(down.ds);
           }
+
+          if (wall.cstat.masking) {
+            var tex1 = textureProvider.get(wall.overpicnum);
+            var vtxs = getMaskedWallVtxs(x1, y1, x2, y2, slope, nextslope, 
+              ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
+              floorheinum, nextfloorheinum, floorz, nextfloorz);
+            var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
+            middle = addWall(wall, builder, vtxs, idx, tex1, materials.solid(tex1), base / SCALE);
+            this.dss.push(middle.ds);
+          }
           
-          if (up != null || down != null) {
-            this.walls[w] = new WallInfo(up, down);
+          if (up != null || down != null || middle != null) {
+            this.walls[w] = new WallInfo(up, down, middle);
           }
         }
         i++;
@@ -441,7 +473,7 @@ export class BoardProcessor {
         var sprite = sprites[i];
         var spr = this.board.sprites[sprite];
         this.index[idx] = [spr, sprite];
-        if (spr.picnum == 0)
+        if (spr.picnum == 0 || spr.cstat.invicible)
           continue;
         var tex = textureProvider.get(spr.picnum);
         var tinfo = textureProvider.getInfo(spr.picnum);
@@ -526,6 +558,8 @@ export class BoardProcessor {
             ds.push(wallinfo.up.ds);
           if (wallinfo.down != null)
             ds.push(wallinfo.down.ds);
+          if (wallinfo.middle != null)
+            ds.push(wallinfo.middle.ds);
         }
 
         var nextsector = wall.nextsector;

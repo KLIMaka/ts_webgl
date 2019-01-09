@@ -193,6 +193,21 @@ export class FlipPixelProvider extends AbstractPixelProvider {
   }
 }
 
+export class OffsetPixelProvider extends AbstractPixelProvider {
+  constructor(private provider:PixelProvider, w:number, h:number, private xo:number, private yo:number,  private paddColor:Uint8Array=new Uint8Array([0,0,0,0])) {
+    super(w, h);
+  }
+
+  public putToDst(x:number, y:number, dst:Uint8Array, dstoff:number, blend:BlendFunc):void {
+    var rx = x - this.xo; 
+    var ry = y - this.yo;
+    if (rx < 0 || ry < 0 || rx >= this.provider.getWidth() || ry >= this.provider.getHeight())
+       blend(dst, dstoff, this.paddColor, 0);
+    else
+      this.provider.putToDst(rx, ry, dst, dstoff, blend);
+  }
+}
+
 export function fromPal(arr:Uint8Array, pal:Uint8Array, w:number, h:number, alpha:number=255, transIdx:number=-1, shadow:number=-1, shadowColor:Uint8Array=new Uint8Array([0,0,0,0])) {
   return new RGBPalPixelProvider(arr, pal, w, h, alpha, transIdx, shadow, shadowColor);
 }
@@ -262,6 +277,10 @@ export function fit(w:number, h:number, provider:PixelProvider, paddColor:Uint8A
       return resize(provider, w, h);
     }
   }
+}
+
+export function offset(provider:PixelProvider, w:number, h:number, xo:number, yo:number, paddColor:Uint8Array=new Uint8Array([0,0,0,0])) {
+  return new OffsetPixelProvider(provider, w, h, xo, yo, paddColor);
 }
 
 export class AnimatedPixelProvider extends Anim.DefaultAnimated<PixelProvider> {

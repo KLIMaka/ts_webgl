@@ -285,6 +285,7 @@ class MyBoardBuilder implements builder_.BoardBuilder {
         .vtx('aPos', verts[i]);
       this.fillBuffer(lmtcs[i], verts[i], normal);
     }
+    VEC.release3d(normal);
     this.builder.end();
     this.len += (type == mb.QUADS ? (6*verts.length/4) : verts.length);
   }
