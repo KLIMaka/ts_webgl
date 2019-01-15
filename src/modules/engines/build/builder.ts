@@ -10,7 +10,7 @@ var SCALE = -16;
 
 
 class SolidInfo {
-  constructor(public bbox:MU.BBox, public normal:number[], public ds:DS.DrawStruct) {}
+  constructor(public bbox:MU.BBox, public ds:DS.DrawStruct) {}
 }
 
 class WallInfo {
@@ -26,19 +26,16 @@ class SpriteInfo {
 }
 
 function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
-  var i = 0;
   var chains = [];
-  while (i < sector.wallnum) {
-    var ws = [];
+  for (var i = 0; i < sector.wallnum; i++) {
     var firstwallIdx = i + sector.wallptr;
+    var ws = [firstwallIdx];
     var wall = walls[firstwallIdx];
-    ws.push(firstwallIdx);
     while (wall.point2 != firstwallIdx){
       ws.push(wall.point2);
       wall = walls[wall.point2];
       i++;
     }
-    i++;
     chains.push(ws);
   }
 
@@ -107,9 +104,8 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
 
   var mesh = builder.end(mat);
   var bbox = MU.bbox(quad);
-  var normal = VEC.detach3d(VEC.polygonNormal([a,b,c]));
 
-  return new SolidInfo(bbox, normal, mesh);
+  return new SolidInfo(bbox, mesh);
 }
 
 function applyAlignToFirsWall(trans:VEC.mat2d_t, sector:BS.Sector, walls:BS.Wall[]):VEC.mat2d_t {
@@ -150,7 +146,6 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
   var slope = U.createSlopeCalculator(sector, walls);
   var vtxs = [];
   var tcs = [];
-  var normal:number[] = null;
   builder.begin();
   for (var i = 0; i < tris.length; i += 3) {
     var v1 = getVertex(tris[i+0][0], tris[i+0][1], slope, heinum, z);
@@ -163,13 +158,11 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
 
     vtxs = vtxs.concat(ceiling ? [v3,v2,v1] : [v1,v2,v3]); 
     tcs = tcs.concat(ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]);
-
-    if (normal == null) normal = VEC.detach3d(VEC.polygonNormal(vtxs));
   }
   builder.addFace(mb.TRIANGLES, vtxs, tcs, idx, shade);
   var mesh = builder.end(mat);
   var bbox = MU.bbox(vtxs);
-  return new SolidInfo(bbox, normal, mesh);
+  return new SolidInfo(bbox, mesh);
 }
 
 function getWallSpriteVtxs(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number) {
@@ -501,25 +494,25 @@ export class BoardProcessor {
       var sector = sectors[i];
       if (sector == undefined)
         continue;
-      if (bboxVisible(ms, eye, sector.floor.bbox, sector.floor.normal))
+      if (bboxVisible(ms, eye, sector.floor.bbox))
         ds.push(sector.floor.ds);
-      if (bboxVisible(ms, eye, sector.ceiling.bbox, sector.ceiling.normal))
+      if (bboxVisible(ms, eye, sector.ceiling.bbox))
         ds.push(sector.ceiling.ds);
     }
     for (var i = 0; i < walls.length; i++) {
       var wallinfo = walls[i];
       if (wallinfo == undefined)
         continue;
-      if (wallinfo.up != null && bboxVisible(ms, eye, wallinfo.up.bbox, wallinfo.up.normal))
+      if (wallinfo.up != null && bboxVisible(ms, eye, wallinfo.up.bbox))
         ds.push(wallinfo.up.ds);
-      if (wallinfo.down != null && bboxVisible(ms, eye, wallinfo.down.bbox, wallinfo.down.normal))
+      if (wallinfo.down != null && bboxVisible(ms, eye, wallinfo.down.bbox))
         ds.push(wallinfo.down.ds);
     }
     for (var i = 0; i < sprites.length; i++) {
       var spriteInfo = sprites[i];
       if (spriteInfo == null)
         continue;
-      if (bboxVisible(ms, eye, spriteInfo.bbox, null))
+      if (bboxVisible(ms, eye, spriteInfo.bbox))
         ds.push(spriteInfo.ds);
     }
     return ds;
@@ -543,14 +536,9 @@ export class BoardProcessor {
       var cursec = board.sectors[cursecnum];
       for (var w = 0; w < cursec.wallnum; w++) {
         var wallidx = cursec.wallptr + w;
-        var wall = board.walls[wallidx];
-        var wall2 = board.walls[wall.point2];
-
-        var dx1 = wall2.x - wall.x;
-        var dy1 = wall2.y - wall.y;
-        var dx2 = ms.x - wall.x;
-        var dy2 = ms.y - wall.y;
-        if (dx1*dy2 < dy1*dx2) continue;
+        
+        if (!U.wallVisible(board.walls, wallidx, ms))
+          continue;
 
         var wallinfo = walls[wallidx];
         if (wallinfo != undefined) {
@@ -562,7 +550,7 @@ export class BoardProcessor {
             ds.push(wallinfo.middle.ds);
         }
 
-        var nextsector = wall.nextsector;
+        var nextsector = board.walls[wallidx].nextsector;
         if (nextsector == -1) continue;
 
         if (pvs.indexOf(nextsector) == -1)
@@ -596,7 +584,7 @@ export class BoardProcessor {
   }
 }
 
-function bboxVisible(ms:U.MoveStruct, eye:number[], bbox:MU.BBox, normal:number[]):boolean {
+function bboxVisible(ms:U.MoveStruct, eye:number[], bbox:MU.BBox):boolean {
   var dmaxx = bbox.maxx-ms.x
   var dmaxz = bbox.maxz-ms.y;
   var dminx = bbox.minx-ms.x;

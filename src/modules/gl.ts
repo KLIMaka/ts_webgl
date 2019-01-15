@@ -126,6 +126,7 @@ function drawModel(gl:WebGLRenderingContext, shader:DS.Shader, model:DS.DrawStru
   var samplers = shader.getSamplers();
   for (var unit = 0; unit < samplers.length; unit++) {
     var sampler = samplers[unit];
+    gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, model.getMaterial().getTexture(sampler).get());
   }
   gl.drawElements(model.getMode(), model.getLength(), gl.UNSIGNED_SHORT, model.getOffset());

@@ -183,12 +183,15 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
+    tic();
+    var models = processor.get(ms, control.getCamera().forward());
+    info['Processing:'] = tac();
+    
     if (drawSelect) {
       //select draw
       selectPass = true;
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      var models = processor.get(ms, control.getCamera().forward());
       GL.draw(gl, models, binder);
 
       var id = GL.readId(gl, control.getX(), control.getY());
@@ -205,9 +208,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
 
-    tic();
-    var models = processor.get(ms, control.getCamera().forward());
-    info['Processing:'] = tac();
     tic();
     GL.draw(gl, models, binder);
     info['Rendering:'] = tac();
