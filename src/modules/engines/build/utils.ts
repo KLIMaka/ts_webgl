@@ -103,7 +103,7 @@ export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
     var vec = VEC.fromValues2d(x, y);
     var dist = VEC.dot2d(normal, vec) + w;
     VEC.release2d(vec);
-    return -(rotation * UNITS2DEG) * dist * SCALE;
+    return MU.int(-(rotation * UNITS2DEG) * dist * SCALE);
   };
 }
 
@@ -115,14 +115,11 @@ export function getFirstWallAngle(sector:BS.Sector, walls:BS.Wall[]):number {
   return  Math.atan2(dy, dx);
 }
 
-export function wallVisible(walls:BS.Wall[], wallidx:number, ms:MoveStruct) {
-  var wall = walls[wallidx];
-  var wall2 = walls[wall.point2];
-
-  var dx1 = wall2.x - wall.x;
-  var dy1 = wall2.y - wall.y;
-  var dx2 = ms.x - wall.x;
-  var dy2 = ms.y - wall.y;
+export function wallVisible(wall1:BS.Wall, wall2:BS.Wall, ms:MoveStruct) {
+  var dx1 = wall2.x - wall1.x;
+  var dy1 = wall2.y - wall1.y;
+  var dx2 = ms.x - wall1.x;
+  var dy2 = ms.y - wall1.y;
   return (dx1*dy2 >= dy1*dx2);
 }
 

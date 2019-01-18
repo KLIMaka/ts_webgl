@@ -537,7 +537,7 @@ export class BoardProcessor {
       for (var w = 0; w < cursec.wallnum; w++) {
         var wallidx = cursec.wallptr + w;
         
-        if (!U.wallVisible(board.walls, wallidx, ms))
+        if (!U.wallVisible(board.walls[wallidx], board.walls[board.walls[wallidx].nextwall], ms))
           continue;
 
         var wallinfo = walls[wallidx];
