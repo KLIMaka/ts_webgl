@@ -26,28 +26,18 @@ class SpriteInfo {
 }
 
 function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
-  var chains = [];
-  for (var i = 0; i < sector.wallnum; i++) {
-    var firstwallIdx = i + sector.wallptr;
-    var ws = [firstwallIdx];
-    var wall = walls[firstwallIdx];
-    while (wall.point2 != firstwallIdx){
-      ws.push(wall.point2);
-      wall = walls[wall.point2];
-      i++;
-    }
-    chains.push(ws);
-  }
-
+  var contour = [];
   var contours = [];
-  for (var i = 0; i < chains.length; i++) {
-    var contour = [];
-    var chain = chains[i];
-    for (var j = 0; j < chain.length; j++) {
-      var wall = walls[chain[j]];
-      contour.push(wall.x, wall.y);
+  var fw = sector.wallptr;
+  for (var w = 0; w < sector.wallnum; w++) {
+    var wid = sector.wallptr + w;
+    var wall = walls[wid];
+    contour.push(wall.x, wall.y);
+    if (wall.point2 == fw) {
+      contours.push(contour);
+      contour = [];
+      fw = wid + 1;
     }
-    contours.push(contour);
   }
   return GLU.tesselate(contours);
 }
@@ -537,7 +527,7 @@ export class BoardProcessor {
       for (var w = 0; w < cursec.wallnum; w++) {
         var wallidx = cursec.wallptr + w;
         
-        if (!U.wallVisible(board.walls[wallidx], board.walls[board.walls[wallidx].nextwall], ms))
+        if (!U.wallVisible(board.walls[wallidx], board.walls[board.walls[wallidx].point2], ms))
           continue;
 
         var wallinfo = walls[wallidx];

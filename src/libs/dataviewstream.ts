@@ -110,8 +110,8 @@ export class BasicReader<T, AT> implements Reader<T, AT> {
 
 export function reader<T,AT>(rf:(s:DataViewStream)=>T, size:number, arr:{new(T):AT}=null) {
   return new BasicReader<T,AT>(rf, size, arr);
-
 }
+
 export var byte = reader((s:DataViewStream) => s.readByte(), 1, Int8Array);
 export var ubyte = reader((s:DataViewStream) => s.readUByte(), 1, Uint8Array);
 export var short = reader((s:DataViewStream) => s.readShort(), 2, Int16Array);
