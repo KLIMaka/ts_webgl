@@ -14,10 +14,12 @@ export class Shader implements DS.Shader {
   private attribs = {};
   private uniformNames:string[] = []; 
   private attributeNames:string[] = []; 
-  private samplers:string[] = []; 
+  private samplers:string[] = [];
+  private initCallback:(Shader)=>void
 
-  constructor(prog:WebGLProgram) {
+  constructor(prog:WebGLProgram, initCallback:(Shader)=>void=null) {
     this.program = prog;
+    this.initCallback = initCallback;
   }
 
   public init(gl:WebGLRenderingContext, prog:WebGLProgram, params:any):void {
@@ -27,6 +29,8 @@ export class Shader implements DS.Shader {
     this.samplers = params.samplers.values();
     this.initUniformLocations(gl);
     this.initAttributeLocations(gl);
+    if (this.initCallback != null)
+      this.initCallback(this);
   }
 
   private initUniformLocations(gl:WebGLRenderingContext):void {
@@ -70,7 +74,7 @@ export class Shader implements DS.Shader {
 
 var cache:{[index:string]:Shader} = {};
 
-export function createShader(gl:WebGLRenderingContext, name:string):Shader {
+export function createShader(gl:WebGLRenderingContext, name:string, initCallback:(Shader)=>void=null):Shader {
   var shader = cache[name];
   if (shader != undefined)
     return shader;

@@ -4,9 +4,11 @@ import pool = require('./pool');
 import MU = require('./mathutils');
 import vec2_t = GLM.Vec2Array;
 import vec3_t = GLM.Vec3Array;
+import vec4_t = GLM.Vec4Array;
 import mat2d_t = GLM.Mat2dArray;
 export type vec2_t = vec2_t;
 export type vec3_t = vec3_t;
+export type vec4_t = vec4_t;
 export type mat2d_t = mat2d_t;
 
 var vec2dPool = new pool.Pool<vec2_t>(100, GLM.vec2.create);

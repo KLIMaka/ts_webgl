@@ -4,6 +4,48 @@ import MU  = require('../libs/mathutils');
 import DS = require('./drawstruct');
 import BATCH = require('./batcher');
 
+export class DynamicIndexBufferBuilder {
+  private buffer:ArrayBuffer;
+  private lastIdx = 0;
+  private bufIdx:WebGLBuffer;
+
+  constructor(
+    private maxSize:number,
+    private arrayType,
+    private type:number,
+  ) {
+    this.buffer = new arrayType(maxSize);
+  }
+
+  public push(data:number[]):void {
+    if (this.lastIdx >= this.maxSize)
+      throw new Error('MaxSize limit exceeded');
+    for (var i = 0; i < data.length; i++)
+      this.buffer[this.lastIdx + i] = data[i];
+    this.lastIdx+=data.length;
+  }
+
+  public tell():number {
+    return this.lastIdx;
+  }
+
+  public goto(off:number):void {
+    this.lastIdx = off;
+  }
+
+  public refresh(gl:WebGLRenderingContext):void {
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
+    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, this.buffer);
+  }
+
+  public build(gl:WebGLRenderingContext):DS.IndexBuffer {
+    this.bufIdx = (this.bufIdx == null) ? gl.createBuffer() : this.bufIdx;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.buffer, gl.STREAM_DRAW);
+    return new IndexBufferImpl(this.bufIdx, this.type);
+  }
+}
+
 export class DynamicVertexBufferBuilder {
 
   private buffer:ArrayBuffer;
@@ -398,27 +440,43 @@ export function createVertexBuffer(gl:WebGLRenderingContext, type:number, data:a
 export function wrap(gl:WebGLRenderingContext, data:ArrayBufferView, spacing:number, usage:number=WebGLRenderingContext.STREAM_DRAW, norm:boolean=false):VertexBufferDynamic {
   return new VertexBufferDynamic(gl, ArrayType2GlType(data.constructor), data, spacing, usage, norm);
 }
-/*
-class VertexObject {
-  attr(name, value);
-  write(offset);
-  get(): 
+
+export class DynamicIndexBuffer extends IndexBufferImpl {
+  private data:ArrayBufferView;
+
+  constructor(
+    gl:WebGLRenderingContext,
+    data:ArrayBufferView,
+    type:number=WebGLRenderingContext.UNSIGNED_SHORT,
+    usage:number=WebGLRenderingContext.STREAM_DRAW
+  ) {
+    super(gl.createBuffer(), type);
+    this.data = data;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.getBuffer());
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.data, usage);
+  }
+
+  public update(gl:WebGLRenderingContext) {
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.getBuffer());
+    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, this.data);
+  }
+
+  public getData():ArrayBufferView {
+    return this.data;
+  }
 }
 
-var pool = new VertexPool()
-  .buffer('aPos', Float32Array, gl.FLOAT, 3)
-  .buffer('aNorm', Float32Array, gl.FLOAT, 3)
-  .buffer('aIdx', Uint8Array, gl.UNSIGNED_BYTE, 4, true)
-  .buffer('aTc', Float32Array, gl.FLOAT, 2)
-  .buffer('aShade', Int8Array, gl.BYTE, 1)
-  .index(Uint16Array, gl.UNSIGNED_SHORT)
-  .build();
-var vertexObj = pool.allocate();
-vertexObject
-  .attr('aNorm', norm)
-  .attr('aIdx', idx)
-  .attr('aShade', shade);
-for (var i = 0; i < x; i++) {
-  vertexObj.attr('aPos', pos[i]).insert();
+export function createIndexBuffer(gl:WebGLRenderingContext, type:number, data:any, usage:number=WebGLRenderingContext.STREAM_DRAW):DynamicIndexBuffer {
+  var arrtype = GlType2ArrayType(type);
+  if (typeof data == 'number') {
+    data = new arrtype(data);
+  } else {
+    if (arrtype != data.constructor)
+      throw new Error('GL Type and ArrayBuffer is incompatible');
+  }
+  return new DynamicIndexBuffer(gl, data, type, usage);
 }
-*/
+
+export function wrapIndexBuffer(gl:WebGLRenderingContext, data:ArrayBufferView, usage:number=WebGLRenderingContext.STREAM_DRAW):DynamicIndexBuffer {
+  return new DynamicIndexBuffer(gl, data, ArrayType2GlType(data.constructor), usage);
+}  

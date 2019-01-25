@@ -33,21 +33,21 @@ export class BoardWrapper {
 	public sectors:SectorWrapper[] = [];
 	public sector2sprites:{[index:number]: SpriteWrapper[];} = {};
 
-	constructor(private board:BS.Board) {
-		for (var s = 0; s < board.numsectors; s++) {
-			var sec = board.sectors[s];
+	constructor(public ref:BS.Board) {
+		for (var s = 0; s < ref.numsectors; s++) {
+			var sec = ref.sectors[s];
 			var secw = new SectorWrapper(sec);
 			this.sectors.push(secw);
 			for (var w = 0; w < sec.wallnum; w++) {
 				var wallidx = sec.wallptr + w;
-				var wall = board.walls[wallidx];
+				var wall = ref.walls[wallidx];
 				var wallw = new WallWrapper(wall, secw);
 				this.walls[wallidx] = wallw;
 			}
 		}
 
-		for (var s = 0; s < board.numsprites; s++) {
-			var spr = board.sprites[s];
+		for (var s = 0; s < ref.numsprites; s++) {
+			var spr = ref.sprites[s];
 			var sprw = new SpriteWrapper(spr);
 			this.sprites.push(sprw);
 			var sprsec = spr.sectnum;

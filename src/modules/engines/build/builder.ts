@@ -5,6 +5,7 @@ import GLU = require('../../../libs_js/glutess');
 import mb = require('../../meshbuilder');
 import DS = require('../../drawstruct');
 import U = require('./utils');
+import GLM = require('../../../libs_js/glmatrix');
 
 var SCALE = -16;
 
@@ -98,28 +99,25 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
   return new SolidInfo(bbox, mesh);
 }
 
-function applyAlignToFirsWall(trans:VEC.mat2d_t, sector:BS.Sector, walls:BS.Wall[]):VEC.mat2d_t {
-  var w1 = walls[sector.wallptr];
-  trans = VEC.translate2dTransform(trans, [-w1.x, -w1.y]);
-  return VEC.rotate2dTransform(trans, U.getFirstWallAngle(sector, walls));
-}
-
-function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture):VEC.mat2d_t {
+function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture):GLM.Mat4Array {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
   var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
   var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * scale);
   var tcscaley = (stats.yflip ? -1.0 :  1.0) / (tex.getHeight() * scale);
-  var trans = VEC.create2dTransform();
+  var trans = GLM.mat4.create();
+  GLM.mat4.scale(trans, trans, [tcscalex, tcscaley, 1, 1]);
   if (stats.alignToFirstWall) {
-    trans = applyAlignToFirsWall(trans, sector, walls);
+    var w1 = walls[sector.wallptr];
+    GLM.mat4.translate(trans, trans, [-w1.x, -w1.y, 0, 0])
+    GLM.mat4.rotateZ(trans, trans, U.getFirstWallAngle(sector, walls));
   }
   if (stats.swapXY) {
-    trans = VEC.swapXY2dTransform(trans);
+    GLM.mat4.rotateZ(trans, trans, Math.PI/2);
+    GLM.mat4.scale(trans, trans, [-1, 1, 1, 1]);
   }
-  trans = VEC.scale2dTransform(trans, [tcscalex, tcscaley]);
-  trans = VEC.translate2dTransform(trans, [xpan / 256.0, ypan / 256.0]);
+  GLM.mat4.translate(trans, trans, [xpan / 256.0, ypan / 256.0, 0, 0]);
   return trans;
 }
 
@@ -137,14 +135,16 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
   var vtxs = [];
   var tcs = [];
   builder.begin();
-  for (var i = 0; i < tris.length; i += 3) {
-    var v1 = getVertex(tris[i+0][0], tris[i+0][1], slope, heinum, z);
-    var v2 = getVertex(tris[i+1][0], tris[i+1][1], slope, heinum, z);
-    var v3 = getVertex(tris[i+2][0], tris[i+2][1], slope, heinum, z);
+  var verts = tris[0];
+  var indexes = tris[1];
+  for (var i = 0; i < indexes.length; i += 3) {
+    var v1 = getVertex(verts[indexes[i+0]][0], verts[indexes[i+0]][1], slope, heinum, z);
+    var v2 = getVertex(verts[indexes[i+1]][0], verts[indexes[i+1]][1], slope, heinum, z);
+    var v3 = getVertex(verts[indexes[i+2]][0], verts[indexes[i+2]][1], slope, heinum, z);
 
-    var v1tc = VEC.apply2dTransform([v1[0], v1[2]], trans);
-    var v2tc = VEC.apply2dTransform([v2[0], v2[2]], trans);
-    var v3tc = VEC.apply2dTransform([v3[0], v3[2]], trans);
+    var v1tc = GLM.vec4.transformMat4(GLM.vec4.create(), [v1[0], v1[2], 0, 1], trans);
+    var v2tc = GLM.vec4.transformMat4(GLM.vec4.create(), [v2[0], v2[2], 0, 1], trans);
+    var v3tc = GLM.vec4.transformMat4(GLM.vec4.create(), [v3[0], v3[2], 0, 1], trans);
 
     vtxs = vtxs.concat(ceiling ? [v3,v2,v1] : [v1,v2,v3]); 
     tcs = tcs.concat(ceiling ? [v3tc,v2tc,v1tc] : [v1tc,v2tc,v3tc]);
@@ -440,7 +440,7 @@ export class BoardProcessor {
       }
 
       var tris = triangulate(sector, walls);
-      if (tris.length == 0)
+      if (tris[1].length == 0)
         continue;
 
       var floortex = textureProvider.get(sector.floorpicnum);

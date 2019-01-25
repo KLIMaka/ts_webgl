@@ -27,11 +27,21 @@ var gluTessBeginContour = Module.cwrap('gluTessBeginContour', 'void', ['number']
 var gluTessEndContour = Module.cwrap('gluTessEndContour', 'void', ['number']);
 var gluTessEndPolygon = Module.cwrap('gluTessEndPolygon', 'void', ['number']);
 
-var res = [];
+var vtxsMap = {};
+var vtxs = [];
+var idxs = [];
 var vertexCallback = Runtime.addFunction(function(vtxptr) {
   var x = Module.HEAPF32[vtxptr>>2];
   var y = Module.HEAPF32[(vtxptr>>2)+1];
-  res.push([x ,y]);
+  var key = x+','+y;
+  if (vtxsMap[key] == undefined) {
+  	var id = vtxs.length;
+  	vtxs.push([x, y]);
+  	vtxsMap[key] = id;
+  	idxs.push(id);
+  } else {
+  	idxs.push(vtxsMap[key]);
+  }
 });
 
 var combineBuf = Module._malloc(3*4*1000);
@@ -60,6 +70,7 @@ gluTessCallback(tess, 100103, errorCallback);
 gluTessCallback(tess, 100104, edgeCallback);
 gluTessCallback(tess, 100105, combineCallback);
 
+var vtxsBuff = 0;
 function alloc(contours) {
   var arr = [];
   for (var i = 0; i < contours.length; i++) {
@@ -78,7 +89,9 @@ function free(buf) {
 }
 
 exports.tesselate = function(contours) {
-  res = [];
+  idxs = [];
+  vtxs = [];
+  vtxsMap = {};
   var buf = alloc(contours);
   combineIdx = 0;
   var vtx = buf;
@@ -94,7 +107,7 @@ exports.tesselate = function(contours) {
   }
   gluTessEndPolygon(tess);
   free(buf);
-  return res;
+  return [vtxs, idxs];
 }
 
 });
