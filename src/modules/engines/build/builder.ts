@@ -43,34 +43,40 @@ function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
   return GLU.tesselate(contours);
 }
 
-function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, mat:DS.Material, base:number):SolidInfo {
+function getWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number):GLM.Mat4Array {
+  var wall1 = wall;
+  if (wall.cstat.xflip)
+    [wall1, wall2] = [wall2, wall1];
+  var tw = tex.getWidth();
+  var th = tex.getHeight();
+  var dx = wall2.x - wall1.x;
+  var dy = wall2.y - wall1.y;
+  var tcscalex = (wall.xrepeat * 8.0) / (MU.len2d(dx, dy) * tw);
+  var tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0);
+  var tcxoff = wall.xpanning / tw;
+  var tcyoff = wall.ypanning / 256.0;
+
+  var trans = GLM.mat4.create();
+  GLM.mat4.translate(trans, trans, [tcxoff, tcyoff, 0, 0]);
+  GLM.mat4.scale(trans, trans, [tcscalex, tcscaley, 1, 1]);
+  GLM.mat4.rotateY(trans, trans, -Math.atan2(-dy, dx));
+  GLM.mat4.translate(trans, trans, [-wall1.x, -base, -wall1.y, 0]);
+  return trans;
+}
+
+function addWall(wall:BS.Wall, wall2:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number, tex:DS.Texture, mat:DS.Material, base:number):SolidInfo {
   // a -> b
   // ^    |
   // |    v
   // d <- c
   var shade = wall.shade;
-  var tw = tex.getWidth();
-  var th = tex.getHeight();
-  var tcscalex = 1 / tw;
-  var tcscaley = (wall.yrepeat / 8.0) / (th * 16.0);
-  var tcxoff = wall.xpanning;
-  var tcxoff2 = wall.xrepeat * 8.0;
-  var tcyoff = wall.ypanning / 256.0;
+  var trans = getWallTextureTransform(wall, wall2, tex, base);
+  var a = quad[0]; var atc = GLM.vec4.transformMat4(GLM.vec4.create(), [a[0], a[1], a[2], 1], trans);
+  var b = quad[1]; var btc = GLM.vec4.transformMat4(GLM.vec4.create(), [b[0], b[1], b[2], 1], trans);
+  var c = quad[2]; var ctc = GLM.vec4.transformMat4(GLM.vec4.create(), [c[0], c[1], c[2], 1], trans);
+  var d = quad[3]; var dtc = GLM.vec4.transformMat4(GLM.vec4.create(), [d[0], d[1], d[2], 1], trans);
 
   builder.begin();
-
-  var a = quad[0]; var atc = [(tcxoff)*tcscalex,         tcyoff+(base-a[1])*tcscaley];
-  var b = quad[1]; var btc = [(tcxoff+tcxoff2)*tcscalex, tcyoff+(base-b[1])*tcscaley];
-  var c = quad[2]; var ctc = [(tcxoff+tcxoff2)*tcscalex, tcyoff+(base-c[1])*tcscaley];
-  var d = quad[3]; var dtc = [(tcxoff)*tcscalex,         tcyoff+(base-d[1])*tcscaley];
-
-  if (wall.cstat.xflip) {
-    [atc,btc,ctc,dtc] = [btc,atc,dtc,ctc];
-  }
-  if (wall.cstat.yflip) {
-    [atc,btc,ctc,dtc] = [dtc,ctc,atc,btc];
-  }
-
   if (a[1] == d[1]) {
     builder.addFace(mb.TRIANGLES, [a,b,c], [atc,btc,ctc], idx, shade);
   } else if (b[1] == c[1]) {
@@ -79,27 +85,26 @@ function addWall(wall:BS.Wall, builder:BoardBuilder, quad:number[][], idx:number
     builder.addFace(mb.QUADS, [d,c,b,a], [dtc,ctc,btc,atc], idx, shade);
   } else if (a[1] < d[1]) {
     var e = VEC.intersect3d(a,b,c,d);
-    var etc = [MU.len2d(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
+    var etc =  GLM.vec4.transformMat4(GLM.vec4.create(), [e[0], e[1], e[2], 1], trans);
     builder.addFace(mb.TRIANGLES, [d,e,a], [dtc,etc,atc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,b,c], [etc,btc,ctc], idx, shade);
     VEC.release3d(e);
   } else if (b[1] < c[1]) {
     var e = VEC.intersect3d(a,b,c,d);
-    var etc = [MU.len2d(e[0], e[2])/tcscalex, (base-e[1])/tcscaley];
+    var etc = GLM.vec4.transformMat4(GLM.vec4.create(), [e[0], e[1], e[2], 1], trans);
     builder.addFace(mb.TRIANGLES, [a,e,d], [atc,etc,dtc], idx, shade);
     builder.addFace(mb.TRIANGLES, [e,c,b], [etc,ctc,btc], idx, shade);
     VEC.release3d(e);
   } else {
     builder.addFace(mb.QUADS, quad, [atc,btc,ctc,dtc], idx, shade);
   }
-
   var mesh = builder.end(mat);
   var bbox = MU.bbox(quad);
 
   return new SolidInfo(bbox, mesh);
 }
 
-function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture):GLM.Mat4Array {
+function getSectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture):GLM.Mat4Array {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
@@ -107,17 +112,17 @@ function getTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[],
   var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * scale);
   var tcscaley = (stats.yflip ? -1.0 :  1.0) / (tex.getHeight() * scale);
   var trans = GLM.mat4.create();
+  GLM.mat4.translate(trans, trans, [xpan / 256.0, ypan / 256.0, 0, 0]);
   GLM.mat4.scale(trans, trans, [tcscalex, tcscaley, 1, 1]);
-  if (stats.alignToFirstWall) {
-    var w1 = walls[sector.wallptr];
-    GLM.mat4.translate(trans, trans, [-w1.x, -w1.y, 0, 0])
-    GLM.mat4.rotateZ(trans, trans, U.getFirstWallAngle(sector, walls));
-  }
   if (stats.swapXY) {
-    GLM.mat4.rotateZ(trans, trans, Math.PI/2);
+    GLM.mat4.rotateZ(trans, trans, -Math.PI/2);
     GLM.mat4.scale(trans, trans, [-1, 1, 1, 1]);
   }
-  GLM.mat4.translate(trans, trans, [xpan / 256.0, ypan / 256.0, 0, 0]);
+  if (stats.alignToFirstWall) {
+    var w1 = walls[sector.wallptr];
+    GLM.mat4.rotateZ(trans, trans, U.getFirstWallAngle(sector, walls));
+    GLM.mat4.translate(trans, trans, [-w1.x, -w1.y, 0, 0])
+  }
   return trans;
 }
 
@@ -130,7 +135,7 @@ function addSector(tris:number[][], ceiling:boolean, sector:BS.Sector, walls:BS.
   var heinum = ceiling ? sector.ceilingheinum : sector.floorheinum;
   var z = ceiling ? sector.ceilingz : sector.floorz;
   var shade = ceiling ? sector.ceilingshade : sector.floorshade;
-  var trans = getTextureTransform(sector, ceiling, walls, tex);
+  var trans = getSectorTextureTransform(sector, ceiling, walls, tex);
   var slope = U.createSlopeCalculator(sector, walls);
   var vtxs = [];
   var tcs = [];
@@ -392,7 +397,7 @@ export class BoardProcessor {
         if (wall.nextwall == -1 || wall.cstat.oneWay) {
           var vtxs = getWallVtxs(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
           var base = wall.cstat.alignBottom ? floorz : ceilingz;
-          var solid = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
+          var solid = addWall(wall, wall2, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
           this.walls[w] = new WallInfo(solid, null, null);
         } else {
           var nextsector = sectors[wall.nextsector];
@@ -407,9 +412,10 @@ export class BoardProcessor {
           var vtxs = getWallVtxs(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
           if (vtxs != null) {
             var wall_ = wall.cstat.swapBottoms ? walls[wall.nextwall] : wall;
+            var wall2_ = wall.cstat.swapBottoms ? walls[wall_.point2] : wall2;
             var tex_ = textureProvider.get(wall_.picnum);
             var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
-            up = addWall(wall_, builder, vtxs, idx, tex_, materials.solid(tex_), base / SCALE);
+            up = addWall(wall_, wall2_, builder, vtxs, idx, tex_, materials.solid(tex_), base / SCALE);
             this.dss.push(up.ds);
           }
 
@@ -417,7 +423,7 @@ export class BoardProcessor {
           var vtxs = getWallVtxs(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
           if (vtxs != null) {
             var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
-            down = addWall(wall, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
+            down = addWall(wall, wall2, builder, vtxs, idx, tex, materials.solid(tex), base / SCALE);
             this.dss.push(down.ds);
           }
 
@@ -427,7 +433,7 @@ export class BoardProcessor {
               ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
               floorheinum, nextfloorheinum, floorz, nextfloorz);
             var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
-            middle = addWall(wall, builder, vtxs, idx, tex1, materials.solid(tex1), base / SCALE);
+            middle = addWall(wall, wall2, builder, vtxs, idx, tex1, materials.solid(tex1), base / SCALE);
             this.dss.push(middle.ds);
           }
           

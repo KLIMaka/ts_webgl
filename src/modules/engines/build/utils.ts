@@ -112,7 +112,7 @@ export function getFirstWallAngle(sector:BS.Sector, walls:BS.Wall[]):number {
   var w2 = walls[w1.point2];
   var dx = w2.x - w1.x;
   var dy = w2.y - w1.y;
-  return  Math.atan2(dy, dx);
+  return  Math.atan2(-dy, dx);
 }
 
 export function wallVisible(wall1:BS.Wall, wall2:BS.Wall, ms:MoveStruct) {
