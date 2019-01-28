@@ -18,6 +18,8 @@ import RFF = require('./modules/engines/build/rff');
 import UI = require('./modules/ui/ui');
 import IU = require('./libs/imgutils');
 import browser = require('./libs/browser');
+import BW = require('./modules/engines/build/buildwrapper');
+import BGL = require('./modules/engines/build/gl/meshbuilder');
 
 var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
@@ -151,6 +153,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   var stream = new data.DataViewStream(map, true);
   var board = bloodloader.loadBloodMap(stream);
+  var boardWrapper = new BW.BoardWrapper(board);
   var processor = new builder.BoardProcessor(board);
   var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
   var selectShader = shaders.createShader(gl, 'resources/shaders/select');
@@ -181,38 +184,41 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   binder.addResolver('eyedir', GL.vec3Setter,    ()=>control.getCamera().forward());
   binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
 
+  BGL.init(gl, tp);
+
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
 
-    tic();
-    var models = processor.get(ms, control.getCamera().forward());
-    info['Processing:'] = tac();
+    // tic();
+    // var models = processor.get(ms, control.getCamera().forward());
+    // info['Processing:'] = tac();
     
-    if (drawSelect) {
-      //select draw
-      selectPass = true;
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      GL.draw(gl, models, binder);
+    // if (drawSelect) {
+    //   //select draw
+    //   selectPass = true;
+    //   gl.clearColor(0, 0, 0, 0);
+    //   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    //   GL.draw(gl, models, binder);
 
-      var id = GL.readId(gl, control.getX(), control.getY());
-      activeIdx = id;
-      if (control.isClick()) {
-        console.log(processor.getByIdx(activeIdx));
-      }
-    }
+    //   var id = GL.readId(gl, control.getX(), control.getY());
+    //   activeIdx = id;
+    //   if (control.isClick()) {
+    //     console.log(processor.getByIdx(activeIdx));
+    //   }
+    // }
 
     // actual draw
-    selectPass = false;
+    // selectPass = false;
     gl.clearColor(0.1, 0.3, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
 
     tic();
-    GL.draw(gl, models, binder);
+    // GL.draw(gl, models, binder);
+    BGL.draw(gl, boardWrapper, ms, control);
     info['Rendering:'] = tac();
     
-    info['Batches:'] = models.length;
+    // info['Batches:'] = models.length;
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;

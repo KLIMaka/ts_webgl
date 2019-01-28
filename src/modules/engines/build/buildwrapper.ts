@@ -111,51 +111,12 @@ export class BoardWrapper {
   public markedSprites(m:number):ITER.Iterator<SpriteWrapper> {
   	return createMarkedIterator<SpriteWrapper>(this.sprites, m);
   }
-}
 
-function wallIterator(board:BS.Board, sec:number):ITER.Iterator<BS.Wall> {
-	var sector = board.sectors[sec];
-	var w = 0;
-	return () => {
-		if (w < sector.wallnum) {
-			return board.walls[sector.wallptr + w++]
-		}
-		return null;
-	}
-}
-
-function triangulate(board:BS.Board, sec:BS.Sector) {
-  var contour = [];
-  var contours = [];
-  var fw = sec.wallptr;
-  for (var w = 0; w < sec.wallnum; w++) {
-    var wid = sec.wallptr + w;
-    var wall = board.walls[wid];
-    contour.push(wall.x, wall.y);
-    if (wall.point2 == fw) {
-      contours.push(contour);
-      contour = [];
-      fw = wid + 1;
-    }
+  public allSectors():ITER.Iterator<SectorWrapper> {
+  	return ITER.list(this.sectors);
   }
-  return GLU.tesselate(contours);
-}
 
-export interface ArtProvider {
-  get(picnum:number):DS.Texture;
-  getInfo(picnum:number):number;
-}
-
-class BuildGl {
-	private artProvider:ArtProvider;
-
-	public renderSector(board:BoardWrapper, sec:SectorWrapper) {
-  	var tris = triangulate(sec, board.walls);
-    if (tris.length == 0)
-    	return;
-
-    var floortex = this.artProvider.get(sec.ref.floorpicnum);
-    var ceilingtex = this.artProvider.get(sec.ref.ceilingpicnum);
-    
-	}
+  public allWalls():ITER.Iterator<WallWrapper> {
+  	return ITER.list(this.walls);
+  }
 }

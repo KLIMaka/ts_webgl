@@ -4,8 +4,8 @@ export type Iterator<T> = () => T;
 export function list<T>(l:T[]):Iterator<T> {
 	var i = 0;
 	return () => {
-		if(this.i < this.list.length)
-			return this.list[this.i++];
+		if(i < l.length)
+			return l[i++];
 		return null;
 	}
 }

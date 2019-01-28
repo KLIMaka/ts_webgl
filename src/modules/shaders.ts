@@ -125,7 +125,7 @@ function compileSource(gl:WebGLRenderingContext, type:number, source:string):Web
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw 'compile error: ' + gl.getShaderInfoLog(shader);
+    throw 'compile error: ' + gl.getShaderInfoLog(shader) + '\nin source:\n'+source;
   }
   return shader;
 }
