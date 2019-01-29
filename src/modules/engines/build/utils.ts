@@ -93,16 +93,14 @@ var SCALE = -16;
 export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
   var wall1 = walls[sector.wallptr];
   var wall2 = walls[wall1.point2];
-
-  var normal = VEC.detach2d(VEC.normalize2d(VEC.fromValues2d(-(wall2.y - wall1.y), wall2.x - wall1.x)));
-  var wall1Vec = VEC.fromValues2d(wall1.x , wall1.y)
-  var w = -VEC.dot2d(normal, wall1Vec);
-  VEC.release2d(wall1Vec);
+  var nx = -wall2.y + wall1.y;
+  var ny = wall2.x - wall1.x;
+  var ln = MU.len2d(nx, ny);
+  nx /= ln; ny /= ln;
+  var w = -nx*wall1.x - ny*wall1.y;
 
   return function (x:number, y:number, rotation:number):number {
-    var vec = VEC.fromValues2d(x, y);
-    var dist = VEC.dot2d(normal, vec) + w;
-    VEC.release2d(vec);
+    var dist = nx*x + ny*y + w;
     return MU.int(-(rotation * UNITS2DEG) * dist * SCALE);
   };
 }
