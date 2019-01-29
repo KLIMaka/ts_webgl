@@ -74,10 +74,10 @@ export class Shader implements DS.Shader {
 
 var cache:{[index:string]:Shader} = {};
 
-export function createShader(gl:WebGLRenderingContext, name:string, initCallback:(Shader)=>void=null):Shader {
-  var shader = cache[name];
-  if (shader != undefined)
-    return shader;
+export function createShader(gl:WebGLRenderingContext, name:string, defines:string[]=[], initCallback:(Shader)=>void=null):Shader {
+  // var shader = cache[name];
+  // if (shader != undefined)
+  //   return shader;
 
   if (defaultProgram == null) {
     defaultProgram = compileProgram(gl, defaultVSH, defaultFSH);
@@ -85,9 +85,10 @@ export function createShader(gl:WebGLRenderingContext, name:string, initCallback
 
   var shader = new Shader(defaultProgram);
   var barrier = AB.create();
+  var deftext = prepareDefines(defines);
   getter.preloadString(name+'.vsh', barrier.callback('vsh'));
   getter.preloadString(name+'.fsh', barrier.callback('fsh'));
-  barrier.wait((res) => {initShader(gl, shader, res.vsh, res.fsh)});
+  barrier.wait((res) => {initShader(gl, shader, deftext+res.vsh, deftext+res.fsh)});
   cache[name] = shader;
   return shader;
 }
@@ -107,6 +108,14 @@ function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:str
     var params = processShaders(res.vsh, res.fsh);
     shader.init(gl, program, params);
   });
+}
+
+function prepareDefines(defines:string[]):string {
+  var result = '';
+  for (var i = 0; i < defines.length; i++) {
+    result += "#define " + defines[i] + ";\n";
+  }
+  return result;
 }
 
 function compileProgram(gl:WebGLRenderingContext, vsh:string, fsh:string):WebGLProgram {

@@ -15,16 +15,21 @@ function createMarkedIterator<T extends Marked>(list:T[], m:number):ITER.Iterato
   return ITER.filtered(ITER.list(list), (v:T) => v.match(m));
 }
 
+var globalId = 1;
+function genId():number {
+  return globalId++;
+}
+
 export class SpriteWrapper extends Marked {
-  constructor(public ref:BS.Sprite) {super();}
+  constructor(public ref:BS.Sprite, public id:number=genId()) {super();}
 }
 
 export class SectorWrapper extends Marked {
-  constructor(public ref:BS.Sector) {super();}
+  constructor(public ref:BS.Sector, public id:number=genId()) {super();}
 }
 
 export class WallWrapper extends Marked {
-  constructor(public ref:BS.Wall, public sector:SectorWrapper) {super();}
+  constructor(public ref:BS.Wall, public sector:SectorWrapper, public id:number=genId()) {super();}
 }
 
 export class BoardWrapper {
@@ -32,17 +37,20 @@ export class BoardWrapper {
   public walls:WallWrapper[] = [];
   public sectors:SectorWrapper[] = [];
   public sector2sprites:{[index:number]: SpriteWrapper[];} = {};
+  public id2object = {};
 
   constructor(public ref:BS.Board) {
     for (var s = 0; s < ref.numsectors; s++) {
       var sec = ref.sectors[s];
       var secw = new SectorWrapper(sec);
       this.sectors.push(secw);
+      this.id2object[secw.id] = secw;
       for (var w = 0; w < sec.wallnum; w++) {
         var wallidx = sec.wallptr + w;
         var wall = ref.walls[wallidx];
         var wallw = new WallWrapper(wall, secw);
         this.walls[wallidx] = wallw;
+        this.id2object[wallw.id] = wallw;
       }
     }
 
@@ -50,6 +58,7 @@ export class BoardWrapper {
       var spr = ref.sprites[s];
       var sprw = new SpriteWrapper(spr);
       this.sprites.push(sprw);
+      this.id2object[sprw.id] = sprw;
       var sprsec = spr.sectnum;
       if (sprsec != -1) {
         var sprites = this.sector2sprites[sprsec];
@@ -90,12 +99,12 @@ export class BoardWrapper {
             pvs.push(nextsector);
         }
       }
-    }
 
-    var sprites = this.sector2sprites[cursecnum];
-    if (sprites != undefined) {
-      for (var s = 0; s < sprites.length; s++) {
-        sprites[s].mark(m);
+      var sprites = this.sector2sprites[cursecnum];
+      if (sprites != undefined) {
+        for (var s = 0; s < sprites.length; s++) {
+          sprites[s].mark(m);
+        }
       }
     }
   }

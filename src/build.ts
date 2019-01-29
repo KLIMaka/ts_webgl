@@ -5,7 +5,6 @@ import data = require('./libs/dataviewstream');
 import MU = require('./libs/mathutils');
 import controller = require('./modules/controller3d');
 import bloodloader = require('./modules/engines/build/bloodloader');
-import builder = require('./modules/engines/build/builder');
 import BS = require('./modules/engines/build/structs');
 import BU = require('./modules/engines/build/utils');
 import DS = require('./modules/drawstruct');
@@ -23,32 +22,8 @@ import BGL = require('./modules/engines/build/gl/meshbuilder');
 
 var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
-var drawSelect =  browser.getQueryVariable('select');
-var selectPass = false;
 
-class BuildMaterial implements DS.Material {
-  constructor(private baseShader:DS.Shader, private selectShader:DS.Shader, private tex:{[index:string]:DS.Texture}) {}
-  getShader():DS.Shader {return selectPass ? this.selectShader : this.baseShader}
-  getTexture(sampler:string):DS.Texture {return this.tex[sampler]}
-}
-
-class BuildMaterialFactory implements builder.MaterialFactory {
-  constructor(
-    private baseShader:DS.Shader, 
-    private selectShader:DS.Shader, 
-    private spriteShader:DS.Shader, 
-    private spriteSelectShader:DS.Shader){}
-
-  solid(tex:DS.Texture) {
-    return new BuildMaterial(this.baseShader, this.selectShader, {base:tex});
-  }
-
-  sprite(tex:DS.Texture) {
-    return new BuildMaterial(this.spriteShader, this.spriteSelectShader, {base:tex});
-  }
-}
-
-class BuildArtProvider implements builder.ArtProvider {
+class BuildArtProvider implements BGL.ArtProvider {
   private textures:DS.Texture[] = [];
   
   constructor(
@@ -130,6 +105,17 @@ function tac():number {
   return (new Date().getTime() - time) / 1000;
 }
 
+function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
+  var playerstart = BU.getPlayerStart(board);
+  var ms = new BU.MoveStruct();
+  ms.sec = playerstart.sectnum;
+  ms.x = playerstart.x;
+  ms.y = playerstart.y;
+  ms.z = playerstart.z;
+  control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
+  return ms;
+}
+
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
@@ -154,71 +140,20 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var stream = new data.DataViewStream(map, true);
   var board = bloodloader.loadBloodMap(stream);
   var boardWrapper = new BW.BoardWrapper(board);
-  var processor = new builder.BoardProcessor(board);
-  var baseShader = shaders.createShader(gl, 'resources/shaders/build_base');
-  var selectShader = shaders.createShader(gl, 'resources/shaders/select');
-  var spriteShader = shaders.createShader(gl, 'resources/shaders/build_sprite');
-  var spriteSelectShader = shaders.createShader(gl, 'resources/shaders/select_sprite');
-  var mf = new BuildMaterialFactory(baseShader, selectShader, spriteShader, spriteSelectShader);
   var tp = new BuildArtProvider(artFiles, pal, gl);
-  tic();
-  processor.build(gl, tp, mf);
-  console.log('parsing board: ' + tac() + 's');
-
   var control = new controller.Controller3D(gl);
-  var playerstart = BU.getPlayerStart(board);
-  var ms = new BU.MoveStruct();
-  ms.sec = playerstart.sectnum;
-  ms.x = playerstart.x;
-  ms.y = playerstart.y;
-  ms.z = playerstart.z;
-  control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
-
-  var activeIdx = 0;
-
-  var binder = new GL.UniformBinder();
-  binder.addResolver('MVP', GL.mat4Setter,       ()=>control.getMatrix());
-  binder.addResolver('MV', GL.mat4Setter,        ()=>control.getModelViewMatrix());
-  binder.addResolver('P', GL.mat4Setter,         ()=>control.getProjectionMatrix());
-  binder.addResolver('eyepos', GL.vec3Setter,    ()=>control.getCamera().getPos());
-  binder.addResolver('eyedir', GL.vec3Setter,    ()=>control.getCamera().forward());
-  binder.addResolver('activeIdx', GL.int1Setter, ()=>activeIdx);
+  var ms = createMoveStruct(board, control);
 
   BGL.init(gl, tp);
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
-
-    // tic();
-    // var models = processor.get(ms, control.getCamera().forward());
-    // info['Processing:'] = tac();
-    
-    // if (drawSelect) {
-    //   //select draw
-    //   selectPass = true;
-    //   gl.clearColor(0, 0, 0, 0);
-    //   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    //   GL.draw(gl, models, binder);
-
-    //   var id = GL.readId(gl, control.getX(), control.getY());
-    //   activeIdx = id;
-    //   if (control.isClick()) {
-    //     console.log(processor.getByIdx(activeIdx));
-    //   }
-    // }
-
-    // actual draw
-    // selectPass = false;
-    gl.clearColor(0.1, 0.3, 0.1, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
 
     tic();
-    // GL.draw(gl, models, binder);
     BGL.draw(gl, boardWrapper, ms, control);
     info['Rendering:'] = tac();
     
-    // info['Batches:'] = models.length;
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;
@@ -226,10 +161,6 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     drawCompass(compass, control.getCamera().forward());
 
     control.move(time);
-    // var d = control.move1(time);
-    // BU.move1(board, ms, d[0], d[1]);
-    // BU.fall(board, ms, time*8192*4)
-    // control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
   });
 
   gl.canvas.oncontextmenu = () => false;
