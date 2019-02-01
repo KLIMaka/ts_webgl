@@ -21,15 +21,15 @@ function genId():number {
 }
 
 export class SpriteWrapper extends Marked {
-  constructor(public ref:BS.Sprite, public id:number=genId()) {super();}
+  constructor(public ref:BS.Sprite, public boardid:number, public id:number=genId()) {super();}
 }
 
 export class SectorWrapper extends Marked {
-  constructor(public ref:BS.Sector, public id:number=genId()) {super();}
+  constructor(public ref:BS.Sector, public boardid:number, public id:number=genId()) {super();}
 }
 
 export class WallWrapper extends Marked {
-  constructor(public ref:BS.Wall, public sector:SectorWrapper, public id:number=genId()) {super();}
+  constructor(public ref:BS.Wall, public sector:SectorWrapper, public boardid:number, public id:number=genId()) {super();}
 }
 
 export class BoardWrapper {
@@ -42,13 +42,13 @@ export class BoardWrapper {
   constructor(public ref:BS.Board) {
     for (var s = 0; s < ref.numsectors; s++) {
       var sec = ref.sectors[s];
-      var secw = new SectorWrapper(sec);
+      var secw = new SectorWrapper(sec, s);
       this.sectors.push(secw);
       this.id2object[secw.id] = secw;
       for (var w = 0; w < sec.wallnum; w++) {
         var wallidx = sec.wallptr + w;
         var wall = ref.walls[wallidx];
-        var wallw = new WallWrapper(wall, secw);
+        var wallw = new WallWrapper(wall, secw, wallidx);
         this.walls[wallidx] = wallw;
         this.id2object[wallw.id] = wallw;
       }
@@ -56,7 +56,7 @@ export class BoardWrapper {
 
     for (var s = 0; s < ref.numsprites; s++) {
       var spr = ref.sprites[s];
-      var sprw = new SpriteWrapper(spr);
+      var sprw = new SpriteWrapper(spr, s);
       this.sprites.push(sprw);
       this.id2object[sprw.id] = sprw;
       var sprsec = spr.sectnum;
@@ -102,9 +102,7 @@ export class BoardWrapper {
 
       var sprites = this.sector2sprites[cursecnum];
       if (sprites != undefined) {
-        for (var s = 0; s < sprites.length; s++) {
-          sprites[s].mark(m);
-        }
+        sprites.map((s) => s.mark(m));
       }
     }
   }
@@ -127,5 +125,9 @@ export class BoardWrapper {
 
   public allWalls():ITER.Iterator<WallWrapper> {
     return ITER.list(this.walls);
+  }
+
+  public allSprites():ITER.Iterator<SpriteWrapper> {
+    return ITER.list(this.sprites);
   }
 }

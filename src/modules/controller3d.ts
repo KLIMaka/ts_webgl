@@ -2,19 +2,19 @@ import camera = require('./camera');
 import GLM = require('../libs_js/glmatrix');
 import MU = require('../libs/mathutils');
 
+var named = {
+  8: 'BACKSPACE',
+  9: 'TAB',
+  13: 'ENTER',
+  16: 'SHIFT',
+  27: 'ESCAPE',
+  32: 'SPACE',
+  37: 'LEFT',
+  38: 'UP',
+  39: 'RIGHT',
+  40: 'DOWN'
+};
 function mapKeyCode(code) {
-  var named = {
-    8: 'BACKSPACE',
-    9: 'TAB',
-    13: 'ENTER',
-    16: 'SHIFT',
-    27: 'ESCAPE',
-    32: 'SPACE',
-    37: 'LEFT',
-    38: 'UP',
-    39: 'RIGHT',
-    40: 'DOWN'
-  };
   return named[code] || (code >= 65 && code <= 90 ? String.fromCharCode(code) : null);
 }
 
@@ -66,7 +66,7 @@ export class Controller3D {
   }
 
   private mousewheel(e:MouseWheelEvent):boolean {
-    this.fov += -e.wheelDelta / 60;
+    this.fov += -e.deltaX / 60;
     return false;
   }
 
@@ -119,6 +119,10 @@ export class Controller3D {
     return this.click;
   }
 
+  public getKeys() {
+    return this.keys;
+  }
+
   public move(speed:number):void {
 
     speed *= 8000;
@@ -139,25 +143,5 @@ export class Controller3D {
 
     this.click = false;
     this.camera.setPos(campos);    
-  }
-
-  public move1(speed:number):number[] {
-    speed *= 8000;
-    var moveVec = this.moveVec;
-
-    var forward = this.camera.forward();
-    moveVec[0] = forward[0];
-    moveVec[1] = forward[2];
-    var up = this.keys['W'] | this.keys['UP'];
-    var down = this.keys['S'] | this.keys['DOWN'];
-    GLM.vec2.normalize(moveVec, moveVec);
-    GLM.vec2.scale(moveVec, moveVec, speed * (up - down));
-
-    var left = this.keys['A'] | this.keys['LEFT'];
-    var right = this.keys['D'] | this.keys['RIGHT'];
-    this.camera.updateAngles(-(left*speed/70) + (right*speed/70), 0);
-
-    this.click = false;
-    return moveVec;
   }
 }

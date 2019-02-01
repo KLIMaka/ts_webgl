@@ -127,11 +127,15 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     'Batches:':0,
     'Sector:':0,
     'Processing:':0,
-    'Rendering:':0
+    'Rendering:':0,
+    'Sectors:':0,
+    'Walls:':0,
+    'Sprites:':0,
+    'FaceSprites:':0
   }
 
   var panel = UI.panel('Info');
-  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:']);
+  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'FaceSprites:']);
   panel.append(props);
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
@@ -139,6 +143,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
 
   var stream = new data.DataViewStream(map, true);
   var board = bloodloader.loadBloodMap(stream);
+  console.log(board);
   var boardWrapper = new BW.BoardWrapper(board);
   var tp = new BuildArtProvider(artFiles, pal, gl);
   var control = new controller.Controller3D(gl);
@@ -151,7 +156,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
 
     tic();
-    BGL.draw(gl, boardWrapper, ms, control);
+    BGL.draw(gl, boardWrapper, ms, control, info);
     info['Rendering:'] = tac();
     
     info['Sector:'] = ms.sec;

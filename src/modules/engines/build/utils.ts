@@ -56,7 +56,7 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
 
 export function findSector(board:BS.Board, x:number, y:number, secnum:number = 0):number {
   if (secnum == -1)
-    secnum = 0;
+    return findSectorAll(board, x, y);
   var secs = [secnum];
   for (var i = 0; i < secs.length; i++) {
     secnum = secs[i];
@@ -73,6 +73,15 @@ export function findSector(board:BS.Board, x:number, y:number, secnum:number = 0
           secs.push(nextsector);
       }
     }
+  }
+  return -1;
+}
+
+function findSectorAll(board:BS.Board, x:number, y:number) {
+  for (var s = 0; s < board.sectors.length; s++) {
+    var sec = board.sectors[s];
+    if (inSector(board, x, y, s))
+      return s;
   }
   return -1;
 }

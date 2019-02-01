@@ -8,13 +8,21 @@ varying float att;
 varying vec2 tc;
 
 #ifdef SELECT
+const float c = 256.0/255.0;
+
 void main() {
-  float cf = float(currentId);
-  float r = mod(cf / (256.0),  1.0);
-  float g = mod(cf / (256.0 * 256.0), 1.0);
-  float b = mod(cf / (256.0 * 256.0 * 256.0), 1.0);
-  gl_FragColor = vec4(r, g, b, 1.0);
+  if (texture2D(base, tc).a == 0.0)
+    discard;
+    
+  float cf = float(currentId) / 256.0;
+  float r = fract(cf);
+  cf = (cf - r) / 256.0;
+  float g = fract(cf);
+  cf = (cf - g) / 256.0;
+  float b = fract(cf);
+  gl_FragColor = vec4(r*c, g*c, b*c, 1.0);
 }
+
 #else
 
 void main() {
@@ -35,3 +43,4 @@ void main() {
 }
 
 #endif
+
