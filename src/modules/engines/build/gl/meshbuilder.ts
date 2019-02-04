@@ -69,7 +69,7 @@ var spriteShader:DS.Shader;
 var spriteSelectShader:DS.Shader;
 var currentShader:DS.Shader;
 function initShaders(gl:WebGLRenderingContext) {
-  baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1');
+  baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['TC_GRID']);
   selectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SELECT']);
   spriteShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE']);
   spriteSelectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'SELECT']);
@@ -324,10 +324,12 @@ function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:nu
     x+dx, z+hh+yo, y+dy,
     x-dx, z+hh+yo, y-dy, !onesided);
 
+  var xf = xf ? -1.0 : 1.0;
+  var yf = yf ? -1.0 : 1.0;
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [(xf?-1.0:1.0)/(hw*2), -(yf?-1.0:1.0)/(hh*2), 1, 1]);
+  GLM.mat4.scale(texMat, texMat, [xf/(hw*2), -yf/(hh*2), 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI/2);
-  GLM.mat4.translate(texMat, texMat, [(xf?-x+dx:-x-dx), (yf?-z+hh-yo:-z-hh-yo), (xf?-y+dy:-y-dy), 0]);
+  GLM.mat4.translate(texMat, texMat, [-x+xf*dx, -z+yf*hh-yo, -y+xf*dy, 0]);
 }
 
 function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
@@ -337,14 +339,17 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   var dhy = Math.cos(-ang+Math.PI/2)*hh;
   quad(
     x-dwx-dhx, z+1, y-dwy-dhy,
-    x+dwx+dhx, z+1, y-dwy-dhy,
+    x+dwx-dhx, z+1, y+dwy-dhy,
     x+dwx+dhx, z+1, y+dwy+dhy,
-    x-dwx-dhx, z+1, y+dwy+dhy, !onesided);
+    x-dwx+dhx, z+1, y-dwy+dhy, !onesided);
 
+  var xf = xf ? -1.0 : 1.0;
+  var yf = yf ? -1.0 : 1.0;
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [(xf?-1.0:1.0)/(hw*2), (yf?-1.0:1.0)/(hh*2), 1, 1]);
-  GLM.mat4.rotateZ(texMat, texMat, ang - Math.PI/2);
-  GLM.mat4.translate(texMat, texMat, [(xf?-x+dwx+dhx-xo:-x-dwx-dhx-xo), (yf?-y+dwy+dhy-yo:-y-dwy-dhy-yo), 0, 0]);
+  GLM.mat4.scale(texMat, texMat, [xf/(hw*2), yf/(hh*2), 1, 1]);
+  GLM.mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
+  GLM.mat4.rotateZ(texMat, texMat, -ang - Math.PI/2);
+  GLM.mat4.translate(texMat, texMat, [-x, -y, 0, 0]);
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
 
@@ -449,11 +454,11 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   if (ctr.isClick()) {
     console.log(board.id2object[selectedId]);
   }
-  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
-    board.id2object[selectedId].ref.floorheinum += 8;
+  if (board.id2object[selectedId] instanceof BW.SpriteWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
+    board.id2object[selectedId].ref.ang += 32;
   }
-  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
-    board.id2object[selectedId].ref.floorheinum -= 8;
+  if (board.id2object[selectedId] instanceof BW.SpriteWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
+    board.id2object[selectedId].ref.ang -= 32;
   }
 
   selectDraw = 0;
