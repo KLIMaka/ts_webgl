@@ -315,7 +315,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
   }
 }
 
-function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, onesided:number) {
+function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
   var dx = Math.sin(ang)*hw;
   var dy = Math.cos(ang)*hw;
   quad(
@@ -325,16 +325,16 @@ function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:nu
     x-dx, z+hh+yo, y-dy, !onesided);
 
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
-  GLM.mat4.rotateY(texMat, texMat, ang + Math.PI/2);
-  GLM.mat4.translate(texMat, texMat, [-x-dx, -z-hh-yo, -y-dy, 0]);
+  GLM.mat4.scale(texMat, texMat, [(xf?-1.0:1.0)/(hw*2), -(yf?-1.0:1.0)/(hh*2), 1, 1]);
+  GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI/2);
+  GLM.mat4.translate(texMat, texMat, [(xf?-x+dx:-x-dx), (yf?-z+hh-yo:-z-hh-yo), (xf?-y+dy:-y-dy), 0]);
 }
 
-function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, onesided:number) {
-  var dwx = Math.sin(ang)*hw;
-  var dwy = Math.cos(ang)*hw;
-  var dhx = Math.sin(ang+Math.PI/2)*hh;
-  var dhy = Math.cos(ang+Math.PI/2)*hh;
+function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
+  var dwx = Math.sin(-ang)*hw;
+  var dwy = Math.cos(-ang)*hw;
+  var dhx = Math.sin(-ang+Math.PI/2)*hh;
+  var dhy = Math.cos(-ang+Math.PI/2)*hh;
   quad(
     x-dwx-dhx, z+1, y-dwy-dhy,
     x+dwx+dhx, z+1, y-dwy-dhy,
@@ -342,24 +342,23 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
     x-dwx-dhx, z+1, y+dwy+dhy, !onesided);
 
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [1/(hw*2), 1/(hh*2), 1, 1]);
-  GLM.mat4.rotateY(texMat, texMat, ang);
-  GLM.mat4.translate(texMat, texMat, [-x-dwx-dhx, -z-1, -y-dwy-dhy, 0]);
+  GLM.mat4.scale(texMat, texMat, [(xf?-1.0:1.0)/(hw*2), (yf?-1.0:1.0)/(hh*2), 1, 1]);
+  GLM.mat4.rotateZ(texMat, texMat, ang - Math.PI/2);
+  GLM.mat4.translate(texMat, texMat, [(xf?-x+dwx+dhx-xo:-x-dwx-dhx-xo), (yf?-y+dwy+dhy-yo:-y-dwy-dhy-yo), 0, 0]);
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
 
-function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number) {
+function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number) {
   quad(x, z, y, x, z, y, x, z, y, x, z, y);
   var normoff = 0;
-  norm[normoff++] = +hw; norm[normoff++] = -hh+yo;
-  norm[normoff++] = -hw; norm[normoff++] = -hh+yo;
-  norm[normoff++] = -hw; norm[normoff++] = +hh+yo;
-  norm[normoff++] = +hw; norm[normoff++] = +hh+yo;
+  norm[normoff++] = -hw+xo; norm[normoff++] = +hh+yo;
+  norm[normoff++] = +hw+xo; norm[normoff++] = +hh+yo;
+  norm[normoff++] = +hw+xo; norm[normoff++] = -hh+yo;
+  norm[normoff++] = -hw+xo; norm[normoff++] = -hh+yo;
 
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [1/(hw*2), 1/(hh*2), 1, 1]);
-  GLM.mat4.translate(texMat, texMat, [-x, -z, -y, 0]);
-  // GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
+  GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
+  GLM.mat4.translate(texMat, texMat, [hw+xo, -hh-yo, 0, 0]);
 }
 
 function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:number) {
@@ -374,15 +373,16 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
   var xo = MU.ubyte2byte((tinfo >> 8) & 0xFF)*16 * (spr.xrepeat/64);
   var yo = MU.ubyte2byte((tinfo >> 16) & 0xFF)*16 * (spr.yrepeat/64);
+  var xf = spr.cstat.xflip; var yf = spr.cstat.yflip;
 
   if (spr.cstat.type == 0) { // face
-    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh);
+    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
     drawFace(gl, tex, spr.shade, id);
   } else if (spr.cstat.type == 1) { // wall
-    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, spr.cstat.onesided);
+    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
     drawFace(gl, tex, spr.shade, id);
   } else if (spr.cstat.type == 2) { // floor
-    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, spr.cstat.onesided);
+    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
     drawFace(gl, tex, spr.shade, id);
   }
 }

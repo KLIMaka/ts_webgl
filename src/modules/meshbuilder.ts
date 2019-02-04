@@ -1,4 +1,3 @@
-
 import GLM = require('../libs_js/glmatrix');
 import MU  = require('../libs/mathutils');
 import DS = require('./drawstruct');
