@@ -1,16 +1,13 @@
-import MB = require('../../../meshbuilder');
 import DS = require('../../../drawstruct');
-import BATCH = require('../../../batcher');
-import SHADER = require('../../../shaders');
 import BW = require('../buildwrapper');
 import U = require('../utils');
 import MU = require('../../../../libs/mathutils');
 import C = require('../../../../modules/controller3d');
-import VEC = require('../../../../libs/vecmath');
 import BS = require('../structs');
 import GLU = require('../../../../libs_js/glutess');
 import GLM = require('../../../../libs_js/glmatrix');
 import GL = require('../../../../modules/gl');
+import BGL = require('./buildgl');
 
 const SCALE = -16;
 
@@ -20,104 +17,13 @@ export interface ArtProvider {
 }
 
 export function init(gl:WebGLRenderingContext, p:ArtProvider) {
-  createBuffers(gl);
-  initShaders(gl);
   setArtProvider(p);
+  BGL.init(gl);
 }
 
 var artProvider:ArtProvider = null;
 function setArtProvider(p:ArtProvider) {
   artProvider = p;
-}
-
-var idxs = new Uint16Array(1024);
-var idxBuf:MB.DynamicIndexBuffer;
-var idxsLength = 0;
-var pos = new Float32Array(4096);
-var posBuf:MB.VertexBufferDynamic;
-var norm = new Float32Array(4*2);
-var normBuf:MB.VertexBufferDynamic;
-function createBuffers(gl:WebGLRenderingContext) {
-  posBuf = MB.wrap(gl, pos, 3, gl.DYNAMIC_DRAW);
-  idxBuf = MB.wrapIndexBuffer(gl, idxs, gl.DYNAMIC_DRAW);
-  normBuf = MB.wrap(gl, norm, 2, gl.DYNAMIC_DRAW);
-}
-
-function quad(
-  x1:number, y1:number, z1:number,
-  x2:number, y2:number, z2:number,
-  x3:number, y3:number, z3:number,
-  x4:number, y4:number, z4:number, twosided:boolean=false):void {
-  var posoff = 0;
-  pos[posoff++] = x1; pos[posoff++] = y1; pos[posoff++] = z1;
-  pos[posoff++] = x2; pos[posoff++] = y2; pos[posoff++] = z2;
-  pos[posoff++] = x3; pos[posoff++] = y3; pos[posoff++] = z3;
-  pos[posoff++] = x4; pos[posoff++] = y4; pos[posoff++] = z4;
-  var idxoff = 0;
-  idxs[idxoff++] = 0; idxs[idxoff++] = 2; idxs[idxoff++] = 1;
-  idxs[idxoff++] = 0; idxs[idxoff++] = 3; idxs[idxoff++] = 2;
-  if (twosided) {
-    idxs[idxoff++] = 1; idxs[idxoff++] = 2; idxs[idxoff++] = 0;
-    idxs[idxoff++] = 2; idxs[idxoff++] = 3; idxs[idxoff++] = 0;
-  }
-  idxsLength = idxoff;
-}
-
-var baseShader:DS.Shader;
-var selectShader:DS.Shader;
-var spriteShader:DS.Shader;
-var spriteSelectShader:DS.Shader;
-var currentShader:DS.Shader;
-function initShaders(gl:WebGLRenderingContext) {
-  baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['TC_GRID']);
-  selectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SELECT']);
-  spriteShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE']);
-  spriteSelectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'SELECT']);
-}
-
-var selectDraw = 0;
-var selectedId = -1;
-function startBase(gl:WebGLRenderingContext, ctr:C.Controller3D) {
-  currentShader = selectDraw ? selectShader : baseShader;
-  gl.useProgram(currentShader.getProgram());
-  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf.getBuffer());
-  var location = currentShader.getAttributeLocation('aPos', gl);
-  gl.enableVertexAttribArray(location);
-  gl.vertexAttribPointer(location, posBuf.getSpacing(), posBuf.getType(), posBuf.getNormalized(), posBuf.getStride(), posBuf.getOffset());
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf.getBuffer());
-  gl.uniformMatrix4fv(currentShader.getUniformLocation('MVP', gl), false, ctr.getMatrix());
-  gl.uniform3fv(currentShader.getUniformLocation('eyepos', gl), ctr.getCamera().getPos());
-  gl.uniform1i(currentShader.getUniformLocation('selectedId', gl), selectedId);
-}
-
-function startSprite(gl:WebGLRenderingContext, ctr:C.Controller3D) {
-  currentShader = selectDraw ? spriteSelectShader : spriteShader;
-  gl.useProgram(currentShader.getProgram());
-  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf.getBuffer());
-  var location = currentShader.getAttributeLocation('aPos', gl);
-  gl.enableVertexAttribArray(location);
-  gl.vertexAttribPointer(location, posBuf.getSpacing(), posBuf.getType(), posBuf.getNormalized(), posBuf.getStride(), posBuf.getOffset());
-  gl.bindBuffer(gl.ARRAY_BUFFER, normBuf.getBuffer());
-  var location = currentShader.getAttributeLocation('aNorm', gl);
-  gl.enableVertexAttribArray(location);
-  gl.vertexAttribPointer(location, normBuf.getSpacing(), normBuf.getType(), normBuf.getNormalized(), normBuf.getStride(), normBuf.getOffset());
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf.getBuffer());
-  gl.uniformMatrix4fv(currentShader.getUniformLocation('MV', gl), false, ctr.getModelViewMatrix());
-  gl.uniformMatrix4fv(currentShader.getUniformLocation('P', gl), false, ctr.getProjectionMatrix());
-  gl.uniform3fv(currentShader.getUniformLocation('eyepos', gl), ctr.getCamera().getPos());
-  gl.uniform1i(currentShader.getUniformLocation('selectedId', gl), selectedId);
-}
-
-var texMat = GLM.mat4.create();
-function drawFace(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:number) {
-  idxBuf.update(gl);
-  posBuf.update(gl);
-  normBuf.update(gl);
-  gl.bindTexture(gl.TEXTURE_2D, tex.get());
-  gl.uniform1i(currentShader.getUniformLocation('currentId', gl), id);
-  gl.uniform1i(currentShader.getUniformLocation('shade', gl), shade);
-  gl.uniformMatrix4fv(currentShader.getUniformLocation('texMat', gl), false, texMat);
-  gl.drawElements(gl.TRIANGLES, idxsLength, gl.UNSIGNED_SHORT, 0);
 }
 
 function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture) {
@@ -127,6 +33,7 @@ function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS
   var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
   var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * scale);
   var tcscaley = (stats.yflip ? -1.0 :  1.0) / (tex.getHeight() * scale);
+  var texMat = BGL.getTexureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [xpan / 256.0, ypan / 256.0, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
@@ -163,30 +70,22 @@ function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, vtxs:
   var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   var z = ceil ? sec.ceilingz : sec.floorz;
   var slope = U.createSlopeCalculator(sec, board.walls);
+  BGL.begin();
 
-  var posoff = 0;
   for (var i = 0; i < vtxs.length; i++) {
     var vx = vtxs[i][0];
     var vy = vtxs[i][1];
     var vz = (slope(vx, vy, heinum) + z) / SCALE;
-    pos[posoff++] = vx;
-    pos[posoff++] = vz;
-    pos[posoff++] = vy;
+    BGL.vtx(vx, vz, vy);
   }
 
-  var idxoff = 0;
   for (var i = 0; i < vidxs.length; i+=3) {
     if (ceil) {
-      idxs[idxoff++] = vidxs[i+0];
-      idxs[idxoff++] = vidxs[i+1];
-      idxs[idxoff++] = vidxs[i+2];
+      BGL.triangle(vidxs[i+0], vidxs[i+1], vidxs[i+2]);
     } else {
-      idxs[idxoff++] = vidxs[i+2];
-      idxs[idxoff++] = vidxs[i+1];
-      idxs[idxoff++] = vidxs[i+0];
+      BGL.triangle(vidxs[i+2], vidxs[i+1], vidxs[i+0]);
     }
   }
-  idxsLength = idxoff;
 }
 
 var tricache = {};
@@ -205,12 +104,12 @@ function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:
   fillBuffersForSector(true, board, sec, vtxs, vidxs);
   var tex = artProvider.get(sec.ceilingpicnum);
   applySectorTextureTransform(sec, true, board.walls, tex);
-  drawFace(gl, tex, sec.ceilingshade, id);
+  BGL.drawFace(gl, tex, sec.ceilingshade, id);
 
   fillBuffersForSector(false, board, sec, vtxs, vidxs);
   var tex = artProvider.get(sec.floorpicnum);
   applySectorTextureTransform(sec, false, board.walls, tex);
-  drawFace(gl, tex, sec.floorshade, id);
+  BGL.drawFace(gl, tex, sec.floorshade, id);
 }
 
 
@@ -221,7 +120,7 @@ function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, slope:an
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
   if (check && (z4 >= z1 && z3 >= z2))
     return false;
-  quad(x1, z1, y1, x2, z2, y2, x2, z3, y2, x1, z4, y1);
+  BGL.genQuad(x1, z1, y1, x2, z2, y2, x2, z3, y2, x1, z4, y1);
   return true;
 }
 
@@ -240,10 +139,10 @@ function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, sl
   var z2 = Math.min(currz2, nextz2);
   var z3 = Math.max(currz3, nextz3);
   var z4 = Math.max(currz4, nextz4);
-  quad(x1, z1, y1, x2, z2, y2, x2, z3, y2, x1, z4, y1);
+  BGL.genQuad(x1, z1, y1, x2, z2, y2, x2, z3, y2, x1, z4, y1);
 }
 
-function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number):GLM.Mat4Array {
+function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number) {
   var wall1 = wall;
   if (wall.cstat.xflip)
     [wall1, wall2] = [wall2, wall1];
@@ -255,13 +154,13 @@ function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, 
   var tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0);
   var tcxoff = wall.xpanning / tw;
   var tcyoff = wall.ypanning / 256.0;
-
+  
+  var texMat = BGL.getTexureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [tcxoff, tcyoff, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
   GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / SCALE, -wall1.y, 0]);
-  return texMat;
 }
 
 function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:number, sector:BS.Sector) {
@@ -279,7 +178,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
     fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
     var base = wall.cstat.alignBottom ? floorz : ceilingz;
     applyWallTextureTransform(wall, wall2, tex, base);
-    drawFace(gl, tex, wall.shade, id);
+    BGL.drawFace(gl, tex, wall.shade, id);
   } else {
     var nextsector = board.sectors[wall.nextsector];
     var nextslope = U.createSlopeCalculator(nextsector, board.walls);
@@ -293,14 +192,14 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
       var tex_ = wall.cstat.swapBottoms ? artProvider.get(wall_.picnum) : tex;
       var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
       applyWallTextureTransform(wall_, wall2_, tex_, base);
-      drawFace(gl, tex_, wall_.shade, id);
+      BGL.drawFace(gl, tex_, wall_.shade, id);
     }
 
     var nextceilingheinum = nextsector.ceilingheinum;
     if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true)) {
       var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
       applyWallTextureTransform(wall, wall2, tex, base);
-      drawFace(gl, tex, wall.shade, id);
+      BGL.drawFace(gl, tex, wall.shade, id);
     }
 
     if (wall.cstat.masking) {
@@ -310,7 +209,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
         floorheinum, nextfloorheinum, floorz, nextfloorz);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
       applyWallTextureTransform(wall, wall2, tex1, base);
-      drawFace(gl, tex1, wall.shade, id);
+      BGL.drawFace(gl, tex1, wall.shade, id);
     }
   }
 }
@@ -318,7 +217,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
 function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
   var dx = Math.sin(ang)*hw;
   var dy = Math.cos(ang)*hw;
-  quad(
+  BGL.genQuad(
     x-dx, z-hh+yo, y-dy,
     x+dx, z-hh+yo, y+dy,
     x+dx, z+hh+yo, y+dy,
@@ -326,10 +225,11 @@ function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:nu
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
+  var texMat = BGL.getTexureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), -yf/(hh*2), 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI/2);
-  GLM.mat4.translate(texMat, texMat, [-x+xf*dx, -z+yf*hh-yo, -y+xf*dy, 0]);
+  GLM.mat4.translate(texMat, texMat, [-x-xf*dx, -z-yf*hh-yo, -y-xf*dy, 0]);
 }
 
 function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
@@ -337,7 +237,7 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   var dwy = Math.cos(-ang)*hw;
   var dhx = Math.sin(-ang+Math.PI/2)*hh;
   var dhy = Math.cos(-ang+Math.PI/2)*hh;
-  quad(
+  BGL.genQuad(
     x-dwx-dhx, z+1, y-dwy-dhy,
     x+dwx-dhx, z+1, y+dwy-dhy,
     x+dwx+dhx, z+1, y+dwy+dhy,
@@ -345,6 +245,7 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
+  var texMat = BGL.getTexureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), yf/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
@@ -354,13 +255,18 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
 }
 
 function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number) {
-  quad(x, z, y, x, z, y, x, z, y, x, z, y);
-  var normoff = 0;
-  norm[normoff++] = -hw+xo; norm[normoff++] = +hh+yo;
-  norm[normoff++] = +hw+xo; norm[normoff++] = +hh+yo;
-  norm[normoff++] = +hw+xo; norm[normoff++] = -hh+yo;
-  norm[normoff++] = -hw+xo; norm[normoff++] = -hh+yo;
+  BGL.begin();
+  BGL.normal(-hw+xo, +hh+yo);
+  BGL.vtx(x, z, y);
+  BGL.normal(+hw+xo, +hh+yo);
+  BGL.vtx(x, z, y);
+  BGL.normal(+hw+xo, -hh+yo);
+  BGL.vtx(x, z, y);
+  BGL.normal(-hw+xo, -hh+yo);
+  BGL.vtx(x, z, y);
+  BGL.quad(0, 1, 2, 3);
 
+  var texMat = BGL.getTexureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw+xo, -hh-yo, 0, 0]);
@@ -382,18 +288,18 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
 
   if (spr.cstat.type == 0) { // face
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
-    drawFace(gl, tex, spr.shade, id);
+    BGL.drawFace(gl, tex, spr.shade, id);
   } else if (spr.cstat.type == 1) { // wall
     fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    drawFace(gl, tex, spr.shade, id);
+    BGL.drawFace(gl, tex, spr.shade, id);
   } else if (spr.cstat.type == 2) { // floor
     fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    drawFace(gl, tex, spr.shade, id);
+    BGL.drawFace(gl, tex, spr.shade, id);
   }
 }
 
 function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
-  startBase(gl, ctr);
+  BGL.useBaseShader(gl, ctr);
   var t = MU.int(window.performance.now());
   board.markVisible(ms, t);
   var sectors = board.markedSectors(t);
@@ -424,7 +330,7 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
   info['Sprites:'] = count;
 
   count = 0;
-  startSprite(gl, ctr);
+  BGL.useSpriteShader(gl, ctr);
   for (var i = 0; i < faceSprites.length; i++) {
     var s = faceSprites[i];
     drawSprite(gl, board.ref, s.ref, s.id);
@@ -435,7 +341,7 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
 
 function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper, ctr:C.Controller3D) {
   var sectors = board.allSectors();
-  startBase(gl, ctr);
+  BGL.useBaseShader(gl, ctr);
   for (var sec = sectors(); sec != null; sec = sectors()) {
     drawSector(gl, board.ref, sec.ref, sec.id);
   }
@@ -446,11 +352,12 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper, ctr:C.Controll
 }
 
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
-  selectDraw = 1;
+  BGL.selectDrawMode(true);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   drawImpl(gl, board, ms, ctr, info);
-  selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+  var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+  BGL.setSelectedId(selectedId);
   if (ctr.isClick()) {
     console.log(board.id2object[selectedId]);
   }
@@ -461,7 +368,7 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
     board.id2object[selectedId].ref.ang -= 32;
   }
 
-  selectDraw = 0;
+  BGL.selectDrawMode(false);
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   drawImpl(gl, board, ms, ctr, info);
