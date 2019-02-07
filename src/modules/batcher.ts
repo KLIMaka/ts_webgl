@@ -79,6 +79,6 @@ export function exec(cmds:any[], gl:WebGLRenderingContext):void {
   for (var i = 0 ; i < cmds.length; i+=2) {
     var f = cmds[i];
     var args = cmds[i+1];
-    shader = f(gl, shader, args);
+    shader = f(gl, shader, args instanceof Function ? args() : args);
   }
 }

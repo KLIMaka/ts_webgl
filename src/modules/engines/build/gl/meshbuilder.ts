@@ -16,9 +16,10 @@ export interface ArtProvider {
   getInfo(picnum:number):number;
 }
 
-export function init(gl:WebGLRenderingContext, p:ArtProvider) {
+export function init(gl:WebGLRenderingContext, p:ArtProvider, ctr:C.Controller3D) {
   setArtProvider(p);
   BGL.init(gl);
+  BGL.setController(ctr);
 }
 
 var artProvider:ArtProvider = null;
@@ -298,8 +299,8 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   }
 }
 
-function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
-  BGL.useBaseShader(gl, ctr);
+function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {
+  BGL.useBaseShader(gl);
   var t = MU.int(window.performance.now());
   board.markVisible(ms, t);
   var sectors = board.markedSectors(t);
@@ -330,7 +331,7 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
   info['Sprites:'] = count;
 
   count = 0;
-  BGL.useSpriteShader(gl, ctr);
+  BGL.useSpriteShader(gl);
   for (var i = 0; i < faceSprites.length; i++) {
     var s = faceSprites[i];
     drawSprite(gl, board.ref, s.ref, s.id);
@@ -339,9 +340,9 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
   info['FaceSprites:'] = count;
 }
 
-function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper, ctr:C.Controller3D) {
+function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
   var sectors = board.allSectors();
-  BGL.useBaseShader(gl, ctr);
+  BGL.useBaseShader(gl);
   for (var sec = sectors(); sec != null; sec = sectors()) {
     drawSector(gl, board.ref, sec.ref, sec.id);
   }
@@ -355,7 +356,7 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   BGL.selectDrawMode(true);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawImpl(gl, board, ms, ctr, info);
+  drawImpl(gl, board, ms, info);
   var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
   BGL.setSelectedId(selectedId);
   if (ctr.isClick()) {
@@ -371,16 +372,16 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   BGL.selectDrawMode(false);
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawImpl(gl, board, ms, ctr, info);
+  drawImpl(gl, board, ms, info);
 }
 
-function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
+function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {
   if (!U.inSector(board.ref, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board.ref, ms.x, ms.y, ms.sec);
   }
   if (ms.sec == -1) {
-    drawAll(gl, board, ctr);
+    drawAll(gl, board);
   } else {
-    drawInSector(gl, board, ms, ctr, info);
+    drawInSector(gl, board, ms, info);
   }
 }

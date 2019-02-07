@@ -149,7 +149,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var control = new controller.Controller3D(gl);
   var ms = createMoveStruct(board, control);
 
-  BGL.init(gl, tp);
+  BGL.init(gl, tp, control);
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
     var pos = control.getCamera().getPos();
