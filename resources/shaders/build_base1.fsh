@@ -3,6 +3,7 @@ precision mediump float;
 uniform sampler2D base;
 uniform int selectedId;
 uniform int currentId;
+uniform vec3 color;
 
 varying float att;
 varying vec2 tc;
@@ -26,20 +27,20 @@ void main() {
 #else
 
 void main() {
-  vec4 color = texture2D(base, tc);
+  vec4 c = texture2D(base, tc);
 
   if (currentId == selectedId)
-  	color *= vec4(2.0, 2.0, 2.0, 1.0);
+  	c *= vec4(2.0, 2.0, 2.0, 1.0);
 
 #ifdef TC_GRID 
   if (fract(tc.x) < 0.01 || fract(tc.x) > 0.99 ||
   	  fract(tc.y) < 0.01 || fract(tc.y) > 0.99)
-   	color = vec4(2.0);
+   	c = vec4(2.0);
 #endif
 
-  if (color.a == 0.0)
+  if (c.a == 0.0)
     discard;
-  gl_FragColor = vec4(color.rgb*att, color.a);
+  gl_FragColor = vec4(color * c.rgb * att, c.a);
 }
 
 #endif

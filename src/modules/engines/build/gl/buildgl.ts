@@ -23,6 +23,7 @@ class State {
   private currentId:StateValue<number> = new StateValue<number>(-1);
   private selectedId:StateValue<number> = new StateValue<number>(-1);
   private shade:StateValue<number> = new StateValue<number>(0);
+  private color:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
 
   private shader:StateValue<DS.Shader> = new StateValue<DS.Shader>(null);
   private texture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
@@ -84,6 +85,13 @@ class State {
 
   public setShade(s:number) {
     this.shade.set(s);
+  }
+
+  public setColor(c:GLM.Vec3Array) {
+    var cc = this.color.get();
+    if (cc == c || c[0] == cc[0] && c[1] == cc[1] && c[2] == cc[2])
+      return;
+    this.color.set(c);
   }
 
   public setEyePos(pos:GLM.Vec3Array) {
@@ -152,43 +160,23 @@ class State {
     }
   }
 
+  private setUniform<T>(gl:WebGLRenderingContext, setter, name, value:StateValue<T>, rebindAll:boolean) {
+    if (rebindAll || value.isChanged()) {
+      var l = this.shader.get().getUniformLocation(name, gl);
+      setter(gl, l, value.get())
+      value.setChanged(false);
+    }
+  }
+
   private updateUniforms(gl:WebGLRenderingContext, rebindAll:boolean) {
-    var shader = this.shader.get();
-    if (rebindAll || this.textureMatrix.isChanged()) {
-      var l = shader.getUniformLocation("T", gl);
-      gl.uniformMatrix4fv(l, false, this.textureMatrix.get());
-      this.textureMatrix.setChanged(false);
-    }
-    if (rebindAll || this.viewMatrix.isChanged()) {
-      var l = shader.getUniformLocation("V", gl);
-      gl.uniformMatrix4fv(l, false, this.viewMatrix.get());
-      this.viewMatrix.setChanged(false);
-    }
-    if (rebindAll || this.projectionMatrix.isChanged()) {
-      var l = shader.getUniformLocation("P", gl);
-      gl.uniformMatrix4fv(l, false, this.projectionMatrix.get());
-      this.projectionMatrix.setChanged(false);
-    }
-    if (rebindAll || this.eyePos.isChanged()) {
-      var l = shader.getUniformLocation("eyepos", gl);
-      gl.uniform3fv(l, this.eyePos.get());
-      this.eyePos.setChanged(false);
-    }
-    if (rebindAll || this.selectedId.isChanged()) {
-      var l = shader.getUniformLocation("selectedId", gl);
-      gl.uniform1i(l, this.selectedId.get());
-      this.selectedId.setChanged(false);
-    }
-    if (rebindAll || this.currentId.isChanged()) {
-      var l = shader.getUniformLocation("currentId", gl);
-      gl.uniform1i(l, this.currentId.get());
-      this.currentId.setChanged(false);
-    }
-    if (rebindAll || this.shade.isChanged()) {
-      var l = shader.getUniformLocation("shade", gl);
-      gl.uniform1i(l, this.shade.get());
-      this.shade.setChanged(false);
-    }
+    this.setUniform(gl, BATCH.setters.mat4, "T", this.textureMatrix, rebindAll);
+    this.setUniform(gl, BATCH.setters.mat4, "V", this.viewMatrix, rebindAll);
+    this.setUniform(gl, BATCH.setters.mat4, "P", this.projectionMatrix, rebindAll);
+    this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
+    this.setUniform(gl, BATCH.setters.int1, "selectedId", this.selectedId, rebindAll);
+    this.setUniform(gl, BATCH.setters.int1, "currentId", this.currentId, rebindAll);
+    this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
+    this.setUniform(gl, BATCH.setters.vec3, "color", this.color, rebindAll);
   }
 
   public draw(gl:WebGLRenderingContext) {
@@ -210,6 +198,7 @@ export function init(gl:WebGLRenderingContext) {
   state.setIndexBuffer(idxBuf);
   state.setVertexBuffer('aPos', posBuf);
   state.setVertexBuffer('aNorm', normBuf);
+  state.setColor(GLM.vec3.fromValues(1,1,1));
 }
 
 var baseShader:DS.Shader;
@@ -226,11 +215,11 @@ function createShaders(gl:WebGLRenderingContext) {
 }
 
 
-var pos = new Float32Array(4096);
+var pos = new Float32Array(512);
 var posBuf:MB.VertexBufferDynamic;
-var norm = new Float32Array(4096);
+var norm = new Float32Array(512);
 var normBuf:MB.VertexBufferDynamic;
-var idxs = new Uint16Array(1024);
+var idxs = new Uint16Array(256);
 var idxBuf:MB.DynamicIndexBuffer;
 
 
