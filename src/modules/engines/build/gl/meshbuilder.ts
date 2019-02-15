@@ -19,7 +19,6 @@ export interface ArtProvider {
 export function init(gl:WebGLRenderingContext, p:ArtProvider, ctr:C.Controller3D) {
   setArtProvider(p);
   BGL.init(gl);
-  BGL.setController(ctr);
 }
 
 var artProvider:ArtProvider = null;
@@ -353,6 +352,7 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
 }
 
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
+  BGL.setController(ctr);
   BGL.selectDrawMode(true);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
