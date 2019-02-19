@@ -112,6 +112,11 @@ function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:
   BGL.drawFace(gl, tex, sec.floorshade, id);
 }
 
+function drawQuadLineOutline(gl:WebGLRenderingContext) {
+  BGL.begin();
+  BGL.quadIndex();
+  BGL.drawLines(gl, [1,1,1]);
+}
 
 function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean):boolean {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
@@ -351,14 +356,17 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
   }
 }
 
+var selectDraw = false;
+var selectedId = -1;
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
   BGL.setController(ctr);
   BGL.selectDrawMode(true);
+  selectDraw = true;
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   drawImpl(gl, board, ms, info);
-  var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
-  BGL.setSelectedId(selectedId);
+  selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+
   if (ctr.isClick()) {
     console.log(board.id2object[selectedId]);
   }
@@ -370,6 +378,7 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   }
 
   BGL.selectDrawMode(false);
+  selectDraw = false;
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   drawImpl(gl, board, ms, info);

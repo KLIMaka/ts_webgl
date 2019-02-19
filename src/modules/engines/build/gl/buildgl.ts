@@ -21,7 +21,6 @@ class State {
 
   private eyePos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
   private currentId:StateValue<number> = new StateValue<number>(-1);
-  private selectedId:StateValue<number> = new StateValue<number>(-1);
   private shade:StateValue<number> = new StateValue<number>(0);
   private color:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
 
@@ -34,8 +33,10 @@ class State {
   constructor(gl:WebGLRenderingContext) {
   }
 
-  public setShader(s:DS.Shader) {
+  public setShader(s:DS.Shader):DS.Shader {
+    var prev = this.shader.get();
     this.shader.set(s);
+    return prev;
   }
 
   public getTextureMatrix():GLM.Mat4Array {
@@ -77,10 +78,6 @@ class State {
 
   public setCurrentId(id:number) {
     this.currentId.set(id);
-  }
-
-  public setSelectedId(id:number) {
-    this.selectedId.set(id);
   }
 
   public setShade(s:number) {
@@ -173,20 +170,19 @@ class State {
     this.setUniform(gl, BATCH.setters.mat4, "V", this.viewMatrix, rebindAll);
     this.setUniform(gl, BATCH.setters.mat4, "P", this.projectionMatrix, rebindAll);
     this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
-    this.setUniform(gl, BATCH.setters.int1, "selectedId", this.selectedId, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "currentId", this.currentId, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
     this.setUniform(gl, BATCH.setters.vec3, "color", this.color, rebindAll);
   }
 
-  public draw(gl:WebGLRenderingContext) {
+  public draw(gl:WebGLRenderingContext, mode:number=gl.TRIANGLES) {
     var rebindAll = this.rebindShader(gl);
     this.rebindVertexBuffers(gl, rebindAll);
     this.rebindIndexBuffer(gl, rebindAll);
     this.updateBuffers(gl, rebindAll);
     this.updateUniforms(gl, rebindAll);
     this.rebindTexture(gl, rebindAll);
-    gl.drawElements(gl.TRIANGLES, this.indexLength.get(), gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(mode, this.indexLength.get(), gl.UNSIGNED_SHORT, 0);
   }
 }
 
@@ -205,13 +201,16 @@ var baseShader:DS.Shader;
 var selectShader:DS.Shader;
 var spriteShader:DS.Shader;
 var spriteSelectShader:DS.Shader;
-var currentShader:DS.Shader;
+var baseFlatShader:DS.Shader;
+var spriteFlatShader:DS.Shader;
 
 function createShaders(gl:WebGLRenderingContext) {
   baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1');
   selectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SELECT']);
   spriteShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE']);
   spriteSelectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'SELECT']);
+  baseFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['FLAT']);
+  spriteFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'FLAT']);
 }
 
 
@@ -268,6 +267,15 @@ export function quad(a:number, b:number, c:number, d:number) {
   state.setIndexLength(idxPtr);
 }
 
+export function quadIndex() {
+  idxs[idxPtr++] = 0;
+  idxs[idxPtr++] = 1;
+  idxs[idxPtr++] = 2;
+  idxs[idxPtr++] = 3;
+  idxs[idxPtr++] = 0;
+  state.setIndexLength(idxPtr);
+}
+
 export function genQuad(
   x1:number, y1:number, z1:number,
   x2:number, y2:number, z2:number,
@@ -287,10 +295,6 @@ export function genQuad(
 var selectDraw = false;
 export function selectDrawMode(enable:boolean) {
   selectDraw = enable;
-}
-
-export function setSelectedId(id:number) {
-  state.setSelectedId(id);
 }
 
 export function setController(c:C.Controller3D) {
@@ -316,4 +320,13 @@ export function drawFace(gl:WebGLRenderingContext, tex:DS.Texture, shade:number,
   state.setCurrentId(id);
   state.setShade(shade);
   state.draw(gl);
+}
+
+export function drawLines(gl:WebGLRenderingContext, color:GLM.Vec3Array) {
+  gl.disable(gl.DEPTH_TEST);
+  var prev = state.setShader(baseFlatShader);
+  state.setColor(color);
+  state.draw(gl, gl.LINE_STRIP);
+  state.setShader(prev);
+  gl.enable(gl.DEPTH_TEST);
 }
