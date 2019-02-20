@@ -120,6 +120,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.POLYGON_OFFSET_FILL);
 
   var info = {
     'X:':0,

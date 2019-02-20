@@ -136,7 +136,7 @@ class State {
   }
 
   private rebindTexture(gl:WebGLRenderingContext, rebindAll:boolean) {
-    if (rebindAll || this.texture.isChanged()) {
+    if (this.texture.get() != null && (rebindAll || this.texture.isChanged())) {
       gl.bindTexture(gl.TEXTURE_2D, this.texture.get().get());
       this.texture.setChanged(false);
     }
@@ -186,7 +186,7 @@ class State {
   }
 }
 
-var state:State;
+export var state:State;
 export function init(gl:WebGLRenderingContext) {
   state = new State(gl);
   createBuffers(gl);
@@ -197,12 +197,12 @@ export function init(gl:WebGLRenderingContext) {
   state.setColor(GLM.vec3.fromValues(1,1,1));
 }
 
-var baseShader:DS.Shader;
-var selectShader:DS.Shader;
-var spriteShader:DS.Shader;
-var spriteSelectShader:DS.Shader;
-var baseFlatShader:DS.Shader;
-var spriteFlatShader:DS.Shader;
+export var baseShader:DS.Shader;
+export var selectShader:DS.Shader;
+export var spriteShader:DS.Shader;
+export var spriteSelectShader:DS.Shader;
+export var baseFlatShader:DS.Shader;
+export var spriteFlatShader:DS.Shader;
 
 function createShaders(gl:WebGLRenderingContext) {
   baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1');
@@ -213,14 +213,12 @@ function createShaders(gl:WebGLRenderingContext) {
   spriteFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'FLAT']);
 }
 
-
 var pos = new Float32Array(512);
 var posBuf:MB.VertexBufferDynamic;
 var norm = new Float32Array(512);
 var normBuf:MB.VertexBufferDynamic;
 var idxs = new Uint16Array(256);
 var idxBuf:MB.DynamicIndexBuffer;
-
 
 function createBuffers(gl:WebGLRenderingContext) {
   posBuf = MB.wrap(gl, pos, 3, gl.DYNAMIC_DRAW);
@@ -257,6 +255,12 @@ export function triangle(a:number, b:number, c:number) {
   state.setIndexLength(idxPtr);
 }
 
+export function line(a:number, b:number) {
+  idxs[idxPtr++] = a;
+  idxs[idxPtr++] = b;
+  state.setIndexLength(idxPtr);
+}
+
 export function quad(a:number, b:number, c:number, d:number) {
   idxs[idxPtr++] = a;
   idxs[idxPtr++] = c;
@@ -267,66 +271,9 @@ export function quad(a:number, b:number, c:number, d:number) {
   state.setIndexLength(idxPtr);
 }
 
-export function quadIndex() {
-  idxs[idxPtr++] = 0;
-  idxs[idxPtr++] = 1;
-  idxs[idxPtr++] = 2;
-  idxs[idxPtr++] = 3;
-  idxs[idxPtr++] = 0;
-  state.setIndexLength(idxPtr);
-}
-
-export function genQuad(
-  x1:number, y1:number, z1:number,
-  x2:number, y2:number, z2:number,
-  x3:number, y3:number, z3:number,
-  x4:number, y4:number, z4:number, twosided:boolean=false):void {
-  begin();
-  vtx(x1, y1, z1);
-  vtx(x2, y2, z2);
-  vtx(x3, y3, z3);
-  vtx(x4, y4, z4);
-  quad(0, 1, 2, 3);
-  if (twosided) {
-    quad(3, 2, 1, 0);
-  }
-}
-
-var selectDraw = false;
-export function selectDrawMode(enable:boolean) {
-  selectDraw = enable;
-}
-
 export function setController(c:C.Controller3D) {
   GLM.mat4.copy(state.getProjectionMatrix(), c.getProjectionMatrix());
   GLM.mat4.copy(state.getViewMatrix(), c.getModelViewMatrix());
   state.setEyePos(c.getCamera().getPos());
 }
 
-export function useBaseShader(gl:WebGLRenderingContext) {
-  state.setShader(selectDraw ? selectShader : baseShader);
-}
-
-export function useSpriteShader(gl:WebGLRenderingContext) {
-  state.setShader(selectDraw ? spriteSelectShader : spriteShader);
-}
-
-export function getTexureMatrix():GLM.Mat4Array {
-  return state.getTextureMatrix();
-}
-
-export function drawFace(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:number) {
-  state.setTexture(tex);
-  state.setCurrentId(id);
-  state.setShade(shade);
-  state.draw(gl);
-}
-
-export function drawLines(gl:WebGLRenderingContext, color:GLM.Vec3Array) {
-  gl.disable(gl.DEPTH_TEST);
-  var prev = state.setShader(baseFlatShader);
-  state.setColor(color);
-  state.draw(gl, gl.LINE_STRIP);
-  state.setShader(prev);
-  gl.enable(gl.DEPTH_TEST);
-}
