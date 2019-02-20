@@ -219,17 +219,18 @@ function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:n
   }
 }
 
-function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number) {
+function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number, originalWall:BS.Wall=wall) {
   var wall1 = wall;
-  if (wall.cstat.xflip)
+  if (originalWall.cstat.xflip)
     [wall1, wall2] = [wall2, wall1];
+  var flip = wall == originalWall ? 1 : -1;
   var tw = tex.getWidth();
   var th = tex.getHeight();
   var dx = wall2.x - wall1.x;
   var dy = wall2.y - wall1.y;
-  var tcscalex = (wall.xrepeat * 8.0) / (MU.len2d(dx, dy) * tw);
+  var tcscalex = (originalWall.xrepeat * 8.0) / (flip * MU.len2d(dx, dy) * tw);
   var tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0);
-  var tcxoff = wall.xpanning / tw;
+  var tcxoff = originalWall.xpanning / tw;
   var tcyoff = wall.ypanning / 256.0;
   
   var texMat = BGL.state.getTextureMatrix();
@@ -268,7 +269,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
       var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
       var tex_ = wall.cstat.swapBottoms ? artProvider.get(wall_.picnum) : tex;
       var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
-      applyWallTextureTransform(wall_, wall2_, tex_, base);
+      applyWallTextureTransform(wall_, wall2_, tex_, base, wall);
       BGLdraw(gl, tex_, wall_.shade, id);
     }
 
@@ -316,10 +317,10 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   var dhx = Math.sin(-ang+Math.PI/2)*hh;
   var dhy = Math.cos(-ang+Math.PI/2)*hh;
   BGL.begin();
-  BGL.vtx(x-dwx-dhx, z+1, y-dwy-dhy);
-  BGL.vtx(x+dwx-dhx, z+1, y+dwy-dhy);
-  BGL.vtx(x+dwx+dhx, z+1, y+dwy+dhy);
-  BGL.vtx(x-dwx+dhx, z+1, y-dwy+dhy);
+  BGL.vtx(x-dwx-dhx, z, y-dwy-dhy);
+  BGL.vtx(x+dwx-dhx, z, y+dwy-dhy);
+  BGL.vtx(x+dwx+dhx, z, y+dwy+dhy);
+  BGL.vtx(x-dwx+dhx, z, y-dwy+dhy);
   genSpriteQuad(onesided);
 
   var xf = xf ? -1.0 : 1.0;
@@ -335,20 +336,20 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
 
 function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number) {
   BGL.begin();
-  BGL.normal(-hw+xo, +hh+yo);
+  BGL.normal(-hw, +hh+yo);
   BGL.vtx(x, z, y);
-  BGL.normal(+hw+xo, +hh+yo);
+  BGL.normal(+hw, +hh+yo);
   BGL.vtx(x, z, y);
-  BGL.normal(+hw+xo, -hh+yo);
+  BGL.normal(+hw, -hh+yo);
   BGL.vtx(x, z, y);
-  BGL.normal(-hw+xo, -hh+yo);
+  BGL.normal(-hw, -hh+yo);
   BGL.vtx(x, z, y);
   genSpriteQuad(1);
 
   var texMat = BGL.state.getTextureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
-  GLM.mat4.translate(texMat, texMat, [hw+xo, -hh-yo, 0, 0]);
+  GLM.mat4.translate(texMat, texMat, [hw, -hh-yo, 0, 0]);
 }
 
 function genSpriteQuad(onesided:number) {
@@ -375,7 +376,7 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   var yo = MU.ubyte2byte((tinfo >> 16) & 0xFF)*16 * (spr.yrepeat/64);
   var xf = spr.cstat.xflip; var yf = spr.cstat.yflip;
 
-  gl.polygonOffset(-1, -40);
+  gl.polygonOffset(-1, -8);
   if (spr.cstat.type == 0) { // face
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
     BGLdraw(gl, tex, spr.shade, id, true);

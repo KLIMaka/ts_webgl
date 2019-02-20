@@ -96,6 +96,10 @@ export class Controller3D {
     return this.oldY;
   }
 
+  public setFov(fov:number) {
+    this.fov = fov;
+  }
+
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
     GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);

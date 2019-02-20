@@ -150,6 +150,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var boardWrapper = new BW.BoardWrapper(board);
   var tp = new BuildArtProvider(artFiles, pal, gl);
   var control = new controller.Controller3D(gl);
+  control.setFov(75);
   var ms = createMoveStruct(board, control);
 
   BGL.init(gl, tp, control);
