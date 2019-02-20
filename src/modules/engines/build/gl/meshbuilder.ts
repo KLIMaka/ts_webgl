@@ -130,38 +130,21 @@ function cacheTriangulate(board:BS.Board, sec:BS.Sector) {
   return res;
 }
 
-function BGLdrawSprite(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:number) {
+function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:number, sprite:boolean=false) {
   if (mode == MODE_NORMAL) {
-    BGL.state.setShader(BGL.spriteShader);
+    BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
+    BGL.state.setColor([1,1,1,1]);
     BGL.state.setTexture(tex);
     BGL.state.setShade(shade);
     BGL.state.draw(gl);
   } else if (mode == MODE_SELECT) {
-    BGL.state.setShader(BGL.spriteSelectShader);
+    BGL.state.setShader(sprite ? BGL.spriteSelectShader : BGL.selectShader);
     BGL.state.setTexture(tex);
     BGL.state.setCurrentId(id);
     BGL.state.draw(gl);
   } else if (mode == MODE_WIREFRAME) {
-    BGL.state.setShader(BGL.spriteFlatShader);
-    BGL.state.setColor([1,1,1]);
-    BGL.state.draw(gl, gl.LINES);
-  }
-}
-
-function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:number) {
-  if (mode == MODE_NORMAL) {
-    BGL.state.setShader(BGL.baseShader);
-    BGL.state.setTexture(tex);
-    BGL.state.setShade(shade);
-    BGL.state.draw(gl);
-  } else if (mode == MODE_SELECT) {
-    BGL.state.setTexture(tex);
-    BGL.state.setShader(BGL.selectShader);
-    BGL.state.setCurrentId(id);
-    BGL.state.draw(gl);
-  } else if (mode == MODE_WIREFRAME) {
-    BGL.state.setShader(BGL.baseFlatShader);
-    BGL.state.setColor([1,1,1]);
+    BGL.state.setShader(sprite ? BGL.spriteFlatShader : BGL.baseFlatShader);
+    BGL.state.setColor([1,1,1,0.2]);
     BGL.state.draw(gl, gl.LINES);
   }
 }
@@ -200,18 +183,7 @@ function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, slope:an
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
   if (check && (z4 >= z1 && z3 >= z2))
     return false;
-
-  BGL.begin();
-  BGL.vtx(x1, z1, y1); BGL.vtx(x2, z2, y2); BGL.vtx(x2, z3, y2); BGL.vtx(x1, z4, y1);
-  if (mode == MODE_WIREFRAME) {
-    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
-  } else {
-    if (z1 < z2) {
-      BGL.triangle(0,2,1); BGL.triangle(0,3,2); 
-    } else {
-      BGL.triangle(0,3,1); BGL.triangle(1,3,2); 
-    }
-  }
+  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4);
   return true;
 }
 
@@ -230,7 +202,10 @@ function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, sl
   var z2 = Math.min(currz2, nextz2);
   var z3 = Math.max(currz3, nextz3);
   var z4 = Math.max(currz4, nextz4);
+  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4);
+}
 
+function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number) {
   BGL.begin();
   BGL.vtx(x1, z1, y1); BGL.vtx(x2, z2, y2); BGL.vtx(x2, z3, y2); BGL.vtx(x1, z4, y1);
   if (mode == MODE_WIREFRAME) {
@@ -324,13 +299,7 @@ function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:nu
   BGL.vtx(x+dx, z-hh+yo, y+dy);
   BGL.vtx(x+dx, z+hh+yo, y+dy);
   BGL.vtx(x-dx, z+hh+yo, y-dy);
-  if (mode == MODE_WIREFRAME) {
-    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
-  } else {
-    BGL.quad(0, 1, 2, 3);
-    if (!onesided)    
-      BGL.quad(3, 2, 1, 0);
-  }
+  genSpriteQuad(onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
@@ -351,13 +320,7 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   BGL.vtx(x+dwx-dhx, z+1, y+dwy-dhy);
   BGL.vtx(x+dwx+dhx, z+1, y+dwy+dhy);
   BGL.vtx(x-dwx+dhx, z+1, y-dwy+dhy);
-  if (mode == MODE_WIREFRAME) {
-    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
-  } else {
-    BGL.quad(0, 1, 2, 3);
-    if (!onesided)    
-      BGL.quad(3, 2, 1, 0);
-  }
+  genSpriteQuad(onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
@@ -380,16 +343,22 @@ function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:nu
   BGL.vtx(x, z, y);
   BGL.normal(-hw+xo, -hh+yo);
   BGL.vtx(x, z, y);
-  if (mode == MODE_WIREFRAME) {
-    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
-  } else {
-    BGL.quad(0, 1, 2, 3);
-  }
+  genSpriteQuad(1);
 
   var texMat = BGL.state.getTextureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw+xo, -hh-yo, 0, 0]);
+}
+
+function genSpriteQuad(onesided:number) {
+  if (mode == MODE_WIREFRAME) {
+    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
+  } else {
+    BGL.quad(0, 1, 2, 3);
+    if (!onesided)    
+      BGL.quad(3, 2, 1, 0);
+  }
 }
 
 function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:number) {
@@ -409,7 +378,7 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   gl.polygonOffset(-1, -40);
   if (spr.cstat.type == 0) { // face
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
-    BGLdrawSprite(gl, tex, spr.shade, id);
+    BGLdraw(gl, tex, spr.shade, id, true);
   } else if (spr.cstat.type == 1) { // wall
     fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
     BGLdraw(gl, tex, spr.shade, id);
@@ -472,22 +441,23 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
 
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
   BGL.setController(ctr);
-  // mode = MODE_SELECT;
-  // gl.clearColor(0, 0, 0, 0);
-  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  // drawImpl(gl, board, ms, info);
+  
+  mode = MODE_SELECT;
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  drawImpl(gl, board, ms, info);
 
-  // var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+  var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
 
-  // if (ctr.isClick()) {
-  //   console.log(board.id2object[selectedId]);
-  // }
-  // if (board.id2object[selectedId] instanceof BW.SpriteWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
-  //   board.id2object[selectedId].ref.ang += 32;
-  // }
-  // if (board.id2object[selectedId] instanceof BW.SpriteWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
-  //   board.id2object[selectedId].ref.ang -= 32;
-  // }
+  if (ctr.isClick()) {
+    console.log(board.id2object[selectedId]);
+  }
+  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
+    board.id2object[selectedId].ref.floorheinum += 32;
+  }
+  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
+    board.id2object[selectedId].ref.floorheinum -= 32;
+  }
 
   mode = MODE_NORMAL;
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
@@ -500,19 +470,19 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   // gl.enable(gl.DEPTH_TEST);
 
 
-  // var selected = board.id2object[selectedId];
-  // if (selected != undefined) {
-  //   gl.disable(gl.DEPTH_TEST);
-  //   mode = MODE_WIREFRAME;
-  //   if (selected instanceof BW.SectorWrapper) {
-  //     drawSector(gl, board.ref, selected.ref, selected.id);
-  //   } else if (selected instanceof BW.WallWrapper) {
-  //     drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
-  //   } else if (selected instanceof BW.SpriteWrapper) {
-  //     drawSprite(gl, board.ref, selected.ref, selected.id);
-  //   }
-  //   gl.enable(gl.DEPTH_TEST);
-  // }
+  var selected = board.id2object[selectedId];
+  if (selected != undefined) {
+    gl.disable(gl.DEPTH_TEST);
+    mode = MODE_WIREFRAME;
+    if (selected instanceof BW.SectorWrapper) {
+      drawSector(gl, board.ref, selected.ref, selected.id);
+    } else if (selected instanceof BW.WallWrapper) {
+      drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
+    } else if (selected instanceof BW.SpriteWrapper) {
+      drawSprite(gl, board.ref, selected.ref, selected.id);
+    }
+    gl.enable(gl.DEPTH_TEST);
+  }
 }
 
 function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {

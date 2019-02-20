@@ -22,7 +22,7 @@ class State {
   private eyePos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
   private currentId:StateValue<number> = new StateValue<number>(-1);
   private shade:StateValue<number> = new StateValue<number>(0);
-  private color:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
+  private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.create());
 
   private shader:StateValue<DS.Shader> = new StateValue<DS.Shader>(null);
   private texture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
@@ -84,9 +84,9 @@ class State {
     this.shade.set(s);
   }
 
-  public setColor(c:GLM.Vec3Array) {
+  public setColor(c:GLM.Vec4Array) {
     var cc = this.color.get();
-    if (cc == c || c[0] == cc[0] && c[1] == cc[1] && c[2] == cc[2])
+    if (cc == c || c[0] == cc[0] && c[1] == cc[1] && c[2] == cc[2] && c[3] == cc[3])
       return;
     this.color.set(c);
   }
@@ -172,7 +172,7 @@ class State {
     this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "currentId", this.currentId, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
-    this.setUniform(gl, BATCH.setters.vec3, "color", this.color, rebindAll);
+    this.setUniform(gl, BATCH.setters.vec4, "color", this.color, rebindAll);
   }
 
   public draw(gl:WebGLRenderingContext, mode:number=gl.TRIANGLES) {
@@ -194,7 +194,7 @@ export function init(gl:WebGLRenderingContext) {
   state.setIndexBuffer(idxBuf);
   state.setVertexBuffer('aPos', posBuf);
   state.setVertexBuffer('aNorm', normBuf);
-  state.setColor(GLM.vec3.fromValues(1,1,1));
+  state.setColor(GLM.vec4.fromValues(1,1,1,1));
 }
 
 export var baseShader:DS.Shader;

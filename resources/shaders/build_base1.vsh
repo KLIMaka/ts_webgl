@@ -17,8 +17,9 @@ varying vec2 tc;
 void main() {
 
 #ifdef SPRITE
-  vec4 epos = V * vec4(aPos, 1.0);
-  epos.xy += aNorm.xy;
+  vec3 p = aPos + vec3(0.0, aNorm.y, 0.0);
+  vec4 epos = V * vec4(p, 1.0);
+  epos.x += aNorm.x;
   gl_Position = P * epos;
   tc = (T * vec4(aNorm.x, aNorm.y, 0.0 , 1.0)).xy;
 #else
