@@ -249,7 +249,7 @@ var normBuf:MB.VertexBufferDynamic;
 var idxs = new Uint16Array(4096);
 var idxBuf:MB.DynamicIndexBuffer;
 
-var posBag = BAG.createController(1024, (place:BAG.Place, noffset:number) => {
+var vtxBag = BAG.createController(1024, (place:BAG.Place, noffset:number) => {
   pos.set(pos.subarray(place.offset*3, place.offset*3+place.size*3), noffset*3);
   norm.set(norm.subarray(place.offset*2, place.offset*2+place.size*2), noffset*2);
   var idxPlce = <BAG.Place> place.data;
@@ -261,6 +261,24 @@ var posBag = BAG.createController(1024, (place:BAG.Place, noffset:number) => {
 var idxBag = BAG.createController(1024, (place:BAG.Place, noffset:number) => {
   idxs.set(idxs.subarray(place.offset, place.offset+place.size), noffset);
 });
+
+export function allocate(vtxSize:number, idxSize:number):BAG.Place {
+  var vtx = vtxBag.get(vtxSize);
+  var idx = idxBag.get(idxSize);
+  vtx.data = idx;
+  return vtx;
+}
+
+export function writePos(place:BAG.Place, off:number, x:number, y:number, z:number) {
+  pos[(place.offset+off)*3] = x;
+  pos[(place.offset+off)*3+1] = y;
+  pos[(place.offset+off)*3+2] = z;
+}
+
+export function writeNormal(place:BAG.Place, off:number, x:number, y:number) {
+  norm[(place.offset+off)*2] = x;
+  norm[(place.offset+off)*2+1] = y;
+}
 
 
 function createBuffers(gl:WebGLRenderingContext) {
