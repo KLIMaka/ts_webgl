@@ -380,17 +380,20 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   var xo = MU.ubyte2byte((tinfo >> 8) & 0xFF)*16 * (spr.xrepeat/64);
   var yo = MU.ubyte2byte((tinfo >> 16) & 0xFF)*16 * (spr.yrepeat/64);
   var xf = spr.cstat.xflip; var yf = spr.cstat.yflip;
+  var sec = board.sectors[spr.sectnum];
+  var sectorShade = sec.floorshade;
+  var shade = spr.shade == -8 ? sectorShade : spr.shade;
 
   gl.polygonOffset(-1, -8);
   if (spr.cstat.type == 0) { // face
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
-    BGLdraw(gl, tex, spr.shade, spr.pal, id, true);
+    BGLdraw(gl, tex, shade, spr.pal, id, true);
   } else if (spr.cstat.type == 1) { // wall
     fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, spr.shade, spr.pal, id);
+    BGLdraw(gl, tex, shade, spr.pal, id);
   } else if (spr.cstat.type == 2) { // floor
     fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, spr.shade, spr.pal, id);
+    BGLdraw(gl, tex, shade, spr.pal, id);
   }
   gl.polygonOffset(0, 0);
 }

@@ -28,5 +28,5 @@ void main() {
 #endif
 
   lightLevel = length(aPos - eyepos) / 512.0;
-  lightLevel = clamp(float(shade) + lightLevel, 0.0, 63.0);
+  lightLevel = clamp(float(shade) + lightLevel, 0.5, 63.0);
 }

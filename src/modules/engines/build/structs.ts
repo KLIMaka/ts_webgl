@@ -152,6 +152,7 @@ export class SpriteStats {
   public realCenter:number;
   public blocking2:number;
   public tranclucentReversed:number;
+  public noautoshading:number;
   public reserved:number;
   public invicible:number;
 

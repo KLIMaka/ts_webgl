@@ -58,8 +58,8 @@ export var wallStruct =  data.struct(build.Wall,[
   ]);
 
 var spriteStats = data.struct(build.SpriteStats, [[
-  'blocking,translucent,xflip,yflip,type,onesided,realCenter,blocking2,tranclucentReversed,_,invicible', 
-  data.bit_field([1,1,1,1,2,1,1,1,1,5,1], true)]]
+  'blocking,translucent,xflip,yflip,type,onesided,realCenter,blocking2,tranclucentReversed,noautoshading,_,invicible', 
+  data.bit_field([1,1,1,1,2,1,1,1,1,1,4,1], true)]]
  );
 
 export var spriteStruct = data.struct(build.Sprite,[
