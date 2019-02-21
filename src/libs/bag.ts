@@ -1,7 +1,7 @@
 import L = require('./list');
 
 export class Place {
-  constructor(public offset:number, public size:number) {}
+  constructor(public offset:number, public size:number, public data:any=null) {}
 }
 
 export class Bag {
@@ -81,9 +81,11 @@ export class Bag {
 export class BagController {
   private bag:Bag;
   private places = {};
+  private updater:(place:Place, noffset:number)=>void;
 
-  constructor(size:number) {
+  constructor(size:number, updater:(place:Place, noffset:number)=>void) {
     this.bag = new Bag(size);
+    this.updater = updater;
   }
 
   public get(size:number):Place {
@@ -108,6 +110,9 @@ export class BagController {
       var key = keys[i];
       var place = places[key];
       this.places[offset] = place;
+      if (place.offset == offset)
+        continue;
+      this.updater(place, offset);
       place.offset = offset;
       offset += place.size;
     }
@@ -119,6 +124,6 @@ export function create(size:number):Bag {
   return new Bag(size);
 }
 
-export function createController(size:number):BagController {
-  return new BagController(size);
+export function createController(size:number, updater:(place:Place, noffset:number)=>void):BagController {
+  return new BagController(size, updater);
 }

@@ -4,6 +4,7 @@ import SHADER = require('../../../shaders');
 import GLM = require('../../../../libs_js/glmatrix');
 import C = require('../../../../modules/controller3d');
 import BATCH = require('../../../../modules/batcher');
+import BAG = require('../../../../libs/bag');
 
 class StateValue<T> {
   public changed:boolean = false;
@@ -171,14 +172,14 @@ class State {
 
   private updateBuffers(gl:WebGLRenderingContext, rebindAll:boolean) {
     if (rebindAll || this.indexLength.isChanged()) {
-      this.indexBuffer.get().update(gl);
+      this.indexBuffer.get().update(gl, idxPtr);
       var attributes = this.shader.get().getAttributes();
       for (var a = 0; a < attributes.length; a++) {
         var attr = attributes[a];
         var buf = this.vertexBuffers[attr];
         if (buf == undefined)
           continue;
-        buf.get().update(gl);
+        buf.get().update(gl, vtxPtr);
       }
       this.indexLength.setChanged(false);
     }
@@ -241,12 +242,26 @@ function createShaders(gl:WebGLRenderingContext) {
   spriteFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'FLAT']);
 }
 
-var pos = new Float32Array(512);
+var pos = new Float32Array(4096);
 var posBuf:MB.VertexBufferDynamic;
-var norm = new Float32Array(512);
+var norm = new Float32Array(4096);
 var normBuf:MB.VertexBufferDynamic;
-var idxs = new Uint16Array(256);
+var idxs = new Uint16Array(4096);
 var idxBuf:MB.DynamicIndexBuffer;
+
+var posBag = BAG.createController(1024, (place:BAG.Place, noffset:number) => {
+  pos.set(pos.subarray(place.offset*3, place.offset*3+place.size*3), noffset*3);
+  norm.set(norm.subarray(place.offset*2, place.offset*2+place.size*2), noffset*2);
+  var idxPlce = <BAG.Place> place.data;
+  var offdiff = noffset - place.offset;
+  for(var i = 0; i < idxPlce.size; i++) {
+    idxs[idxPlce.offset+i] += offdiff;
+  }
+});
+var idxBag = BAG.createController(1024, (place:BAG.Place, noffset:number) => {
+  idxs.set(idxs.subarray(place.offset, place.offset+place.size), noffset);
+});
+
 
 function createBuffers(gl:WebGLRenderingContext) {
   posBuf = MB.wrap(gl, pos, 3, gl.DYNAMIC_DRAW);
