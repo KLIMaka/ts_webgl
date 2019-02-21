@@ -11,7 +11,7 @@ attribute vec3 aNorm;
 
 attribute vec3 aPos;
 
-varying float att;
+varying float lightLevel;
 varying vec2 tc;
 
 void main() {
@@ -27,6 +27,6 @@ void main() {
   tc = (T * vec4(aPos, 1.0)).xy;
 #endif
 
-  att = (( -float(shade) * 3.0 + 190.0) / 256.0);
-  att -= length(aPos - eyepos) / (70.0 * 1024.0);
+  lightLevel = length(aPos - eyepos) / 512.0;
+  lightLevel = clamp(float(shade) + lightLevel, 0.0, 63.0);
 }

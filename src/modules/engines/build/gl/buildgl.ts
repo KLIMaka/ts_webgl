@@ -23,9 +23,12 @@ class State {
   private currentId:StateValue<number> = new StateValue<number>(-1);
   private shade:StateValue<number> = new StateValue<number>(0);
   private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.create());
+  private plu:StateValue<number> = new StateValue<number>(0);
 
   private shader:StateValue<DS.Shader> = new StateValue<DS.Shader>(null);
   private texture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
+  private palTexture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
+  private pluTexture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
   private vertexBuffers:{[index:string]:StateValue<MB.VertexBufferDynamic>} = {};
   private indexBuffer:StateValue<MB.DynamicIndexBuffer> = new StateValue<MB.DynamicIndexBuffer>(null);
   private indexLength:StateValue<number> = new StateValue<number>(0);
@@ -56,6 +59,14 @@ class State {
 
   public setTexture(tex:DS.Texture) {
     this.texture.set(tex);
+  }
+
+  public setPalTexture(tex:DS.Texture) {
+    this.palTexture.set(tex);
+  }
+
+  public setPluTexture(tex:DS.Texture) {
+    this.pluTexture.set(tex);
   }
 
   public setIndexBuffer(b:MB.DynamicIndexBuffer) {
@@ -91,6 +102,10 @@ class State {
     this.color.set(c);
   }
 
+  public setPal(p:number) {
+    this.plu.set(p);
+  }
+
   public setEyePos(pos:GLM.Vec3Array) {
     this.eyePos.set(pos);
   }
@@ -100,7 +115,8 @@ class State {
       var shader = this.shader.get();
       gl.useProgram(shader.getProgram());
       gl.uniform1i(shader.getUniformLocation('base', gl), 0);
-      gl.activeTexture(gl.TEXTURE0);
+      gl.uniform1i(shader.getUniformLocation('pal', gl), 1);
+      gl.uniform1i(shader.getUniformLocation('plu', gl), 2);
       this.shader.setChanged(false);  
       return true;
     }
@@ -137,8 +153,19 @@ class State {
 
   private rebindTexture(gl:WebGLRenderingContext, rebindAll:boolean) {
     if (this.texture.get() != null && (rebindAll || this.texture.isChanged())) {
+      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.texture.get().get());
       this.texture.setChanged(false);
+    }
+    if (this.palTexture.get() != null && (rebindAll || this.palTexture.isChanged())) {
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.palTexture.get().get());
+      this.palTexture.setChanged(false);
+    }
+    if (this.pluTexture.get() != null && (rebindAll || this.pluTexture.isChanged())) {
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, this.pluTexture.get().get());
+      this.pluTexture.setChanged(false);
     }
   }
 
@@ -172,6 +199,7 @@ class State {
     this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "currentId", this.currentId, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
+    this.setUniform(gl, BATCH.setters.int1, "pluN", this.plu, rebindAll);
     this.setUniform(gl, BATCH.setters.vec4, "color", this.color, rebindAll);
   }
 

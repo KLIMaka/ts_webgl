@@ -14,11 +14,15 @@ const SCALE = -16;
 export interface ArtProvider {
   get(picnum:number):DS.Texture;
   getInfo(picnum:number):number;
+  getPalTexture():DS.Texture;
+  getPluTexture():DS.Texture;
 }
 
 export function init(gl:WebGLRenderingContext, p:ArtProvider, ctr:C.Controller3D) {
   setArtProvider(p);
   BGL.init(gl);
+  BGL.state.setPalTexture(p.getPalTexture());
+  BGL.state.setPluTexture(p.getPluTexture());
 }
 
 var artProvider:ArtProvider = null;
@@ -130,12 +134,13 @@ function cacheTriangulate(board:BS.Board, sec:BS.Sector) {
   return res;
 }
 
-function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:number, sprite:boolean=false) {
+function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, sprite:boolean=false) {
   if (mode == MODE_NORMAL) {
     BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
     BGL.state.setColor([1,1,1,1]);
     BGL.state.setTexture(tex);
     BGL.state.setShade(shade);
+    BGL.state.setPal(pal);
     BGL.state.draw(gl);
   } else if (mode == MODE_SELECT) {
     BGL.state.setShader(sprite ? BGL.spriteSelectShader : BGL.selectShader);
@@ -144,7 +149,7 @@ function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, id:numb
     BGL.state.draw(gl);
   } else if (mode == MODE_WIREFRAME) {
     BGL.state.setShader(sprite ? BGL.spriteFlatShader : BGL.baseFlatShader);
-    BGL.state.setColor([1,1,1,0.2]);
+    BGL.state.setColor([1,1,1,0.3]);
     BGL.state.draw(gl, gl.LINES);
   }
 }
@@ -155,24 +160,24 @@ function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:
     fillBuffersForSector(true, board, sec, vtxs, vidxs);
     var tex = artProvider.get(sec.ceilingpicnum);
     applySectorTextureTransform(sec, true, board.walls, tex);
-    BGLdraw(gl, tex, sec.ceilingshade, id);
+    BGLdraw(gl, tex, sec.ceilingshade, sec.ceilingpal, id);
     fillBuffersForSector(false, board, sec, vtxs, vidxs);
     var tex = artProvider.get(sec.floorpicnum);
     applySectorTextureTransform(sec, false, board.walls, tex);
-    BGLdraw(gl, tex, sec.floorshade, id);
+    BGLdraw(gl, tex, sec.floorshade, sec.floorpal, id);
   } else if (mode == MODE_SELECT) {
     var [vtxs, vidxs] = cacheTriangulate(board, sec);
     fillBuffersForSector(true, board, sec, vtxs, vidxs);
     var tex = artProvider.get(sec.ceilingpicnum);
-    BGLdraw(gl, tex, 0, id);
+    BGLdraw(gl, tex, 0, 0, id);
     fillBuffersForSector(false, board, sec, vtxs, vidxs);
     var tex = artProvider.get(sec.floorpicnum);
-    BGLdraw(gl, tex, 0, id);
+    BGLdraw(gl, tex, 0, 0, id);
   } else if (mode == MODE_WIREFRAME) {
     fillBuffersForSectorWireframe(true, board, sec);
-    BGLdraw(gl, null, 0, 0);
+    BGLdraw(gl, null, 0, 0, 0);
     fillBuffersForSectorWireframe(false, board, sec);
-    BGLdraw(gl, null, 0, 0);
+    BGLdraw(gl, null, 0, 0, 0);
   }
 }
 
@@ -256,7 +261,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
     fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
     var base = wall.cstat.alignBottom ? floorz : ceilingz;
     applyWallTextureTransform(wall, wall2, tex, base);
-    BGLdraw(gl, tex, wall.shade, id);
+    BGLdraw(gl, tex, wall.shade, wall.pal, id);
   } else {
     var nextsector = board.sectors[wall.nextsector];
     var nextslope = U.createSlopeCalculator(nextsector, board.walls);
@@ -270,14 +275,14 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
       var tex_ = wall.cstat.swapBottoms ? artProvider.get(wall_.picnum) : tex;
       var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
       applyWallTextureTransform(wall_, wall2_, tex_, base, wall);
-      BGLdraw(gl, tex_, wall_.shade, id);
+      BGLdraw(gl, tex_, wall_.shade, wall_.pal, id);
     }
 
     var nextceilingheinum = nextsector.ceilingheinum;
     if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true)) {
       var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
       applyWallTextureTransform(wall, wall2, tex, base);
-      BGLdraw(gl, tex, wall.shade, id);
+      BGLdraw(gl, tex, wall.shade, wall.pal, id);
     }
 
     if (wall.cstat.masking) {
@@ -287,7 +292,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
         floorheinum, nextfloorheinum, floorz, nextfloorz);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
       applyWallTextureTransform(wall, wall2, tex1, base);
-      BGLdraw(gl, tex1, wall.shade, id);
+      BGLdraw(gl, tex1, wall.shade, wall.pal, id);
     }
   }
 }
@@ -379,13 +384,13 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   gl.polygonOffset(-1, -8);
   if (spr.cstat.type == 0) { // face
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
-    BGLdraw(gl, tex, spr.shade, id, true);
+    BGLdraw(gl, tex, spr.shade, spr.pal, id, true);
   } else if (spr.cstat.type == 1) { // wall
     fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, spr.shade, id);
+    BGLdraw(gl, tex, spr.shade, spr.pal, id);
   } else if (spr.cstat.type == 2) { // floor
     fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, spr.shade, id);
+    BGLdraw(gl, tex, spr.shade, spr.pal, id);
   }
   gl.polygonOffset(0, 0);
 }

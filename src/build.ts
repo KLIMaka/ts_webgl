@@ -25,13 +25,16 @@ var cfgFile = 'build.cfg';
 
 class BuildArtProvider implements BGL.ArtProvider {
   private textures:DS.Texture[] = [];
+  private palTexture:DS.Texture = null;
+  private pluTexture:DS.Texture = null;
   
   constructor(
     private arts:ART.ArtFiles, 
     private pal:Uint8Array,
+    private PLUs:Uint8Array[],
     private gl:WebGLRenderingContext) {}
 
-  get(picnum:number): DS.Texture {
+  public get(picnum:number): DS.Texture {
     var tex = this.textures[picnum];
     if (tex != undefined)
       return tex;
@@ -39,23 +42,45 @@ class BuildArtProvider implements BGL.ArtProvider {
     var info = this.arts.getInfo(picnum);
     if (info.h <= 0 || info.w <= 0)
        return this.get(0);
-    var arr = new Uint8Array(info.w*info.h*4);
-    var img = pixel.fromPal(info.img, this.pal, info.w, info.h, 255, 255);
-    var pp = pixel.axisSwap(img);
-    pp.render(arr);
-    var repeat = MU.ispow2(pp.getWidth()) && MU.ispow2(pp.getHeight()) 
-      ? WebGLRenderingContext.REPEAT 
-      : WebGLRenderingContext.CLAMP_TO_EDGE;
+    var arr = this.axisSwap(info.img, info.w, info.h);
+    var repeat = WebGLRenderingContext.CLAMP_TO_EDGE;
     var filter = WebGLRenderingContext.NEAREST;
-    tex = TEX.createTexture(pp.getWidth(), pp.getHeight(), this.gl, {filter:filter, repeat:repeat}, arr);
+    tex = TEX.createTexture(info.h, info.w, this.gl, {filter:filter, repeat:repeat}, arr, this.gl.LUMINANCE);
 
     this.textures[picnum] = tex;
     return tex;
   }
 
-  getInfo(picnum:number):number {
+  private axisSwap(data:Uint8Array, w:number, h:number):Uint8Array {
+    var result = new Uint8Array(w*h);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        result[x*h+y] = data[y*w+x];
+      }
+    }
+    return result;
+  }
+
+  public getInfo(picnum:number):number {
     var info = this.arts.getInfo(picnum);
     return info.anum;
+  }
+
+  public getPalTexture():DS.Texture {
+    if (this.palTexture == null)
+      this.palTexture = TEX.createTexture(256, 1, this.gl, {filter:this.gl.NEAREST}, this.pal, this.gl.RGB, 3);
+    return this.palTexture;
+  }
+
+  public getPluTexture():DS.Texture {
+    if (this.pluTexture == null) {
+      var tex = new Uint8Array(256*64*this.PLUs.length);
+      for (var i = 0; i < this.PLUs.length; i++) {
+        tex.set(this.PLUs[i], 256*64*i);
+      }
+      this.pluTexture = TEX.createTexture(256, 64*this.PLUs.length, this.gl, {filter:this.gl.NEAREST}, tex, this.gl.LUMINANCE);
+    }
+    return this.pluTexture;
   }
 }
 
@@ -116,13 +141,14 @@ function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
   return ms;
 }
 
-function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array) {
+function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array, PLUs:Uint8Array[]) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.enable(gl.BLEND);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
   var info = {
     'X:':0,
@@ -148,7 +174,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array)
   var board = bloodloader.loadBloodMap(stream);
   console.log(board);
   var boardWrapper = new BW.BoardWrapper(board);
-  var tp = new BuildArtProvider(artFiles, pal, gl);
+  var tp = new BuildArtProvider(artFiles, pal, PLUs, gl);
   var control = new controller.Controller3D(gl);
   control.setFov(75);
   var ms = createMoveStruct(board, control);
@@ -195,7 +221,25 @@ for (var a = 0; a < 18; a++)
   arts.push(ART.create(new data.DataViewStream(getter.get(artNames[a]), true)));
 var artFiles = ART.createArts(arts);
 
+var PLUs = [
+  rff.get('NORMAL.PLU'),
+  rff.get('SATURATE.PLU'),
+  rff.get('BEAST.PLU'),
+  rff.get('TOMMY.PLU'),
+  rff.get('SPIDER3.PLU'),
+  rff.get('GRAY.PLU'),
+  rff.get('GRAYISH.PLU'),
+  rff.get('SPIDER1.PLU'),
+  rff.get('SPIDER2.PLU'),
+  rff.get('FLAME.PLU'),
+  rff.get('COLD.PLU'),
+  rff.get('P1.PLU'),
+  rff.get('P2.PLU'),
+  rff.get('P3.PLU'),
+  rff.get('P4.PLU'),
+];
+
 var map = rff.get(browser.getQueryVariable('map')).buffer;
-render(cfg, map, artFiles, pal);
+render(cfg, map, artFiles, pal, PLUs);
 
 });
