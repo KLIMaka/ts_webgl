@@ -419,9 +419,16 @@ export class VertexBufferDynamic extends VertexBufferImpl {
     return this.data;
   }
 
-  public update(gl:WebGLRenderingContext, length:number=0):void {
+  public update(gl:WebGLRenderingContext):void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, length == 0 ? this.data : new Uint8Array(this.data.buffer, 0, (<any>this.data).BYTES_PER_ELEMENT*length*this.getSpacing()));
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.data);
+  }
+
+  public updateRegion(gl:WebGLRenderingContext, offset:number, length:number):void {
+    var sizeof = (<any>this.data).BYTES_PER_ELEMENT*this.getSpacing();
+    var region = new Uint8Array(this.data.buffer, offset*sizeof, length*sizeof);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
+    gl.bufferSubData(gl.ARRAY_BUFFER, offset*sizeof, region);
   }
 }
 
@@ -457,7 +464,14 @@ export class DynamicIndexBuffer extends IndexBufferImpl {
 
   public update(gl:WebGLRenderingContext, length:number=0) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.getBuffer());
-    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, length==0 ? this.data : new Uint8Array(this.data.buffer, 0, length*2));
+    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, this.data);
+  }
+
+  public updateRegion(gl:WebGLRenderingContext, offset:number, length:number):void {
+    var sizeof = 2;
+    var region = new Uint8Array(this.data.buffer, offset*sizeof, length*sizeof);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
+    gl.bufferSubData(gl.ARRAY_BUFFER, offset*sizeof, region);
   }
 
   public getData():ArrayBufferView {
