@@ -4,6 +4,7 @@ import * as SHADER from '../../../shaders';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as C from '../../../../modules/controller3d';
 import * as BATCH from '../../../../modules/batcher';
+import * as BUFF from './buffers';
 import * as BAG from '../../../../libs/bag';
 
 class StateValue<T> {
@@ -32,7 +33,7 @@ class State {
   private pluTexture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
   private vertexBuffers:{[index:string]:StateValue<MB.VertexBufferDynamic>} = {};
   private indexBuffer:StateValue<MB.DynamicIndexBuffer> = new StateValue<MB.DynamicIndexBuffer>(null);
-  private indexLength:StateValue<number> = new StateValue<number>(0);
+  private drawElements:StateValue<BAG.Place> = new StateValue<BAG.Place>(new BAG.Place(0, 0));
 
   constructor(gl:WebGLRenderingContext) {
   }
@@ -83,9 +84,10 @@ class State {
     state.set(b);
   }
 
-  public setIndexLength(l:number) {
-    this.indexLength.set(l);
-    this.indexLength.setChanged(true);
+  public setDrawElements(place:BAG.Place) {
+    if (this.drawElements.get().offset != place.offset ||  this.drawElements.get().size != place.size) {
+      this.drawElements.set(place);
+    }
   }
 
   public setCurrentId(id:number) {
@@ -171,18 +173,7 @@ class State {
   }
 
   private updateBuffers(gl:WebGLRenderingContext, rebindAll:boolean) {
-    if (rebindAll || this.indexLength.isChanged()) {
-      this.indexBuffer.get().update(gl, idxPtr);
-      var attributes = this.shader.get().getAttributes();
-      for (var a = 0; a < attributes.length; a++) {
-        var attr = attributes[a];
-        var buf = this.vertexBuffers[attr];
-        if (buf == undefined)
-          continue;
-        buf.get().update(gl, vtxPtr);
-      }
-      this.indexLength.setChanged(false);
-    }
+    BUFF.update(gl);
   }
 
   private setUniform<T>(gl:WebGLRenderingContext, setter, name, value:StateValue<T>, rebindAll:boolean) {
@@ -211,18 +202,18 @@ class State {
     this.updateBuffers(gl, rebindAll);
     this.updateUniforms(gl, rebindAll);
     this.rebindTexture(gl, rebindAll);
-    gl.drawElements(mode, this.indexLength.get(), gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(mode, this.drawElements.get().size, gl.UNSIGNED_SHORT, this.drawElements.get().offset*2);
   }
 }
 
 export var state:State;
 export function init(gl:WebGLRenderingContext) {
   state = new State(gl);
-  createBuffers(gl);
+  BUFF.init(gl, 64*1024, 64*1024);
   createShaders(gl);
-  state.setIndexBuffer(idxBuf);
-  state.setVertexBuffer('aPos', posBuf);
-  state.setVertexBuffer('aNorm', normBuf);
+  state.setIndexBuffer(BUFF.getIdxBuffer());
+  state.setVertexBuffer('aPos', BUFF.getPosBuffer());
+  state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
   state.setColor(GLM.vec4.fromValues(1,1,1,1));
 }
 

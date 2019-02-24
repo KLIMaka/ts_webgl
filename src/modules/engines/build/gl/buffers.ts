@@ -1,5 +1,5 @@
-import BAG = require('../../../../libs/bag');
-import MB = require('../../../meshbuilder');
+import * as BAG from '../../../../libs/bag';
+import * as MB from '../../../meshbuilder';
 
 var pos:Float32Array;
 var posBuf:MB.VertexBufferDynamic;
@@ -99,7 +99,7 @@ export function writeNormal(place:BAG.Place, off:number, x:number, y:number):num
 }
 
 export function writeTriangle(place:BAG.Place, off:number, a:number, b:number, c:number):number {
-  var off = place.offset+off;
+  var off = (<BAG.Place>place.data).offset+off;
   idxs[off] = a;
   idxs[off+1] = b;
   idxs[off+2] = c;
@@ -108,7 +108,7 @@ export function writeTriangle(place:BAG.Place, off:number, a:number, b:number, c
 }
 
 export function writeQuad(place:BAG.Place, off:number, a:number, b:number, c:number, d:number):number {
-  var off = place.offset+off;
+  var off = (<BAG.Place>place.data).offset+off;
   idxs[off] = a;
   idxs[off+1] = c;
   idxs[off+2] = b;
@@ -120,7 +120,7 @@ export function writeQuad(place:BAG.Place, off:number, a:number, b:number, c:num
 }
 
 export function writeLine(place:BAG.Place, off:number, a:number, b:number):number {
-  var off = place.offset+off;
+  var off = (<BAG.Place>place.data).offset+off;
   idxs[off] = a;
   idxs[off+1] = b;
   idxRegions.push([off, 2]);

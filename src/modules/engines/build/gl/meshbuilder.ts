@@ -8,6 +8,8 @@ import * as GLU from '../../../../libs_js/glutess';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as GL from '../../../../modules/gl';
 import * as BGL from './buildgl';
+import * as BUFF from './buffers';
+import * as BAG from '../../../../libs/bag';
 
 const SCALE = -16;
 
@@ -30,12 +32,18 @@ function setArtProvider(p:ArtProvider) {
   artProvider = p;
 }
 
-
 const MODE_NORMAL = 0;
 const MODE_SELECT = 1;
 const MODE_WIREFRAME = 2;
 
 var mode = MODE_NORMAL;
+
+var floors:BAG.Place[] = [];
+var ceilings:BAG.Place[] = [];
+var wallup:BAG.Place[] = [];
+var wallmiddle:BAG.Place[] = [];
+var walldown:BAG.Place[] = [];
+var sprites:BAG.Place[] = [];
 
 function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture) {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
@@ -61,29 +69,37 @@ function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS
 }
 
 
-function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, vtxs:number[], vidxs:number[]) {
-  var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
-  var z = ceil ? sec.ceilingz : sec.floorz;
-  var slope = U.createSlopeCalculator(sec, board.walls);
-  BGL.begin();
+function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number, vtxs:number[], vidxs:number[]) {
+  var buff = ceil ? ceilings[id] : floors[id];
+  if (buff == undefined) {
+    buff = BUFF.allocate(vtxs.length, vidxs.length);
+    
+    var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
+    var z = ceil ? sec.ceilingz : sec.floorz;
+    var slope = U.createSlopeCalculator(sec, board.walls);
+    var off = 0;
 
-  for (var i = 0; i < vtxs.length; i++) {
-    var vx = vtxs[i][0];
-    var vy = vtxs[i][1];
-    var vz = (slope(vx, vy, heinum) + z) / SCALE;
-    BGL.vtx(vx, vz, vy);
-  }
+    for (var i = 0; i < vtxs.length; i++) {
+      var vx = vtxs[i][0];
+      var vy = vtxs[i][1];
+      var vz = (slope(vx, vy, heinum) + z) / SCALE;
+      off = BUFF.writePos(buff, off, vx, vz, vy);
+    }
 
-  for (var i = 0; i < vidxs.length; i+=3) {
-    if (ceil) {
-      BGL.triangle(vidxs[i+0], vidxs[i+1], vidxs[i+2]);
-    } else {
-      BGL.triangle(vidxs[i+2], vidxs[i+1], vidxs[i+0]);
+    off = 0;
+    for (var i = 0; i < vidxs.length; i+=3) {
+      if (ceil) {
+        off = BUFF.writeTriangle(buff, off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
+      } else {
+        off = BUFF.writeTriangle(buff, off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
+      }
     }
   }
+
+  BGL.state.setDrawElements(buff);
 }
 
-function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sector) {
+function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number) {
   var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   var z = ceil ? sec.ceilingz : sec.floorz;
   var slope = U.createSlopeCalculator(sec, board.walls);
@@ -157,26 +173,26 @@ function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:num
 function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:number) {
   if (mode == MODE_NORMAL) {
     var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    fillBuffersForSector(true, board, sec, vtxs, vidxs);
+    fillBuffersForSector(true, board, sec, id, vtxs, vidxs);
     var tex = artProvider.get(sec.ceilingpicnum);
     applySectorTextureTransform(sec, true, board.walls, tex);
     BGLdraw(gl, tex, sec.ceilingshade, sec.ceilingpal, id);
-    fillBuffersForSector(false, board, sec, vtxs, vidxs);
+    fillBuffersForSector(false, board, sec, id, vtxs, vidxs);
     var tex = artProvider.get(sec.floorpicnum);
     applySectorTextureTransform(sec, false, board.walls, tex);
     BGLdraw(gl, tex, sec.floorshade, sec.floorpal, id);
   } else if (mode == MODE_SELECT) {
     var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    fillBuffersForSector(true, board, sec, vtxs, vidxs);
+    fillBuffersForSector(true, board, sec, id, vtxs, vidxs);
     var tex = artProvider.get(sec.ceilingpicnum);
     BGLdraw(gl, tex, 0, 0, id);
-    fillBuffersForSector(false, board, sec, vtxs, vidxs);
+    fillBuffersForSector(false, board, sec, id, vtxs, vidxs);
     var tex = artProvider.get(sec.floorpicnum);
     BGLdraw(gl, tex, 0, 0, id);
   } else if (mode == MODE_WIREFRAME) {
-    fillBuffersForSectorWireframe(true, board, sec);
+    fillBuffersForSectorWireframe(true, board, sec, id);
     BGLdraw(gl, null, 0, 0, 0);
-    fillBuffersForSectorWireframe(false, board, sec);
+    fillBuffersForSectorWireframe(false, board, sec, id);
     BGLdraw(gl, null, 0, 0, 0);
   }
 }
