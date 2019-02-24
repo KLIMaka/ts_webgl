@@ -1,6 +1,6 @@
-import DS = require('./drawstruct');
-import MU = require('../libs/mathutils')
-import pixel = require('./pixelprovider');
+import * as DS from './drawstruct';
+import * as MU from '../libs/mathutils';
+import * as pixel from './pixelprovider';
 
 export class TextureStub implements DS.Texture {
   constructor(public w:number, public h:number) {}

@@ -1,4 +1,4 @@
-import DS = require('./drawstruct');
+import * as DS from './drawstruct';
 
 export function clear(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
   gl.clearColor(data[0], data[1], data[2], data[3]);

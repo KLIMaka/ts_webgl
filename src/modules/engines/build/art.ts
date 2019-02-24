@@ -1,4 +1,4 @@
-import data = require('../../../libs/dataviewstream');
+import * as data  from '../../../libs/dataviewstream';
 
 export class ArtInfo {
   constructor(public w:number, public h:number, public anum:number, public img:Uint8Array) {}

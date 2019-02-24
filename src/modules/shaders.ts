@@ -1,7 +1,7 @@
-import Set = require('../libs/set');
-import DS = require('./drawstruct');
-import getter = require('../libs/getter');
-import AB = require('../libs/asyncbarrier');
+import * as Set from '../libs/set';
+import * as DS from './drawstruct';
+import * as getter from '../libs/getter';
+import * as AB from '../libs/asyncbarrier';
 
 var defaultFSH = 'void main(){gl_FragColor = vec4(0.0);}';
 var defaultVSH = 'void main(){gl_Position = vec4(0.0);}';

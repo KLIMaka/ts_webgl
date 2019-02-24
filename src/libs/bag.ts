@@ -1,4 +1,4 @@
-import L = require('./list');
+import * as L  from './list';
 
 export class Place {
   constructor(public offset:number, public size:number, public data:any=null) {}

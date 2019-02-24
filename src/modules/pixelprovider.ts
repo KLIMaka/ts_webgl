@@ -1,6 +1,5 @@
-
-import MU = require('../libs/mathutils');
-import Anim = require('./anim');
+import * as  MU from '../libs/mathutils';
+import * as  Anim from './anim';
 
 export type BlendFunc = (dst:Uint8Array, dstoff:number, src:Uint8Array, srcoff:number) => void;
 

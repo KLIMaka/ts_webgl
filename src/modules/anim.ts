@@ -1,5 +1,4 @@
-
-import MU = require('../libs/mathutils');
+import * as MU from '../libs/mathutils';
 
 export interface Animated<T> {
   start(time:number):void;

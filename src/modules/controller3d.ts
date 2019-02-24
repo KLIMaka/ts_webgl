@@ -1,6 +1,6 @@
-import camera = require('./camera');
-import GLM = require('../libs_js/glmatrix');
-import MU = require('../libs/mathutils');
+import * as camera from './camera';
+import * as GLM from '../libs_js/glmatrix';
+import * as MU from '../libs/mathutils';
 
 var named = {
   8: 'BACKSPACE',
@@ -37,7 +37,6 @@ export class Controller3D {
     this.gl.canvas.addEventListener('mousemove', (e:MouseEvent) => self.mousemove(e));
     this.gl.canvas.addEventListener('mouseup', (e:MouseEvent) => self.mouseup(e));
     this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
-    this.gl.canvas.addEventListener('mousewheel', (e:MouseWheelEvent) => self.mousewheel(e));
 
     document.addEventListener('keyup', (e:KeyboardEvent) => self.keyup(e));
     document.addEventListener('keydown', (e:KeyboardEvent) => self.keydown(e));
@@ -62,11 +61,6 @@ export class Controller3D {
 
   private mousedown(e:MouseEvent):boolean {
     this.drag = true;
-    return false;
-  }
-
-  private mousewheel(e:MouseWheelEvent):boolean {
-    this.fov += -e.deltaX / 60;
     return false;
   }
 

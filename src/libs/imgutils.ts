@@ -1,5 +1,4 @@
-
-import pixel = require('../modules/pixelprovider');
+import * as pixel from '../modules/pixelprovider';
 
 export function createEmptyCanvas(width:number, height:number):HTMLCanvasElement {
   var canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -18,13 +17,11 @@ export function createCanvas(provider:pixel.PixelProvider, blend:pixel.BlendFunc
 
 export function drawToCanvas(provider:pixel.PixelProvider, canvas:HTMLCanvasElement, x:number=0, y:number=0, blend:pixel.BlendFunc=pixel.BlendNormal) {
   var ctx = canvas.getContext('2d');
+  var data:Uint8ClampedArray;
   if (blend === pixel.BlendNormal) {
-    var data = new Uint8ClampedArray(provider.getWidth()*provider.getHeight()*4);
+    data = new Uint8ClampedArray(provider.getWidth()*provider.getHeight()*4);
     var id = new ImageData(data, provider.getWidth(), provider.getHeight());
-  } else {
-    var id = ctx.getImageData(x, y, provider.getWidth(), provider.getHeight());
-    var data = id.data;
-  }
+  } 
   provider.render(data, blend);
   ctx.putImageData(id, x, y);
 }

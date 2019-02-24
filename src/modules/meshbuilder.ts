@@ -1,7 +1,7 @@
-import GLM = require('../libs_js/glmatrix');
-import MU  = require('../libs/mathutils');
-import DS = require('./drawstruct');
-import BATCH = require('./batcher');
+import * as GLM from '../libs_js/glmatrix';
+import * as MU from '../libs/mathutils';
+import * as DS from './drawstruct';
+import * as BATCH from './batcher';
 
 export class DynamicIndexBufferBuilder {
   private buffer:ArrayBuffer;
@@ -11,7 +11,7 @@ export class DynamicIndexBufferBuilder {
   constructor(
     private maxSize:number,
     private arrayType,
-    private type:number,
+    private type:number
   ) {
     this.buffer = new arrayType(maxSize);
   }

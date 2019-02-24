@@ -1,4 +1,4 @@
-import B = require('../modules/bitreader');
+import * as B from '../modules/bitreader';
 
 export class DataViewStream {
   private view:DataView;

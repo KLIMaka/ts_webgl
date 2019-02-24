@@ -1,13 +1,13 @@
-import DS = require('../../../drawstruct');
-import BW = require('../buildwrapper');
-import U = require('../utils');
-import MU = require('../../../../libs/mathutils');
-import C = require('../../../../modules/controller3d');
-import BS = require('../structs');
-import GLU = require('../../../../libs_js/glutess');
-import GLM = require('../../../../libs_js/glmatrix');
-import GL = require('../../../../modules/gl');
-import BGL = require('./buildgl');
+import * as DS from '../../../drawstruct';
+import * as BW from '../buildwrapper';
+import * as U from '../utils';
+import * as MU from '../../../../libs/mathutils';
+import * as C from '../../../../modules/controller3d';
+import * as BS from '../structs';
+import * as GLU from '../../../../libs_js/glutess';
+import * as GLM from '../../../../libs_js/glmatrix';
+import * as GL from '../../../../modules/gl';
+import * as BGL from './buildgl';
 
 const SCALE = -16;
 

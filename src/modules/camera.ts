@@ -1,5 +1,5 @@
-import GLM = require('./../libs_js/glmatrix');
-import MU = require('./../libs/mathutils');
+import * as GLM from './../libs_js/glmatrix';
+import * as MU from './../libs/mathutils';
 
 export class Camera {
 

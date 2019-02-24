@@ -1,8 +1,8 @@
-import BS = require('./structs');
-import U = require('./utils');
-import GLU = require('../../../libs_js/glutess');
-import DS = require('../../drawstruct');
-import ITER = require('../../../libs/iterator');
+import * as BS from './structs';
+import * as U from './utils';
+import * as GLU from '../../../libs_js/glutess';
+import * as DS from '../../drawstruct';
+import * as ITER from '../../../libs/iterator';
 
 export class Marked {
   private marker:number = -1;

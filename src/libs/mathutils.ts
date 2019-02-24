@@ -1,7 +1,3 @@
-
-import GLM = require('../libs_js/glmatrix');
-import VEC = require('./vecmath');
-
 export var radsInDeg = 180 / Math.PI;
 export var degInRad = Math.PI / 180;
 export var PI2 = Math.PI*2;

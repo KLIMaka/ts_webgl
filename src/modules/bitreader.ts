@@ -1,5 +1,4 @@
-
-import data = require('../libs/dataviewstream');
+import * as data from '../libs/dataviewstream';
 
 export class BitReader {
   

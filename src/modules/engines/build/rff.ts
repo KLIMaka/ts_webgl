@@ -1,4 +1,4 @@
-import data = require('../../../libs/dataviewstream');
+import * as data  from '../../../libs/dataviewstream';
 
 var headerStruct = data.struct(Object, [
   ['sign', data.string(4)],

@@ -1,6 +1,6 @@
-import data = require('../../../libs/dataviewstream');
-import build = require('./structs');
-import loader = require('./loader');
+import * as data from '../../../libs/dataviewstream';
+import * as build from './structs';
+import * as loader from './loader';
 
 
 function decryptBuffer(buffer:Uint8Array, size:number, key:number) {

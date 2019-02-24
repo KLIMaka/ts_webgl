@@ -1,10 +1,10 @@
-import MB = require('../../../meshbuilder');
-import DS = require('../../../drawstruct');
-import SHADER = require('../../../shaders');
-import GLM = require('../../../../libs_js/glmatrix');
-import C = require('../../../../modules/controller3d');
-import BATCH = require('../../../../modules/batcher');
-import BAG = require('../../../../libs/bag');
+import * as MB from '../../../meshbuilder';
+import * as DS from '../../../drawstruct';
+import * as SHADER from '../../../shaders';
+import * as GLM from '../../../../libs_js/glmatrix';
+import * as C from '../../../../modules/controller3d';
+import * as BATCH from '../../../../modules/batcher';
+import * as BAG from '../../../../libs/bag';
 
 class StateValue<T> {
   public changed:boolean = false;

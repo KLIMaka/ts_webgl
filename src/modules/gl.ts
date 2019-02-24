@@ -1,5 +1,5 @@
-import DS = require('./drawstruct');
-import BATCH = require('./batcher');
+import * as DS from './drawstruct';
+import * as BATCH from './batcher';
 
 export function createContext(w:number, h:number, opts = {}):WebGLRenderingContext {
   var canvas:HTMLCanvasElement = document.createElement('canvas');

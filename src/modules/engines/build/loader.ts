@@ -1,5 +1,5 @@
-import data = require('../../../libs/dataviewstream');
-import build = require('./structs');
+import * as data from '../../../libs/dataviewstream';
+import * as build from './structs';
 
 var sectorStats = data.struct(build.SectorStats, [[
   'parallaxing,slopped,swapXY,doubleSmooshiness,xflip,yflip,alignToFirstWall,_', 
