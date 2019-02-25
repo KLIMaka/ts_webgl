@@ -68,61 +68,6 @@ function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
 
-
-function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number, vtxs:number[], vidxs:number[]) {
-  var buff = ceil ? ceilings[id] : floors[id];
-  if (buff == undefined) {
-    buff = BUFF.allocate(vtxs.length, vidxs.length);
-    
-    var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
-    var z = ceil ? sec.ceilingz : sec.floorz;
-    var slope = U.createSlopeCalculator(sec, board.walls);
-    var off = 0;
-
-    for (var i = 0; i < vtxs.length; i++) {
-      var vx = vtxs[i][0];
-      var vy = vtxs[i][1];
-      var vz = (slope(vx, vy, heinum) + z) / SCALE;
-      off = BUFF.writePos(buff, off, vx, vz, vy);
-    }
-
-    off = 0;
-    for (var i = 0; i < vidxs.length; i+=3) {
-      if (ceil) {
-        off = BUFF.writeTriangle(buff, off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
-      } else {
-        off = BUFF.writeTriangle(buff, off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
-      }
-    }
-  }
-
-  BGL.state.setDrawElements(buff);
-}
-
-function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number) {
-  var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
-  var z = ceil ? sec.ceilingz : sec.floorz;
-  var slope = U.createSlopeCalculator(sec, board.walls);
-  BGL.begin();
-
-  var fw = sec.wallptr;
-  for (var w = 0; w < sec.wallnum; w++) {
-    var wid = sec.wallptr + w;
-    var wall = board.walls[wid];
-    var vx = wall.x;
-    var vy = wall.y;
-    var vz = (slope(vx, vy, heinum) + z) / SCALE;
-    BGL.vtx(vx, vz, vy);
-    if (fw != wid) {
-      BGL.line(w-1, w);
-    }
-    if (wall.point2 == fw) {
-      BGL.line(w, fw-sec.wallptr);
-      fw = wid + 1;
-    } 
-  }
-}
-
 function triangulate(sector:BS.Sector, walls:BS.Wall[]):number[][] {
   var contour = [];
   var contours = [];
@@ -150,6 +95,57 @@ function cacheTriangulate(board:BS.Board, sec:BS.Sector) {
   return res;
 }
 
+function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number) {
+  var buffs = ceil ? ceilings : floors; 
+  var buff = buffs[id];
+  if (buff == undefined) {
+    var [vtxs, vidxs] = cacheTriangulate(board, sec);
+    buff = BUFF.allocate(vtxs.length+sec.wallnum, vidxs.length, sec.wallnum*2);
+    buffs[id] = buff;
+
+    var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
+    var z = ceil ? sec.ceilingz : sec.floorz;
+    var slope = U.createSlopeCalculator(sec, board.walls);
+    var off = 0;
+
+    for (var i = 0; i < vtxs.length; i++) {
+      var vx = vtxs[i][0];
+      var vy = vtxs[i][1];
+      var vz = (slope(vx, vy, heinum) + z) / SCALE;
+      off = BUFF.writePos(buff, off, vx, vz, vy);
+    }
+
+    off = 0;
+    for (var i = 0; i < vidxs.length; i+=3) {
+      if (ceil) {
+        off = BUFF.writeTriangle(buff, off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
+      } else {
+        off = BUFF.writeTriangle(buff, off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
+      }
+    }
+
+    var fw = sec.wallptr;
+    var voff = vtxs.length;
+    off = 0;
+    for (var w = 0; w < sec.wallnum; w++) {
+      var wid = sec.wallptr + w;
+      var wall = board.walls[wid];
+      var vx = wall.x;
+      var vy = wall.y;
+      var vz = (slope(vx, vy, heinum) + z) / SCALE;
+      voff = BUFF.writePos(buff, voff, vx, vz, vy);
+      if (fw != wid) {
+        off = BUFF.writeLine(buff, off, vtxs.length+w-1, vtxs.length+w);
+      }
+      if (wall.point2 == fw) {
+        off = BUFF.writeLine(buff, off, vtxs.length+w, vtxs.length+fw-sec.wallptr);
+        fw = wid + 1;
+      } 
+    }
+  }
+  BGL.state.setDrawElements(buff);
+}
+
 function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, sprite:boolean=false) {
   if (mode == MODE_NORMAL) {
     BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
@@ -171,46 +167,40 @@ function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:num
 }
 
 function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:number) {
-  if (mode == MODE_NORMAL) {
-    var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    fillBuffersForSector(true, board, sec, id, vtxs, vidxs);
-    var tex = artProvider.get(sec.ceilingpicnum);
-    applySectorTextureTransform(sec, true, board.walls, tex);
-    BGLdraw(gl, tex, sec.ceilingshade, sec.ceilingpal, id);
-    fillBuffersForSector(false, board, sec, id, vtxs, vidxs);
-    var tex = artProvider.get(sec.floorpicnum);
-    applySectorTextureTransform(sec, false, board.walls, tex);
-    BGLdraw(gl, tex, sec.floorshade, sec.floorpal, id);
-  } else if (mode == MODE_SELECT) {
-    var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    fillBuffersForSector(true, board, sec, id, vtxs, vidxs);
-    var tex = artProvider.get(sec.ceilingpicnum);
-    BGLdraw(gl, tex, 0, 0, id);
-    fillBuffersForSector(false, board, sec, id, vtxs, vidxs);
-    var tex = artProvider.get(sec.floorpicnum);
-    BGLdraw(gl, tex, 0, 0, id);
-  } else if (mode == MODE_WIREFRAME) {
-    fillBuffersForSectorWireframe(true, board, sec, id);
-    BGLdraw(gl, null, 0, 0, 0);
-    fillBuffersForSectorWireframe(false, board, sec, id);
-    BGLdraw(gl, null, 0, 0, 0);
-  }
+  fillBuffersForSector(true, board, sec, id);
+  var tex = artProvider.get(sec.ceilingpicnum);
+  applySectorTextureTransform(sec, true, board.walls, tex);
+  BGLdraw(gl, tex, sec.ceilingshade, sec.ceilingpal, id);
+
+  fillBuffersForSector(false, board, sec, id);
+  var tex = artProvider.get(sec.floorpicnum);
+  applySectorTextureTransform(sec, false, board.walls, tex);
+  BGLdraw(gl, tex, sec.floorshade, sec.floorpal, id);
 }
 
-function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean):boolean {
+function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, 
+  slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean,
+  buffs:BAG.Place[], id:number):boolean {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
   if (check && (z4 >= z1 && z3 >= z2))
     return false;
-  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4);
+  var buff = buffs[id];
+  if (buff == undefined) {
+    buff = BUFF.allocate(4, 6, 8);
+    buffs[id] = buff;
+    genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
+  }
+  BGL.state.setDrawElements(buff);
   return true;
 }
 
 function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, 
   ceilheinum:number, ceilnextheinum:number, ceilz:number, ceilnextz:number,
-  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number):void {
+  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number,
+  buffs:BAG.Place[], id:number):void {
   var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE; 
   var currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
   var currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
@@ -223,21 +213,28 @@ function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, sl
   var z2 = Math.min(currz2, nextz2);
   var z3 = Math.max(currz3, nextz3);
   var z4 = Math.max(currz4, nextz4);
-  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4);
+  var buff = buffs[id];
+  if (buff == undefined) {
+    buff = BUFF.allocate(4, 6, 8);
+    buffs[id] = buff;
+    genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
+  }
+  BGL.state.setDrawElements(buff);
 }
 
-function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number) {
-  BGL.begin();
-  BGL.vtx(x1, z1, y1); BGL.vtx(x2, z2, y2); BGL.vtx(x2, z3, y2); BGL.vtx(x1, z4, y1);
-  if (mode == MODE_WIREFRAME) {
-    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
-  } else {
-    if (z1 < z2) {
-      BGL.triangle(0,2,1); BGL.triangle(0,3,2); 
-    } else {
-      BGL.triangle(0,3,1); BGL.triangle(1,3,2); 
-    }
-  }
+function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number, buff:BAG.Place) {
+  var off = 0;
+  off = BUFF.writePos(buff, off, x1, z1, y1);
+  off = BUFF.writePos(buff, off, x2, z2, y2);
+  off = BUFF.writePos(buff, off, x2, z3, y2);
+  off = BUFF.writePos(buff, off, x1, z4, y1);
+  var off = 0;
+  off = BUFF.writeQuad(buff, off, 0, 1, 2, 3);
+  var off = 0;
+  off = BUFF.writeLine(buff, off, 0, 1);
+  off = BUFF.writeLine(buff, off, 1, 2);
+  off = BUFF.writeLine(buff, off, 2, 3);
+  off = BUFF.writeLine(buff, off, 3, 0);
 }
 
 function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number, originalWall:BS.Wall=wall) {
@@ -274,7 +271,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
   var floorz = sector.floorz;
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
-    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
+    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, wallmiddle, id);
     var base = wall.cstat.alignBottom ? floorz : ceilingz;
     applyWallTextureTransform(wall, wall2, tex, base);
     BGLdraw(gl, tex, wall.shade, wall.pal, id);
@@ -285,7 +282,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
     var nextceilingz = nextsector.ceilingz;
 
     var nextfloorheinum = nextsector.floorheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true)) {
+    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, walldown, id)) {
       var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
       var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
       var tex_ = wall.cstat.swapBottoms ? artProvider.get(wall_.picnum) : tex;
@@ -295,7 +292,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
     }
 
     var nextceilingheinum = nextsector.ceilingheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true)) {
+    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, wallup, id)) {
       var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
       applyWallTextureTransform(wall, wall2, tex, base);
       BGLdraw(gl, tex, wall.shade, wall.pal, id);
@@ -305,7 +302,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
       var tex1 = artProvider.get(wall.overpicnum);
       fillBuffersForMaskedWall(x1, y1, x2, y2, slope, nextslope, 
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
-        floorheinum, nextfloorheinum, floorz, nextfloorz);
+        floorheinum, nextfloorheinum, floorz, nextfloorz, wallmiddle, id);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
       applyWallTextureTransform(wall, wall2, tex1, base);
       BGLdraw(gl, tex1, wall.shade, wall.pal, id);
@@ -313,15 +310,22 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
   }
 }
 
-function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
+function fillbuffersForWallSprite(id:number, x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
   var dx = Math.sin(ang)*hw;
   var dy = Math.cos(ang)*hw;
-  BGL.begin();
-  BGL.vtx(x-dx, z-hh+yo, y-dy);
-  BGL.vtx(x+dx, z-hh+yo, y+dy);
-  BGL.vtx(x+dx, z+hh+yo, y+dy);
-  BGL.vtx(x-dx, z+hh+yo, y-dy);
-  genSpriteQuad(onesided);
+  var buff = sprites[id];
+  if (buff == undefined) {
+    buff = BUFF.allocate(4, onesided?6:12, 8);
+    sprites[id] = buff;
+
+    var off = 0;
+    off = BUFF.writePos(buff, off, x-dx, z-hh+yo, y-dy);
+    off = BUFF.writePos(buff, off, x+dx, z-hh+yo, y+dy);
+    off = BUFF.writePos(buff, off, x+dx, z+hh+yo, y+dy);
+    off = BUFF.writePos(buff, off, x-dx, z+hh+yo, y-dy);
+    genSpriteQuad(buff, onesided);
+  }
+  BGL.state.setDrawElements(buff);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
@@ -332,17 +336,23 @@ function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:nu
   GLM.mat4.translate(texMat, texMat, [-x-xf*dx, -z-yf*hh-yo, -y-xf*dy, 0]);
 }
 
-function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
-  var dwx = Math.sin(-ang)*hw;
-  var dwy = Math.cos(-ang)*hw;
-  var dhx = Math.sin(-ang+Math.PI/2)*hh;
-  var dhy = Math.cos(-ang+Math.PI/2)*hh;
-  BGL.begin();
-  BGL.vtx(x-dwx-dhx, z, y-dwy-dhy);
-  BGL.vtx(x+dwx-dhx, z, y+dwy-dhy);
-  BGL.vtx(x+dwx+dhx, z, y+dwy+dhy);
-  BGL.vtx(x-dwx+dhx, z, y-dwy+dhy);
-  genSpriteQuad(onesided);
+function fillbuffersForFloorSprite(id:number, x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
+  var buff = sprites[id];
+  if (buff == undefined) {
+    buff = BUFF.allocate(4, onesided?6:12, 8);
+    sprites[id] = buff;
+    var dwx = Math.sin(-ang)*hw;
+    var dwy = Math.cos(-ang)*hw;
+    var dhx = Math.sin(-ang+Math.PI/2)*hh;
+    var dhy = Math.cos(-ang+Math.PI/2)*hh;
+    var off = 0;
+    off = BUFF.writePos(buff, off, x-dwx-dhx, z, y-dwy-dhy);
+    off = BUFF.writePos(buff, off, x+dwx-dhx, z, y+dwy-dhy);
+    off = BUFF.writePos(buff, off, x+dwx+dhx, z, y+dwy+dhy);
+    off = BUFF.writePos(buff, off, x-dwx+dhx, z, y-dwy+dhy);
+    genSpriteQuad(buff, onesided);
+  }
+  BGL.state.setDrawElements(buff);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
@@ -355,17 +365,24 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
 
-function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number) {
-  BGL.begin();
-  BGL.normal(-hw, +hh+yo);
-  BGL.vtx(x, z, y);
-  BGL.normal(+hw, +hh+yo);
-  BGL.vtx(x, z, y);
-  BGL.normal(+hw, -hh+yo);
-  BGL.vtx(x, z, y);
-  BGL.normal(-hw, -hh+yo);
-  BGL.vtx(x, z, y);
-  genSpriteQuad(1);
+function fillBuffersForFaceSprite(id:number, x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number) {
+  var buff = sprites[id];
+  if (buff == undefined) {
+    buff = BUFF.allocate(4, 6, 8);
+    sprites[id] = buff;
+    var off = 0;
+    off = BUFF.writePos(buff, off, x, z, y);
+    off = BUFF.writePos(buff, off, x, z, y);
+    off = BUFF.writePos(buff, off, x, z, y);
+    off = BUFF.writePos(buff, off, x, z, y);
+    var off = 0;
+    off = BUFF.writeNormal(buff, off, -hw, +hh+yo);
+    off = BUFF.writeNormal(buff, off, +hw, +hh+yo);
+    off = BUFF.writeNormal(buff, off, +hw, -hh+yo);
+    off = BUFF.writeNormal(buff, off, -hw, -hh+yo);
+    genSpriteQuad(buff, 1);
+  }
+  BGL.state.setDrawElements(buff);
 
   var texMat = BGL.state.getTextureMatrix();
   GLM.mat4.identity(texMat);
@@ -373,14 +390,16 @@ function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:nu
   GLM.mat4.translate(texMat, texMat, [hw, -hh-yo, 0, 0]);
 }
 
-function genSpriteQuad(onesided:number) {
-  if (mode == MODE_WIREFRAME) {
-    BGL.line(0, 1); BGL.line(1, 2); BGL.line(2, 3); BGL.line(3, 0);
-  } else {
-    BGL.quad(0, 1, 2, 3);
-    if (!onesided)    
-      BGL.quad(3, 2, 1, 0);
-  }
+function genSpriteQuad(buff:BAG.Place, onesided:number) {
+  var off = 0;
+  off = BUFF.writeQuad(buff, off, 0, 1, 2, 3);
+  if (!onesided)
+    off = BUFF.writeQuad(buff, off, 3, 2, 1, 0);
+  off = 0;
+  off = BUFF.writeLine(buff, off, 0, 1);
+  off = BUFF.writeLine(buff, off, 1, 2);
+  off = BUFF.writeLine(buff, off, 2, 3);
+  off = BUFF.writeLine(buff, off, 3, 0);
 }
 
 function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:number) {
@@ -402,13 +421,13 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
 
   gl.polygonOffset(-1, -8);
   if (spr.cstat.type == 0) { // face
-    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf);
+    fillBuffersForFaceSprite(id, x, y, z, xo, yo, hw, hh, xf, yf);
     BGLdraw(gl, tex, shade, spr.pal, id, true);
   } else if (spr.cstat.type == 1) { // wall
-    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
+    fillbuffersForWallSprite(id, x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
     BGLdraw(gl, tex, shade, spr.pal, id);
   } else if (spr.cstat.type == 2) { // floor
-    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
+    fillbuffersForFloorSprite(id, x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
     BGLdraw(gl, tex, shade, spr.pal, id);
   }
   gl.polygonOffset(0, 0);
@@ -451,6 +470,7 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
     count ++;
   }
   info['FaceSprites:'] = count;
+  info['BufferUpdates:'] = BUFF.resetBufferUpdates();
 }
 
 function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
@@ -467,22 +487,22 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
   BGL.setController(ctr);
   
-  mode = MODE_SELECT;
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawImpl(gl, board, ms, info);
+  // mode = MODE_SELECT;
+  // gl.clearColor(0, 0, 0, 0);
+  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  // drawImpl(gl, board, ms, info);
 
-  var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+  // var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
 
-  if (ctr.isClick()) {
-    console.log(board.id2object[selectedId]);
-  }
-  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
-    board.id2object[selectedId].ref.floorheinum += 32;
-  }
-  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
-    board.id2object[selectedId].ref.floorheinum -= 32;
-  }
+  // if (ctr.isClick()) {
+  //   console.log(board.id2object[selectedId]);
+  // }
+  // if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
+  //   board.id2object[selectedId].ref.floorheinum += 32;
+  // }
+  // if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
+  //   board.id2object[selectedId].ref.floorheinum -= 32;
+  // }
 
   mode = MODE_NORMAL;
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
@@ -495,19 +515,19 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   // gl.enable(gl.DEPTH_TEST);
 
 
-  var selected = board.id2object[selectedId];
-  if (selected != undefined) {
-    gl.disable(gl.DEPTH_TEST);
-    mode = MODE_WIREFRAME;
-    if (selected instanceof BW.SectorWrapper) {
-      drawSector(gl, board.ref, selected.ref, selected.id);
-    } else if (selected instanceof BW.WallWrapper) {
-      drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
-    } else if (selected instanceof BW.SpriteWrapper) {
-      drawSprite(gl, board.ref, selected.ref, selected.id);
-    }
-    gl.enable(gl.DEPTH_TEST);
-  }
+  // var selected = board.id2object[selectedId];
+  // if (selected != undefined) {
+  //   gl.disable(gl.DEPTH_TEST);
+  //   mode = MODE_WIREFRAME;
+  //   if (selected instanceof BW.SectorWrapper) {
+  //     drawSector(gl, board.ref, selected.ref, selected.id);
+  //   } else if (selected instanceof BW.WallWrapper) {
+  //     drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
+  //   } else if (selected instanceof BW.SpriteWrapper) {
+  //     drawSprite(gl, board.ref, selected.ref, selected.id);
+  //   }
+  //   gl.enable(gl.DEPTH_TEST);
+  // }
 }
 
 function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {

@@ -202,14 +202,16 @@ class State {
     this.updateBuffers(gl, rebindAll);
     this.updateUniforms(gl, rebindAll);
     this.rebindTexture(gl, rebindAll);
-    gl.drawElements(mode, this.drawElements.get().size, gl.UNSIGNED_SHORT, this.drawElements.get().offset*2);
+    var count = mode == gl.TRIANGLES ? this.drawElements.get().data[0].size : this.drawElements.get().data[1].size;
+    var off = mode == gl.TRIANGLES ? this.drawElements.get().data[0].offset : this.drawElements.get().data[1].offset;
+    gl.drawElements(mode,count, gl.UNSIGNED_SHORT, off*2);
   }
 }
 
 export var state:State;
 export function init(gl:WebGLRenderingContext) {
   state = new State(gl);
-  BUFF.init(gl, 64*1024, 64*1024);
+  BUFF.init(gl, 1024*1024, 1024*1024);
   createShaders(gl);
   state.setIndexBuffer(BUFF.getIdxBuffer());
   state.setVertexBuffer('aPos', BUFF.getPosBuffer());

@@ -25,6 +25,7 @@ var cfgFile = 'build.cfg';
 
 class BuildArtProvider implements BGL.ArtProvider {
   private textures:DS.Texture[] = [];
+  private infos:ART.ArtInfo[] = [];
   private palTexture:DS.Texture = null;
   private pluTexture:DS.Texture = null;
   
@@ -62,7 +63,11 @@ class BuildArtProvider implements BGL.ArtProvider {
   }
 
   public getInfo(picnum:number):number {
-    var info = this.arts.getInfo(picnum);
+    var info = this.infos[picnum];
+    if (info == undefined) {
+      info = this.arts.getInfo(picnum);
+      this.infos[picnum] = info;
+    }
     return info.anum;
   }
 
@@ -160,11 +165,12 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     'Sectors:':0,
     'Walls:':0,
     'Sprites:':0,
-    'FaceSprites:':0
+    'FaceSprites:':0,
+    'BufferUpdates:':0
   }
 
   var panel = UI.panel('Info');
-  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'FaceSprites:']);
+  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'FaceSprites:', 'BufferUpdates:']);
   panel.append(props);
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));

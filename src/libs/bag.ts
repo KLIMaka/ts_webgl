@@ -31,19 +31,19 @@ export class Bag {
 
   public put(offset:number, size:number):void {
     var hole = this.holes.first();
-    while (hole.next != this.holes.terminator()) {
-      var next = hole.next;
-      if (next.obj.offset >= size)
-        break;
-      hole = next;
-    }
     if (hole == this.holes.terminator()) {
       this.holes.insertAfter(new Place(offset, size));
       return;
     }
+    while (hole.next != this.holes.terminator()) {
+      var next = hole.next;
+      if (next.obj.offset >= size+offset)
+        break;
+      hole = next;
+    }
     var end = hole.obj.offset + hole.obj.size;
     if (end > offset)
-      throw new Error('object does not fit in hole');
+      throw new Error('Object does not fit in hole');
     if (end == offset) {
       hole.obj.size += size;
       this.tryMerge(hole);
@@ -58,7 +58,7 @@ export class Bag {
   public get(size:number):number {
     var hole = this.getSuitablePlace(size);
     if (hole == null)
-      throw new Error('no space');
+      return null;
     if (hole.obj.size == size) {
       var prev = hole.prev;
       this.holes.remove(hole);
@@ -90,6 +90,12 @@ export class BagController {
 
   public get(size:number):Place {
     var offset = this.bag.get(size);
+    if (offset == null) {
+      this.optimize();
+      offset = this.bag.get(size);
+    }
+    if (offset == null)
+      throw new Error('No space');
     var result = new Place(offset, size);
     this.places[offset] = result;
     return result;

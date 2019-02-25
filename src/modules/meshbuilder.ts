@@ -470,8 +470,8 @@ export class DynamicIndexBuffer extends IndexBufferImpl {
   public updateRegion(gl:WebGLRenderingContext, offset:number, length:number):void {
     var sizeof = 2;
     var region = new Uint8Array(this.data.buffer, offset*sizeof, length*sizeof);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
-    gl.bufferSubData(gl.ARRAY_BUFFER, offset*sizeof, region);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.getBuffer());
+    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, offset*sizeof, region);
   }
 
   public getData():ArrayBufferView {
