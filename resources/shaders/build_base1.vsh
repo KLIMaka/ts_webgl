@@ -27,6 +27,6 @@ void main() {
   tc = (T * vec4(aPos, 1.0)).xy;
 #endif
 
-  lightLevel = length(aPos - eyepos) / 512.0;
+  lightLevel = length(aPos - eyepos) / 1024.0;
   lightLevel = clamp(float(shade) + lightLevel, 0.5, 63.0);
 }

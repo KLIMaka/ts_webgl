@@ -146,10 +146,10 @@ function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:nu
   BGL.state.setDrawElements(buff);
 }
 
-function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, sprite:boolean=false) {
+function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, trans:number=1, sprite:boolean=false) {
   if (mode == MODE_NORMAL) {
     BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
-    BGL.state.setColor([1,1,1,1]);
+    BGL.state.setColor([1,1,1,trans]);
     BGL.state.setTexture(tex);
     BGL.state.setShade(shade);
     BGL.state.setPal(pal);
@@ -269,6 +269,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
   var ceilingz = sector.ceilingz;
   var floorheinum = sector.floorheinum;
   var floorz = sector.floorz;
+  var trans = (wall.cstat.translucent || wall.cstat.translucentReversed) ? 0.6 : 1;
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, wallmiddle, id);
@@ -286,7 +287,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
       var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
       var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
       var tex_ = wall.cstat.swapBottoms ? artProvider.get(wall_.picnum) : tex;
-      var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
+      var base = wall.cstat.alignBottom ? floorz : nextfloorz;
       applyWallTextureTransform(wall_, wall2_, tex_, base, wall);
       BGLdraw(gl, tex_, wall_.shade, wall_.pal, id);
     }
@@ -305,7 +306,7 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
         floorheinum, nextfloorheinum, floorz, nextfloorz, wallmiddle, id);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
       applyWallTextureTransform(wall, wall2, tex1, base);
-      BGLdraw(gl, tex1, wall.shade, wall.pal, id);
+      BGLdraw(gl, tex1, wall.shade, wall.pal, id, trans);
     }
   }
 }
@@ -418,17 +419,18 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   var sec = board.sectors[spr.sectnum];
   var sectorShade = sec.floorshade;
   var shade = spr.shade == -8 ? sectorShade : spr.shade;
+  var trans = (spr.cstat.translucent || spr.cstat.tranclucentReversed) ? 0.6 : 1;
 
   gl.polygonOffset(-1, -8);
   if (spr.cstat.type == 0) { // face
     fillBuffersForFaceSprite(id, x, y, z, xo, yo, hw, hh, xf, yf);
-    BGLdraw(gl, tex, shade, spr.pal, id, true);
+    BGLdraw(gl, tex, shade, spr.pal, id, trans, true);
   } else if (spr.cstat.type == 1) { // wall
     fillbuffersForWallSprite(id, x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, shade, spr.pal, id);
+    BGLdraw(gl, tex, shade, spr.pal, id, trans);
   } else if (spr.cstat.type == 2) { // floor
     fillbuffersForFloorSprite(id, x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, shade, spr.pal, id);
+    BGLdraw(gl, tex, shade, spr.pal, id, trans);
   }
   gl.polygonOffset(0, 0);
 }
@@ -487,22 +489,22 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
   BGL.setController(ctr);
   
-  // mode = MODE_SELECT;
-  // gl.clearColor(0, 0, 0, 0);
-  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  // drawImpl(gl, board, ms, info);
+  mode = MODE_SELECT;
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  drawImpl(gl, board, ms, info);
 
-  // var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+  var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
 
-  // if (ctr.isClick()) {
-  //   console.log(board.id2object[selectedId]);
-  // }
-  // if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
-  //   board.id2object[selectedId].ref.floorheinum += 32;
-  // }
-  // if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
-  //   board.id2object[selectedId].ref.floorheinum -= 32;
-  // }
+  if (ctr.isClick()) {
+    console.log(board.id2object[selectedId]);
+  }
+  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
+    board.id2object[selectedId].ref.floorheinum += 32;
+  }
+  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
+    board.id2object[selectedId].ref.floorheinum -= 32;
+  }
 
   mode = MODE_NORMAL;
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
@@ -515,19 +517,19 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   // gl.enable(gl.DEPTH_TEST);
 
 
-  // var selected = board.id2object[selectedId];
-  // if (selected != undefined) {
-  //   gl.disable(gl.DEPTH_TEST);
-  //   mode = MODE_WIREFRAME;
-  //   if (selected instanceof BW.SectorWrapper) {
-  //     drawSector(gl, board.ref, selected.ref, selected.id);
-  //   } else if (selected instanceof BW.WallWrapper) {
-  //     drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
-  //   } else if (selected instanceof BW.SpriteWrapper) {
-  //     drawSprite(gl, board.ref, selected.ref, selected.id);
-  //   }
-  //   gl.enable(gl.DEPTH_TEST);
-  // }
+  var selected = board.id2object[selectedId];
+  if (selected != undefined) {
+    gl.disable(gl.DEPTH_TEST);
+    mode = MODE_WIREFRAME;
+    if (selected instanceof BW.SectorWrapper) {
+      drawSector(gl, board.ref, selected.ref, selected.id);
+    } else if (selected instanceof BW.WallWrapper) {
+      drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
+    } else if (selected instanceof BW.SpriteWrapper) {
+      drawSprite(gl, board.ref, selected.ref, selected.id);
+    }
+    gl.enable(gl.DEPTH_TEST);
+  }
 }
 
 function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {
