@@ -9,7 +9,6 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as GL from '../../../../modules/gl';
 import * as BGL from './buildgl';
 import * as BUFF from './buffers';
-import * as BAG from '../../../../libs/bag';
 
 const SCALE = -16;
 
@@ -20,7 +19,7 @@ export interface ArtProvider {
   getPluTexture():DS.Texture;
 }
 
-export function init(gl:WebGLRenderingContext, p:ArtProvider, ctr:C.Controller3D) {
+export function init(gl:WebGLRenderingContext, p:ArtProvider) {
   setArtProvider(p);
   BGL.init(gl);
   BGL.state.setPalTexture(p.getPalTexture());
@@ -38,12 +37,12 @@ const MODE_WIREFRAME = 2;
 
 var mode = MODE_NORMAL;
 
-var floors:BAG.Place[] = [];
-var ceilings:BAG.Place[] = [];
-var wallup:BAG.Place[] = [];
-var wallmiddle:BAG.Place[] = [];
-var walldown:BAG.Place[] = [];
-var sprites:BAG.Place[] = [];
+var floors:BUFF.BufferPointer[] = [];
+var ceilings:BUFF.BufferPointer[] = [];
+var wallup:BUFF.BufferPointer[] = [];
+var wallmiddle:BUFF.BufferPointer[] = [];
+var walldown:BUFF.BufferPointer[] = [];
+var sprites:BUFF.BufferPointer[] = [];
 
 function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture) {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
@@ -95,6 +94,54 @@ function cacheTriangulate(board:BS.Board, sec:BS.Sector) {
   return res;
 }
 
+function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sector, voff:number, buff:BUFF.BufferPointer) {
+  var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
+  var z = ceil ? sec.ceilingz : sec.floorz;
+  var slope = U.createSlopeCalculator(sec, board.walls);
+
+  var fw = sec.wallptr;
+  var baseIdx = voff;
+  var off = 0;
+  for (var w = 0; w < sec.wallnum; w++) {
+    var wid = sec.wallptr + w;
+    var wall = board.walls[wid];
+    var vx = wall.x;
+    var vy = wall.y;
+    var vz = (slope(vx, vy, heinum) + z) / SCALE;
+    voff = BUFF.writePos(buff, voff, vx, vz, vy);
+    if (fw != wid) {
+      off = BUFF.writeLine(buff, off, baseIdx+w-1, baseIdx+w);
+    }
+    if (wall.point2 == fw) {
+      off = BUFF.writeLine(buff, off, baseIdx+w, baseIdx+fw-sec.wallptr);
+      fw = wid + 1;
+    } 
+  }
+}
+
+function fillBuffersForSectorNormal(ceil:boolean, board:BS.Board, sec:BS.Sector, buff:BUFF.BufferPointer, vtxs:number[][], vidxs:number[]) {
+  var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
+  var z = ceil ? sec.ceilingz : sec.floorz;
+  var slope = U.createSlopeCalculator(sec, board.walls);
+
+  var off = 0;
+  for (var i = 0; i < vtxs.length; i++) {
+    var vx = vtxs[i][0];
+    var vy = vtxs[i][1];
+    var vz = (slope(vx, vy, heinum) + z) / SCALE;
+    off = BUFF.writePos(buff, off, vx, vz, vy);
+  }
+
+  off = 0;
+  for (var i = 0; i < vidxs.length; i+=3) {
+    if (ceil) {
+      off = BUFF.writeTriangle(buff, off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
+    } else {
+      off = BUFF.writeTriangle(buff, off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
+    }
+  }
+}
+
 function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number) {
   var buffs = ceil ? ceilings : floors; 
   var buff = buffs[id];
@@ -102,46 +149,8 @@ function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:nu
     var [vtxs, vidxs] = cacheTriangulate(board, sec);
     buff = BUFF.allocate(vtxs.length+sec.wallnum, vidxs.length, sec.wallnum*2);
     buffs[id] = buff;
-
-    var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
-    var z = ceil ? sec.ceilingz : sec.floorz;
-    var slope = U.createSlopeCalculator(sec, board.walls);
-    var off = 0;
-
-    for (var i = 0; i < vtxs.length; i++) {
-      var vx = vtxs[i][0];
-      var vy = vtxs[i][1];
-      var vz = (slope(vx, vy, heinum) + z) / SCALE;
-      off = BUFF.writePos(buff, off, vx, vz, vy);
-    }
-
-    off = 0;
-    for (var i = 0; i < vidxs.length; i+=3) {
-      if (ceil) {
-        off = BUFF.writeTriangle(buff, off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
-      } else {
-        off = BUFF.writeTriangle(buff, off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
-      }
-    }
-
-    var fw = sec.wallptr;
-    var voff = vtxs.length;
-    off = 0;
-    for (var w = 0; w < sec.wallnum; w++) {
-      var wid = sec.wallptr + w;
-      var wall = board.walls[wid];
-      var vx = wall.x;
-      var vy = wall.y;
-      var vz = (slope(vx, vy, heinum) + z) / SCALE;
-      voff = BUFF.writePos(buff, voff, vx, vz, vy);
-      if (fw != wid) {
-        off = BUFF.writeLine(buff, off, vtxs.length+w-1, vtxs.length+w);
-      }
-      if (wall.point2 == fw) {
-        off = BUFF.writeLine(buff, off, vtxs.length+w, vtxs.length+fw-sec.wallptr);
-        fw = wid + 1;
-      } 
-    }
+    fillBuffersForSectorNormal(ceil, board, sec, buff, vtxs, vidxs);
+    fillBuffersForSectorWireframe(ceil, board, sec, vtxs.length, buff);
   }
   BGL.state.setDrawElements(buff);
 }
@@ -180,7 +189,7 @@ function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:
 
 function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, 
   slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean,
-  buffs:BAG.Place[], id:number):boolean {
+  buffs:BUFF.BufferPointer[], id:number):boolean {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
@@ -200,7 +209,7 @@ function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number,
 function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, 
   ceilheinum:number, ceilnextheinum:number, ceilz:number, ceilnextz:number,
   floorheinum:number, floornextheinum:number, floorz:number, floornextz:number,
-  buffs:BAG.Place[], id:number):void {
+  buffs:BUFF.BufferPointer[], id:number):void {
   var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE; 
   var currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
   var currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
@@ -222,7 +231,7 @@ function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, sl
   BGL.state.setDrawElements(buff);
 }
 
-function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number, buff:BAG.Place) {
+function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number, buff:BUFF.BufferPointer) {
   var off = 0;
   off = BUFF.writePos(buff, off, x1, z1, y1);
   off = BUFF.writePos(buff, off, x2, z2, y2);
@@ -391,7 +400,7 @@ function fillBuffersForFaceSprite(id:number, x:number, y:number, z:number, xo:nu
   GLM.mat4.translate(texMat, texMat, [hw, -hh-yo, 0, 0]);
 }
 
-function genSpriteQuad(buff:BAG.Place, onesided:number) {
+function genSpriteQuad(buff:BUFF.BufferPointer, onesided:number) {
   var off = 0;
   off = BUFF.writeQuad(buff, off, 0, 1, 2, 3);
   if (!onesided)
@@ -472,7 +481,6 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
     count ++;
   }
   info['FaceSprites:'] = count;
-  info['BufferUpdates:'] = BUFF.resetBufferUpdates();
 }
 
 function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {

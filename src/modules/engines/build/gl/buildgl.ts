@@ -33,7 +33,7 @@ class State {
   private pluTexture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
   private vertexBuffers:{[index:string]:StateValue<MB.VertexBufferDynamic>} = {};
   private indexBuffer:StateValue<MB.DynamicIndexBuffer> = new StateValue<MB.DynamicIndexBuffer>(null);
-  private drawElements:StateValue<BAG.Place> = new StateValue<BAG.Place>(new BAG.Place(0, 0));
+  private drawElements:StateValue<BUFF.BufferPointer> = new StateValue<BUFF.BufferPointer>(null);
 
   constructor(gl:WebGLRenderingContext) {
   }
@@ -84,10 +84,8 @@ class State {
     state.set(b);
   }
 
-  public setDrawElements(place:BAG.Place) {
-    if (this.drawElements.get().offset != place.offset ||  this.drawElements.get().size != place.size) {
-      this.drawElements.set(place);
-    }
+  public setDrawElements(place:BUFF.BufferPointer) {
+    this.drawElements.set(place);
   }
 
   public setCurrentId(id:number) {
@@ -202,8 +200,8 @@ class State {
     this.updateBuffers(gl, rebindAll);
     this.updateUniforms(gl, rebindAll);
     this.rebindTexture(gl, rebindAll);
-    var count = mode == gl.TRIANGLES ? this.drawElements.get().data[0].size : this.drawElements.get().data[1].size;
-    var off = mode == gl.TRIANGLES ? this.drawElements.get().data[0].offset : this.drawElements.get().data[1].offset;
+    var count = mode == gl.TRIANGLES ? this.drawElements.get().triIdx.size : this.drawElements.get().lineIdx.size;
+    var off = mode == gl.TRIANGLES ? this.drawElements.get().triIdx.offset : this.drawElements.get().lineIdx.offset;
     gl.drawElements(mode,count, gl.UNSIGNED_SHORT, off*2);
   }
 }

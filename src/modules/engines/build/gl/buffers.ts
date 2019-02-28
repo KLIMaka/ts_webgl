@@ -1,6 +1,13 @@
 import * as BAG from '../../../../libs/bag';
 import * as MB from '../../../meshbuilder';
 
+export class BufferPointer {
+  constructor(
+    public vtx:BAG.Place,
+    public triIdx:BAG.Place,
+    public lineIdx:BAG.Place) {}
+}
+
 var pos:Float32Array;
 var posBuf:MB.VertexBufferDynamic;
 var norm:Float32Array;
@@ -21,10 +28,13 @@ export function init(gl:WebGLRenderingContext, vCount:number, iCount:number) {
   vtxBag = BAG.createController(vCount, (place:BAG.Place, noffset:number) => {
     pos.set(pos.subarray(place.offset*3, place.offset*3+place.size*3), noffset*3);
     norm.set(norm.subarray(place.offset*2, place.offset*2+place.size*2), noffset*2);
-    var idxPlce = <BAG.Place> place.data;
+    var ptr = <BufferPointer> place.data;
     var offdiff = noffset - place.offset;
-    for(var i = 0; i < idxPlce.size; i++) {
-      idxs[idxPlce.offset+i] += offdiff;
+    for(var i = 0; i < ptr.triIdx.size; i++) {
+      idxs[ptr.triIdx.offset+i] += offdiff;
+    }
+    for(var i = 0; i < ptr.lineIdx.size; i++) {
+      idxs[ptr.lineIdx.offset+i] += offdiff;
     }
   });
 
@@ -48,17 +58,9 @@ export function getIdxBuffer():MB.DynamicIndexBuffer {
   return idxBuf;
 }
 
-export function resetBufferUpdates():number {
-  var n = bufferUpdates;
-  bufferUpdates = 0;
-  return n;
-}
-
-
 var vtxRegions = [];
 var nrmRegions = [];
 var idxRegions = [];
-var bufferUpdates = 0;
 
 function updateBuffer(gl:WebGLRenderingContext, buffer:any, regions:number[][]):boolean {
   if (regions.length == 0)
@@ -69,7 +71,6 @@ function updateBuffer(gl:WebGLRenderingContext, buffer:any, regions:number[][]):
       region[1] += regions[++i][1];
     }
     buffer.updateRegion(gl, region[0], region[1]);
-    bufferUpdates++;
   }
   return true;
 }
@@ -80,22 +81,23 @@ export function update(gl:WebGLRenderingContext) {
   if (updateBuffer(gl, idxBuf, idxRegions)) idxRegions = [];
 }
 
-export function allocate(vtxSize:number, idxSize:number, idxLineSize:number):BAG.Place {
+export function allocate(vtxSize:number, idxSize:number, idxLineSize:number):BufferPointer {
   var vtx = vtxBag.get(vtxSize);
   var idx = idxBag.get(idxSize);
   var line = idxBag.get(idxLineSize);
-  vtx.data = [idx, line];
-  return vtx;
+  var ptr = new BufferPointer(vtx, idx, line);
+  vtx.data = ptr;
+  return ptr;
 }
 
-export function remove(place:BAG.Place) {
-  idxBag.put(place.data[0]);
-  idxBag.put(place.data[1]);
-  vtxBag.put(place);
+export function remove(ptr:BufferPointer) {
+  idxBag.put(ptr.triIdx);
+  idxBag.put(ptr.lineIdx);
+  vtxBag.put(ptr.vtx);
 }
 
-export function writePos(place:BAG.Place, off:number, x:number, y:number, z:number):number {
-  var o = place.offset+off;
+export function writePos(ptr:BufferPointer, off:number, x:number, y:number, z:number):number {
+  var o = ptr.vtx.offset+off;
   pos[o*3] = x;
   pos[o*3+1] = y;
   pos[o*3+2] = z;
@@ -103,17 +105,17 @@ export function writePos(place:BAG.Place, off:number, x:number, y:number, z:numb
   return ++off;
 }
 
-export function writeNormal(place:BAG.Place, off:number, x:number, y:number):number {
-  var o = place.offset+off;
+export function writeNormal(ptr:BufferPointer, off:number, x:number, y:number):number {
+  var o = ptr.vtx.offset+off;
   norm[o*2] = x;
   norm[o*2+1] = y;
   nrmRegions.push([o, 1]);
   return ++off;
 }
 
-export function writeTriangle(place:BAG.Place, off:number, a:number, b:number, c:number):number {
-  var vtxoff = place.offset;
-  var o = (<BAG.Place>place.data[0]).offset+off;
+export function writeTriangle(ptr:BufferPointer, off:number, a:number, b:number, c:number):number {
+  var vtxoff = ptr.vtx.offset;
+  var o = ptr.triIdx.offset+off;
   idxs[o] = vtxoff+a;
   idxs[o+1] = vtxoff+b;
   idxs[o+2] = vtxoff+c;
@@ -121,9 +123,9 @@ export function writeTriangle(place:BAG.Place, off:number, a:number, b:number, c
   return off+3;
 }
 
-export function writeQuad(place:BAG.Place, off:number, a:number, b:number, c:number, d:number):number {
-  var vtxoff = place.offset;
-  var o = (<BAG.Place>place.data[0]).offset+off;
+export function writeQuad(ptr:BufferPointer, off:number, a:number, b:number, c:number, d:number):number {
+  var vtxoff = ptr.vtx.offset;
+  var o = ptr.triIdx.offset+off;
   idxs[o] = vtxoff+a;
   idxs[o+1] = vtxoff+c;
   idxs[o+2] = vtxoff+b;
@@ -134,9 +136,9 @@ export function writeQuad(place:BAG.Place, off:number, a:number, b:number, c:num
   return off+6;
 }
 
-export function writeLine(place:BAG.Place, off:number, a:number, b:number):number {
-  var vtxoff = place.offset;
-  var o = (<BAG.Place>place.data[1]).offset+off;
+export function writeLine(ptr:BufferPointer, off:number, a:number, b:number):number {
+  var vtxoff = ptr.vtx.offset;
+  var o = ptr.lineIdx.offset+off;
   idxs[o] = vtxoff+a;
   idxs[o+1] = vtxoff+b;
   idxRegions.push([o, 2]);

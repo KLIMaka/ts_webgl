@@ -185,7 +185,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   control.setFov(75);
   var ms = createMoveStruct(board, control);
 
-  BGL.init(gl, tp, control);
+  BGL.init(gl, tp);
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
     var pos = control.getCamera().getPos();
