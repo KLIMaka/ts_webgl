@@ -93,7 +93,7 @@ export class DrawPanel {
       var img = provider.get(i);
       if (img == null)
         img = noneProvider;
-      var pixels = P.fit(this.cellW, this.cellH, img, [255, 255, 255, 255]);
+      var pixels = P.fit(this.cellW, this.cellH, img, new Uint8Array([255, 255, 255, 255]));
       IU.drawToCanvas(pixels, canvas, x ,y);
     }
   }

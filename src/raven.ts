@@ -145,7 +145,7 @@ function render(palbuf:ArrayBuffer, resbuf:ArrayBuffer) {
   });
 
   var p = new Panel.DrawPanel(<HTMLCanvasElement>document.getElementById('panel'), provider);
-  p.setCellSize(100, 100);
+  p.setCellSize(200, 200);
   p.draw();
 
   document.getElementById('next').onclick = (e) => {p.nextPage(); p.draw();}

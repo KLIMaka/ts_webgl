@@ -5,7 +5,6 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as C from '../../../../modules/controller3d';
 import * as BATCH from '../../../../modules/batcher';
 import * as BUFF from './buffers';
-import * as BAG from '../../../../libs/bag';
 
 class StateValue<T> {
   public changed:boolean = false;
