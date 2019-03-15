@@ -20,6 +20,13 @@ export interface ArtProvider {
 }
 
 export function init(gl:WebGLRenderingContext, p:ArtProvider) {
+  gl.enable(gl.CULL_FACE);
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.POLYGON_OFFSET_FILL);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.enable(gl.BLEND);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+
   setArtProvider(p);
   BGL.init(gl);
   BGL.state.setPalTexture(p.getPalTexture());
@@ -43,6 +50,26 @@ var wallup:BUFF.BufferPointer[] = [];
 var wallmiddle:BUFF.BufferPointer[] = [];
 var walldown:BUFF.BufferPointer[] = [];
 var sprites:BUFF.BufferPointer[] = [];
+
+function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, trans:number=1, sprite:boolean=false) {
+  if (mode == MODE_NORMAL) {
+    BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
+    BGL.state.setColor([1,1,1,trans]);
+    BGL.state.setTexture(tex);
+    BGL.state.setShade(shade);
+    BGL.state.setPal(pal);
+    BGL.state.draw(gl);
+  } else if (mode == MODE_SELECT) {
+    BGL.state.setShader(sprite ? BGL.spriteSelectShader : BGL.selectShader);
+    BGL.state.setTexture(tex);
+    BGL.state.setCurrentId(id);
+    BGL.state.draw(gl);
+  } else if (mode == MODE_WIREFRAME) {
+    BGL.state.setShader(sprite ? BGL.spriteFlatShader : BGL.baseFlatShader);
+    BGL.state.setColor([1,1,1,0.3]);
+    BGL.state.draw(gl, gl.LINES);
+  }
+}
 
 function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture) {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
@@ -153,26 +180,6 @@ function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:nu
     fillBuffersForSectorWireframe(ceil, board, sec, vtxs.length, buff);
   }
   BGL.state.setDrawElements(buff);
-}
-
-function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, trans:number=1, sprite:boolean=false) {
-  if (mode == MODE_NORMAL) {
-    BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
-    BGL.state.setColor([1,1,1,trans]);
-    BGL.state.setTexture(tex);
-    BGL.state.setShade(shade);
-    BGL.state.setPal(pal);
-    BGL.state.draw(gl);
-  } else if (mode == MODE_SELECT) {
-    BGL.state.setShader(sprite ? BGL.spriteSelectShader : BGL.selectShader);
-    BGL.state.setTexture(tex);
-    BGL.state.setCurrentId(id);
-    BGL.state.draw(gl);
-  } else if (mode == MODE_WIREFRAME) {
-    BGL.state.setShader(sprite ? BGL.spriteFlatShader : BGL.baseFlatShader);
-    BGL.state.setColor([1,1,1,0.3]);
-    BGL.state.draw(gl, gl.LINES);
-  }
 }
 
 function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:number) {
