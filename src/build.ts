@@ -148,12 +148,6 @@ function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
 
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array, PLUs:Uint8Array[]) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
-  gl.enable(gl.CULL_FACE);
-  gl.enable(gl.DEPTH_TEST);
-  gl.enable(gl.POLYGON_OFFSET_FILL);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.enable(gl.BLEND);
-  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
   var info = {
     'X:':0,
