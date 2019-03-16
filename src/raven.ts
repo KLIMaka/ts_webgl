@@ -140,16 +140,25 @@ function render(palbuf:ArrayBuffer, resbuf:ArrayBuffer) {
   var palnum = browser.getQueryVariable('pal');
   var pal = palres.get(palnum);
 
-  var provider = new Panel.PixelDataProvider(res.size(), (i:number) => {
-    return res.get(i, pal);
-  });
+  for (var i = 0; i < res.size(); i++) {
+    var pp = res.get(i, pal);
+    if (pp == null)
+      continue;
+    var c = IU.createCanvas(pp);
+    document.body.appendChild(c);
+  }
 
-  var p = new Panel.DrawPanel(<HTMLCanvasElement>document.getElementById('panel'), provider);
-  p.setCellSize(200, 200);
-  p.draw();
 
-  document.getElementById('next').onclick = (e) => {p.nextPage(); p.draw();}
-  document.getElementById('prev').onclick = (e) => {p.prevPage(); p.draw();}
+  // var provider = new Panel.PixelDataProvider(res.size(), (i:number) => {
+  //   return res.get(i, pal);
+  // });
+
+  // var p = new Panel.DrawPanel(<HTMLCanvasElement>document.getElementById('panel'), provider);
+  // p.setCellSize(200, 200);
+  // p.draw();
+
+  // document.getElementById('next').onclick = (e) => {p.nextPage(); p.draw();}
+  // document.getElementById('prev').onclick = (e) => {p.prevPage(); p.draw();}
   // var canvas = <HTMLCanvasElement>document.getElementById('panel');
   // var off = browser.getQueryVariable('off') | 0;
   // var anims = [
