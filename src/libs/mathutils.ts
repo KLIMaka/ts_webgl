@@ -43,6 +43,10 @@ export function len2d(x:number, y:number) {
   return Math.sqrt(x*x + y*y);
 }
 
+export function len3d(x:number, y:number, z:number) {
+  return Math.sqrt(x*x + y*y + z*z);
+}
+
 export function ang(x:number, y:number):number {
   if (x > 0 && y >= 0)
     return Math.atan(x/y);

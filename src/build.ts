@@ -96,6 +96,7 @@ function drawCompass(canvas:HTMLCanvasElement, eye:number[]) {
   var r = Math.min(w, h)/2 - 1;
   var x = r + eye[0]*r;
   var y = r + eye[2]*r;
+  var z = r - eye[1]*r;
   ctx.strokeStyle = 'black';
   ctx.fillStyle = 'rgba(255,255,255,1)';
   ctx.fillRect(0, 0, w, h);
@@ -104,6 +105,10 @@ function drawCompass(canvas:HTMLCanvasElement, eye:number[]) {
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(x, y, 5, 0, Math.PI*2);
+  ctx.fillStyle = 'black';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(w, z, 5, 0, Math.PI*2);
   ctx.fillStyle = 'black';
   ctx.fill();
 }
@@ -183,7 +188,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
     var pos = control.getCamera().getPos();
-    ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]);
+    ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1])*-16);
 
     tic();
     BGL.draw(gl, boardWrapper, ms, control, info);

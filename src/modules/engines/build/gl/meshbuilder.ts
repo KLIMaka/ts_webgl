@@ -501,6 +501,19 @@ function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
   }
 }
 
+var hitscanResult = new U.Hitscan();
+function hitscan (board:BW.BoardWrapper,  ms:U.MoveStruct, ctr:C.Controller3D) {
+  var [vx, vz, vy] = ctr.getForwardMouse();
+  U.hitscan(board.ref, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hitscanResult, 0);
+  if (hitscanResult.hitt != -1) {
+    var s = board.sprites[47];
+    s.ref.x = hitscanResult.hitx;
+    s.ref.y = hitscanResult.hity;
+    s.ref.z = hitscanResult.hitz;
+    sprites[s.id] = undefined;
+  }
+}
+
 export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
   BGL.setController(ctr);
   
@@ -513,6 +526,7 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
 
   if (ctr.isClick()) {
     console.log(board.id2object[selectedId]);
+    hitscan(board, ms, ctr);
   }
   if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
     board.id2object[selectedId].ref.floorheinum += 32;

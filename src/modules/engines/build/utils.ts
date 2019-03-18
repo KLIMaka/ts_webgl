@@ -48,7 +48,7 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
       if ((dx1 ^ dx2) >= 0)
         inter ^= dx1; 
       else 
-        inter ^= (dx1*dy2-dx2*dy1)^dy2;
+        inter ^= cross(dx1, dy1, dx2, dy2)^dy2;
     }
   }
   return (inter>>>31) == 1;
@@ -96,21 +96,22 @@ export function getSprites(board:BS.Board, secnum:number):number[] {
   return ret;
 }
 
-var UNITS2DEG = (1 / 4096);
-var SCALE = -16;
+var ANGSCALE = (1 / 4096);
+var ZSCALE = 16;
 
 export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
   var wall1 = walls[sector.wallptr];
   var wall2 = walls[wall1.point2];
-  var nx = -wall2.y + wall1.y;
-  var ny = wall2.x - wall1.x;
-  var ln = MU.len2d(nx, ny);
-  nx /= ln; ny /= ln;
-  var w = -nx*wall1.x - ny*wall1.y;
+  var dx = wall2.x - wall1.x;
+  var dy = wall2.y - wall1.y;
+  var ln = MU.len2d(dx, dy);
+  dx /= ln; dy /= ln;
 
-  return function (x:number, y:number, rotation:number):number {
-    var dist = nx*x + ny*y + w;
-    return MU.int(-(rotation * UNITS2DEG) * dist * SCALE);
+  return function (x:number, y:number, heinum:number):number {
+    var dx1 = x - wall1.x;
+    var dy1 = y - wall1.y;
+    var k = cross(dx, dy, dx1, dy1);
+    return MU.int((heinum * ANGSCALE) * k * ZSCALE);
   };
 }
 
@@ -121,23 +122,23 @@ export function lineIntersect(
 
   var x21 = x2 - x1, x34 = x3 - x4;
   var y21 = y2 - y1, y34 = y3 - y4;
-  var bot = x21 * y34 - y21 * x34;
+  var bot = cross(x21, y21, x34, y34);
   
   if (bot == 0) return null;
   
   var x31 = x3 - x1, y31 = y3 - y1;
-  var topt = x31 * y34 - y31 * x34;
+  var topt = cross(x31, y31, x34, y34);
 
   if (bot > 0) {
     if ((topt < 0) || (topt >= bot))
       return null;
-    var topu = x21 * y31 - y21 * x31;
+    var topu = cross(x21, y31, x31, y31);
     if ((topu < 0) || (topu >= bot))
       return null;
   } else {
     if ((topt > 0) || (topt <= bot))
       return null;
-    var topu = x21 * y31 - y21 * x31;
+    var topu = cross(x21, y21, x31, y31);
     if ((topu > 0) || (topu <= bot))
       return null;
   }
@@ -145,9 +146,9 @@ export function lineIntersect(
   var t = topt / bot;
   var x = x1 + MU.int(x21 * t);
   var y = y1 + MU.int(y21 * t);
-  var z = z1 + MU.int((z2 - z1) * t);
+  var z = z1 + MU.int((z2 - z1) * t) * ZSCALE;
 
-  return [x, y, z];
+  return [x, y, z, t];
 }
   
 export function  rayIntersect(
@@ -157,20 +158,20 @@ export function  rayIntersect(
 
   var x34 = x3 - x4;
   var y34 = y3 - y4;
-  var bot = vx * y34 - vy * x34;
+  var bot = cross(vx, vy, x34, y34);
   if (bot == 0) return null;
   var x31 = x3 - x1;
   var y31 = y3 - y1;
-  var topt = x31 * y34 - y31 * x34;
+  var topt = cross(x31, y31, x34, y34);
  
   if (bot > 0) {
     if (topt < 0) return null;
-    var topu = vx * y31 - vy * x31;
+    var topu = cross(vx, vy, x31, y31);
     if ((topu < 0) || (topu >= bot)) 
       return null;
   } else {
     if (topt > 0) return null;
-    var topu = vx * y31 - vy * x31;
+    var topu = cross(vx, vy, x31, y31);
     if ((topu > 0) || (topu <= bot))
       return null;
   } 
@@ -178,9 +179,9 @@ export function  rayIntersect(
   var t = topt / bot;
   var x = x1 + MU.int(vx * t);
   var y = y1 + MU.int(vy * t);
-  var z = z1 + MU.int(vz * t);
+  var z = z1 + MU.int(vz * t) * ZSCALE;
   
-  return [x, y, z];
+  return [x, y, z, t];
 }
 
 
@@ -189,61 +190,147 @@ export class Hitscan {
     public hitx:number = -1, 
     public hity:number = -1, 
     public hitz:number = -1,
+    public hitt:number = -1,
     public hitsect:number = -1,
     public hitwall:number = -1, 
     public hitsprite:number = -1
   ) {}
+
+  public reset() {
+    this.hitsect = -1;
+    this.hitwall = -1;
+    this.hitsprite = -1;
+    this.hitt = -1;
+  }
+
+  private testHit(x:number, y:number, z:number, t:number):boolean {
+    if (this.hitt == -1 || this.hitt >= t) {
+      this.hitx = x;
+      this.hity = y;
+      this.hitz = z;
+      this.hitt = t;
+      return true;
+    }
+    return false;
+  }
+
+  public hitWall(x:number, y:number, z:number, t:number, wall:number) {
+    if (this.testHit(x, y, z, t)) {
+      this.hitwall = wall;
+    }
+  }
+
+  public hitSect(x:number, y:number, z:number, t:number, sec:number) {
+    if (this.testHit(x, y, z, t)) {
+      this.hitsect = sec;
+    }
+  }
+
+  public hitSprite(x:number, y:number, z:number, t:number, spr:number) {
+    if (this.testHit(x, y, z, t)) {
+      this.hitsprite = spr;
+    }
+  }
 }
 
 function cross(x1:number, y1:number, x2:number, y2:number) {
   return x1*y2 - y1*x2;
 }
 
-function intersectSectorPlane(board:BS.Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
-  var sec = board.sectors[secId];
-  if (sec == undefined) return;
-  var x1 = 0x7fffffff, y1 = 0, z1 = 0;
-  if (sec.ceilingstat.slopped) {
-    var wall1 = board.walls[sec.wallptr]
-    var wall2 = board.walls[wall1.point2];
-    var dx = wall2.x - wall1.x;  // 0
-    var dy = wall2.y - wall1.y;  // 2048
-    var l = MU.int(MU.len2d(dx, dy)); // 2048
-    if (l == 0) return;
-    dx /= l; // 0
-    dy /= l; // 1
-    var dz = cross(dx, dy, vx, vy) * sec.ceilingheinum; // 0
-    var angdiff = (vz << 8) - dz; // vz<<8
-    if (angdiff != 0) {
-      var dx1 = xs - wall1.x; // 0
-      var dy1 = ys - wall1.y; // 0
-      var i = ((sec.ceilingz - zs) << 8) + cross(dx, dy, dx1, dy1); // 1024
-      if (((i ^ angdiff) >= 0) && (Math.abs(i) >> 1) < Math.abs(angdiff)) {
-        var k = i / angdiff;
-        x1 = MU.int(xs + vx * k);
-        y1 = MU.int(ys + vy * k);
-        z1 = MU.int(zs + vz * k);
-      }
-    }
+function intersectSectorPlane(board:BS.Board, sec:BS.Sector, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
+  var vl = MU.len2d(vx, vy);
+  var nvx = vx / vl;
+  var nvy = vy / vl;
+
+  var wall1 = board.walls[sec.wallptr]
+  var wall2 = board.walls[wall1.point2];
+  var dx = wall2.x - wall1.x;
+  var dy = wall2.y - wall1.y;
+  var dl = MU.len2d(dx, dy);
+  if (dl == 0) return;
+  var ndx = dx / dl;
+  var ndy = dy / dl;
+
+  var angk = cross(ndx, ndy, nvx, nvy);
+  var slope = createSlopeCalculator(sec, board.walls);
+
+  var ceilk = sec.ceilingheinum * ANGSCALE * angk;
+  var dk = ceilk - vz;
+  if (dk > 0) {
+    var ceilz = slope(xs, ys, sec.ceilingheinum) + sec.ceilingz;
+    var ceildz = (zs - ceilz) / ZSCALE;
+    var t = ceildz / dk;
+    var x = xs + MU.int(vx * t);
+    var y = ys + MU.int(vy * t);
+    var z = zs + MU.int(vz * t) * ZSCALE;
+    if (inSector(board, x, y, secId))
+      hit.hitSect(x, y, z, t, secId);
+  }
+
+  var floork = sec.floorheinum * ANGSCALE * angk;
+  var dk = vz - floork;
+  if (dk > 0) {
+    var floorz = slope(xs, ys, sec.floorheinum) + sec.floorz;
+    var floordz = (floorz - zs) / ZSCALE;
+    var t = floordz / dk;
+    var x = xs + MU.int(vx * t);
+    var y = ys + MU.int(vy * t);
+    var z = zs + MU.int(vz * t) * ZSCALE;
+    if (inSector(board, x, y, secId))
+      hit.hitSect(x, y, z, t, secId);
   }
 }
 
-export function hitscan(board:BS.Board, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number):number {
-  hit.hitsect = -1;
-  hit.hitwall = -1;
-  hit.hitsprite = -1;
-  if (secId < 0) return -1;
-  hit.hitx = (1 << 29) - 1;
-  hit.hity = (1 << 29) - 1;
+function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wall, wallId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan):number {
+  var x1 = wall.x, y1 = wall.y;
+  var x2 = wall2.x, y2 = wall2.y;
+
+  if ((x1 - xs) * (y2 - ys) < (x2 - xs) * (y1 - ys))
+    return -1;
+
+  var intersect = rayIntersect(xs, ys, zs, vx, vy, vz, x1, y1, x2, y2);
+  if (intersect == null)
+    return -1;
+  var [ix, iy, iz, it] = intersect;
+
+  var nextsecId = wall.nextsector;
+  if (nextsecId == -1 || wall.cstat.masking) {
+    hit.hitWall(ix, iy, iz, it, wallId);
+    return -1;
+  }
+
+  var nextsec = board.sectors[nextsecId];
+  var nextslope = createSlopeCalculator(nextsec, board.walls);
+  var floorz = nextslope(ix, iy, nextsec.floorheinum) + nextsec.floorz;
+  var ceilz = nextslope(ix, iy, nextsec.ceilingheinum) + nextsec.ceilingz;
+  if (iz <= ceilz || iz >= floorz) {
+    hit.hitWall(ix, iy, iz, it, wallId);
+    return -1;
+  }
+
+  return nextsecId;
+}
+
+export function hitscan(board:BS.Board, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number) {
+  hit.reset();
+  if (secId < 0) return;
 
   var stack = [secId];
   for (var i = 0; i < stack.length; i++) {
     var s = stack[i];
     var sec = board.sectors[s];
     if (sec == undefined) break;
-    var x1 = 0x7fffffff;
-    if (sec.ceilingstat.slopped) {
+    intersectSectorPlane(board, sec, s, xs, ys, zs, vx, vy, vz, hit);
 
+    for (var w = sec.wallptr; w < sec.wallptr+sec.wallnum; w++) {
+      var wall = board.walls[w];
+      var wall2 = board.walls[wall.point2];
+      if (wall == undefined || wall2 == undefined)
+        continue;
+      var nextsec = intersectWall(board, sec, wall, wall2, w, xs, ys, zs, vx, vy, vz, hit);
+      if (nextsec != -1 && stack.indexOf(nextsec) == -1){
+        stack.push(nextsec);
+      }
     }
   }
 }  
@@ -262,5 +349,5 @@ export function wallVisible(wall1:BS.Wall, wall2:BS.Wall, ms:MoveStruct) {
   var dy1 = wall2.y - wall1.y;
   var dx2 = ms.x - wall1.x;
   var dy2 = ms.y - wall1.y;
-  return (dx1*dy2 >= dy1*dx2);
+  return cross(dx1, dy1, dx2, dy2) >= 0;
 }

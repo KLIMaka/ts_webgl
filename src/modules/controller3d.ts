@@ -94,6 +94,10 @@ export class Controller3D {
     this.fov = fov;
   }
 
+  public getFov():number {
+    return this.fov;
+  }
+
   public getMatrix():GLM.Mat4Array {
     var projection = this.projection;
     GLM.mat4.perspective(projection, MU.deg2rad(this.fov), this.gl.drawingBufferWidth / this.gl.drawingBufferHeight, 1, 0xFFFF);
@@ -119,6 +123,16 @@ export class Controller3D {
 
   public getKeys() {
     return this.keys;
+  }
+
+  public getForwardMouse():GLM.Vec3Array {
+    var invertTrans = GLM.mat4.invert(GLM.mat4.create(), this.getCamera().getTransformMatrix());
+    var invTP = GLM.mat4.invert(GLM.mat4.create(), this.getProjectionMatrix());
+    var invTP = GLM.mat4.mul(invTP, invertTrans, invTP);
+    var dx = 2*this.getX()/this.gl.drawingBufferWidth - 1;
+    var dy = 2*this.getY()/this.gl.drawingBufferHeight - 1;
+    var forward = GLM.vec3.transformMat4(GLM.vec3.create(), [dx, -dy, -1], invTP);
+    return GLM.vec3.sub(forward, forward, this.getCamera().getPos());
   }
 
   public move(speed:number):void {
