@@ -19,6 +19,7 @@ import * as IU from './libs/imgutils';
 import * as browser from './libs/browser';
 import * as BW from './modules/engines/build/buildwrapper';
 import * as BGL from './modules/engines/build/gl/meshbuilder';
+import * as PROFILE from './modules/profiler';
 
 var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
@@ -62,13 +63,13 @@ class BuildArtProvider implements BGL.ArtProvider {
     return result;
   }
 
-  public getInfo(picnum:number):number {
+  public getInfo(picnum:number):ART.ArtInfo {
     var info = this.infos[picnum];
     if (info == undefined) {
       info = this.arts.getInfo(picnum);
       this.infos[picnum] = info;
     }
-    return info.anum;
+    return info;
   }
 
   public getPalTexture():DS.Texture {
@@ -159,8 +160,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     'Y:':0,
     'Batches:':0,
     'Sector:':0,
-    'Processing:':0,
-    'Rendering:':0,
+    'Processing:':'',
+    'Rendering:':'',
     'Sectors:':0,
     'Walls:':0,
     'Sprites:':0,
@@ -190,10 +191,15 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1])*-16);
 
-    tic();
-    BGL.draw(gl, boardWrapper, ms, control, info);
-    info['Rendering:'] = tac();
-    
+    PROFILE.start();
+    BGL.draw(gl, boardWrapper, ms, control);
+    PROFILE.endProfile()
+
+    info['Rendering:'] = PROFILE.get().subSections['draw'].time.toFixed(2)+'ms';
+    info['Processing:'] = PROFILE.get().subSections['draw'].subSections['processing'].time.toFixed(2)+'ms';
+    info['Sectors:'] = PROFILE.get().subSections['draw'].subSections['sectors'].counts['count'];
+    info['Walls:'] = PROFILE.get().subSections['draw'].subSections['walls'].counts['count'];
+    info['Sprites:'] = PROFILE.get().subSections['draw'].subSections['sprites'].counts['count'];
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;

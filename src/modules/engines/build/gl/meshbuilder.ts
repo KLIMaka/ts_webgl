@@ -1,20 +1,21 @@
 import * as DS from '../../../drawstruct';
 import * as BW from '../buildwrapper';
 import * as U from '../utils';
+import * as ART from '../art';
 import * as MU from '../../../../libs/mathutils';
 import * as C from '../../../../modules/controller3d';
 import * as BS from '../structs';
 import * as GLU from '../../../../libs_js/glutess';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as GL from '../../../../modules/gl';
+import * as PROFILE from '../../../../modules/profiler';
 import * as BGL from './buildgl';
 import * as BUFF from './buffers';
 
 const SCALE = -16;
 
-export interface ArtProvider {
+export interface ArtProvider extends ART.ArtInfoProvider {
   get(picnum:number):DS.Texture;
-  getInfo(picnum:number):number;
   getPalTexture():DS.Texture;
   getPluTexture():DS.Texture;
 }
@@ -428,7 +429,7 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 8;
   var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 8;
   var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
-  var tinfo = artProvider.getInfo(spr.picnum);
+  var tinfo = artProvider.getInfo(spr.picnum).anum;
   var xo = MU.ubyte2byte((tinfo >> 8) & 0xFF)*16 * (spr.xrepeat/64);
   var yo = MU.ubyte2byte((tinfo >> 16) & 0xFF)*16 * (spr.yrepeat/64);
   var xf = spr.cstat.xflip; var yf = spr.cstat.yflip;
@@ -451,24 +452,29 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   gl.polygonOffset(0, 0);
 }
 
-function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {
+function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct) {
+  PROFILE.startProfile('processing');
   var t = MU.int(window.performance.now());
   board.markVisible(ms, t);
+  PROFILE.endProfile();
+
+  PROFILE.startProfile('sectors');
   var sectors = board.markedSectors(t);
-  var count = 0;
   for (var sec = sectors(); sec != null; sec = sectors()) {
     drawSector(gl, board.ref, sec.ref, sec.id);
-    count ++;
+    PROFILE.incCount('count');
   }
-  info['Sectors:'] = count;
+  PROFILE.endProfile();
+
+  PROFILE.startProfile('walls');
   var walls = board.markedWalls(t);
-  count = 0;
   for (var wall = walls(); wall != null; wall = walls()) {
     drawWall(gl, board.ref, wall.ref, wall.id, wall.sector.ref);
-    count ++;
+    PROFILE.incCount('count');
   }
-  info['Walls:'] = count;
-  count = 0;
+  PROFILE.endProfile();
+
+  PROFILE.startProfile('sprites');
   var sprites = board.markedSprites(t);
   var faceSprites = [];
   for (var spr = sprites(); spr != null; spr = sprites()) {
@@ -477,34 +483,51 @@ function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.Move
       continue;
     } 
     drawSprite(gl, board.ref, spr.ref, spr.id);
-    count ++;
+    PROFILE.incCount('count');
   }
-  info['Sprites:'] = count;
 
-  count = 0;
   for (var i = 0; i < faceSprites.length; i++) {
     var s = faceSprites[i];
     drawSprite(gl, board.ref, s.ref, s.id);
-    count ++;
+    PROFILE.incCount('count');
   }
-  info['FaceSprites:'] = count;
+  PROFILE.endProfile();
 }
 
 function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
+  PROFILE.startProfile('processing');
+  PROFILE.endProfile();
+  
+  PROFILE.startProfile('sectors');
   var sectors = board.allSectors();
   for (var sec = sectors(); sec != null; sec = sectors()) {
     drawSector(gl, board.ref, sec.ref, sec.id);
+    PROFILE.incCount('count');
   }
+  PROFILE.endProfile();
+  
+  PROFILE.startProfile('walls');
   var walls = board.allWalls();
   for (var wall = walls(); wall != null; wall = walls()) {
     drawWall(gl, board.ref, wall.ref, wall.id, wall.sector.ref);
+    PROFILE.incCount('count');
   }
+  PROFILE.endProfile();
+
+  PROFILE.startProfile('sprites');
+  var sprites = board.allSprites()
+  for (var spr = sprites(); spr != null; spr = sprites()) {
+    drawSprite(gl, board.ref, spr.ref, spr.id);
+    PROFILE.incCount('count');
+  }
+  PROFILE.endProfile();
 }
 
 var hitscanResult = new U.Hitscan();
 function hitscan (board:BW.BoardWrapper,  ms:U.MoveStruct, ctr:C.Controller3D) {
+  PROFILE.startProfile('hitscan');  
   var [vx, vz, vy] = ctr.getForwardMouse();
-  U.hitscan(board.ref, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hitscanResult, 0);
+  U.hitscan(board.ref, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hitscanResult, 0);
   if (hitscanResult.hitt != -1) {
     var s = board.sprites[47];
     s.ref.x = hitscanResult.hitx;
@@ -512,17 +535,22 @@ function hitscan (board:BW.BoardWrapper,  ms:U.MoveStruct, ctr:C.Controller3D) {
     s.ref.z = hitscanResult.hitz;
     sprites[s.id] = undefined;
   }
+  PROFILE.endProfile();
 }
 
-export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D, info) {
+export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D) {
   BGL.setController(ctr);
   
   mode = MODE_SELECT;
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawImpl(gl, board, ms, info);
+  PROFILE.startProfile('selectDraw');
+  drawImpl(gl, board, ms);
+  PROFILE.endProfile();
 
+  PROFILE.startProfile('readPixels');
   var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
+  PROFILE.endProfile();
 
   if (ctr.isClick()) {
     console.log(board.id2object[selectedId]);
@@ -538,7 +566,9 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   mode = MODE_NORMAL;
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawImpl(gl, board, ms, info);
+  PROFILE.startProfile('draw');
+  drawImpl(gl, board, ms);
+  PROFILE.endProfile();
 
   // mode = MODE_WIREFRAME;
   // gl.disable(gl.DEPTH_TEST);
@@ -561,13 +591,13 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
   }
 }
 
-function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, info) {
+function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct) {
   if (!U.inSector(board.ref, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board.ref, ms.x, ms.y, ms.sec);
   }
   if (ms.sec == -1) {
     drawAll(gl, board);
   } else {
-    drawInSector(gl, board, ms, info);
+    drawInSector(gl, board, ms);
   }
 }

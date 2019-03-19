@@ -59,7 +59,11 @@ export class ArtFile {
   }
 }
 
-export class ArtFiles {
+export interface ArtInfoProvider {
+  getInfo(picnum:number):ArtInfo;
+}
+
+export class ArtFiles implements ArtInfoProvider {
 
   constructor(private arts:ArtFile[]) {}
 
@@ -78,6 +82,8 @@ export class ArtFiles {
     return art.getInfo(id - art.getStart());
   }
 }
+
+
 
 export function create(stream:data.DataViewStream):ArtFile {
   return new ArtFile(stream);

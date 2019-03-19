@@ -1,4 +1,5 @@
 import * as BS from './structs';
+import * as ART from './art';
 import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
 
@@ -94,6 +95,20 @@ export function getSprites(board:BS.Board, secnum:number):number[] {
       ret.push(i);
   }
   return ret;
+}
+
+export function groupSprites(sprites:BS.Sprite[]) {
+  var sec2spr = {};
+  for (var s = 0; s < sprites.length; s++) {
+    var spr = sprites[s];
+    var sprs = sec2spr[spr.sectnum];
+    if (sprs == undefined) {
+      sprs = [];
+      sec2spr[spr.sectnum] = sprs;
+    }
+    sprs.push(s);
+  }
+  return sec2spr;
 }
 
 var ANGSCALE = (1 / 4096);
@@ -237,7 +252,19 @@ function cross(x1:number, y1:number, x2:number, y2:number) {
   return x1*y2 - y1*x2;
 }
 
-function intersectSectorPlane(board:BS.Board, sec:BS.Sector, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
+function dot(x1:number, y1:number, x2:number, y2:number) {
+  return x1*x2 + y1*y2;
+}
+
+function hitSector(board:BS.Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, t:number, hit:Hitscan) {
+  var x = xs + MU.int(vx * t);
+  var y = ys + MU.int(vy * t);
+  var z = zs + MU.int(vz * t) * ZSCALE;
+  if (inSector(board, x, y, secId))
+    hit.hitSect(x, y, z, t, secId);
+}
+
+function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
   var vl = MU.len2d(vx, vy);
   var nvx = vx / vl;
   var nvy = vy / vl;
@@ -260,11 +287,7 @@ function intersectSectorPlane(board:BS.Board, sec:BS.Sector, secId:number, xs:nu
     var ceilz = slope(xs, ys, sec.ceilingheinum) + sec.ceilingz;
     var ceildz = (zs - ceilz) / ZSCALE;
     var t = ceildz / dk;
-    var x = xs + MU.int(vx * t);
-    var y = ys + MU.int(vy * t);
-    var z = zs + MU.int(vz * t) * ZSCALE;
-    if (inSector(board, x, y, secId))
-      hit.hitSect(x, y, z, t, secId);
+    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit);
   }
 
   var floork = sec.floorheinum * ANGSCALE * angk;
@@ -273,11 +296,7 @@ function intersectSectorPlane(board:BS.Board, sec:BS.Sector, secId:number, xs:nu
     var floorz = slope(xs, ys, sec.floorheinum) + sec.floorz;
     var floordz = (floorz - zs) / ZSCALE;
     var t = floordz / dk;
-    var x = xs + MU.int(vx * t);
-    var y = ys + MU.int(vy * t);
-    var z = zs + MU.int(vz * t) * ZSCALE;
-    if (inSector(board, x, y, secId))
-      hit.hitSect(x, y, z, t, secId);
+    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit);
   }
 }
 
@@ -311,18 +330,53 @@ function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wal
   return nextsecId;
 }
 
-export function hitscan(board:BS.Board, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number) {
+function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Sprite, sprId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
+  var x = spr.x, y = spr.y, z = spr.z;
+  var info = artInfo.getInfo(spr.picnum);
+  if (spr.cstat.type == 0) { //face
+    var dx = x - xs;
+    var dy = y - ys;
+
+    var vl = MU.len2d(vx, vy);
+    if (vl == 0) return;
+    var t = dot(vx, vy, dx, dy) / vl;
+    if (t <= 0) return;
+    var intz = zs + MU.int(vz * t) * ZSCALE;
+    var h = info.h * spr.yrepeat << 2;
+    if (spr.cstat.realCenter)
+      z += (h >> 1);
+    var yo = MU.ubyte2byte((info.anum >> 16) & 0xFF);
+    z -= yo * spr.yrepeat << 2;
+    if ((intz > z) || (intz < z - h)) return;
+    
+    var dl = MU.len2d(dx, dy);
+    var dw = Math.tan(Math.acos(t / dl)) * dl;
+    var w = info.w * spr.xrepeat;
+    if (dw > w / 2) return;
+
+    var intx = xs + MU.int(vx * t);
+    var inty = ys + MU.int(vy * t);
+    hit.hitSprite(intx, inty, intz, t, sprId);
+  } else if (spr.cstat.type == 1) { //wall
+
+  } else if (spr.cstat.type == 2) { //floor
+  }
+}
+
+export function hitscan(board:BS.Board, artInfo:ART.ArtInfoProvider, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number) {
   hit.reset();
   if (secId < 0) return;
 
   var stack = [secId];
+  var sprites = groupSprites(board.sprites);
   for (var i = 0; i < stack.length; i++) {
     var s = stack[i];
     var sec = board.sectors[s];
     if (sec == undefined) break;
-    intersectSectorPlane(board, sec, s, xs, ys, zs, vx, vy, vz, hit);
+    intersectSectorPlanes(board, sec, s, xs, ys, zs, vx, vy, vz, hit);
 
-    for (var w = sec.wallptr; w < sec.wallptr+sec.wallnum; w++) {
+    var endwall = sec.wallptr+sec.wallnum;
+    for (var w = sec.wallptr; w < endwall; w++) {
       var wall = board.walls[w];
       var wall2 = board.walls[wall.point2];
       if (wall == undefined || wall2 == undefined)
@@ -332,9 +386,16 @@ export function hitscan(board:BS.Board, xs:number, ys:number, zs:number, secId:n
         stack.push(nextsec);
       }
     }
+
+    var sprs = sprites[s];
+    if (sprs == undefined) continue;
+    for (var i = 0; i < sprs.length; i++) {
+      var sprId = sprs[i];
+      var spr = board.sprites[sprId];
+      intersectSprite(board, artInfo, spr, sprId, xs, ys, zs, vx, vy, vz, hit);
+    }
   }
 }  
-
 
 export function getFirstWallAngle(sector:BS.Sector, walls:BS.Wall[]):number {
   var w1 = walls[sector.wallptr];
