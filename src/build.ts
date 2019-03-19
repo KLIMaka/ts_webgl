@@ -44,10 +44,10 @@ class BuildArtProvider implements BGL.ArtProvider {
     var info = this.arts.getInfo(picnum);
     if (info.h <= 0 || info.w <= 0)
        return this.get(0);
-    var arr = this.axisSwap(info.img, info.w, info.h);
+    var arr = this.axisSwap(info.img, info.h, info.w);
     var repeat = WebGLRenderingContext.CLAMP_TO_EDGE;
     var filter = WebGLRenderingContext.NEAREST;
-    tex = TEX.createTexture(info.h, info.w, this.gl, {filter:filter, repeat:repeat}, arr, this.gl.LUMINANCE);
+    tex = TEX.createTexture(info.w, info.h, this.gl, {filter:filter, repeat:repeat}, arr, this.gl.LUMINANCE);
 
     this.textures[picnum] = tex;
     return tex;

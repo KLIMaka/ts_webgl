@@ -337,7 +337,7 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     var dx = x - xs;
     var dy = y - ys;
 
-    var vl = MU.len2d(vx, vy);
+    var vl = MU.sqrLen2d(vx, vy);
     if (vl == 0) return;
     var t = dot(vx, vy, dx, dy) / vl;
     if (t <= 0) return;
@@ -348,14 +348,10 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     var yo = MU.ubyte2byte((info.anum >> 16) & 0xFF);
     z -= yo * spr.yrepeat << 2;
     if ((intz > z) || (intz < z - h)) return;
-    
-    var dl = MU.len2d(dx, dy);
-    var dw = Math.tan(Math.acos(t / dl)) * dl;
-    var w = info.w * spr.xrepeat;
-    if (dw > w / 2) return;
-
     var intx = xs + MU.int(vx * t);
     var inty = ys + MU.int(vy * t);
+    var w = info.w * spr.xrepeat;
+    if (MU.len2d(x-intx, y-inty) > w/2) return;
     hit.hitSprite(intx, inty, intz, t, sprId);
   } else if (spr.cstat.type == 1) { //wall
 
