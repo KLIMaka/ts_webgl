@@ -5,6 +5,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as C from '../../../../modules/controller3d';
 import * as BATCH from '../../../../modules/batcher';
 import * as BUFF from './buffers';
+import * as DRAWABLE from './drawable';
 
 class StateValue<T> {
   public changed:boolean = false;
@@ -21,7 +22,6 @@ class State {
   private projectionMatrix:StateValue<GLM.Mat4Array> = new StateValue<GLM.Mat4Array>(GLM.mat4.create());
 
   private eyePos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
-  private currentId:StateValue<number> = new StateValue<number>(-1);
   private shade:StateValue<number> = new StateValue<number>(0);
   private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.create());
   private plu:StateValue<number> = new StateValue<number>(0);
@@ -85,10 +85,6 @@ class State {
 
   public setDrawElements(place:BUFF.BufferPointer) {
     this.drawElements.set(place);
-  }
-
-  public setCurrentId(id:number) {
-    this.currentId.set(id);
   }
 
   public setShade(s:number) {
@@ -186,7 +182,6 @@ class State {
     this.setUniform(gl, BATCH.setters.mat4, "V", this.viewMatrix, rebindAll);
     this.setUniform(gl, BATCH.setters.mat4, "P", this.projectionMatrix, rebindAll);
     this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
-    this.setUniform(gl, BATCH.setters.int1, "currentId", this.currentId, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "pluN", this.plu, rebindAll);
     this.setUniform(gl, BATCH.setters.vec4, "color", this.color, rebindAll);
@@ -217,17 +212,13 @@ export function init(gl:WebGLRenderingContext) {
 }
 
 export var baseShader:DS.Shader;
-export var selectShader:DS.Shader;
 export var spriteShader:DS.Shader;
-export var spriteSelectShader:DS.Shader;
 export var baseFlatShader:DS.Shader;
 export var spriteFlatShader:DS.Shader;
 
 function createShaders(gl:WebGLRenderingContext) {
   baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1');
-  selectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SELECT']);
   spriteShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE']);
-  spriteSelectShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'SELECT']);
   baseFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['FLAT']);
   spriteFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'FLAT']);
 }
@@ -236,5 +227,18 @@ export function setController(c:C.Controller3D) {
   GLM.mat4.copy(state.getProjectionMatrix(), c.getProjectionMatrix());
   GLM.mat4.copy(state.getViewMatrix(), c.getModelViewMatrix());
   state.setEyePos(c.getCamera().getPos());
+}
+
+export function draw(gl:WebGLRenderingContext, drawable:DRAWABLE.T) {
+  if (drawable.buff.get() == null)
+    return;
+  state.setShader(drawable.type == DRAWABLE.SURFACE ? baseShader : spriteShader);
+  state.setTexture(drawable.tex);
+  state.setDrawElements(drawable.buff.get());
+  state.setColor([1, 1, 1, drawable.trans]);
+  state.setPal(drawable.pal);
+  state.setShade(drawable.shade);
+  GLM.mat4.copy(state.getTextureMatrix(), drawable.texMat);
+  state.draw(gl)
 }
 

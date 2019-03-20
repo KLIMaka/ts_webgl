@@ -4,57 +4,6 @@ import * as GLU from '../../../libs_js/glutess';
 import * as DS from '../../drawstruct';
 import * as ITER from '../../../libs/iterator';
 
-export type SectorVisitor = (board:BS.Board, sectorId:number) => void;
-export type WallVisitor = (board:BS.Board, wallId:number, sectorId:number) => void;
-export type SpriteVisitor = (board:BS.Board, spriteId:number) => void;
-
-function groupSprites(sprites:BS.Sprite[]) {
-  var sec2spr = {};
-  for (var s = 0; s < sprites.length; s++) {
-    var spr = sprites[s];
-    var sprs = sec2spr[spr.sectnum];
-    if (sprs == undefined) {
-      sprs = [];
-      sec2spr[spr.sectnum] = sprs;
-    }
-    sprs.push(s);
-  }
-  return sec2spr;
-}
-
-export function visitVisible(board:BS.Board, ms:U.MoveStruct, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) {
-  var pvs = [ms.sec];
-  var sectors = board.sectors;
-  var walls = board.walls;
-  var sprites = board.sprites;
-  var sec2spr = groupSprites(sprites);
-  for (var i = 0; i < pvs.length; i++) {
-    var secIdx = pvs[i];
-    var sec = sectors[secIdx];
-
-    if (sec != undefined) {
-      secv(board, secIdx);
-    }
-
-    for (var w = 0; w < sec.wallnum; w++) {
-      var wallidx = sec.wallptr + w;
-      var wall = walls[wallidx];
-      if (wall != undefined && U.wallVisible(wall, board.walls[wall.point2], ms)) {
-        wallv(board, wallidx, secIdx);
-        var nextsector = wall.nextsector;
-        if (nextsector == -1) continue;
-        if (pvs.indexOf(nextsector) == -1)
-          pvs.push(nextsector);
-      }
-    }
-
-    var sprs = sec2spr[secIdx];
-    if (sprs != undefined) {
-      sprs.map((sid) => sprv(board, sid));
-    }
-  }
-}
-
 export class Marked {
   private marker:number = -1;
 

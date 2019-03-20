@@ -153,7 +153,7 @@ function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
 }
 
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array, PLUs:Uint8Array[]) {
-  var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:false});
+  var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:true});
 
   var info = {
     'X:':0,
@@ -179,27 +179,26 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   var stream = new data.DataViewStream(map, true);
   var board = bloodloader.loadBloodMap(stream);
   console.log(board);
-  var boardWrapper = new BW.BoardWrapper(board);
   var tp = new BuildArtProvider(artFiles, pal, PLUs, gl);
   var control = new controller.Controller3D(gl);
-  control.setFov(75);
+  control.setFov(60);
   var ms = createMoveStruct(board, control);
 
-  BGL.init(gl, tp);
+  BGL.init(gl, tp, board);
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1])*-16);
 
     PROFILE.start();
-    BGL.draw(gl, boardWrapper, ms, control);
+    BGL.draw(gl, board, ms, control);
     PROFILE.endProfile()
 
     info['Rendering:'] = PROFILE.get().subSections['draw'].time.toFixed(2)+'ms';
-    info['Processing:'] = PROFILE.get().subSections['draw'].subSections['processing'].time.toFixed(2)+'ms';
-    info['Sectors:'] = PROFILE.get().subSections['draw'].subSections['sectors'].counts['count'];
-    info['Walls:'] = PROFILE.get().subSections['draw'].subSections['walls'].counts['count'];
-    info['Sprites:'] = PROFILE.get().subSections['draw'].subSections['sprites'].counts['count'];
+    info['Processing:'] = PROFILE.get().subSections['processing'].time.toFixed(2)+'ms';
+    info['Sectors:'] = PROFILE.get().subSections['processing'].counts['sectors'];
+    info['Walls:'] = PROFILE.get().subSections['processing'].counts['walls'];
+    info['Sprites:'] = PROFILE.get().subSections['processing'].counts['sprites'];
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;

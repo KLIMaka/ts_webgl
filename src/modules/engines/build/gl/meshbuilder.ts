@@ -1,5 +1,4 @@
 import * as DS from '../../../drawstruct';
-import * as BW from '../buildwrapper';
 import * as U from '../utils';
 import * as ART from '../art';
 import * as MU from '../../../../libs/mathutils';
@@ -11,6 +10,174 @@ import * as GL from '../../../../modules/gl';
 import * as PROFILE from '../../../../modules/profiler';
 import * as BGL from './buildgl';
 import * as BUFF from './buffers';
+import * as DRAWABLE from './drawable';
+
+export type SectorVisitor = (board:BS.Board, sectorId:number) => void;
+export type WallVisitor = (board:BS.Board, wallId:number, sectorId:number) => void;
+export type SpriteVisitor = (board:BS.Board, spriteId:number) => void;
+
+function groupSprites(sprites:BS.Sprite[]) {
+  var sec2spr = {};
+  for (var s = 0; s < sprites.length; s++) {
+    var spr = sprites[s];
+    var sprs = sec2spr[spr.sectnum];
+    if (sprs == undefined) {
+      sprs = [];
+      sec2spr[spr.sectnum] = sprs;
+    }
+    sprs.push(s);
+  }
+  return sec2spr;
+}
+
+type traverser = (board:BS.Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => void;
+
+function visitAll(board:BS.Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) {
+  for (var s = 0; s < board.sectors.length; s++) {
+    var sec = board.sectors[s];
+    secv(board, s);
+    for (var w = sec.wallptr; w < sec.wallnum+sec.wallptr; w++) {
+      wallv(board, w, s);
+    }
+  }
+  for (var s = 0; s < board.sprites.length; s++) {
+    sprv(board, s);
+  }
+}
+
+function visitVisible(board:BS.Board, ms:U.MoveStruct, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) {
+  var pvs = [ms.sec];
+  var sectors = board.sectors;
+  var walls = board.walls;
+  var sprites = board.sprites;
+  var sec2spr = groupSprites(sprites);
+  for (var i = 0; i < pvs.length; i++) {
+    var secIdx = pvs[i];
+    var sec = sectors[secIdx];
+
+    if (sec != undefined) {
+      secv(board, secIdx);
+    }
+
+    for (var w = 0; w < sec.wallnum; w++) {
+      var wallidx = sec.wallptr + w;
+      var wall = walls[wallidx];
+      if (wall != undefined && U.wallVisible(wall, board.walls[wall.point2], ms)) {
+        wallv(board, wallidx, secIdx);
+        var nextsector = wall.nextsector;
+        if (nextsector == -1) continue;
+        if (pvs.indexOf(nextsector) == -1)
+          pvs.push(nextsector);
+      }
+    }
+
+    var sprs = sec2spr[secIdx];
+    if (sprs != undefined) {
+      sprs.map((sid) => sprv(board, sid));
+    }
+  }
+}
+
+export class DrawQueue {
+  private surfaces:DRAWABLE.T[];
+  private sprites:DRAWABLE.T[];
+  private secv:SectorVisitor;
+  private wallv:WallVisitor;
+  private sprv:SpriteVisitor;
+  private cache:Cache;
+
+  constructor(private board:BS.Board) {
+    this.cache = new Cache(board);
+    this.secv = (board:BS.Board, sectorId:number) => {
+      var sector = this.cache.getSector(sectorId);
+      this.surfaces.push(sector.ceiling, sector.floor);
+      PROFILE.incCount('sectors');
+    }
+    this.wallv = (board:BS.Board, wallId:number, sectorId:number) => {
+      var wall = this.cache.getWall(wallId, sectorId);
+      this.surfaces.push(wall.bot, wall.mid, wall.top);
+      PROFILE.incCount('walls');
+    }
+    this.sprv = (board:BS.Board, spriteId:number) => {
+      var sprite = this.cache.getSprite(spriteId);
+      this.sprites.push(sprite);
+      PROFILE.incCount('sprites');
+    } 
+  }
+
+  public draw(gl:WebGLRenderingContext, t:traverser) {
+    this.surfaces = [];
+    this.sprites = [];
+
+    PROFILE.startProfile('processing');
+    t(this.board, this.secv, this.wallv, this.sprv);
+    PROFILE.endProfile();
+
+    PROFILE.startProfile('draw');
+    for (var i = 0; i < this.surfaces.length; i++) {
+      BGL.draw(gl, this.surfaces[i]);
+    }
+
+    gl.polygonOffset(-1, -8);
+    for (var i = 0; i < this.sprites.length; i++) {
+      BGL.draw(gl, this.sprites[i]);
+    }
+    gl.polygonOffset(0, 0);
+    PROFILE.endProfile();
+  }
+}
+
+export class SectorDrawable {
+  public ceiling:DRAWABLE.T = DRAWABLE.create();
+  public floor:DRAWABLE.T = DRAWABLE.create();
+}
+
+export class WallDrawable {
+  public top:DRAWABLE.T = DRAWABLE.create();
+  public mid:DRAWABLE.T = DRAWABLE.create();
+  public bot:DRAWABLE.T = DRAWABLE.create();
+}
+
+export class SpriteDrawable extends DRAWABLE.T {}
+
+export class Cache {
+  public sectors:SectorDrawable[] = [];
+  public walls:WallDrawable[] = [];
+  public sprites:SpriteDrawable[] = [];
+
+  constructor(private board:BS.Board) {}
+
+  public getSector(id:number):SectorDrawable {
+    var sector = this.sectors[id];
+    if (sector == undefined) {
+      sector = new SectorDrawable();
+      this.sectors[id] = sector;
+      prepareSector(this.board, id, sector);
+    }
+    return sector;
+  }
+
+  public getWall(wallId:number, sectorId:number):WallDrawable {
+    var wall = this.walls[wallId];
+    if (wall == undefined) {
+      wall = new WallDrawable();
+      this.walls[wallId] = wall;
+      prepareWall(this.board, wallId, sectorId, wall);
+    }
+    return wall;
+  }
+
+  public getSprite(spriteId:number):SpriteDrawable {
+    var sprite = this.sprites[spriteId];
+    if (sprite == undefined) {
+      sprite = new SpriteDrawable();
+      this.sprites[spriteId] = sprite;
+      prepareSprite(this.board, spriteId, sprite);
+    }
+    return sprite;
+  }
+}
+
 
 const SCALE = -16;
 
@@ -20,7 +187,7 @@ export interface ArtProvider extends ART.ArtInfoProvider {
   getPluTexture():DS.Texture;
 }
 
-export function init(gl:WebGLRenderingContext, p:ArtProvider) {
+export function init(gl:WebGLRenderingContext, p:ArtProvider, board:BS.Board) {
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
@@ -32,6 +199,8 @@ export function init(gl:WebGLRenderingContext, p:ArtProvider) {
   BGL.init(gl);
   BGL.state.setPalTexture(p.getPalTexture());
   BGL.state.setPluTexture(p.getPluTexture());
+
+  queue = new DrawQueue(board);
 }
 
 var artProvider:ArtProvider = null;
@@ -39,47 +208,15 @@ function setArtProvider(p:ArtProvider) {
   artProvider = p;
 }
 
-const MODE_NORMAL = 0;
-const MODE_SELECT = 1;
-const MODE_WIREFRAME = 2;
+var queue:DrawQueue;
 
-var mode = MODE_NORMAL;
-
-var floors:BUFF.BufferPointer[] = [];
-var ceilings:BUFF.BufferPointer[] = [];
-var wallup:BUFF.BufferPointer[] = [];
-var wallmiddle:BUFF.BufferPointer[] = [];
-var walldown:BUFF.BufferPointer[] = [];
-var sprites:BUFF.BufferPointer[] = [];
-
-function BGLdraw(gl:WebGLRenderingContext, tex:DS.Texture, shade:number, pal:number, id:number, trans:number=1, sprite:boolean=false) {
-  if (mode == MODE_NORMAL) {
-    BGL.state.setShader(sprite ? BGL.spriteShader : BGL.baseShader);
-    BGL.state.setColor([1,1,1,trans]);
-    BGL.state.setTexture(tex);
-    BGL.state.setShade(shade);
-    BGL.state.setPal(pal);
-    BGL.state.draw(gl);
-  } else if (mode == MODE_SELECT) {
-    BGL.state.setShader(sprite ? BGL.spriteSelectShader : BGL.selectShader);
-    BGL.state.setTexture(tex);
-    BGL.state.setCurrentId(id);
-    BGL.state.draw(gl);
-  } else if (mode == MODE_WIREFRAME) {
-    BGL.state.setShader(sprite ? BGL.spriteFlatShader : BGL.baseFlatShader);
-    BGL.state.setColor([1,1,1,0.3]);
-    BGL.state.draw(gl, gl.LINES);
-  }
-}
-
-function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], tex:DS.Texture) {
+function applySectorTextureTransform(sector:BS.Sector, ceiling:boolean, walls:BS.Wall[], info:ART.ArtInfo, texMat:GLM.Mat4Array) {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
   var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
-  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (tex.getWidth() * scale);
-  var tcscaley = (stats.yflip ? -1.0 :  1.0) / (tex.getHeight() * scale);
-  var texMat = BGL.state.getTextureMatrix();
+  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (info.w * scale);
+  var tcscaley = (stats.yflip ? -1.0 :  1.0) / (info.h * scale);
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [xpan / 256.0, ypan / 256.0, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
@@ -122,7 +259,7 @@ function cacheTriangulate(board:BS.Board, sec:BS.Sector) {
   return res;
 }
 
-function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sector, voff:number, buff:BUFF.BufferPointer) {
+function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sector, voff:number, buff:DRAWABLE.Buffer) {
   var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   var z = ceil ? sec.ceilingz : sec.floorz;
   var slope = U.createSlopeCalculator(sec, board.walls);
@@ -136,18 +273,18 @@ function fillBuffersForSectorWireframe(ceil:boolean, board:BS.Board, sec:BS.Sect
     var vx = wall.x;
     var vy = wall.y;
     var vz = (slope(vx, vy, heinum) + z) / SCALE;
-    voff = BUFF.writePos(buff, voff, vx, vz, vy);
+    voff = buff.writePos(voff, vx, vz, vy);
     if (fw != wid) {
-      off = BUFF.writeLine(buff, off, baseIdx+w-1, baseIdx+w);
+      off = buff.writeLine(off, baseIdx+w-1, baseIdx+w);
     }
     if (wall.point2 == fw) {
-      off = BUFF.writeLine(buff, off, baseIdx+w, baseIdx+fw-sec.wallptr);
+      off = buff.writeLine(off, baseIdx+w, baseIdx+fw-sec.wallptr);
       fw = wid + 1;
     } 
   }
 }
 
-function fillBuffersForSectorNormal(ceil:boolean, board:BS.Board, sec:BS.Sector, buff:BUFF.BufferPointer, vtxs:number[][], vidxs:number[]) {
+function fillBuffersForSectorNormal(ceil:boolean, board:BS.Board, sec:BS.Sector, buff:DRAWABLE.Buffer, vtxs:number[][], vidxs:number[]) {
   var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   var z = ceil ? sec.ceilingz : sec.floorz;
   var slope = U.createSlopeCalculator(sec, board.walls);
@@ -157,67 +294,60 @@ function fillBuffersForSectorNormal(ceil:boolean, board:BS.Board, sec:BS.Sector,
     var vx = vtxs[i][0];
     var vy = vtxs[i][1];
     var vz = (slope(vx, vy, heinum) + z) / SCALE;
-    off = BUFF.writePos(buff, off, vx, vz, vy);
+    off = buff.writePos(off, vx, vz, vy);
   }
 
   off = 0;
   for (var i = 0; i < vidxs.length; i+=3) {
     if (ceil) {
-      off = BUFF.writeTriangle(buff, off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
+      off = buff.writeTriangle(off, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
     } else {
-      off = BUFF.writeTriangle(buff, off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
+      off = buff.writeTriangle(off, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
     }
   }
 }
 
-function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, id:number) {
-  var buffs = ceil ? ceilings : floors; 
-  var buff = buffs[id];
-  if (buff == undefined) {
+function fillBuffersForSector(ceil:boolean, board:BS.Board, sec:BS.Sector, drawable:SectorDrawable) {
     var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    buff = BUFF.allocate(vtxs.length+sec.wallnum, vidxs.length, sec.wallnum*2);
-    buffs[id] = buff;
-    fillBuffersForSectorNormal(ceil, board, sec, buff, vtxs, vidxs);
-    fillBuffersForSectorWireframe(ceil, board, sec, vtxs.length, buff);
-  }
-  BGL.state.setDrawElements(buff);
+    var d = ceil ? drawable.ceiling : drawable.floor;
+    d.buff.allocate(vtxs.length+sec.wallnum, vidxs.length, sec.wallnum*2);
+    fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs);
+    fillBuffersForSectorWireframe(ceil, board, sec, vtxs.length, d.buff);
 }
 
-function drawSector(gl:WebGLRenderingContext, board:BS.Board, sec:BS.Sector, id:number) {
-  fillBuffersForSector(true, board, sec, id);
-  var tex = artProvider.get(sec.ceilingpicnum);
-  applySectorTextureTransform(sec, true, board.walls, tex);
-  BGLdraw(gl, tex, sec.ceilingshade, sec.ceilingpal, id);
+function prepareSector(board:BS.Board, secId:number, drawable:SectorDrawable) {
+  var sec = board.sectors[secId];
+  fillBuffersForSector(true, board, sec, drawable);
+  drawable.ceiling.tex = artProvider.get(sec.ceilingpicnum);
+  drawable.ceiling.pal = sec.ceilingpal;
+  drawable.ceiling.shade = sec.ceilingshade;
+  var info = artProvider.getInfo(sec.ceilingpicnum);
+  applySectorTextureTransform(sec, true, board.walls, info, drawable.ceiling.texMat);
 
-  fillBuffersForSector(false, board, sec, id);
-  var tex = artProvider.get(sec.floorpicnum);
-  applySectorTextureTransform(sec, false, board.walls, tex);
-  BGLdraw(gl, tex, sec.floorshade, sec.floorpal, id);
+  fillBuffersForSector(false, board, sec, drawable);
+  drawable.floor.tex = artProvider.get(sec.floorpicnum);
+  drawable.floor.pal = sec.floorpal;
+  drawable.floor.shade = sec.floorshade;
+  var info = artProvider.getInfo(sec.floorpicnum);
+  applySectorTextureTransform(sec, false, board.walls, info, drawable.floor.texMat);
 }
 
 function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, 
-  slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean,
-  buffs:BUFF.BufferPointer[], id:number):boolean {
+  slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean, buff:DRAWABLE.Buffer):boolean {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
   if (check && (z4 >= z1 && z3 >= z2))
     return false;
-  var buff = buffs[id];
-  if (buff == undefined) {
-    buff = BUFF.allocate(4, 6, 8);
-    buffs[id] = buff;
-    genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
-  }
-  BGL.state.setDrawElements(buff);
+  buff.allocate(4, 6, 8);
+  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
   return true;
 }
 
 function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, 
   ceilheinum:number, ceilnextheinum:number, ceilz:number, ceilnextz:number,
-  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number,
-  buffs:BUFF.BufferPointer[], id:number):void {
+  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number, buff:DRAWABLE.Buffer):void {
   var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE; 
   var currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
   var currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
@@ -230,37 +360,32 @@ function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, sl
   var z2 = Math.min(currz2, nextz2);
   var z3 = Math.max(currz3, nextz3);
   var z4 = Math.max(currz4, nextz4);
-  var buff = buffs[id];
-  if (buff == undefined) {
-    buff = BUFF.allocate(4, 6, 8);
-    buffs[id] = buff;
-    genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
-  }
-  BGL.state.setDrawElements(buff);
+  buff.allocate(4, 6, 8);
+  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
 }
 
-function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number, buff:BUFF.BufferPointer) {
+function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number, buff:DRAWABLE.Buffer) {
   var off = 0;
-  off = BUFF.writePos(buff, off, x1, z1, y1);
-  off = BUFF.writePos(buff, off, x2, z2, y2);
-  off = BUFF.writePos(buff, off, x2, z3, y2);
-  off = BUFF.writePos(buff, off, x1, z4, y1);
+  off = buff.writePos(off, x1, z1, y1);
+  off = buff.writePos(off, x2, z2, y2);
+  off = buff.writePos(off, x2, z3, y2);
+  off = buff.writePos(off, x1, z4, y1);
   var off = 0;
-  off = BUFF.writeQuad(buff, off, 0, 1, 2, 3);
+  off = buff.writeQuad(off, 0, 1, 2, 3);
   var off = 0;
-  off = BUFF.writeLine(buff, off, 0, 1);
-  off = BUFF.writeLine(buff, off, 1, 2);
-  off = BUFF.writeLine(buff, off, 2, 3);
-  off = BUFF.writeLine(buff, off, 3, 0);
+  off = buff.writeLine(off, 0, 1);
+  off = buff.writeLine(off, 1, 2);
+  off = buff.writeLine(off, 2, 3);
+  off = buff.writeLine(off, 3, 0);
 }
 
-function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, base:number, originalWall:BS.Wall=wall) {
+function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, info:ART.ArtInfo, base:number, originalWall:BS.Wall=wall, texMat:GLM.Mat4Array) {
   var wall1 = wall;
   if (originalWall.cstat.xflip)
     [wall1, wall2] = [wall2, wall1];
   var flip = wall == originalWall ? 1 : -1;
-  var tw = tex.getWidth();
-  var th = tex.getHeight();
+  var tw = info.w;
+  var th = info.h;
   var dx = wall2.x - wall1.x;
   var dy = wall2.y - wall1.y;
   var tcscalex = (originalWall.xrepeat * 8.0) / (flip * MU.len2d(dx, dy) * tw);
@@ -268,7 +393,6 @@ function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, 
   var tcxoff = originalWall.xpanning / tw;
   var tcyoff = wall.ypanning / 256.0;
   
-  var texMat = BGL.state.getTextureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [tcxoff, tcyoff, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
@@ -276,11 +400,14 @@ function applyWallTextureTransform(wall:BS.Wall, wall2:BS.Wall, tex:DS.Texture, 
   GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / SCALE, -wall1.y, 0]);
 }
 
-function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:number, sector:BS.Sector) {
+function prepareWall(board:BS.Board, wallId:number, secId:number, drawable:WallDrawable) {
+  var wall= board.walls[wallId];
+  var sector = board.sectors[secId];
   var wall2 = board.walls[wall.point2];
   var x1 = wall.x; var y1 = wall.y;
   var x2 = wall2.x; var y2 = wall2.y;
   var tex = artProvider.get(wall.picnum);
+  var info = artProvider.getInfo(wall.picnum);
   var slope = U.createSlopeCalculator(sector, board.walls);
   var ceilingheinum = sector.ceilingheinum;
   var ceilingz = sector.ceilingz;
@@ -289,10 +416,12 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
   var trans = (wall.cstat.translucent || wall.cstat.translucentReversed) ? 0.6 : 1;
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
-    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, wallmiddle, id);
+    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, drawable.mid.buff);
     var base = wall.cstat.alignBottom ? floorz : ceilingz;
-    applyWallTextureTransform(wall, wall2, tex, base);
-    BGLdraw(gl, tex, wall.shade, wall.pal, id);
+    applyWallTextureTransform(wall, wall2, info, base, wall, drawable.mid.texMat);
+    drawable.mid.tex = tex;
+    drawable.mid.shade = wall.shade;
+    drawable.mid.pal = wall.pal;
   } else {
     var nextsector = board.sectors[wall.nextsector];
     var nextslope = U.createSlopeCalculator(nextsector, board.walls);
@@ -300,81 +429,78 @@ function drawWall(gl:WebGLRenderingContext, board:BS.Board, wall:BS.Wall, id:num
     var nextceilingz = nextsector.ceilingz;
 
     var nextfloorheinum = nextsector.floorheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, walldown, id)) {
+    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, drawable.bot.buff)) {
       var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
       var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
       var tex_ = wall.cstat.swapBottoms ? artProvider.get(wall_.picnum) : tex;
-      var base = wall.cstat.alignBottom ? floorz : nextfloorz;
-      applyWallTextureTransform(wall_, wall2_, tex_, base, wall);
-      BGLdraw(gl, tex_, wall_.shade, wall_.pal, id);
-    }
+      var info_ = wall.cstat.swapBottoms ? artProvider.getInfo(wall_.picnum) : info;
+      var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
+      applyWallTextureTransform(wall_, wall2_, info_, base, wall, drawable.bot.texMat);
+      drawable.bot.tex = tex_;
+      drawable.bot.shade = wall_.shade;
+      drawable.bot.pal = wall_.pal;
+    } 
 
     var nextceilingheinum = nextsector.ceilingheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, wallup, id)) {
+    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, drawable.top.buff)) {
       var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
-      applyWallTextureTransform(wall, wall2, tex, base);
-      BGLdraw(gl, tex, wall.shade, wall.pal, id);
+      applyWallTextureTransform(wall, wall2, info, base, wall, drawable.top.texMat);
+      drawable.top.tex = tex;
+      drawable.top.shade = wall.shade;
+      drawable.top.pal = wall.pal;
     }
 
     if (wall.cstat.masking) {
       var tex1 = artProvider.get(wall.overpicnum);
+      var info1 = artProvider.getInfo(wall.overpicnum);
       fillBuffersForMaskedWall(x1, y1, x2, y2, slope, nextslope, 
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
-        floorheinum, nextfloorheinum, floorz, nextfloorz, wallmiddle, id);
+        floorheinum, nextfloorheinum, floorz, nextfloorz, drawable.mid.buff);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
-      applyWallTextureTransform(wall, wall2, tex1, base);
-      BGLdraw(gl, tex1, wall.shade, wall.pal, id, trans);
-    }
+      applyWallTextureTransform(wall, wall2, info1, base, wall, drawable.mid.texMat);
+      drawable.mid.tex = tex1;
+      drawable.mid.shade = wall.shade;
+      drawable.mid.pal = wall.pal;
+    } 
   }
 }
 
-function fillbuffersForWallSprite(id:number, x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
+function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, drawable:SpriteDrawable) {
   var dx = Math.sin(ang)*hw;
   var dy = Math.cos(ang)*hw;
-  var buff = sprites[id];
-  if (buff == undefined) {
-    buff = BUFF.allocate(4, onesided?6:12, 8);
-    sprites[id] = buff;
-
-    var off = 0;
-    off = BUFF.writePos(buff, off, x-dx, z-hh+yo, y-dy);
-    off = BUFF.writePos(buff, off, x+dx, z-hh+yo, y+dy);
-    off = BUFF.writePos(buff, off, x+dx, z+hh+yo, y+dy);
-    off = BUFF.writePos(buff, off, x-dx, z+hh+yo, y-dy);
-    genSpriteQuad(buff, onesided);
-  }
-  BGL.state.setDrawElements(buff);
+  drawable.buff.allocate(4, onesided?6:12, 8);
+  var off = 0;
+  off = drawable.buff.writePos(off, x-dx, z-hh+yo, y-dy);
+  off = drawable.buff.writePos(off, x+dx, z-hh+yo, y+dy);
+  off = drawable.buff.writePos(off, x+dx, z+hh+yo, y+dy);
+  off = drawable.buff.writePos(off, x-dx, z+hh+yo, y-dy);
+  genSpriteQuad(drawable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
-  var texMat = BGL.state.getTextureMatrix();
+  var texMat = drawable.texMat;
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), -yf/(hh*2), 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI/2);
   GLM.mat4.translate(texMat, texMat, [-x-xf*dx, -z-yf*hh-yo, -y-xf*dy, 0]);
 }
 
-function fillbuffersForFloorSprite(id:number, x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number) {
-  var buff = sprites[id];
-  if (buff == undefined) {
-    buff = BUFF.allocate(4, onesided?6:12, 8);
-    sprites[id] = buff;
-    var dwx = Math.sin(-ang)*hw;
-    var dwy = Math.cos(-ang)*hw;
-    var dhx = Math.sin(-ang+Math.PI/2)*hh;
-    var dhy = Math.cos(-ang+Math.PI/2)*hh;
-    var off = 0;
-    off = BUFF.writePos(buff, off, x-dwx-dhx, z, y-dwy-dhy);
-    off = BUFF.writePos(buff, off, x+dwx-dhx, z, y+dwy-dhy);
-    off = BUFF.writePos(buff, off, x+dwx+dhx, z, y+dwy+dhy);
-    off = BUFF.writePos(buff, off, x-dwx+dhx, z, y-dwy+dhy);
-    genSpriteQuad(buff, onesided);
-  }
-  BGL.state.setDrawElements(buff);
+function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, drawable:SpriteDrawable) {
+  drawable.buff.allocate(4, onesided?6:12, 8);
+  var dwx = Math.sin(-ang)*hw;
+  var dwy = Math.cos(-ang)*hw;
+  var dhx = Math.sin(-ang+Math.PI/2)*hh;
+  var dhy = Math.cos(-ang+Math.PI/2)*hh;
+  var off = 0;
+  off = drawable.buff.writePos(off, x-dwx-dhx, z, y-dwy-dhy);
+  off = drawable.buff.writePos(off, x+dwx-dhx, z, y+dwy-dhy);
+  off = drawable.buff.writePos(off, x+dwx+dhx, z, y+dwy+dhy);
+  off = drawable.buff.writePos(off, x-dwx+dhx, z, y-dwy+dhy);
+  genSpriteQuad(drawable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
-  var texMat = BGL.state.getTextureMatrix();
+  var texMat = drawable.texMat;
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), yf/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
@@ -383,44 +509,40 @@ function fillbuffersForFloorSprite(id:number, x:number, y:number, z:number, xo:n
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
 
-function fillBuffersForFaceSprite(id:number, x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number) {
-  var buff = sprites[id];
-  if (buff == undefined) {
-    buff = BUFF.allocate(4, 6, 8);
-    sprites[id] = buff;
-    var off = 0;
-    off = BUFF.writePos(buff, off, x, z, y);
-    off = BUFF.writePos(buff, off, x, z, y);
-    off = BUFF.writePos(buff, off, x, z, y);
-    off = BUFF.writePos(buff, off, x, z, y);
-    var off = 0;
-    off = BUFF.writeNormal(buff, off, -hw+xo, +hh+yo);
-    off = BUFF.writeNormal(buff, off, +hw+xo, +hh+yo);
-    off = BUFF.writeNormal(buff, off, +hw+xo, -hh+yo);
-    off = BUFF.writeNormal(buff, off, -hw+xo, -hh+yo);
-    genSpriteQuad(buff, 1);
-  }
-  BGL.state.setDrawElements(buff);
+function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number, drawable:SpriteDrawable) {
+  drawable.buff.allocate(4, 6, 8);
+  var off = 0;
+  off = drawable.buff.writePos(off, x, z, y);
+  off = drawable.buff.writePos(off, x, z, y);
+  off = drawable.buff.writePos(off, x, z, y);
+  off = drawable.buff.writePos(off, x, z, y);
+  var off = 0;
+  off = drawable.buff.writeNormal(off, -hw+xo, +hh+yo);
+  off = drawable.buff.writeNormal(off, +hw+xo, +hh+yo);
+  off = drawable.buff.writeNormal(off, +hw+xo, -hh+yo);
+  off = drawable.buff.writeNormal(off, -hw+xo, -hh+yo);
+  genSpriteQuad(drawable.buff, 1);
 
-  var texMat = BGL.state.getTextureMatrix();
+  var texMat = drawable.texMat;
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw-xo, -hh-yo, 0, 0]);
 }
 
-function genSpriteQuad(buff:BUFF.BufferPointer, onesided:number) {
+function genSpriteQuad(buff:DRAWABLE.Buffer, onesided:number) {
   var off = 0;
-  off = BUFF.writeQuad(buff, off, 0, 1, 2, 3);
+  off = buff.writeQuad(off, 0, 1, 2, 3);
   if (!onesided)
-    off = BUFF.writeQuad(buff, off, 3, 2, 1, 0);
+    off = buff.writeQuad(off, 3, 2, 1, 0);
   off = 0;
-  off = BUFF.writeLine(buff, off, 0, 1);
-  off = BUFF.writeLine(buff, off, 1, 2);
-  off = BUFF.writeLine(buff, off, 2, 3);
-  off = BUFF.writeLine(buff, off, 3, 0);
+  off = buff.writeLine(off, 0, 1);
+  off = buff.writeLine(off, 1, 2);
+  off = buff.writeLine(off, 2, 3);
+  off = buff.writeLine(off, 3, 0);
 }
 
-function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:number) {
+function prepareSprite(board:BS.Board, sprId:number, drawable:SpriteDrawable) {
+  var spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
 
@@ -437,164 +559,54 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
   var sectorShade = sec.floorshade;
   var shade = spr.shade == -8 ? sectorShade : spr.shade;
   var trans = (spr.cstat.translucent || spr.cstat.tranclucentReversed) ? 0.6 : 1;
-
-  gl.polygonOffset(-1, -8);
-  if (spr.cstat.type == 0) { // face
-    fillBuffersForFaceSprite(id, x, y, z, xo, yo, hw, hh, xf, yf);
-    BGLdraw(gl, tex, shade, spr.pal, id, trans, true);
-  } else if (spr.cstat.type == 1) { // wall
-    fillbuffersForWallSprite(id, x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, shade, spr.pal, id, trans);
-  } else if (spr.cstat.type == 2) { // floor
-    fillbuffersForFloorSprite(id, x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided);
-    BGLdraw(gl, tex, shade, spr.pal, id, trans);
-  }
-  gl.polygonOffset(0, 0);
-}
-
-function drawInSector(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct) {
-  PROFILE.startProfile('processing');
-  var t = MU.int(window.performance.now());
-  board.markVisible(ms, t);
-  PROFILE.endProfile();
-
-  PROFILE.startProfile('sectors');
-  var sectors = board.markedSectors(t);
-  for (var sec = sectors(); sec != null; sec = sectors()) {
-    drawSector(gl, board.ref, sec.ref, sec.id);
-    PROFILE.incCount('count');
-  }
-  PROFILE.endProfile();
-
-  PROFILE.startProfile('walls');
-  var walls = board.markedWalls(t);
-  for (var wall = walls(); wall != null; wall = walls()) {
-    drawWall(gl, board.ref, wall.ref, wall.id, wall.sector.ref);
-    PROFILE.incCount('count');
-  }
-  PROFILE.endProfile();
-
-  PROFILE.startProfile('sprites');
-  var sprites = board.markedSprites(t);
-  var faceSprites = [];
-  for (var spr = sprites(); spr != null; spr = sprites()) {
-    if (spr.ref.cstat.type == 0) {
-      faceSprites.push(spr);
-      continue;
-    } 
-    drawSprite(gl, board.ref, spr.ref, spr.id);
-    PROFILE.incCount('count');
-  }
-
-  for (var i = 0; i < faceSprites.length; i++) {
-    var s = faceSprites[i];
-    drawSprite(gl, board.ref, s.ref, s.id);
-    PROFILE.incCount('count');
-  }
-  PROFILE.endProfile();
-}
-
-function drawAll(gl:WebGLRenderingContext, board:BW.BoardWrapper) {
-  PROFILE.startProfile('processing');
-  PROFILE.endProfile();
+  drawable.tex = tex;
+  drawable.shade = shade;
+  drawable.pal = spr.pal;
+  drawable.trans = trans;
   
-  PROFILE.startProfile('sectors');
-  var sectors = board.allSectors();
-  for (var sec = sectors(); sec != null; sec = sectors()) {
-    drawSector(gl, board.ref, sec.ref, sec.id);
-    PROFILE.incCount('count');
+  if (spr.cstat.type == BS.FACE) {
+    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, drawable);
+    drawable.type = DRAWABLE.FACE;
+  } else if (spr.cstat.type == BS.WALL) {
+    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, drawable);
+  } else if (spr.cstat.type == BS.FLOOR) {
+    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, drawable);
   }
-  PROFILE.endProfile();
-  
-  PROFILE.startProfile('walls');
-  var walls = board.allWalls();
-  for (var wall = walls(); wall != null; wall = walls()) {
-    drawWall(gl, board.ref, wall.ref, wall.id, wall.sector.ref);
-    PROFILE.incCount('count');
-  }
-  PROFILE.endProfile();
-
-  PROFILE.startProfile('sprites');
-  var sprites = board.allSprites()
-  for (var spr = sprites(); spr != null; spr = sprites()) {
-    drawSprite(gl, board.ref, spr.ref, spr.id);
-    PROFILE.incCount('count');
-  }
-  PROFILE.endProfile();
 }
 
-var hitscanResult = new U.Hitscan();
-function hitscan (board:BW.BoardWrapper,  ms:U.MoveStruct, ctr:C.Controller3D) {
-  PROFILE.startProfile('hitscan');  
-  var [vx, vz, vy] = ctr.getForwardMouse();
-  U.hitscan(board.ref, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hitscanResult, 0);
-  if (hitscanResult.hitt != -1) {
-    var s = board.sprites[47];
-    s.ref.x = hitscanResult.hitx;
-    s.ref.y = hitscanResult.hity;
-    s.ref.z = hitscanResult.hitz;
-    sprites[s.id] = undefined;
-  }
-  PROFILE.endProfile();
+function drawInSector(gl:WebGLRenderingContext, board:BS.Board, ms:U.MoveStruct) {
+  queue.draw(gl, (board:BS.Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => visitVisible(board, ms, secv, wallv, sprv));
 }
 
-export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct, ctr:C.Controller3D) {
+function drawAll(gl:WebGLRenderingContext, board:BS.Board) {
+  queue.draw(gl, visitAll);
+}
+
+export function draw(gl:WebGLRenderingContext, board:BS.Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   BGL.setController(ctr);
-  
-  mode = MODE_SELECT;
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  PROFILE.startProfile('selectDraw');
-  drawImpl(gl, board, ms);
-  PROFILE.endProfile();
 
-  PROFILE.startProfile('readPixels');
-  var selectedId = GL.readId(gl, ctr.getX(), ctr.getY());
-  PROFILE.endProfile();
-
-  if (ctr.isClick()) {
-    console.log(board.id2object[selectedId]);
-    console.log(artProvider.getInfo(board.id2object[selectedId].ref.picnum));
-    hitscan(board, ms, ctr);
-  }
-  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {
-    board.id2object[selectedId].ref.floorheinum += 32;
-  }
-  if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['2'.charCodeAt(0)]) {
-    board.id2object[selectedId].ref.floorheinum -= 32;
-  }
-
-  mode = MODE_NORMAL;
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  PROFILE.startProfile('draw');
   drawImpl(gl, board, ms);
-  PROFILE.endProfile();
 
-  // mode = MODE_WIREFRAME;
-  // gl.disable(gl.DEPTH_TEST);
-  // drawImpl(gl, board, ms, info);
-  // gl.enable(gl.DEPTH_TEST);
-
-
-  var selected = board.id2object[selectedId];
-  if (selected != undefined) {
-    gl.disable(gl.DEPTH_TEST);
-    mode = MODE_WIREFRAME;
-    if (selected instanceof BW.SectorWrapper) {
-      drawSector(gl, board.ref, selected.ref, selected.id);
-    } else if (selected instanceof BW.WallWrapper) {
-      drawWall(gl, board.ref, selected.ref, selected.id, selected.sector.ref);
-    } else if (selected instanceof BW.SpriteWrapper) {
-      drawSprite(gl, board.ref, selected.ref, selected.id);
-    }
-    gl.enable(gl.DEPTH_TEST);
-  }
+  // hitscan(board, ms, ctr);
+  // if (hitscanResult.hitt != -1) {
+  //   mode = MODE_WIREFRAME;
+  //   gl.disable(gl.DEPTH_TEST);
+  //   if (hitscanResult.hitsprite != -1) {
+  //     drawSprite(gl, board.ref, board.sprites[hitscanResult.hitsprite].ref, board.sprites[hitscanResult.hitsprite].id);
+  //   } else if (hitscanResult.hitsect != -1) {
+  //     drawSector(gl, board.ref, board.sectors[hitscanResult.hitsect].ref, board.sectors[hitscanResult.hitsect].id);
+  //   } else if (hitscanResult.hitwall != -1) {
+  //     drawWall(gl, board.ref, board.walls[hitscanResult.hitwall].ref, board.walls[hitscanResult.hitwall].id, board.walls[hitscanResult.hitwall].sector.ref);
+  //   }
+  //   gl.enable(gl.DEPTH_TEST);
+  // }
 }
 
-function drawImpl(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveStruct) {
-  if (!U.inSector(board.ref, ms.x, ms.y, ms.sec)) {
-    ms.sec = U.findSector(board.ref, ms.x, ms.y, ms.sec);
+function drawImpl(gl:WebGLRenderingContext, board:BS.Board, ms:U.MoveStruct) {
+  if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
+    ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
   }
   if (ms.sec == -1) {
     drawAll(gl, board);

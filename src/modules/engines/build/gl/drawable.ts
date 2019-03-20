@@ -1,24 +1,18 @@
-import * as BAG from '../../../../libs/bag';
 import * as BUFF from './buffers';
+import * as DS from '../../../drawstruct';
+import * as GLM from '../../../../libs_js/glmatrix';
 
-export class CacheEntry {
+export const SURFACE = 0;
+export const FACE = 1;
+
+export class Buffer {
   private ptr:BUFF.BufferPointer;
-  private valid:boolean;
-
-  public setValid(v:boolean) {
-    this.valid = v;
-  }
-
-  public isValid():boolean {
-    return this.valid;
-  }
 
   public get():BUFF.BufferPointer {
     return this.ptr;
   }
 
   public allocate(vtxCount:number, triIndexCount:number, lineIndexCount:number) {
-    this.valid = false;
     if (this.ptr != null) {
       if (this.ptr.vtx.size <= vtxCount && this.ptr.triIdx.size <= triIndexCount && this.ptr.lineIdx.size <= lineIndexCount)
         return;
@@ -46,4 +40,18 @@ export class CacheEntry {
   public writeLine(off:number, a:number, b:number):number {
     return BUFF.writeLine(this.ptr, off, a, b);
   }
+}
+
+export class T {
+  public type = SURFACE;
+  public buff:Buffer = new Buffer();
+  public tex:DS.Texture;
+  public shade:number;
+  public trans:number = 1;
+  public pal:number;
+  public texMat:GLM.Mat4Array = GLM.mat4.create();
+}
+
+export function create():T {
+  return new T();
 }
