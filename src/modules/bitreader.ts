@@ -1,5 +1,11 @@
 import * as data from '../libs/dataviewstream';
 
+function toSigned(value:number, bits:number) {
+  return value & (1 << (bits-1)) 
+    ? -(~value & ((1 << bits) - 1)) - 1
+    : value
+}
+
 export class BitReader {
   
   private currentBit = 7;
@@ -30,6 +36,8 @@ export class BitReader {
 
   public readBits(bits:number, reverse:boolean=false):number {
     var value = 0;
+    var signed = bits < 0;
+    bits = signed ? -bits : bits;
     for (var i = 0; i < bits; i++) {
       var b = this.readBit(reverse);
       if (reverse) {
@@ -38,6 +46,6 @@ export class BitReader {
         value = (value << 1) | b;
       }
     }
-    return value;
+    return signed ? toSigned(value, bits) : value;
   }
 }

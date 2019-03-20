@@ -394,10 +394,10 @@ function fillBuffersForFaceSprite(id:number, x:number, y:number, z:number, xo:nu
     off = BUFF.writePos(buff, off, x, z, y);
     off = BUFF.writePos(buff, off, x, z, y);
     var off = 0;
-    off = BUFF.writeNormal(buff, off, -hw, +hh+yo);
-    off = BUFF.writeNormal(buff, off, +hw, +hh+yo);
-    off = BUFF.writeNormal(buff, off, +hw, -hh+yo);
-    off = BUFF.writeNormal(buff, off, -hw, -hh+yo);
+    off = BUFF.writeNormal(buff, off, -hw+xo, +hh+yo);
+    off = BUFF.writeNormal(buff, off, +hw+xo, +hh+yo);
+    off = BUFF.writeNormal(buff, off, +hw+xo, -hh+yo);
+    off = BUFF.writeNormal(buff, off, -hw+xo, -hh+yo);
     genSpriteQuad(buff, 1);
   }
   BGL.state.setDrawElements(buff);
@@ -405,7 +405,7 @@ function fillBuffersForFaceSprite(id:number, x:number, y:number, z:number, xo:nu
   var texMat = BGL.state.getTextureMatrix();
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
-  GLM.mat4.translate(texMat, texMat, [hw, -hh-yo, 0, 0]);
+  GLM.mat4.translate(texMat, texMat, [hw-xo, -hh-yo, 0, 0]);
 }
 
 function genSpriteQuad(buff:BUFF.BufferPointer, onesided:number) {
@@ -425,13 +425,13 @@ function drawSprite(gl:WebGLRenderingContext, board:BS.Board, spr:BS.Sprite, id:
     return;
 
   var x = spr.x; var y = spr.y; var z = spr.z / SCALE;
+  var info = artProvider.getInfo(spr.picnum);
   var tex = artProvider.get(spr.picnum);
-  var w = tex.getWidth(); var hw = (w*spr.xrepeat) / 8;
-  var h = tex.getHeight(); var hh = (h*spr.yrepeat) / 8;
+  var w = (info.w * spr.xrepeat) / 4; var hw = w >> 1;
+  var h = (info.h * spr.yrepeat) / 4; var hh = h >> 1;
   var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
-  var tinfo = artProvider.getInfo(spr.picnum).anum;
-  var xo = MU.ubyte2byte((tinfo >> 8) & 0xFF)*16 * (spr.xrepeat/64);
-  var yo = MU.ubyte2byte((tinfo >> 16) & 0xFF)*16 * (spr.yrepeat/64);
+  var xo = (info.attrs.xoff * spr.xrepeat) / 4;
+  var yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
   var xf = spr.cstat.xflip; var yf = spr.cstat.yflip;
   var sec = board.sectors[spr.sectnum];
   var sectorShade = sec.floorshade;
@@ -554,6 +554,7 @@ export function draw(gl:WebGLRenderingContext, board:BW.BoardWrapper, ms:U.MoveS
 
   if (ctr.isClick()) {
     console.log(board.id2object[selectedId]);
+    console.log(artProvider.getInfo(board.id2object[selectedId].ref.picnum));
     hitscan(board, ms, ctr);
   }
   if (board.id2object[selectedId] instanceof BW.SectorWrapper && ctr.getKeys()['1'.charCodeAt(0)]) {

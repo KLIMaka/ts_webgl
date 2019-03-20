@@ -1,15 +1,32 @@
 import * as data  from '../../../libs/dataviewstream';
 
 export class ArtInfo {
-  constructor(public w:number, public h:number, public anum:number, public img:Uint8Array) {}
+  constructor(public w:number, public h:number, public attrs:Attributes, public img:Uint8Array) {}
 }
+
+export const NO_ANIMATION = 0;
+export const OSCILLATING_ANIMATION = 1;
+export const ANIMATE_FORWARD = 2;
+export const ANIMATE_BACKWARD = 3;
+
+export class Attributes {
+  public frames:number;
+  public type:number;
+  public xoff:number;
+  public yoff:number;
+  public speed:number;
+}
+
+var anumStruct = data.struct(Attributes,[
+  ['frames,type,xoff,yoff,speed,unused', data.bit_field([6,2,-8,-8,4,4], true)]
+]);
 
 export class ArtFile {
 
   public offsets:number[];
   public ws:number[];
   public hs:number[];
-  public anums:number[];
+  public anums:Attributes[];
   public start:number;
   public end:number;
   public size:number;
@@ -23,7 +40,7 @@ export class ArtFile {
     var size = end - start + 1;
     var hs = data.array(data.ushort, size).read(stream);
     var ws = data.array(data.ushort, size).read(stream);
-    var anums = data.array(data.uint, size).read(stream);
+    var anums = data.array(anumStruct, size).read(stream);
     var offsets = new Array<number>(size);
     var offset = stream.mark();
     for (var i = 0; i < size; i++){

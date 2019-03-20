@@ -336,7 +336,6 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
   if (spr.cstat.type == 0) { //face
     var dx = x - xs;
     var dy = y - ys;
-
     var vl = MU.sqrLen2d(vx, vy);
     if (vl == 0) return;
     var t = dot(vx, vy, dx, dy) / vl;
@@ -345,12 +344,12 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     var h = info.h * spr.yrepeat << 2;
     if (spr.cstat.realCenter)
       z += (h >> 1);
-    var yo = MU.ubyte2byte((info.anum >> 16) & 0xFF);
+    var yo = info.attrs.yoff;
     z -= yo * spr.yrepeat << 2;
     if ((intz > z) || (intz < z - h)) return;
     var intx = xs + MU.int(vx * t);
     var inty = ys + MU.int(vy * t);
-    var w = info.w * spr.xrepeat;
+    var w = info.w * spr.xrepeat << 2;
     if (MU.len2d(x-intx, y-inty) > w/2) return;
     hit.hitSprite(intx, inty, intz, t, sprId);
   } else if (spr.cstat.type == 1) { //wall
@@ -385,8 +384,8 @@ export function hitscan(board:BS.Board, artInfo:ART.ArtInfoProvider, xs:number, 
 
     var sprs = sprites[s];
     if (sprs == undefined) continue;
-    for (var i = 0; i < sprs.length; i++) {
-      var sprId = sprs[i];
+    for (var j = 0; j < sprs.length; j++) {
+      var sprId = sprs[j];
       var spr = board.sprites[sprId];
       intersectSprite(board, artInfo, spr, sprId, xs, ys, zs, vx, vy, vz, hit);
     }
