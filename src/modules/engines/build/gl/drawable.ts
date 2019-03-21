@@ -2,8 +2,6 @@ import * as BUFF from './buffers';
 import * as DS from '../../../drawstruct';
 import * as GLM from '../../../../libs_js/glmatrix';
 
-export const SURFACE = 0;
-export const FACE = 1;
 
 export class Buffer {
   private ptr:BUFF.BufferPointer;
@@ -42,16 +40,17 @@ export class Buffer {
   }
 }
 
-export class T {
-  public type = SURFACE;
+export enum Type {
+  SURFACE,
+  FACE
+}
+
+export class Drawable {
+  public type:Type = Type.SURFACE;
   public buff:Buffer = new Buffer();
   public tex:DS.Texture;
   public shade:number;
   public trans:number = 1;
   public pal:number;
   public texMat:GLM.Mat4Array = GLM.mat4.create();
-}
-
-export function create():T {
-  return new T();
 }

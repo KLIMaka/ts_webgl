@@ -17,14 +17,13 @@ import * as RFF from './modules/engines/build/rff';
 import * as UI from './modules/ui/ui';
 import * as IU from './libs/imgutils';
 import * as browser from './libs/browser';
-import * as BW from './modules/engines/build/buildwrapper';
-import * as BGL from './modules/engines/build/gl/meshbuilder';
+import * as RENDERER from './modules/engines/build/gl/renderer';
 import * as PROFILE from './modules/profiler';
 
 var rffFile = 'resources/engines/blood/BLOOD.RFF';
 var cfgFile = 'build.cfg';
 
-class BuildArtProvider implements BGL.ArtProvider {
+class BuildArtProvider implements RENDERER.PalProvider {
   private textures:DS.Texture[] = [];
   private infos:ART.ArtInfo[] = [];
   private palTexture:DS.Texture = null;
@@ -132,15 +131,6 @@ function progress(fname:string) {
   }
 }
 
-var time = 0;
-function tic():void {
-  time = new Date().getTime();
-}
-
-function tac():number {
-  return (new Date().getTime() - time) / 1000;
-}
-
 function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
   var playerstart = BU.getPlayerStart(board);
   var ms = new BU.MoveStruct();
@@ -179,19 +169,19 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   var stream = new data.DataViewStream(map, true);
   var board = bloodloader.loadBloodMap(stream);
   console.log(board);
-  var tp = new BuildArtProvider(artFiles, pal, PLUs, gl);
+  var art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   var control = new controller.Controller3D(gl);
-  control.setFov(60);
+  control.setFov(75);
   var ms = createMoveStruct(board, control);
 
-  BGL.init(gl, tp, board);
+  RENDERER.init(gl, art, board);
 
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1])*-16);
 
     PROFILE.start();
-    BGL.draw(gl, board, ms, control);
+    RENDERER.draw(gl, board, ms, control);
     PROFILE.endProfile()
 
     info['Rendering:'] = PROFILE.get().subSections['draw'].time.toFixed(2)+'ms';

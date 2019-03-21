@@ -5,7 +5,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as C from '../../../../modules/controller3d';
 import * as BATCH from '../../../../modules/batcher';
 import * as BUFF from './buffers';
-import * as DRAWABLE from './drawable';
+import {Drawable, Type} from './drawable';
 
 class StateValue<T> {
   public changed:boolean = false;
@@ -23,7 +23,7 @@ class State {
 
   private eyePos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
   private shade:StateValue<number> = new StateValue<number>(0);
-  private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.create());
+  private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.fromValues(1,1,1,1));
   private plu:StateValue<number> = new StateValue<number>(0);
 
   private shader:StateValue<DS.Shader> = new StateValue<DS.Shader>(null);
@@ -200,27 +200,29 @@ class State {
   }
 }
 
-export var state:State;
-export function init(gl:WebGLRenderingContext) {
-  state = new State(gl);
-  BUFF.init(gl, 1024*1024, 1024*1024);
+var state:State;
+export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture) {
   createShaders(gl);
+  BUFF.init(gl, 1024*1024, 1024*1024);
+  state = new State(gl);
   state.setIndexBuffer(BUFF.getIdxBuffer());
   state.setVertexBuffer('aPos', BUFF.getPosBuffer());
   state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
-  state.setColor(GLM.vec4.fromValues(1,1,1,1));
+  state.setPalTexture(pal);
+  state.setPluTexture(plu);
 }
 
-export var baseShader:DS.Shader;
-export var spriteShader:DS.Shader;
-export var baseFlatShader:DS.Shader;
-export var spriteFlatShader:DS.Shader;
+var baseShader:DS.Shader;
+var spriteShader:DS.Shader;
+var baseFlatShader:DS.Shader;
+var spriteFlatShader:DS.Shader;
 
+const SHADER_NAME = 'resources/shaders/build_base1';
 function createShaders(gl:WebGLRenderingContext) {
-  baseShader = SHADER.createShader(gl, 'resources/shaders/build_base1');
-  spriteShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE']);
-  baseFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['FLAT']);
-  spriteFlatShader = SHADER.createShader(gl, 'resources/shaders/build_base1', ['SPRITE', 'FLAT']);
+  baseShader = SHADER.createShader(gl, SHADER_NAME);
+  spriteShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE']);
+  baseFlatShader = SHADER.createShader(gl, SHADER_NAME, ['FLAT']);
+  spriteFlatShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT']);
 }
 
 export function setController(c:C.Controller3D) {
@@ -229,10 +231,10 @@ export function setController(c:C.Controller3D) {
   state.setEyePos(c.getCamera().getPos());
 }
 
-export function draw(gl:WebGLRenderingContext, drawable:DRAWABLE.T) {
+export function draw(gl:WebGLRenderingContext, drawable:Drawable) {
   if (drawable.buff.get() == null)
     return;
-  state.setShader(drawable.type == DRAWABLE.SURFACE ? baseShader : spriteShader);
+  state.setShader(drawable.type == Type.SURFACE ? baseShader : spriteShader);
   state.setTexture(drawable.tex);
   state.setDrawElements(drawable.buff.get());
   state.setColor([1, 1, 1, drawable.trans]);
