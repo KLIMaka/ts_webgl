@@ -4,7 +4,6 @@ uniform sampler2D base;
 uniform sampler2D pal;
 uniform sampler2D plu;
 uniform int pluN;
-uniform int currentId;
 uniform vec4 color;
 
 varying float lightLevel;
@@ -14,23 +13,6 @@ const float trans = float(255.0/256.0);
 const float totalPLUs = 15.0;
 const float lightLevels = 64.0;
 
-#ifdef SELECT
-const float c = 256.0/255.0;
-
-void main() {
-  if (texture2D(base, fract(tc)).r >= trans)
-    discard;
-    
-  float cf = float(currentId) / 256.0;
-  float r = fract(cf);
-  cf = (cf - r) / 256.0;
-  float g = fract(cf);
-  cf = (cf - g) / 256.0;
-  float b = fract(cf);
-  gl_FragColor = vec4(r*c, g*c, b*c, 1.0);
-}
-
-#else
 
 void main() {
 #ifdef FLAT
@@ -53,6 +35,3 @@ void main() {
 
   gl_FragColor = vec4(color * c);
 }
-
-#endif
-

@@ -5,7 +5,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as C from '../../../../modules/controller3d';
 import * as BATCH from '../../../../modules/batcher';
 import * as BUFF from './buffers';
-import {Drawable, Type} from './drawable';
+import {Renderable, Type} from './renderable';
 
 class StateValue<T> {
   public changed:boolean = false;
@@ -231,16 +231,16 @@ export function setController(c:C.Controller3D) {
   state.setEyePos(c.getCamera().getPos());
 }
 
-export function draw(gl:WebGLRenderingContext, drawable:Drawable) {
-  if (drawable.buff.get() == null)
+export function draw(gl:WebGLRenderingContext, renderable:Renderable) {
+  if (renderable.buff.get() == null)
     return;
-  state.setShader(drawable.type == Type.SURFACE ? baseShader : spriteShader);
-  state.setTexture(drawable.tex);
-  state.setDrawElements(drawable.buff.get());
-  state.setColor([1, 1, 1, drawable.trans]);
-  state.setPal(drawable.pal);
-  state.setShade(drawable.shade);
-  GLM.mat4.copy(state.getTextureMatrix(), drawable.texMat);
+  state.setShader(renderable.type == Type.SURFACE ? baseShader : spriteShader);
+  state.setTexture(renderable.tex);
+  state.setDrawElements(renderable.buff.get());
+  state.setColor([1, 1, 1, renderable.trans]);
+  state.setPal(renderable.pal);
+  state.setShade(renderable.shade);
+  GLM.mat4.copy(state.getTextureMatrix(), renderable.texMat);
   state.draw(gl)
 }
 

@@ -1,5 +1,5 @@
 import {Board, Sector, Wall, Sprite} from '../structs';
-import {Drawable} from './drawable';
+import {Renderable} from './renderable';
 import {Cache, ArtProvider} from './cache';
 import * as DS from '../../../drawstruct';
 import * as U from '../utils';
@@ -61,8 +61,8 @@ function visitVisible(board:Board, ms:U.MoveStruct, secv:SectorVisitor, wallv:Wa
 }
 
 export class DrawQueue {
-  private surfaces:Drawable[];
-  private sprites:Drawable[];
+  private surfaces:Renderable[];
+  private sprites:Renderable[];
   private secv:SectorVisitor;
   private wallv:WallVisitor;
   private sprv:SpriteVisitor;

@@ -1,4 +1,4 @@
-import {Drawable, Buffer, Type} from './drawable';
+import {Renderable, Buffer, Type} from './renderable';
 import {ArtInfo, ArtInfoProvider} from '../art';
 import {Board, Sector, Sprite, Wall, FACE, WALL, FLOOR} from '../structs';
 import {tesselate} from '../../../../libs_js/glutess';
@@ -13,27 +13,27 @@ export interface ArtProvider extends ArtInfoProvider {
   get(picnum:number):Texture;
 }
 
-export class SectorDrawable {
-  public ceiling:Drawable = new Drawable();
-  public floor:Drawable = new Drawable();
+export class SectorRenderable {
+  public ceiling:Renderable = new Renderable();
+  public floor:Renderable = new Renderable();
 }
 
-export class WallDrawable {
-  public top:Drawable = new Drawable();
-  public mid:Drawable = new Drawable();
-  public bot:Drawable = new Drawable();
+export class WallRenderable {
+  public top:Renderable = new Renderable();
+  public mid:Renderable = new Renderable();
+  public bot:Renderable = new Renderable();
 }
 
-export class SpriteDrawable extends Drawable {}
+export class SpriteRenderable extends Renderable {}
 
 class Entry<T> {
   constructor(public value:T, public valid:boolean=false) {}
 }
 
 export class Cache {
-  public sectors:Entry<SectorDrawable>[] = [];
-  public walls:Entry<WallDrawable>[] = [];
-  public sprites:Entry<SpriteDrawable>[] = [];
+  public sectors:Entry<SectorRenderable>[] = [];
+  public walls:Entry<WallRenderable>[] = [];
+  public sprites:Entry<SpriteRenderable>[] = [];
 
   constructor(private board:Board, private art:ArtProvider) {}
 
@@ -46,37 +46,43 @@ export class Cache {
     return ent;
   }
 
-  public getSector(id:number):SectorDrawable {
-    var sector = this.ensure(this.sectors, id, () => new SectorDrawable());
-    if (!sector.valid)
+  public getSector(id:number):SectorRenderable {
+    var sector = this.ensure(this.sectors, id, () => new SectorRenderable());
+    if (!sector.valid) {
       prepareSector(this.board, this.art, id, sector.value);
+      sector.valid = true;
+    }
     return sector.value;
   }
 
-  public getWall(wallId:number, sectorId:number):WallDrawable {
-    var wall = this.ensure(this.walls, wallId, () => new WallDrawable());
-    if (!wall.valid)
+  public getWall(wallId:number, sectorId:number):WallRenderable {
+    var wall = this.ensure(this.walls, wallId, () => new WallRenderable());
+    if (!wall.valid) {
       prepareWall(this.board, this.art, wallId, sectorId, wall.value);
+      wall.valid = true;
+    }
     return wall.value;
   }
 
-  public getSprite(spriteId:number):SpriteDrawable {
-    var sprite = this.ensure(this.sprites, spriteId, () => new SpriteDrawable());
-    if (!sprite.valid)
+  public getSprite(spriteId:number):SpriteRenderable {
+    var sprite = this.ensure(this.sprites, spriteId, () => new SpriteRenderable());
+    if (!sprite.valid) {
       prepareSprite(this.board, this.art, spriteId, sprite.value);
+      sprite.valid = true;
+    }
     return sprite.value;
   }
 
   public invalidateSectors(ids:number[]) {
-    ids.map((id) => this.ensure(this.sectors, ids[id], () => new SectorDrawable()).valid = false);
+    ids.map((id) => this.ensure(this.sectors, ids[id], () => new SectorRenderable()).valid = false);
   }
 
   public invalidateWalls(ids:number[]) {
-    ids.map((id) => this.ensure(this.walls, ids[id], () => new WallDrawable()).valid = false);
+    ids.map((id) => this.ensure(this.walls, ids[id], () => new WallRenderable()).valid = false);
   }
 
   public invalidateSprites(ids:number[]) {
-    ids.map((id) => this.ensure(this.sprites, ids[id], () => new SpriteDrawable()).valid = false);
+    ids.map((id) => this.ensure(this.sprites, ids[id], () => new SpriteRenderable()).valid = false);
   }
 }
 
@@ -177,29 +183,29 @@ function fillBuffersForSectorNormal(ceil:boolean, board:Board, sec:Sector, buff:
   }
 }
 
-function fillBuffersForSector(ceil:boolean, board:Board, sec:Sector, drawable:SectorDrawable) {
+function fillBuffersForSector(ceil:boolean, board:Board, sec:Sector, renderable:SectorRenderable) {
     var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    var d = ceil ? drawable.ceiling : drawable.floor;
+    var d = ceil ? renderable.ceiling : renderable.floor;
     d.buff.allocate(vtxs.length+sec.wallnum, vidxs.length, sec.wallnum*2);
     fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs);
     fillBuffersForSectorWireframe(ceil, board, sec, vtxs.length, d.buff);
 }
 
-function prepareSector(board:Board, art:ArtProvider, secId:number, drawable:SectorDrawable) {
+function prepareSector(board:Board, art:ArtProvider, secId:number, renderable:SectorRenderable) {
   var sec = board.sectors[secId];
-  fillBuffersForSector(true, board, sec, drawable);
-  drawable.ceiling.tex = art.get(sec.ceilingpicnum);
-  drawable.ceiling.pal = sec.ceilingpal;
-  drawable.ceiling.shade = sec.ceilingshade;
+  fillBuffersForSector(true, board, sec, renderable);
+  renderable.ceiling.tex = art.get(sec.ceilingpicnum);
+  renderable.ceiling.pal = sec.ceilingpal;
+  renderable.ceiling.shade = sec.ceilingshade;
   var info = art.getInfo(sec.ceilingpicnum);
-  applySectorTextureTransform(sec, true, board.walls, info, drawable.ceiling.texMat);
+  applySectorTextureTransform(sec, true, board.walls, info, renderable.ceiling.texMat);
 
-  fillBuffersForSector(false, board, sec, drawable);
-  drawable.floor.tex = art.get(sec.floorpicnum);
-  drawable.floor.pal = sec.floorpal;
-  drawable.floor.shade = sec.floorshade;
+  fillBuffersForSector(false, board, sec, renderable);
+  renderable.floor.tex = art.get(sec.floorpicnum);
+  renderable.floor.pal = sec.floorpal;
+  renderable.floor.shade = sec.floorshade;
   var info = art.getInfo(sec.floorpicnum);
-  applySectorTextureTransform(sec, false, board.walls, info, drawable.floor.texMat);
+  applySectorTextureTransform(sec, false, board.walls, info, renderable.floor.texMat);
 }
 
 function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, 
@@ -270,7 +276,7 @@ function applyWallTextureTransform(wall:Wall, wall2:Wall, info:ArtInfo, base:num
   GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / SCALE, -wall1.y, 0]);
 }
 
-function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, drawable:WallDrawable) {
+function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, renderable:WallRenderable) {
   var wall= board.walls[wallId];
   var sector = board.sectors[secId];
   var wall2 = board.walls[wall.point2];
@@ -286,12 +292,12 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
   var trans = (wall.cstat.translucent || wall.cstat.translucentReversed) ? 0.6 : 1;
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
-    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, drawable.mid.buff);
+    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, renderable.mid.buff);
     var base = wall.cstat.alignBottom ? floorz : ceilingz;
-    applyWallTextureTransform(wall, wall2, info, base, wall, drawable.mid.texMat);
-    drawable.mid.tex = tex;
-    drawable.mid.shade = wall.shade;
-    drawable.mid.pal = wall.pal;
+    applyWallTextureTransform(wall, wall2, info, base, wall, renderable.mid.texMat);
+    renderable.mid.tex = tex;
+    renderable.mid.shade = wall.shade;
+    renderable.mid.pal = wall.pal;
   } else {
     var nextsector = board.sectors[wall.nextsector];
     var nextslope = U.createSlopeCalculator(nextsector, board.walls);
@@ -299,25 +305,25 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
     var nextceilingz = nextsector.ceilingz;
 
     var nextfloorheinum = nextsector.floorheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, drawable.bot.buff)) {
+    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, renderable.bot.buff)) {
       var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
       var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
       var tex_ = wall.cstat.swapBottoms ? art.get(wall_.picnum) : tex;
       var info_ = wall.cstat.swapBottoms ? art.getInfo(wall_.picnum) : info;
       var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
-      applyWallTextureTransform(wall_, wall2_, info_, base, wall, drawable.bot.texMat);
-      drawable.bot.tex = tex_;
-      drawable.bot.shade = wall_.shade;
-      drawable.bot.pal = wall_.pal;
+      applyWallTextureTransform(wall_, wall2_, info_, base, wall, renderable.bot.texMat);
+      renderable.bot.tex = tex_;
+      renderable.bot.shade = wall_.shade;
+      renderable.bot.pal = wall_.pal;
     } 
 
     var nextceilingheinum = nextsector.ceilingheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, drawable.top.buff)) {
+    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, renderable.top.buff)) {
       var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
-      applyWallTextureTransform(wall, wall2, info, base, wall, drawable.top.texMat);
-      drawable.top.tex = tex;
-      drawable.top.shade = wall.shade;
-      drawable.top.pal = wall.pal;
+      applyWallTextureTransform(wall, wall2, info, base, wall, renderable.top.texMat);
+      renderable.top.tex = tex;
+      renderable.top.shade = wall.shade;
+      renderable.top.pal = wall.pal;
     }
 
     if (wall.cstat.masking) {
@@ -325,52 +331,52 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
       var info1 = art.getInfo(wall.overpicnum);
       fillBuffersForMaskedWall(x1, y1, x2, y2, slope, nextslope, 
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
-        floorheinum, nextfloorheinum, floorz, nextfloorz, drawable.mid.buff);
+        floorheinum, nextfloorheinum, floorz, nextfloorz, renderable.mid.buff);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
-      applyWallTextureTransform(wall, wall2, info1, base, wall, drawable.mid.texMat);
-      drawable.mid.tex = tex1;
-      drawable.mid.shade = wall.shade;
-      drawable.mid.pal = wall.pal;
+      applyWallTextureTransform(wall, wall2, info1, base, wall, renderable.mid.texMat);
+      renderable.mid.tex = tex1;
+      renderable.mid.shade = wall.shade;
+      renderable.mid.pal = wall.pal;
     } 
   }
 }
 
-function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, drawable:SpriteDrawable) {
+function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, renderable:SpriteRenderable) {
   var dx = Math.sin(ang)*hw;
   var dy = Math.cos(ang)*hw;
-  drawable.buff.allocate(4, onesided?6:12, 8);
+  renderable.buff.allocate(4, onesided?6:12, 8);
   var off = 0;
-  off = drawable.buff.writePos(off, x-dx, z-hh+yo, y-dy);
-  off = drawable.buff.writePos(off, x+dx, z-hh+yo, y+dy);
-  off = drawable.buff.writePos(off, x+dx, z+hh+yo, y+dy);
-  off = drawable.buff.writePos(off, x-dx, z+hh+yo, y-dy);
-  genSpriteQuad(drawable.buff, onesided);
+  off = renderable.buff.writePos(off, x-dx, z-hh+yo, y-dy);
+  off = renderable.buff.writePos(off, x+dx, z-hh+yo, y+dy);
+  off = renderable.buff.writePos(off, x+dx, z+hh+yo, y+dy);
+  off = renderable.buff.writePos(off, x-dx, z+hh+yo, y-dy);
+  genSpriteQuad(renderable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
-  var texMat = drawable.texMat;
+  var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), -yf/(hh*2), 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI/2);
   GLM.mat4.translate(texMat, texMat, [-x-xf*dx, -z-yf*hh-yo, -y-xf*dy, 0]);
 }
 
-function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, drawable:SpriteDrawable) {
-  drawable.buff.allocate(4, onesided?6:12, 8);
+function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, renderable:SpriteRenderable) {
+  renderable.buff.allocate(4, onesided?6:12, 8);
   var dwx = Math.sin(-ang)*hw;
   var dwy = Math.cos(-ang)*hw;
   var dhx = Math.sin(-ang+Math.PI/2)*hh;
   var dhy = Math.cos(-ang+Math.PI/2)*hh;
   var off = 0;
-  off = drawable.buff.writePos(off, x-dwx-dhx, z, y-dwy-dhy);
-  off = drawable.buff.writePos(off, x+dwx-dhx, z, y+dwy-dhy);
-  off = drawable.buff.writePos(off, x+dwx+dhx, z, y+dwy+dhy);
-  off = drawable.buff.writePos(off, x-dwx+dhx, z, y-dwy+dhy);
-  genSpriteQuad(drawable.buff, onesided);
+  off = renderable.buff.writePos(off, x-dwx-dhx, z, y-dwy-dhy);
+  off = renderable.buff.writePos(off, x+dwx-dhx, z, y+dwy-dhy);
+  off = renderable.buff.writePos(off, x+dwx+dhx, z, y+dwy+dhy);
+  off = renderable.buff.writePos(off, x-dwx+dhx, z, y-dwy+dhy);
+  genSpriteQuad(renderable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
-  var texMat = drawable.texMat;
+  var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), yf/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
@@ -379,21 +385,21 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
 
-function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number, drawable:SpriteDrawable) {
-  drawable.buff.allocate(4, 6, 8);
+function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number, renderable:SpriteRenderable) {
+  renderable.buff.allocate(4, 6, 8);
   var off = 0;
-  off = drawable.buff.writePos(off, x, z, y);
-  off = drawable.buff.writePos(off, x, z, y);
-  off = drawable.buff.writePos(off, x, z, y);
-  off = drawable.buff.writePos(off, x, z, y);
+  off = renderable.buff.writePos(off, x, z, y);
+  off = renderable.buff.writePos(off, x, z, y);
+  off = renderable.buff.writePos(off, x, z, y);
+  off = renderable.buff.writePos(off, x, z, y);
   var off = 0;
-  off = drawable.buff.writeNormal(off, -hw+xo, +hh+yo);
-  off = drawable.buff.writeNormal(off, +hw+xo, +hh+yo);
-  off = drawable.buff.writeNormal(off, +hw+xo, -hh+yo);
-  off = drawable.buff.writeNormal(off, -hw+xo, -hh+yo);
-  genSpriteQuad(drawable.buff, 1);
+  off = renderable.buff.writeNormal(off, -hw+xo, +hh+yo);
+  off = renderable.buff.writeNormal(off, +hw+xo, +hh+yo);
+  off = renderable.buff.writeNormal(off, +hw+xo, -hh+yo);
+  off = renderable.buff.writeNormal(off, -hw+xo, -hh+yo);
+  genSpriteQuad(renderable.buff, 1);
 
-  var texMat = drawable.texMat;
+  var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw-xo, -hh-yo, 0, 0]);
@@ -411,7 +417,7 @@ function genSpriteQuad(buff:Buffer, onesided:number) {
   off = buff.writeLine(off, 3, 0);
 }
 
-function prepareSprite(board:Board, art:ArtProvider, sprId:number, drawable:SpriteDrawable) {
+function prepareSprite(board:Board, art:ArtProvider, sprId:number, renderable:SpriteRenderable) {
   var spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
@@ -429,17 +435,17 @@ function prepareSprite(board:Board, art:ArtProvider, sprId:number, drawable:Spri
   var sectorShade = sec.floorshade;
   var shade = spr.shade == -8 ? sectorShade : spr.shade;
   var trans = (spr.cstat.translucent || spr.cstat.tranclucentReversed) ? 0.6 : 1;
-  drawable.tex = tex;
-  drawable.shade = shade;
-  drawable.pal = spr.pal;
-  drawable.trans = trans;
+  renderable.tex = tex;
+  renderable.shade = shade;
+  renderable.pal = spr.pal;
+  renderable.trans = trans;
   
   if (spr.cstat.type == FACE) {
-    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, drawable);
-    drawable.type = Type.FACE;
+    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, renderable);
+    renderable.type = Type.FACE;
   } else if (spr.cstat.type == WALL) {
-    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, drawable);
+    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
   } else if (spr.cstat.type == FLOOR) {
-    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, drawable);
+    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
   }
 }

@@ -17,7 +17,7 @@ import * as RFF from './modules/engines/build/rff';
 import * as UI from './modules/ui/ui';
 import * as IU from './libs/imgutils';
 import * as browser from './libs/browser';
-import * as RENDERER from './modules/engines/build/gl/renderer';
+import * as RENDERER from './modules/engines/build/gl/boardrenderer';
 import * as PROFILE from './modules/profiler';
 
 var rffFile = 'resources/engines/blood/BLOOD.RFF';

@@ -45,7 +45,7 @@ export enum Type {
   FACE
 }
 
-export class Drawable {
+export class Renderable {
   public type:Type = Type.SURFACE;
   public buff:Buffer = new Buffer();
   public tex:DS.Texture;
