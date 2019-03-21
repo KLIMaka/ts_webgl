@@ -26,41 +26,57 @@ export class WallDrawable {
 
 export class SpriteDrawable extends Drawable {}
 
+class Entry<T> {
+  constructor(public value:T, public valid:boolean=false) {}
+}
+
 export class Cache {
-  public sectors:SectorDrawable[] = [];
-  public walls:WallDrawable[] = [];
-  public sprites:SpriteDrawable[] = [];
+  public sectors:Entry<SectorDrawable>[] = [];
+  public walls:Entry<WallDrawable>[] = [];
+  public sprites:Entry<SpriteDrawable>[] = [];
 
   constructor(private board:Board, private art:ArtProvider) {}
 
-  public getSector(id:number):SectorDrawable {
-    var sector = this.sectors[id];
-    if (sector == undefined) {
-      sector = new SectorDrawable();
-      this.sectors[id] = sector;
-      prepareSector(this.board, this.art, id, sector);
+  private ensure<T>(dir:Entry<T>[], id:number, create:()=>T) {
+    var ent = dir[id];
+    if (ent == undefined) {
+      ent = new Entry<T>(create());
+      dir[id] = ent;
     }
-    return sector;
+    return ent;
+  }
+
+  public getSector(id:number):SectorDrawable {
+    var sector = this.ensure(this.sectors, id, () => new SectorDrawable());
+    if (!sector.valid)
+      prepareSector(this.board, this.art, id, sector.value);
+    return sector.value;
   }
 
   public getWall(wallId:number, sectorId:number):WallDrawable {
-    var wall = this.walls[wallId];
-    if (wall == undefined) {
-      wall = new WallDrawable();
-      this.walls[wallId] = wall;
-      prepareWall(this.board, this.art, wallId, sectorId, wall);
-    }
-    return wall;
+    var wall = this.ensure(this.walls, wallId, () => new WallDrawable());
+    if (!wall.valid)
+      prepareWall(this.board, this.art, wallId, sectorId, wall.value);
+    return wall.value;
   }
 
   public getSprite(spriteId:number):SpriteDrawable {
-    var sprite = this.sprites[spriteId];
-    if (sprite == undefined) {
-      sprite = new SpriteDrawable();
-      this.sprites[spriteId] = sprite;
-      prepareSprite(this.board, this.art, spriteId, sprite);
-    }
-    return sprite;
+    var sprite = this.ensure(this.sprites, spriteId, () => new SpriteDrawable());
+    if (!sprite.valid)
+      prepareSprite(this.board, this.art, spriteId, sprite.value);
+    return sprite.value;
+  }
+
+  public invalidateSectors(ids:number[]) {
+    ids.map((id) => this.ensure(this.sectors, ids[id], () => new SectorDrawable()).valid = false);
+  }
+
+  public invalidateWalls(ids:number[]) {
+    ids.map((id) => this.ensure(this.walls, ids[id], () => new WallDrawable()).valid = false);
+  }
+
+  public invalidateSprites(ids:number[]) {
+    ids.map((id) => this.ensure(this.sprites, ids[id], () => new SpriteDrawable()).valid = false);
   }
 }
 
