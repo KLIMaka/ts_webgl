@@ -42,16 +42,15 @@ export class Bag {
       hole = next;
     }
     var end = hole.obj.offset + hole.obj.size;
-    if (end > offset)
-      throw new Error('Object does not fit in hole');
-    if (end == offset) {
+    if (hole.obj.offset > offset) {
+      var newHole = this.holes.insertBefore(new Place(offset, size), hole);
+      this.tryMerge(newHole);
+    } else if (end == offset) {
       hole.obj.size += size;
       this.tryMerge(hole);
-    } else if (hole.next != this.holes.terminator() && offset + size == hole.next.obj.offset) {
-      hole.next.obj.offset -= size;
-      hole.next.obj.size += size;
     } else {
-      this.holes.insertAfter(new Place(offset, size), hole);
+      var newHole = this.holes.insertAfter(new Place(offset, size), hole);
+      this.tryMerge(newHole);
     }
   }
 

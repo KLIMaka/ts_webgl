@@ -6,6 +6,7 @@ import * as U from '../utils';
 import * as C from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
 import * as BGL from './buildgl';
+import * as BU from '../boardutils';
 
 type BoardVisitor = (board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => void;
 type SectorVisitor = (board:Board, sectorId:number) => void;
@@ -66,7 +67,7 @@ export class DrawQueue {
   private secv:SectorVisitor;
   private wallv:WallVisitor;
   private sprv:SpriteVisitor;
-  private cache:Cache;
+  public cache:Cache;
 
   constructor(private board:Board, art:ArtProvider) {
     this.cache = new Cache(board, art);
@@ -114,6 +115,8 @@ export interface PalProvider extends ArtProvider {
   getPluTexture():DS.Texture;
 }
 
+var artProvider:PalProvider;
+var queue:DrawQueue;
 export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
@@ -122,18 +125,44 @@ export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
   gl.enable(gl.BLEND);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
+  artProvider = art;
   BGL.init(gl, art.getPalTexture(), art.getPluTexture());
   queue = new DrawQueue(board, art);
 }
 
-var queue:DrawQueue;
+var hit = new U.Hitscan();
+function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
+  var [vx, vz, vy] = ctr.getForwardMouse();
+  U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
 
+  if (hit.hitt != -1) {
+    if (hit.hitwall != -1 && ctr.getKeys()['F']) {
+      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, ms.sec);
+      queue.cache.invalidateAll();
+    }
+  }
+}
 
 export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   BGL.setController(ctr);
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   drawImpl(gl, board, ms);
+
+  hitscan(board, ms, ctr);
+
+  gl.disable(gl.DEPTH_TEST);
+  if (hit.hitwall != -1) {
+    var wall = queue.cache.getWall(hit.hitwall, 0);
+    BGL.draw(gl, wall.top, gl.LINES);
+    BGL.draw(gl, wall.mid, gl.LINES);
+    BGL.draw(gl, wall.bot, gl.LINES);
+  } else if (hit.hitsect != -1) {
+    var sector = queue.cache.getSector(hit.hitsect);
+    BGL.draw(gl, sector.ceiling, gl.LINES);
+    BGL.draw(gl, sector.floor, gl.LINES);
+  }
+  gl.enable(gl.DEPTH_TEST);
 }
 
 function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct) {

@@ -84,6 +84,12 @@ export class Cache {
   public invalidateSprites(ids:number[]) {
     ids.map((id) => this.ensure(this.sprites, ids[id], () => new SpriteRenderable()).valid = false);
   }
+
+  public invalidateAll() {
+    this.sectors.map(s => {if (s != undefined) s.valid = false});
+    this.walls.map(w => {if (w != undefined) w.valid = false});
+    this.sprites.map(s => {if (s != undefined) s.valid = false});
+  }
 }
 
 function applySectorTextureTransform(sector:Sector, ceiling:boolean, walls:Wall[], info:ArtInfo, texMat:GLM.Mat4Array) {

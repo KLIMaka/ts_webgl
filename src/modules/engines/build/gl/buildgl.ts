@@ -231,16 +231,18 @@ export function setController(c:C.Controller3D) {
   state.setEyePos(c.getCamera().getPos());
 }
 
-export function draw(gl:WebGLRenderingContext, renderable:Renderable) {
+export function draw(gl:WebGLRenderingContext, renderable:Renderable, mode:number=gl.TRIANGLES) {
   if (renderable.buff.get() == null)
     return;
-  state.setShader(renderable.type == Type.SURFACE ? baseShader : spriteShader);
+  state.setShader(renderable.type == Type.SURFACE 
+    ? (mode == gl.TRIANGLES ? baseShader : baseFlatShader) 
+    : (mode == gl.TRIANGLES ? spriteShader : spriteFlatShader));
   state.setTexture(renderable.tex);
   state.setDrawElements(renderable.buff.get());
   state.setColor([1, 1, 1, renderable.trans]);
   state.setPal(renderable.pal);
   state.setShade(renderable.shade);
   GLM.mat4.copy(state.getTextureMatrix(), renderable.texMat);
-  state.draw(gl)
+  state.draw(gl, mode);
 }
 

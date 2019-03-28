@@ -47,6 +47,14 @@ export function len3d(x:number, y:number, z:number) {
   return Math.sqrt(x*x + y*y + z*z);
 }
 
+export function dot2d(x1:number, y1:number, x2:number, y2:number) {
+  return x1*x2 + y1*y2;
+}
+
+export function cross2d(x1:number, y1:number, x2:number, y2:number) {
+  return x1*y2 - y1*x2;
+}
+
 export function ang(x:number, y:number):number {
   if (x > 0 && y >= 0)
     return Math.atan(x/y);

@@ -19,6 +19,11 @@ export class Buffer {
     this.ptr = BUFF.allocate(vtxCount, triIndexCount, lineIndexCount);
   }
 
+  public deallocate() {
+    if (this.ptr != null)
+      BUFF.remove(this.ptr);
+  }
+
   public writePos(off:number, x:number, y:number, z:number):number {
     return BUFF.writePos(this.ptr, off, x, y, z);
   }

@@ -35,26 +35,28 @@ export class List<T> {
     return this.nil.next == this.nil;
   }
 
-  public insertNodeBefore(node:Node<T>, ref:Node<T> = this.nil.next):void {
+  public insertNodeBefore(node:Node<T>, ref:Node<T> = this.nil.next):Node<T> {
     node.next = ref;
     node.prev = ref.prev;
     node.prev.next = node;
     ref.prev = node;
+    return node;
   }
 
-  public insertBefore(val:T, ref:Node<T>=this.nil.next):void {
-    this.insertNodeBefore(new Node<T>(val), ref);
+  public insertBefore(val:T, ref:Node<T>=this.nil.next):Node<T> {
+    return this.insertNodeBefore(new Node<T>(val), ref);
   }
 
-  public insertNodeAfter(node:Node<T>, ref:Node<T> = this.nil.prev):void {
+  public insertNodeAfter(node:Node<T>, ref:Node<T> = this.nil.prev):Node<T> {
     node.next = ref.next;
     node.next.prev = node;
     ref.next = node;
     node.prev = ref;
+    return node;
   }
 
-  public insertAfter(val:T, ref:Node<T>=this.nil.prev):void {
-    this.insertNodeAfter(new Node<T>(val), ref);
+  public insertAfter(val:T, ref:Node<T>=this.nil.prev):Node<T> {
+    return this.insertNodeAfter(new Node<T>(val), ref);
   }
 
   public remove(ref:Node<T>):Node<T> {
