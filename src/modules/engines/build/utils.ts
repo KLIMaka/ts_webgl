@@ -4,7 +4,7 @@ import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
 
 export function getPlayerStart(board:BS.Board):BS.Sprite {
-  for (var i = 0; i < board.numsprites; i++) {
+  for (var i = 0; i < board.sprites.length; i++) {
     var sprite = board.sprites[i];
     if (sprite.lotag == 1)
       return sprite;
@@ -232,18 +232,24 @@ export class Hitscan {
   public hitWall(x:number, y:number, z:number, t:number, wall:number) {
     if (this.testHit(x, y, z, t)) {
       this.hitwall = wall;
+      this.hitsect = -1;
+      this.hitsprite = -1;
     }
   }
 
   public hitSect(x:number, y:number, z:number, t:number, sec:number) {
     if (this.testHit(x, y, z, t)) {
       this.hitsect = sec;
+      this.hitwall = -1;
+      this.hitsprite = -1;
     }
   }
 
   public hitSprite(x:number, y:number, z:number, t:number, spr:number) {
     if (this.testHit(x, y, z, t)) {
       this.hitsprite = spr;
+      this.hitsect = -1;
+      this.hitsect = -1;
     }
   }
 }

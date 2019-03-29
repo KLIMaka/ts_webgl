@@ -131,14 +131,8 @@ function triangulate(sector:Sector, walls:Wall[]):number[][] {
   return tesselate(contours);
 }
 
-var tricache = {};
-function cacheTriangulate(board:Board, sec:Sector) {
-  var res = tricache[sec.wallptr];
-  if (res == undefined) {
-    res = triangulate(sec, board.walls);
-    tricache[sec.wallptr] = res;
-  }
-  return res;
+function cacheTriangulate(board:Board, sec:Sector):any {
+  return triangulate(sec, board.walls);
 }
 
 function fillBuffersForSectorWireframe(ceil:boolean, board:Board, sec:Sector, voff:number, buff:Buffer) {
@@ -157,10 +151,10 @@ function fillBuffersForSectorWireframe(ceil:boolean, board:Board, sec:Sector, vo
     var vz = (slope(vx, vy, heinum) + z) / SCALE;
     voff = buff.writePos(voff, vx, vz, vy);
     if (fw != wid) {
-      off = buff.writeLine(off, baseIdx+w-1, baseIdx+w);
+      off = buff.writeLine(off, voff-2, voff-1);
     }
     if (wall.point2 == fw) {
-      off = buff.writeLine(off, baseIdx+w, baseIdx+fw-sec.wallptr);
+      off = buff.writeLine(off, voff-1, baseIdx+fw-sec.wallptr);
       fw = wid + 1;
     } 
   }

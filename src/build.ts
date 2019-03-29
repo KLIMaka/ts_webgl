@@ -142,6 +142,65 @@ function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
   return ms;
 }
 
+function createWall(x:number, y:number, p2:number, ns:number, nw:number) {
+  var wall = new BS.Wall();
+  wall.x = x; wall.y = y;
+  wall.point2 = p2;
+  wall.nextwall = nw;
+  wall.nextsector = ns;
+  wall.picnum = 0;
+  wall.shade = 0;
+  wall.pal = 0;
+  wall.xrepeat = 8; wall.yrepeat = 8;
+  wall.xpanning = 0; wall.ypanning = 0;
+  wall.cstat = new BS.WallStats();
+  return wall;
+}
+
+function createSector(wallptr:number, wallnum:number, floorz:number, ceilingz:number):BS.Sector {
+  var sector = new BS.Sector();
+  sector.wallptr = wallptr; sector.wallnum = wallnum;
+  sector.ceilingz = ceilingz;
+  sector.floorz = floorz;
+  sector.ceilingstat = new BS.SectorStats(); sector.floorstat = new BS.SectorStats();
+  sector.ceilingpicnum = wallptr; sector.floorpicnum = wallptr;
+  sector.ceilingpal = 0; sector.floorpal = 0;
+  sector.ceilingheinum = 0; sector.floorheinum = 0;
+  sector.ceilingshade = wallptr; sector.floorshade = wallptr;
+  sector.ceilingxpanning = 0; sector.floorxpanning = 0;
+  sector.ceilingypanning = 0; sector.floorypanning = 0;
+  return sector;
+}
+
+function createBoard() {
+  var board = new BS.Board();
+  board.walls = [];
+  board.sectors = [];
+  board.sprites = [];
+  board.walls.push(createWall(0, 0, 1, -1, -1));
+  board.walls.push(createWall(4096, 0, 2, -1, -1));
+  board.walls.push(createWall(4096, 4096, 3, -1, -1));
+  board.walls.push(createWall(0, 4096, 0, -1, -1));
+  board.walls.push(createWall(1024, 1024, 5, 1, 11));
+  board.walls.push(createWall(1024, 2048, 6, 1, 10));
+  board.walls.push(createWall(2048, 2048, 7, 1, 9));
+  board.walls.push(createWall(2048, 1024, 4, 1, 8));
+  board.walls.push(createWall(1024, 1024, 9, 0, 7));
+  board.walls.push(createWall(2048, 1024, 10, 0, 6));
+  board.walls.push(createWall(2048, 2048, 11, 0, 5));
+  board.walls.push(createWall(1024, 2048, 8, 0, 4));
+  board.sectors.push(createSector(0, 8, 0, -16 * 4096));
+  board.sectors.push(createSector(8, 4, 1024*-16, -16 * 3072));
+  var sprite = new BS.Sprite();
+  sprite.x = 1024;
+  sprite.y = 1024;
+  sprite.z = 0;
+  sprite.picnum = 0;
+  sprite.lotag = 1;
+  board.sprites.push(sprite);
+  return board;
+}
+
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array, PLUs:Uint8Array[]) {
   var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:true});
 

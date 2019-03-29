@@ -134,13 +134,6 @@ var hit = new U.Hitscan();
 function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   var [vx, vz, vy] = ctr.getForwardMouse();
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
-
-  if (hit.hitt != -1) {
-    if (hit.hitwall != -1 && ctr.getKeys()['F']) {
-      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, ms.sec);
-      queue.cache.invalidateAll();
-    }
-  }
 }
 
 export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
@@ -152,17 +145,25 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
   hitscan(board, ms, ctr);
 
   gl.disable(gl.DEPTH_TEST);
+  if (hit.hitsect != -1) {
+    var sector = queue.cache.getSector(hit.hitsect);
+    BGL.draw(gl, sector.ceiling, gl.LINES);
+    BGL.draw(gl, sector.floor, gl.LINES);
+  } 
   if (hit.hitwall != -1) {
     var wall = queue.cache.getWall(hit.hitwall, 0);
     BGL.draw(gl, wall.top, gl.LINES);
     BGL.draw(gl, wall.mid, gl.LINES);
     BGL.draw(gl, wall.bot, gl.LINES);
-  } else if (hit.hitsect != -1) {
-    var sector = queue.cache.getSector(hit.hitsect);
-    BGL.draw(gl, sector.ceiling, gl.LINES);
-    BGL.draw(gl, sector.floor, gl.LINES);
-  }
+  } 
   gl.enable(gl.DEPTH_TEST);
+
+  if (hit.hitt != -1) {
+    if (hit.hitwall != -1 && ctr.getKeys()['F']) {
+      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, ms.sec);
+      queue.cache.invalidateAll();
+    }
+  }
 }
 
 function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct) {

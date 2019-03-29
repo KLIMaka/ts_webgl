@@ -118,10 +118,10 @@ export function insertWall(board:Board, secId:number, afterWallId:number, wall:W
   reserveWallPlace(board, nextsectorId, nextwallId, 1);
   wall2.point2 = nextwall.point2;
   nextwall.point2 = nextwallId + 1;
-  board.walls[nextwallId + 1] = nextwall;
+  board.walls[nextwallId + 1] = wall2;
 
   wall.nextwall = nextwallId + 1;
-  nextwall.nextwall = afterWallId + 1;
+  wall2.nextwall = afterWallId + 1;
 
   return 0;
 }

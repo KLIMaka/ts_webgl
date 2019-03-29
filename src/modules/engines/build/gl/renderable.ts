@@ -12,7 +12,7 @@ export class Buffer {
 
   public allocate(vtxCount:number, triIndexCount:number, lineIndexCount:number) {
     if (this.ptr != null) {
-      if (this.ptr.vtx.size <= vtxCount && this.ptr.triIdx.size <= triIndexCount && this.ptr.lineIdx.size <= lineIndexCount)
+      if (this.ptr.vtx.size >= vtxCount && this.ptr.triIdx.size >= triIndexCount && this.ptr.lineIdx.size >= lineIndexCount)
         return;
       BUFF.remove(this.ptr);
     }
