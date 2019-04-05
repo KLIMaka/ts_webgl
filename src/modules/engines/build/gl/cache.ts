@@ -86,9 +86,9 @@ export class Cache {
   }
 
   public invalidateAll() {
-    this.sectors.map(s => {if (s != undefined) s.valid = false});
-    this.walls.map(w => {if (w != undefined) w.valid = false});
-    this.sprites.map(s => {if (s != undefined) s.valid = false});
+    this.sectors.map(s => {if (s != undefined) {s.valid = false; s.value.ceiling.buff.deallocate(); s.value.floor.buff.deallocate();}});
+    this.walls.map(w => {if (w != undefined) {w.valid = false; w.value.bot.buff.deallocate(); w.value.mid.buff.deallocate(); w.value.top.buff.deallocate();}});
+    this.sprites.map(s => {if (s != undefined) {s.valid = false; s.value.buff.deallocate();}});
   }
 }
 

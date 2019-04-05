@@ -155,13 +155,44 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
     BGL.draw(gl, wall.top, gl.LINES);
     BGL.draw(gl, wall.mid, gl.LINES);
     BGL.draw(gl, wall.bot, gl.LINES);
-  } 
+  }
+  if (hit.hitsprite != -1) {
+    var sprite = queue.cache.getSprite(hit.hitsprite);
+    BGL.draw(gl, sprite, gl.LINES);
+  }
   gl.enable(gl.DEPTH_TEST);
 
   if (hit.hitt != -1) {
     if (hit.hitwall != -1 && ctr.getKeys()['F']) {
-      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, ms.sec);
+      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, artProvider);
       queue.cache.invalidateAll();
+    }
+
+    if (hit.hitwall != -1 && ctr.getKeys()['E']) {
+      var w1 = hit.hitwall;
+      var wall1 = board.walls[w1];
+      var w2 = wall1.point2;
+      var wall2 = board.walls[w2];
+      var dx = wall2.x - wall1.x;
+      var dy = wall2.y - wall1.y;
+      var l = Math.sqrt(dx*dx + dy*dy);
+      dx = dx/l * 32;
+      dy = dy/l * 32;
+      BU.moveWall(board, w1, wall1.x-dy, wall1.y+dx);
+      BU.moveWall(board, w2, wall2.x-dy, wall2.y+dx);
+      queue.cache.invalidateAll();
+    }
+
+    if (ctr.isClick()) {
+      if (hit.hitsect != -1) {
+        console.log(hit.hitsect, board.sectors[hit.hitsect]);
+      } 
+      if (hit.hitwall != -1) {
+        console.log(hit.hitwall, board.walls[hit.hitwall]);
+      }
+      if (hit.hitsprite != -1) {
+        console.log(hit.hitsprite, board.sprites[hit.hitsprite]);
+      }
     }
   }
 }

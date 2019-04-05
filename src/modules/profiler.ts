@@ -54,7 +54,22 @@ var mainSection = new Section(null, 'Main');
 var currentSection:Section = mainSection;
 
 export function startProfile(name:string) {
-  currentSection = new Section(currentSection, name);
+  var subsec = currentSection.subSections[name];
+  if (subsec == undefined) {
+    subsec = new Section(currentSection, name);
+  }
+  currentSection = subsec;
+  currentSection.start();
+}
+
+export function startGlobalProfile(name:string) {
+  var subsec = mainSection.subSections[name];
+  if (subsec == undefined) {
+    subsec = new Section(mainSection, name);
+    subsec.parent = currentSection;
+  }
+  currentSection = subsec;
+  currentSection.start();
 }
 
 export function incCount(name:string) {
@@ -62,7 +77,7 @@ export function incCount(name:string) {
 }
 
 export function endProfile() {
-  var time = currentSection.stop();
+  var time = currentSection.pause();
   if (currentSection != mainSection)
     currentSection = currentSection.parent;
   return time;
@@ -73,6 +88,13 @@ export function start() {
   currentSection = mainSection;
 }
 
-export function get():Section {
-  return mainSection;
+export function get(path:string=null):Section {
+  if (path == null)
+    return mainSection;
+  var parts = path.split('.');
+  var section = mainSection;
+  for (var i = 0; i < parts.length; i++) {
+    section = section.subSections[parts[i]];
+  }
+  return section;
 }

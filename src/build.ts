@@ -243,11 +243,11 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     RENDERER.draw(gl, board, ms, control);
     PROFILE.endProfile()
 
-    info['Rendering:'] = PROFILE.get().subSections['draw'].time.toFixed(2)+'ms';
-    info['Processing:'] = PROFILE.get().subSections['processing'].time.toFixed(2)+'ms';
-    info['Sectors:'] = PROFILE.get().subSections['processing'].counts['sectors'];
-    info['Walls:'] = PROFILE.get().subSections['processing'].counts['walls'];
-    info['Sprites:'] = PROFILE.get().subSections['processing'].counts['sprites'];
+    info['Rendering:'] = PROFILE.get('draw').time.toFixed(2)+'ms';
+    info['Processing:'] = PROFILE.get('processing').time.toFixed(2)+'ms';
+    info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
+    info['Walls:'] = PROFILE.get('processing').counts['walls'];
+    info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;

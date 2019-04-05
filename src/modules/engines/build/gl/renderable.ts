@@ -20,8 +20,10 @@ export class Buffer {
   }
 
   public deallocate() {
-    if (this.ptr != null)
+    if (this.ptr != null) {
       BUFF.remove(this.ptr);
+      this.ptr = null;
+    }
   }
 
   public writePos(off:number, x:number, y:number, z:number):number {
