@@ -143,6 +143,9 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
   drawImpl(gl, board, ms);
 
   hitscan(board, ms, ctr);
+  if (hit.hitt != -1) {
+    BGL.setCursorPosiotion([hit.hitx, hit.hitz/-16, hit.hity]);
+  }
 
   gl.disable(gl.DEPTH_TEST);
   if (hit.hitsect != -1) {
@@ -176,8 +179,8 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
       var dx = wall2.x - wall1.x;
       var dy = wall2.y - wall1.y;
       var l = Math.sqrt(dx*dx + dy*dy);
-      dx = dx/l * 32;
-      dy = dy/l * 32;
+      dx = dx/l * 128;
+      dy = dy/l * 128;
       BU.moveWall(board, w1, wall1.x-dy, wall1.y+dx);
       BU.moveWall(board, w2, wall2.x-dy, wall2.y+dx);
       queue.cache.invalidateAll();

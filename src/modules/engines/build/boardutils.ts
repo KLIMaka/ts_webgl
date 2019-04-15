@@ -3,8 +3,9 @@ import * as U from './utils';
 import * as MU from '../../../libs/mathutils';
 import {ArtInfo, ArtInfoProvider} from './art';
 
-const DELATA_DIST = Math.SQRT2;
+const DELTA_DIST = Math.SQRT2;
 const DELTA = 1e-6;
+const DEFAULT_REPEAT_RATE = 128;
 
 export function findSector(board:Board, wallId:number):number {
   if (wallId < 0 || wallId >= board.walls.length)
@@ -88,7 +89,7 @@ export function closestWall(board:Board, x:number, y:number, secId:number):numbe
   }
 }
 
-function movewalls(board:Board, secId:number, afterWallId:number, size:number) {
+function moveWalls(board:Board, secId:number, afterWallId:number, size:number) {
   for (var w = 0; w < board.walls.length; w++) {
     var wall = board.walls[w];
     if (wall.point2 > afterWallId)
@@ -119,7 +120,7 @@ function walllen(board:Board, wallId:number) {
   return MU.len2d(dx, dy);
 }
 
-function fixxrepeat(board:Board, wallId:number, reprate:number) {
+function fixxrepeat(board:Board, wallId:number, reprate:number=DEFAULT_REPEAT_RATE) {
   var wall = board.walls[wallId];
   wall.xrepeat = Math.min(255, Math.max(1, Math.round((walllen(board, wallId)+0.5) / reprate)))
 }
@@ -134,8 +135,8 @@ function insertPoint(board:Board, wallId:number, x:number, y:number, art:ArtInfo
   var secId = findSector(board, wallId);
   var wall = board.walls[wallId];
   var lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
-  movewalls(board, secId, wallId, 1);
-  var nwall = splittedWall(wall, x, y);
+  moveWalls(board, secId, wallId, 1);
+  var nwall = copyWall(wall, x, y);
   board.walls[wallId+1] = nwall;
   wall.point2 = wallId+1;
   fixxrepeat(board, wallId, lenperrep);
@@ -143,7 +144,7 @@ function insertPoint(board:Board, wallId:number, x:number, y:number, art:ArtInfo
   fixxrepeat(board, wallId+1, lenperrep);
 }
 
-function splittedWall(wall:Wall, x:number, y:number):Wall {
+function copyWall(wall:Wall, x:number, y:number):Wall {
   var nwall = new Wall();
   nwall.x = x;
   nwall.y = y;
@@ -166,11 +167,13 @@ function splittedWall(wall:Wall, x:number, y:number):Wall {
 }
 
 export function splitWall(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider):number {
-  var t = pointOnWall(board, wallId, x, y);
-  if (t < DELTA || t + DELTA > 1)
+  var wall = board.walls[wallId];
+  if (MU.len2d(wall.x-x, wall.y-y) < DELTA_DIST)
+    return 0;
+  var wall2 = board.walls[wall.point2];
+  if (MU.len2d(wall2.x-x, wall2.y-y) < DELTA_DIST)
     return 0;
   insertPoint(board, wallId, x, y, art);
-  var wall = board.walls[wallId];
   if (wall.nextwall != -1) {
     var nextwallId = wall.nextwall;
     insertPoint(board, nextwallId, x, y, art);
@@ -194,31 +197,35 @@ export function lastwall(board:Board, wallId:number):number {
   return wallId;
 }
 
+function doMoveWall(board:Board, w:number, x:number, y:number) {
+  var walls = board.walls;
+  var p = lastwall(board, w);
+  walls[w].x = x;
+  walls[w].y = y;
+  fixxrepeat(board, w);
+  fixxrepeat(board, p);
+}
+
 export function moveWall(board:Board, wallId:number, x:number, y:number) {
   var walls = board.walls;
   var w = wallId;
-  walls[w].x = x;
-  walls[w].y = y;
-
+  doMoveWall(board, w, x, y);
   do {
     if (walls[w].nextwall != -1) {
       w = walls[walls[w].nextwall].point2;
-      walls[w].x = x;
-      walls[w].y = y;
+      doMoveWall(board, w, x, y);
     } else {
       w = wallId;
       do {
         var prevwall = lastwall(board, w);
         if (walls[prevwall].nextwall != -1) {
           w = walls[prevwall].nextwall;
-          walls[w].x = x;
-          walls[w].y = y;
+          doMoveWall(board, w, x, y);
         } else {
           break;
         }
       } while (w != wallId)
     }
-
   } while (w != wallId);
 }
 

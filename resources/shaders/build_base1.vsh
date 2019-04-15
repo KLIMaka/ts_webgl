@@ -13,9 +13,10 @@ attribute vec3 aPos;
 
 varying float lightLevel;
 varying vec2 tc;
+varying vec3 wpos;
 
 void main() {
-
+wpos = aPos;
 #ifdef SPRITE
   vec3 p = aPos + vec3(0.0, aNorm.y, 0.0);
   vec4 epos = V * vec4(p, 1.0);

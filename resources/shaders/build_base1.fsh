@@ -5,9 +5,11 @@ uniform sampler2D pal;
 uniform sampler2D plu;
 uniform int pluN;
 uniform vec4 color;
+uniform vec3 curpos;
 
 varying float lightLevel;
 varying vec2 tc;
+varying vec3 wpos;
 
 const float trans = float(255.0/256.0);
 const float totalPLUs = 15.0;
@@ -28,9 +30,8 @@ void main() {
 #endif
 
 #ifdef TC_GRID 
-  if (fract(tc.x) < 0.01 || fract(tc.x) > 0.99 ||
-  	  fract(tc.y) < 0.01 || fract(tc.y) > 0.99)
-   	c = vec4(2.0);
+  if (distance(wpos.xz, curpos.xz) < 8.0)
+    c *= 4.0;
 #endif
 
   gl_FragColor = vec4(color * c);

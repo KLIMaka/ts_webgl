@@ -22,6 +22,7 @@ class State {
   private projectionMatrix:StateValue<GLM.Mat4Array> = new StateValue<GLM.Mat4Array>(GLM.mat4.create());
 
   private eyePos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
+  private curPos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
   private shade:StateValue<number> = new StateValue<number>(0);
   private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.fromValues(1,1,1,1));
   private plu:StateValue<number> = new StateValue<number>(0);
@@ -106,6 +107,10 @@ class State {
     this.eyePos.set(pos);
   }
 
+  public setCursorPos(pos:GLM.Vec3Array) {
+    this.curPos.set(pos);
+  }
+
   private rebindShader(gl:WebGLRenderingContext):boolean {
     if (this.shader.isChanged()) {
       var shader = this.shader.get();
@@ -182,6 +187,7 @@ class State {
     this.setUniform(gl, BATCH.setters.mat4, "V", this.viewMatrix, rebindAll);
     this.setUniform(gl, BATCH.setters.mat4, "P", this.projectionMatrix, rebindAll);
     this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
+    this.setUniform(gl, BATCH.setters.vec3, "curpos", this.curPos, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
     this.setUniform(gl, BATCH.setters.int1, "pluN", this.plu, rebindAll);
     this.setUniform(gl, BATCH.setters.vec4, "color", this.color, rebindAll);
@@ -229,6 +235,10 @@ export function setController(c:C.Controller3D) {
   GLM.mat4.copy(state.getProjectionMatrix(), c.getProjectionMatrix());
   GLM.mat4.copy(state.getViewMatrix(), c.getModelViewMatrix());
   state.setEyePos(c.getCamera().getPos());
+}
+
+export function setCursorPosiotion(pos:GLM.Vec3Array) {
+  state.setCursorPos(pos);
 }
 
 export function draw(gl:WebGLRenderingContext, renderable:Renderable, mode:number=gl.TRIANGLES) {
