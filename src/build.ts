@@ -226,6 +226,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   document.body.appendChild(panel.elem());
 
   var stream = new data.DataViewStream(map, true);
+  // var board = createBoard();
   var board = bloodloader.loadBloodMap(stream);
   console.log(board);
   var art = new BuildArtProvider(artFiles, pal, PLUs, gl);

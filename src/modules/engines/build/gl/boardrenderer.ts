@@ -7,6 +7,7 @@ import * as C from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
 import * as BGL from './buildgl';
 import * as BU from '../boardutils';
+import * as MU from '../../../../libs/mathutils';
 
 type BoardVisitor = (board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => void;
 type SectorVisitor = (board:Board, sectorId:number) => void;
@@ -110,6 +111,7 @@ export class DrawQueue {
   }
 }
 
+
 export interface PalProvider extends ArtProvider {
   getPalTexture():DS.Texture;
   getPluTexture():DS.Texture;
@@ -130,10 +132,34 @@ export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
   queue = new DrawQueue(board, art);
 }
 
+const SECTOR = 0;
+const WALL = 1;
+const SPRITE = 2;
+
+var selectType = -1;
+var selectId = [-1];
+
 var hit = new U.Hitscan();
 function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   var [vx, vz, vy] = ctr.getForwardMouse();
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+  if (ctr.isClick()) {
+    if (hit.hitt == -1) {
+      selectType = -1;
+      selectId[0] = -1;
+    } else {
+      if (hit.hitsect != -1) {
+        selectType = SECTOR;
+        selectId[0] = hit.hitsect;
+      } else if (hit.hitwall != -1) {
+        selectType = WALL;
+        selectId[0] = hit.hitwall;
+      } else if (hit.hitsprite != -1) {
+        selectType = SPRITE;
+        selectId[0] = hit.hitsprite;
+      }
+    }
+  }
 }
 
 export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
@@ -148,55 +174,34 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
   }
 
   gl.disable(gl.DEPTH_TEST);
-  if (hit.hitsect != -1) {
-    var sector = queue.cache.getSector(hit.hitsect);
-    BGL.draw(gl, sector.ceiling, gl.LINES);
-    BGL.draw(gl, sector.floor, gl.LINES);
-  } 
-  if (hit.hitwall != -1) {
-    var wall = queue.cache.getWall(hit.hitwall, 0);
-    BGL.draw(gl, wall.top, gl.LINES);
-    BGL.draw(gl, wall.mid, gl.LINES);
-    BGL.draw(gl, wall.bot, gl.LINES);
-  }
-  if (hit.hitsprite != -1) {
-    var sprite = queue.cache.getSprite(hit.hitsprite);
-    BGL.draw(gl, sprite, gl.LINES);
+  switch (selectType) {
+    case SECTOR:
+      var sector = queue.cache.getSector(selectId[0]);
+      BGL.draw(gl, sector.ceiling, gl.LINES);
+      BGL.draw(gl, sector.floor, gl.LINES);
+      break;
+    case WALL:
+      var wall = queue.cache.getWall(selectId[0], 0);
+      BGL.draw(gl, wall.top, gl.LINES);
+      BGL.draw(gl, wall.mid, gl.LINES);
+      BGL.draw(gl, wall.bot, gl.LINES);
+      break;
+    case SPRITE:
+      var sprite = queue.cache.getSprite(selectId[0]);
+      BGL.draw(gl, sprite, gl.LINES);
+      break;
   }
   gl.enable(gl.DEPTH_TEST);
 
-  if (hit.hitt != -1) {
-    if (hit.hitwall != -1 && ctr.getKeys()['F']) {
-      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, artProvider);
-      queue.cache.invalidateAll();
-    }
-
-    if (hit.hitwall != -1 && ctr.getKeys()['E']) {
-      var w1 = hit.hitwall;
-      var wall1 = board.walls[w1];
-      var w2 = wall1.point2;
-      var wall2 = board.walls[w2];
-      var dx = wall2.x - wall1.x;
-      var dy = wall2.y - wall1.y;
-      var l = Math.sqrt(dx*dx + dy*dy);
-      dx = dx/l * 128;
-      dy = dy/l * 128;
-      BU.moveWall(board, w1, wall1.x-dy, wall1.y+dx);
-      BU.moveWall(board, w2, wall2.x-dy, wall2.y+dx);
-      queue.cache.invalidateAll();
-    }
-
-    if (ctr.isClick()) {
-      if (hit.hitsect != -1) {
-        console.log(hit.hitsect, board.sectors[hit.hitsect]);
-      } 
-      if (hit.hitwall != -1) {
-        console.log(hit.hitwall, board.walls[hit.hitwall]);
-      }
-      if (hit.hitsprite != -1) {
-        console.log(hit.hitsprite, board.sprites[hit.hitsprite]);
-      }
-    }
+  if (selectType == WALL && ctr.getKeys()['Q']) {
+    selectId[0] = BU.pushWall(board, selectId[0], -128, artProvider, selectId);
+    queue.cache.invalidateAll();
+    console.log(selectId);
+  }
+  if (selectType == WALL && ctr.getKeys()['E']) {
+    selectId[0] = BU.pushWall(board, selectId[0], 128, artProvider, selectId);
+    queue.cache.invalidateAll();
+    console.log(selectId);
   }
 }
 
