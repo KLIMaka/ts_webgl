@@ -30,7 +30,7 @@ void main() {
 #endif
 
 #ifdef TC_GRID 
-  if (distance(wpos.xz, curpos.xz) < 8.0)
+  if (distance(wpos.xz, curpos.xz) < 16.0)
     c *= 4.0;
 #endif
 

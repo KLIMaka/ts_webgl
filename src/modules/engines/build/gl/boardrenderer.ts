@@ -7,6 +7,7 @@ import * as C from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
 import * as BGL from './buildgl';
 import * as BU from '../boardutils';
+import * as MU from '../../../../libs/mathutils';
 
 type BoardVisitor = (board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => void;
 type SectorVisitor = (board:Board, sectorId:number) => void;
@@ -143,58 +144,78 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
   drawImpl(gl, board, ms);
 
   hitscan(board, ms, ctr);
-  if (hit.hitt != -1) {
-    BGL.setCursorPosiotion([hit.hitx, hit.hitz/-16, hit.hity]);
+  if (hit.t != -1) {
+    BGL.setCursorPosiotion([hit.x, hit.z/-16, hit.y]);
   }
 
   gl.disable(gl.DEPTH_TEST);
-  if (hit.hitsect != -1) {
-    var sector = queue.cache.getSector(hit.hitsect);
-    BGL.draw(gl, sector.ceiling, gl.LINES);
-    BGL.draw(gl, sector.floor, gl.LINES);
+  if (hit.sect != -1) {
+    var sector = queue.cache.getSector(hit.sect);
+    switch (hit.type) {
+      case U.HitType.CEILING:
+        BGL.draw(gl, sector.ceiling, gl.LINES);
+        break;
+      case U.HitType.FLOOR:
+        BGL.draw(gl, sector.floor, gl.LINES);
+        break;
+    }
   } 
-  if (hit.hitwall != -1) {
-    var wall = queue.cache.getWall(hit.hitwall, 0);
-    BGL.draw(gl, wall.top, gl.LINES);
-    BGL.draw(gl, wall.mid, gl.LINES);
-    BGL.draw(gl, wall.bot, gl.LINES);
+  if (hit.wall != -1) {
+    var wall = queue.cache.getWall(hit.wall, 0);
+    switch (hit.type) {
+      case U.HitType.UPPER_WALL:
+        BGL.draw(gl, wall.top, gl.LINES);
+        break;
+      case U.HitType.MID_WALL:
+        BGL.draw(gl, wall.mid, gl.LINES);
+        break;
+      case U.HitType.LOWER_WALL:
+        BGL.draw(gl, wall.bot, gl.LINES);
+        break;
+    }
   }
-  if (hit.hitsprite != -1) {
-    var sprite = queue.cache.getSprite(hit.hitsprite);
+  if (hit.sprite != -1) {
+    var sprite = queue.cache.getSprite(hit.sprite);
     BGL.draw(gl, sprite, gl.LINES);
   }
   gl.enable(gl.DEPTH_TEST);
 
-  if (hit.hitt != -1) {
-    if (hit.hitwall != -1 && ctr.getKeys()['F']) {
-      BU.splitWall(board, hit.hitwall, hit.hitx, hit.hity, artProvider);
+  if (hit.t != -1) {
+    if (hit.wall != -1 && ctr.getKeys()['F']) {
+      BU.splitWall(board, hit.wall, hit.x, hit.y, artProvider);
       queue.cache.invalidateAll();
     }
 
-    if (hit.hitwall != -1 && ctr.getKeys()['E']) {
-      var w1 = hit.hitwall;
+    if (hit.wall != -1 && ctr.getKeys()['E'] && ctr.isClick()) {
+      var w1 = hit.wall;
       var wall1 = board.walls[w1];
       var w2 = wall1.point2;
       var wall2 = board.walls[w2];
       var dx = wall2.x - wall1.x;
       var dy = wall2.y - wall1.y;
       var l = Math.sqrt(dx*dx + dy*dy);
-      dx = dx/l * 128;
-      dy = dy/l * 128;
-      BU.moveWall(board, w1, wall1.x-dy, wall1.y+dx);
-      BU.moveWall(board, w2, wall2.x-dy, wall2.y+dx);
+      dx = MU.int(dx/l * 128);
+      dy = MU.int(dy/l * 128);
+      var x1 = wall1.x-dy; var y1 = wall1.y+dx;
+      var x2 = wall2.x-dy; var y2 = wall2.y+dx;
+
+
+      BU.splitWall(board, w1, x2, y2, artProvider);
+      BU.splitWall(board, w1, x1, y1, artProvider);
+      // BU.moveWall(board, w1, wall1.x-dy, wall1.y+dx);
+      // BU.moveWall(board, w2, wall2.x-dy, wall2.y+dx);
       queue.cache.invalidateAll();
     }
 
     if (ctr.isClick()) {
-      if (hit.hitsect != -1) {
-        console.log(hit.hitsect, board.sectors[hit.hitsect]);
+      if (hit.sect != -1) {
+        console.log(hit.sect, board.sectors[hit.sect]);
       } 
-      if (hit.hitwall != -1) {
-        console.log(hit.hitwall, board.walls[hit.hitwall]);
+      if (hit.wall != -1) {
+        console.log(hit.wall, board.walls[hit.wall]);
       }
-      if (hit.hitsprite != -1) {
-        console.log(hit.hitsprite, board.sprites[hit.hitsprite]);
+      if (hit.sprite != -1) {
+        console.log(hit.sprite, board.sprites[hit.sprite]);
       }
     }
   }

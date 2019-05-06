@@ -225,7 +225,7 @@ var spriteFlatShader:DS.Shader;
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 function createShaders(gl:WebGLRenderingContext) {
-  baseShader = SHADER.createShader(gl, SHADER_NAME);
+  baseShader = SHADER.createShader(gl, SHADER_NAME, ['TC_GRID']);
   spriteShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE']);
   baseFlatShader = SHADER.createShader(gl, SHADER_NAME, ['FLAT']);
   spriteFlatShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT']);

@@ -200,56 +200,65 @@ export function  rayIntersect(
 }
 
 
+export enum HitType {
+  FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL
+}
+
 export class Hitscan {
   constructor(
-    public hitx:number = -1, 
-    public hity:number = -1, 
-    public hitz:number = -1,
-    public hitt:number = -1,
-    public hitsect:number = -1,
-    public hitwall:number = -1, 
-    public hitsprite:number = -1
+    public x:number = -1, 
+    public y:number = -1, 
+    public z:number = -1,
+    public t:number = -1,
+    public sect:number = -1,
+    public wall:number = -1, 
+    public sprite:number = -1,
+    public type:HitType = null
   ) {}
 
   public reset() {
-    this.hitsect = -1;
-    this.hitwall = -1;
-    this.hitsprite = -1;
-    this.hitt = -1;
+    this.sect = -1;
+    this.wall = -1;
+    this.sprite = -1;
+    this.t = -1;
+    this.type = null;
   }
 
   private testHit(x:number, y:number, z:number, t:number):boolean {
-    if (this.hitt == -1 || this.hitt >= t) {
-      this.hitx = x;
-      this.hity = y;
-      this.hitz = z;
-      this.hitt = t;
+    if (this.t == -1 || this.t >= t) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      this.t = t;
       return true;
     }
     return false;
   }
 
-  public hitWall(x:number, y:number, z:number, t:number, wall:number) {
+  public hitWall(x:number, y:number, z:number, t:number, wall:number, type:HitType) {
     if (this.testHit(x, y, z, t)) {
-      this.hitwall = wall;
-      this.hitsect = -1;
-      this.hitsprite = -1;
+      this.wall = wall;
+      this.type = type;
+      this.sect = -1;
+      this.sprite = -1;
     }
   }
 
-  public hitSect(x:number, y:number, z:number, t:number, sec:number) {
+  public hitSect(x:number, y:number, z:number, t:number, sec:number, type:HitType) {
     if (this.testHit(x, y, z, t)) {
-      this.hitsect = sec;
-      this.hitwall = -1;
-      this.hitsprite = -1;
+      this.sect = sec;
+      this.type = type;
+      this.wall = -1;
+      this.sprite = -1;
     }
   }
 
   public hitSprite(x:number, y:number, z:number, t:number, spr:number) {
     if (this.testHit(x, y, z, t)) {
-      this.hitsprite = spr;
-      this.hitsect = -1;
-      this.hitsect = -1;
+      this.sprite = spr;
+      this.type = null;
+      this.sect = -1;
+      this.sect = -1;
     }
   }
 }
@@ -262,12 +271,12 @@ function dot(x1:number, y1:number, x2:number, y2:number) {
   return x1*x2 + y1*y2;
 }
 
-function hitSector(board:BS.Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, t:number, hit:Hitscan) {
+function hitSector(board:BS.Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, t:number, hit:Hitscan, type:HitType) {
   var x = xs + MU.int(vx * t);
   var y = ys + MU.int(vy * t);
   var z = zs + MU.int(vz * t) * ZSCALE;
   if (inSector(board, x, y, secId))
-    hit.hitSect(x, y, z, t, secId);
+    hit.hitSect(x, y, z, t, secId, type);
 }
 
 function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
@@ -293,7 +302,7 @@ function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:n
     var ceilz = slope(xs, ys, sec.ceilingheinum) + sec.ceilingz;
     var ceildz = (zs - ceilz) / ZSCALE;
     var t = ceildz / dk;
-    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit);
+    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, HitType.CEILING);
   }
 
   var floork = sec.floorheinum * ANGSCALE * angk;
@@ -302,7 +311,7 @@ function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:n
     var floorz = slope(xs, ys, sec.floorheinum) + sec.floorz;
     var floordz = (floorz - zs) / ZSCALE;
     var t = floordz / dk;
-    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit);
+    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, HitType.FLOOR);
   }
 }
 
@@ -320,7 +329,7 @@ function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wal
 
   var nextsecId = wall.nextsector;
   if (nextsecId == -1 || wall.cstat.masking) {
-    hit.hitWall(ix, iy, iz, it, wallId);
+    hit.hitWall(ix, iy, iz, it, wallId, HitType.MID_WALL);
     return -1;
   }
 
@@ -328,8 +337,11 @@ function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wal
   var nextslope = createSlopeCalculator(nextsec, board.walls);
   var floorz = nextslope(ix, iy, nextsec.floorheinum) + nextsec.floorz;
   var ceilz = nextslope(ix, iy, nextsec.ceilingheinum) + nextsec.ceilingz;
-  if (iz <= ceilz || iz >= floorz) {
-    hit.hitWall(ix, iy, iz, it, wallId);
+  if (iz <= ceilz) {
+    hit.hitWall(ix, iy, iz, it, wallId, HitType.UPPER_WALL);
+    return -1;
+  } else if (iz >= floorz) {
+    hit.hitWall(ix, iy, iz, it, wallId, HitType.LOWER_WALL);
     return -1;
   }
 
@@ -340,8 +352,7 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
   var x = spr.x, y = spr.y, z = spr.z;
   var info = artInfo.getInfo(spr.picnum);
   if (spr.cstat.type == BS.FACE) {
-    var dx = x - xs;
-    var dy = y - ys;
+    var dx = x - xs; var dy = y - ys;
     var vl = MU.sqrLen2d(vx, vy);
     if (vl == 0) return;
     var t = dot(vx, vy, dx, dy) / vl;
@@ -350,8 +361,7 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     var h = info.h * spr.yrepeat << 2;
     if (spr.cstat.realCenter)
       z += (h >> 1);
-    var yo = info.attrs.yoff;
-    z -= yo * spr.yrepeat << 2;
+    z -= info.attrs.yoff * spr.yrepeat << 2;
     if ((intz > z) || (intz < z - h)) return;
     var intx = xs + MU.int(vx * t);
     var inty = ys + MU.int(vy * t);
@@ -359,16 +369,27 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     if (MU.len2d(x-intx, y-inty) > w >> 1) return;
     hit.hitSprite(intx, inty, intz, t, sprId);
   } else if (spr.cstat.type == BS.WALL) {
-
+    var xoff = info.attrs.xoff + spr.xoffset;
+    if (spr.cstat.xflip) xoff = -xoff;
+    var w = (info.w * spr.xrepeat) / 4; var hw = w >> 1;
+    var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
+    var dx = Math.sin(ang)*hw;
+    var dy = Math.cos(ang)*hw;
   } else if (spr.cstat.type == BS.FLOOR) {
   }
 }
 
+function fillStack(board:BS.Board):number[] {
+  var arr = new Array<number>(board.sectors.length);
+  for (var i = 0; i < board.sectors.length; i++)
+    arr[i] = i;
+  return arr;
+}
+
 export function hitscan(board:BS.Board, artInfo:ART.ArtInfoProvider, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number) {
   hit.reset();
-  if (secId < 0) return;
 
-  var stack = [secId];
+  var stack = (secId < 0) ? fillStack(board) : [secId];
   var sprites = groupSprites(board.sprites);
   for (var i = 0; i < stack.length; i++) {
     var s = stack[i];
@@ -383,7 +404,7 @@ export function hitscan(board:BS.Board, artInfo:ART.ArtInfoProvider, xs:number, 
       if (wall == undefined || wall2 == undefined)
         continue;
       var nextsec = intersectWall(board, sec, wall, wall2, w, xs, ys, zs, vx, vy, vz, hit);
-      if (nextsec != -1 && stack.indexOf(nextsec) == -1){
+      if (nextsec != -1 && stack.indexOf(nextsec) == -1) {
         stack.push(nextsec);
       }
     }
