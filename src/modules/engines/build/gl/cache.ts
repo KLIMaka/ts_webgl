@@ -9,6 +9,27 @@ import * as MU from '../../../../libs/mathutils';
 
 const SCALE = -16;
 
+class AutoCreatingArray<T> {
+  private array:Array<T> = [];
+  constructor(private factory:()=>T) {}
+
+  public get(id:number):T {
+    var ent = this.array[id];
+    if (ent == undefined) {
+      ent = this.factory();
+      this.array[id] = ent;
+    }
+    return ent;
+  }
+
+  public map(f) {
+    this.array.map(f);
+  }
+}
+function createArray<T>(factory:()=>T):AutoCreatingArray<T> {
+  return new AutoCreatingArray<T>(factory);
+}
+
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum:number):Texture;
 }
@@ -30,24 +51,19 @@ class Entry<T> {
   constructor(public value:T, public valid:boolean=false) {}
 }
 
+var sectorRenerableFactory = () =>  new Entry<SectorRenderable>(new SectorRenderable());
+var wallRenerableFactory = () =>  new Entry<WallRenderable>(new WallRenderable());
+var spriteRenerableFactory = () => new Entry<SpriteRenderable>(new SpriteRenderable());
+
 export class Cache {
-  public sectors:Entry<SectorRenderable>[] = [];
-  public walls:Entry<WallRenderable>[] = [];
-  public sprites:Entry<SpriteRenderable>[] = [];
+  public sectors:AutoCreatingArray<Entry<SectorRenderable>> = createArray(sectorRenerableFactory);
+  public walls:AutoCreatingArray<Entry<WallRenderable>> = createArray(wallRenerableFactory);
+  public sprites:AutoCreatingArray<Entry<SpriteRenderable>> = createArray(spriteRenerableFactory)
 
   constructor(private board:Board, private art:ArtProvider) {}
 
-  private ensure<T>(dir:Entry<T>[], id:number, create:()=>T) {
-    var ent = dir[id];
-    if (ent == undefined) {
-      ent = new Entry<T>(create());
-      dir[id] = ent;
-    }
-    return ent;
-  }
-
   public getSector(id:number):SectorRenderable {
-    var sector = this.ensure(this.sectors, id, () => new SectorRenderable());
+    var sector = this.sectors.get(id);
     if (!sector.valid) {
       prepareSector(this.board, this.art, id, sector.value);
       sector.valid = true;
@@ -56,7 +72,7 @@ export class Cache {
   }
 
   public getWall(wallId:number, sectorId:number):WallRenderable {
-    var wall = this.ensure(this.walls, wallId, () => new WallRenderable());
+    var wall = this.walls.get(wallId);
     if (!wall.valid) {
       prepareWall(this.board, this.art, wallId, sectorId, wall.value);
       wall.valid = true;
@@ -65,7 +81,7 @@ export class Cache {
   }
 
   public getSprite(spriteId:number):SpriteRenderable {
-    var sprite = this.ensure(this.sprites, spriteId, () => new SpriteRenderable());
+    var sprite = this.sprites.get(spriteId);
     if (!sprite.valid) {
       prepareSprite(this.board, this.art, spriteId, sprite.value);
       sprite.valid = true;
@@ -74,15 +90,15 @@ export class Cache {
   }
 
   public invalidateSectors(ids:number[]) {
-    ids.map((id) => this.ensure(this.sectors, ids[id], () => new SectorRenderable()).valid = false);
+    ids.map((id) => this.sectors.get(ids[id]).valid = false);
   }
 
   public invalidateWalls(ids:number[]) {
-    ids.map((id) => this.ensure(this.walls, ids[id], () => new WallRenderable()).valid = false);
+    ids.map((id) => this.walls.get(ids[id]).valid = false);
   }
 
   public invalidateSprites(ids:number[]) {
-    ids.map((id) => this.ensure(this.sprites, ids[id], () => new SpriteRenderable()).valid = false);
+    ids.map((id) => this.sprites.get(ids[id]).valid = false);
   }
 
   public invalidateAll() {

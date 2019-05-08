@@ -111,6 +111,7 @@ export class DrawQueue {
   }
 }
 
+
 export interface PalProvider extends ArtProvider {
   getPalTexture():DS.Texture;
   getPluTexture():DS.Texture;
@@ -131,10 +132,23 @@ export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
   queue = new DrawQueue(board, art);
 }
 
+
+var selectType = -1;
+var selectId = -1;
+
 var hit = new U.Hitscan();
 function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   var [vx, vz, vy] = ctr.getForwardMouse();
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+  if (ctr.isClick()) {
+    if (hit.t == -1) {
+      selectType = -1;
+      selectId = -1;
+    } else {
+      selectType = hit.type;
+      selectId = hit.id;
+    }
+  }
 }
 
 export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
@@ -148,10 +162,23 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
     BGL.setCursorPosiotion([hit.x, hit.z/-16, hit.y]);
   }
 
+  highlightSelected(gl);
+
+  if (U.isWall(selectType) && ctr.getKeys()['Q']) {
+    selectId = BU.pushWall(board, selectId, -128, artProvider, []);
+    queue.cache.invalidateAll();
+  }
+  if (U.isWall(selectType) && ctr.getKeys()['E']) {
+    selectId = BU.pushWall(board, selectId, 128, artProvider, []);
+    queue.cache.invalidateAll();
+  }
+}
+
+function highlightSelected(gl:WebGLRenderingContext) {
   gl.disable(gl.DEPTH_TEST);
-  if (hit.sect != -1) {
-    var sector = queue.cache.getSector(hit.sect);
-    switch (hit.type) {
+  if (U.isSector(selectType)) {
+    var sector = queue.cache.getSector(selectId);
+    switch (selectType) {
       case U.HitType.CEILING:
         BGL.draw(gl, sector.ceiling, gl.LINES);
         break;
@@ -160,9 +187,9 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
         break;
     }
   } 
-  if (hit.wall != -1) {
-    var wall = queue.cache.getWall(hit.wall, 0);
-    switch (hit.type) {
+  if (U.isWall(selectType)) {
+    var wall = queue.cache.getWall(selectId, 0);
+    switch (selectType) {
       case U.HitType.UPPER_WALL:
         BGL.draw(gl, wall.top, gl.LINES);
         break;
@@ -174,51 +201,11 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
         break;
     }
   }
-  if (hit.sprite != -1) {
-    var sprite = queue.cache.getSprite(hit.sprite);
+  if (U.isSprite(selectType)) {
+    var sprite = queue.cache.getSprite(selectId);
     BGL.draw(gl, sprite, gl.LINES);
   }
   gl.enable(gl.DEPTH_TEST);
-
-  if (hit.t != -1) {
-    if (hit.wall != -1 && ctr.getKeys()['F']) {
-      BU.splitWall(board, hit.wall, hit.x, hit.y, artProvider);
-      queue.cache.invalidateAll();
-    }
-
-    if (hit.wall != -1 && ctr.getKeys()['E'] && ctr.isClick()) {
-      var w1 = hit.wall;
-      var wall1 = board.walls[w1];
-      var w2 = wall1.point2;
-      var wall2 = board.walls[w2];
-      var dx = wall2.x - wall1.x;
-      var dy = wall2.y - wall1.y;
-      var l = Math.sqrt(dx*dx + dy*dy);
-      dx = MU.int(dx/l * 128);
-      dy = MU.int(dy/l * 128);
-      var x1 = wall1.x-dy; var y1 = wall1.y+dx;
-      var x2 = wall2.x-dy; var y2 = wall2.y+dx;
-
-
-      BU.splitWall(board, w1, x2, y2, artProvider);
-      BU.splitWall(board, w1, x1, y1, artProvider);
-      // BU.moveWall(board, w1, wall1.x-dy, wall1.y+dx);
-      // BU.moveWall(board, w2, wall2.x-dy, wall2.y+dx);
-      queue.cache.invalidateAll();
-    }
-
-    if (ctr.isClick()) {
-      if (hit.sect != -1) {
-        console.log(hit.sect, board.sectors[hit.sect]);
-      } 
-      if (hit.wall != -1) {
-        console.log(hit.wall, board.walls[hit.wall]);
-      }
-      if (hit.sprite != -1) {
-        console.log(hit.sprite, board.sprites[hit.sprite]);
-      }
-    }
-  }
 }
 
 function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct) {

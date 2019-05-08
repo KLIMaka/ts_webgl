@@ -89,13 +89,17 @@ export function closestWall(board:Board, x:number, y:number, secId:number):numbe
   }
 }
 
-function moveWalls(board:Board, secId:number, afterWallId:number, size:number) {
+function moveWalls(board:Board, secId:number, afterWallId:number, size:number, wallptrs:number[]) {
   for (var w = 0; w < board.walls.length; w++) {
     var wall = board.walls[w];
     if (wall.point2 > afterWallId)
       wall.point2 += size;
     if (wall.nextwall > afterWallId)
       wall.nextwall += size;
+  }
+  for (var w = 0; w < wallptrs.length; w++) {
+    if (wallptrs[w] > afterWallId)
+      wallptrs[w] += size;
   }
   var end = board.walls.length - 1;
   for (var i = end; i > afterWallId; i--) {
@@ -131,11 +135,11 @@ function fixpoint2xpan(board:Board, wallId:number, art:ArtInfoProvider) {
   wall2.xpanning = ((wall.xpanning + (wall.xrepeat << 3)) % art.getInfo(wall.picnum).w) & 0xff;
 }
 
-function insertPoint(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider) {
+function insertPoint(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider, wallptrs:number[]) {
   var secId = findSector(board, wallId);
   var wall = board.walls[wallId];
   var lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
-  moveWalls(board, secId, wallId, 1);
+  moveWalls(board, secId, wallId, 1, wallptrs);
   var nwall = copyWall(wall, x, y);
   board.walls[wallId+1] = nwall;
   wall.point2 = wallId+1;
@@ -166,28 +170,28 @@ function copyWall(wall:Wall, x:number, y:number):Wall {
   return nwall;
 }
 
-export function splitWall(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider):number {
+export function splitWall(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider, wallptrs:number[]):number {
   var wall = board.walls[wallId];
   if (MU.len2d(wall.x-x, wall.y-y) < DELTA_DIST)
-    return 0;
+    return wallId;
   var wall2 = board.walls[wall.point2];
   if (MU.len2d(wall2.x-x, wall2.y-y) < DELTA_DIST)
-    return 0;
-  insertPoint(board, wallId, x, y, art);
+    return wallId;
+  insertPoint(board, wallId, x, y, art, wallptrs);
   if (wall.nextwall != -1) {
     var nextwallId = wall.nextwall;
-    insertPoint(board, nextwallId, x, y, art);
+    insertPoint(board, nextwallId, x, y, art, wallptrs);
     var wallId = board.walls[nextwallId].nextwall;
     board.walls[wallId].nextwall = nextwallId+1; 
     board.walls[wallId+1].nextwall = nextwallId; 
     board.walls[nextwallId].nextwall = wallId+1; 
     board.walls[nextwallId+1].nextwall = wallId; 
-    return 2;
+    return wallId;
   }
-  return 1;
+  return wallId;
 }
 
-export function lastwall(board:Board, wallId:number):number {
+export function prevwall(board:Board, wallId:number):number {
   if (wallId > 0 && board.walls[wallId-1].point2 == wallId)
     return wallId-1;
   for(var w = wallId;; w = board.walls[w].point2) {
@@ -197,9 +201,13 @@ export function lastwall(board:Board, wallId:number):number {
   return wallId;
 }
 
+export function nextwall(board:Board, wallId:number):number {
+  return board.walls[wallId].point2;
+}
+
 function doMoveWall(board:Board, w:number, x:number, y:number) {
   var walls = board.walls;
-  var p = lastwall(board, w);
+  var p = prevwall(board, w);
   walls[w].x = x;
   walls[w].y = y;
   fixxrepeat(board, w);
@@ -217,7 +225,7 @@ export function moveWall(board:Board, wallId:number, x:number, y:number) {
     } else {
       w = wallId;
       do {
-        var prevwall = lastwall(board, w);
+        var prevwall = prevwall(board, w);
         if (walls[prevwall].nextwall != -1) {
           w = walls[prevwall].nextwall;
           doMoveWall(board, w, x, y);
@@ -227,5 +235,37 @@ export function moveWall(board:Board, wallId:number, x:number, y:number) {
       } while (w != wallId)
     }
   } while (w != wallId);
+}
+
+export function pushWall(board:Board, wallId:number, len:number, art:ArtInfoProvider, wallptrs:number[]) {
+  var w1 = wallId; var wall1 = board.walls[w1];
+  var w2 = wall1.point2; var wall2 = board.walls[w2];
+  var p1 = prevwall(board, w1); var prev1 = board.walls[p1];
+  var n2 = wall2.point2; var next2 = board.walls[n2];
+  var dx = wall2.x - wall1.x; var dy = wall2.y - wall1.y;
+  var l = MU.len2d(dx, dy);
+  dx = MU.int(dx/l * len); dy = MU.int(dy/l * len);
+  var x1 = wall1.x-dy; var y1 = wall1.y+dx;
+  var x2 = wall2.x-dy; var y2 = wall2.y+dx;
+  var extent1 = MU.cross2d(x1 - prev1.x, y1 - prev1.y, wall1.x - prev1.x, wall1.y - prev1.y) == 0;
+  var extent2 = MU.cross2d(x2 - next2.x, y2 - next2.y, wall2.x - next2.x, wall2.y - next2.y) == 0;
+
+  if (extent1 && extent2) {
+    moveWall(board, w1, x1, y1);
+    moveWall(board, w2, x2, y2);
+    return w1;
+  } else if (extent1 && !extent2) {
+    moveWall(board, w1, x1, y1);
+    return splitWall(board, w1, x2, y2, art, wallptrs);
+  } else if (!extent1 && extent2) {
+    w1 = splitWall(board, w1, x1, y1, art, wallptrs);
+    w2 = nextwall(board, nextwall(board, w1));
+    moveWall(board, w2, x2, y2);
+    return nextwall(board, w1);
+  } else if (!extent1 && !extent2) {
+    w1 = splitWall(board, w1, x1, y1, art, wallptrs);
+    w2 = board.walls[w1].point2;
+    return splitWall(board, w2, x2, y2, art, wallptrs);
+  }
 }
 

@@ -6,6 +6,8 @@ uniform sampler2D plu;
 uniform int pluN;
 uniform vec4 color;
 uniform vec3 curpos;
+uniform int shade;
+uniform vec3 eyepos;
 
 varying float lightLevel;
 varying vec2 tc;
@@ -13,20 +15,36 @@ varying vec3 wpos;
 
 const float trans = float(255.0/256.0);
 const float totalPLUs = 15.0;
-const float lightLevels = 64.0;
 
+float lightOffset() {
+  float lightLevel = length(wpos - eyepos) / 1024.0;
+  return clamp(float(shade) + lightLevel, 0.5, 63.5) / 64.0;
+}
+
+vec4 palLookup() {
+  float palIdx = texture2D(base, fract(tc)).r;
+  if (palIdx >= trans)
+    discard;
+  float pluU = palIdx;
+#ifdef PAL_LIGHTING
+  float pluV = (float(pluN) + lightOffset()) / totalPLUs;
+#else
+  float pluV = float(pluN) / totalPLUs;
+#endif
+  float pluIdx = texture2D(plu, vec2(pluU, pluV)).r;
+  vec3 c = texture2D(pal, vec2(pluIdx, 0)).rgb;
+#ifdef PAL_LIGHTING
+  return vec4(c , 1.0);
+#else
+  return vec4(c * (1.0 - lightOffset()), 1.0);
+#endif
+}
 
 void main() {
 #ifdef FLAT
   vec4 c = vec4(1.0);
 #else
-  float palIdx = texture2D(base, fract(tc)).r;
-  if (palIdx >= trans)
-    discard;
-  float pluU = palIdx;
-  float pluV = float(pluN) / totalPLUs + lightLevel / (lightLevels * totalPLUs);
-  float pluIdx = texture2D(plu, vec2(pluU, pluV)).r;
-  vec4 c = texture2D(pal, vec2(pluIdx, 0));
+  vec4 c = palLookup();
 #endif
 
 #ifdef TC_GRID 
