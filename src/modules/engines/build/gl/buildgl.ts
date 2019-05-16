@@ -7,35 +7,66 @@ import * as BATCH from '../../../../modules/batcher';
 import * as BUFF from './buffers';
 import {Renderable, Type} from './renderable';
 
+function eqCmp<T>(lh:T, rh:T) {return lh == rh}
+function assign<T>(dst:T, src:T) {return src}
+
 class StateValue<T> {
   public changed:boolean = false;
-  constructor(public value:T) {}
+  constructor(
+    public value:T, 
+    public cmp:(lh:T, rh:T) => boolean=eqCmp,
+    public setter:(dst:T, src:T) => T=assign
+  ) {}
   get():T {return this.value;}
-  set(v:T) {if (this.value != v) {this.value = v; this.changed = true;}}
+  set(v:T) {if (!this.cmp(v, this.value)) {this.value = this.setter(this.value, v); this.changed = true;}}
   isChanged() {return this.changed;}
   setChanged(c:boolean) {this.changed = c;}
 }
 
+function createStateValue(type:string):StateValue<any> {
+  switch (type) {
+    case "mat4": return new StateValue<GLM.Mat4Array>(GLM.mat4.create(), GLM.mat4.equals, GLM.mat4.copy);
+    case "vec3": return new StateValue<GLM.Vec3Array>(GLM.vec3.create(), GLM.vec3.equals, GLM.vec3.copy);
+    case "vec4": return new StateValue<GLM.Vec3Array>(GLM.vec4.create(), GLM.vec4.equals, GLM.vec4.copy);
+    default:     return new StateValue<number>(0);
+  }
+}
+
+
 class State {
-  private textureMatrix:StateValue<GLM.Mat4Array> = new StateValue<GLM.Mat4Array>(GLM.mat4.create());
-  private viewMatrix:StateValue<GLM.Mat4Array> = new StateValue<GLM.Mat4Array>(GLM.mat4.create());
-  private projectionMatrix:StateValue<GLM.Mat4Array> = new StateValue<GLM.Mat4Array>(GLM.mat4.create());
-
-  private eyePos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
-  private curPos:StateValue<GLM.Vec3Array> = new StateValue<GLM.Vec3Array>(GLM.vec3.create());
-  private shade:StateValue<number> = new StateValue<number>(0);
-  private color:StateValue<GLM.Vec4Array> = new StateValue<GLM.Vec4Array>(GLM.vec4.fromValues(1,1,1,1));
-  private plu:StateValue<number> = new StateValue<number>(0);
-
   private shader:StateValue<DS.Shader> = new StateValue<DS.Shader>(null);
-  private texture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
-  private palTexture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
-  private pluTexture:StateValue<DS.Texture> = new StateValue<DS.Texture>(null);
   private vertexBuffers:{[index:string]:StateValue<MB.VertexBufferDynamic>} = {};
   private indexBuffer:StateValue<MB.DynamicIndexBuffer> = new StateValue<MB.DynamicIndexBuffer>(null);
   private drawElements:StateValue<BUFF.BufferPointer> = new StateValue<BUFF.BufferPointer>(null);
 
+  private uniforms:{[index:string]:StateValue<any>} = {};
+  private shaders:{[index:string]:DS.Shader} = {};
+  private textures:{[index:string]:StateValue<DS.Texture>} = {};
+
   constructor(gl:WebGLRenderingContext) {
+  }
+
+  public registerShader(name:string, shader:DS.Shader) {
+    this.shaders[name] = shader;
+    var uniforms = shader.getUniforms();
+    for (var u in uniforms) {
+      var uniform = uniforms[u];
+      this.uniforms[u] = createStateValue(uniform.getType());
+    }
+    var samplers = shader.getSamplers();
+    for (var s in samplers) {
+      var sampler = samplers[s];
+      this.textures[s] = new StateValue<DS.Texture>(null);
+    }
+  }
+
+  public setUniform(name:string, value) {
+    var u = this.uniforms[name];
+    if (u == undefined) {
+      console.warn('Invalid uniform name: ' + name);
+      return;
+    }
+    u.set(value);
   }
 
   public setShader(s:DS.Shader):DS.Shader {
@@ -44,31 +75,13 @@ class State {
     return prev;
   }
 
-  public getTextureMatrix():GLM.Mat4Array {
-    this.textureMatrix.setChanged(true);
-    return this.textureMatrix.get();
-  }
-
-  public getViewMatrix():GLM.Mat4Array {
-    this.viewMatrix.setChanged(true);
-    return this.viewMatrix.get();
-  }
-
-  public getProjectionMatrix():GLM.Mat4Array {
-    this.projectionMatrix.setChanged(true);
-    return this.projectionMatrix.get();
-  }
-
-  public setTexture(tex:DS.Texture) {
-    this.texture.set(tex);
-  }
-
-  public setPalTexture(tex:DS.Texture) {
-    this.palTexture.set(tex);
-  }
-
-  public setPluTexture(tex:DS.Texture) {
-    this.pluTexture.set(tex);
+  public setTexture(name:string, tex:DS.Texture) {
+    var t = this.textures[name];
+    if (t == undefined) {
+      console.warn('Invalid sampler name: ' + name);
+      return;
+    }
+    t.set(tex);
   }
 
   public setIndexBuffer(b:MB.DynamicIndexBuffer) {
@@ -88,36 +101,15 @@ class State {
     this.drawElements.set(place);
   }
 
-  public setShade(s:number) {
-    this.shade.set(s);
-  }
-
-  public setColor(c:GLM.Vec4Array) {
-    var cc = this.color.get();
-    if (cc == c || c[0] == cc[0] && c[1] == cc[1] && c[2] == cc[2] && c[3] == cc[3])
-      return;
-    this.color.set(c);
-  }
-
-  public setPal(p:number) {
-    this.plu.set(p);
-  }
-
-  public setEyePos(pos:GLM.Vec3Array) {
-    this.eyePos.set(pos);
-  }
-
-  public setCursorPos(pos:GLM.Vec3Array) {
-    this.curPos.set(pos);
-  }
-
   private rebindShader(gl:WebGLRenderingContext):boolean {
     if (this.shader.isChanged()) {
       var shader = this.shader.get();
       gl.useProgram(shader.getProgram());
-      gl.uniform1i(shader.getUniformLocation('base', gl), 0);
-      gl.uniform1i(shader.getUniformLocation('pal', gl), 1);
-      gl.uniform1i(shader.getUniformLocation('plu', gl), 2);
+      var samplers = this.shader.get().getSamplers();
+      var unit = 0;
+      for (var s in samplers) {
+        this.setUniform(s, unit++);
+      }
       this.shader.setChanged(false);  
       return true;
     }
@@ -127,15 +119,15 @@ class State {
   private rebindVertexBuffers(gl:WebGLRenderingContext, rebindAll:boolean) {
     var shader = this.shader.get();
     var attributes = shader.getAttributes();
-    for (var a = 0; a < attributes.length; a++) {
+    for (var a in attributes) {
       var attr = attributes[a];
-      var buf = this.vertexBuffers[attr];
+      var buf = this.vertexBuffers[attr.getName()];
       if (buf == undefined)
         throw new Error('No buffer for shader attribute <' + attr + '>');
       if (!rebindAll && !buf.isChanged())
         continue;
       var vbuf = buf.get();
-      var location = shader.getAttributeLocation(attr, gl);
+      var location = shader.getAttributeLocation(attr.getName(), gl);
       if (location == -1)
         continue;
       gl.bindBuffer(gl.ARRAY_BUFFER, vbuf.getBuffer());
@@ -152,21 +144,18 @@ class State {
     }
   }
 
-  private rebindTexture(gl:WebGLRenderingContext, rebindAll:boolean) {
-    if (this.texture.get() != null && (rebindAll || this.texture.isChanged())) {
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this.texture.get().get());
-      this.texture.setChanged(false);
-    }
-    if (this.palTexture.get() != null && (rebindAll || this.palTexture.isChanged())) {
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, this.palTexture.get().get());
-      this.palTexture.setChanged(false);
-    }
-    if (this.pluTexture.get() != null && (rebindAll || this.pluTexture.isChanged())) {
-      gl.activeTexture(gl.TEXTURE2);
-      gl.bindTexture(gl.TEXTURE_2D, this.pluTexture.get().get());
-      this.pluTexture.setChanged(false);
+  private rebindTextures(gl:WebGLRenderingContext, rebindAll:boolean) {
+    var samplers = this.shader.get().getSamplers();
+    var unit = 0;
+    for (var s in samplers) {
+      var sampler = samplers[s];
+      var texture = this.textures[s];
+      if (texture != undefined && texture.get() != null && (rebindAll || texture.isChanged())) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, texture.get().get());
+        texture.setChanged(false);
+      }
+      unit++;
     }
   }
 
@@ -174,23 +163,21 @@ class State {
     BUFF.update(gl);
   }
 
-  private setUniform<T>(gl:WebGLRenderingContext, setter, name, value:StateValue<T>, rebindAll:boolean) {
+  private setUniformImpl<T>(gl:WebGLRenderingContext, name, value:StateValue<T>, rebindAll:boolean) {
     if (rebindAll || value.isChanged()) {
-      var l = this.shader.get().getUniformLocation(name, gl);
-      setter(gl, l, value.get())
+      SHADER.setUniform(gl, this.shader.get(), name, value.get());
       value.setChanged(false);
     }
   }
 
   private updateUniforms(gl:WebGLRenderingContext, rebindAll:boolean) {
-    this.setUniform(gl, BATCH.setters.mat4, "T", this.textureMatrix, rebindAll);
-    this.setUniform(gl, BATCH.setters.mat4, "V", this.viewMatrix, rebindAll);
-    this.setUniform(gl, BATCH.setters.mat4, "P", this.projectionMatrix, rebindAll);
-    this.setUniform(gl, BATCH.setters.vec3, "eyepos", this.eyePos, rebindAll);
-    this.setUniform(gl, BATCH.setters.vec3, "curpos", this.curPos, rebindAll);
-    this.setUniform(gl, BATCH.setters.int1, "shade", this.shade, rebindAll);
-    this.setUniform(gl, BATCH.setters.int1, "pluN", this.plu, rebindAll);
-    this.setUniform(gl, BATCH.setters.vec4, "color", this.color, rebindAll);
+    var uniforms = this.shader.get().getUniforms();
+    for (var u in uniforms) {
+      var state = this.uniforms[u];
+      if (state == undefined)
+        continue;
+      this.setUniformImpl(gl, u, state, rebindAll);
+    }
   }
 
   public draw(gl:WebGLRenderingContext, mode:number=gl.TRIANGLES) {
@@ -199,7 +186,7 @@ class State {
     this.rebindIndexBuffer(gl, rebindAll);
     this.updateBuffers(gl, rebindAll);
     this.updateUniforms(gl, rebindAll);
-    this.rebindTexture(gl, rebindAll);
+    this.rebindTextures(gl, rebindAll);
     var count = mode == gl.TRIANGLES ? this.drawElements.get().triIdx.size : this.drawElements.get().lineIdx.size;
     var off = mode == gl.TRIANGLES ? this.drawElements.get().triIdx.offset : this.drawElements.get().lineIdx.offset;
     gl.drawElements(mode,count, gl.UNSIGNED_SHORT, off*2);
@@ -208,14 +195,14 @@ class State {
 
 var state:State;
 export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture) {
-  createShaders(gl);
   BUFF.init(gl, 1024*1024, 1024*1024);
   state = new State(gl);
   state.setIndexBuffer(BUFF.getIdxBuffer());
   state.setVertexBuffer('aPos', BUFF.getPosBuffer());
   state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
-  state.setPalTexture(pal);
-  state.setPluTexture(plu);
+  state.setTexture('pal', pal);
+  state.setTexture('plu', plu);
+  createShaders(gl, state);
 }
 
 var baseShader:DS.Shader;
@@ -224,21 +211,21 @@ var baseFlatShader:DS.Shader;
 var spriteFlatShader:DS.Shader;
 
 const SHADER_NAME = 'resources/shaders/build_base1';
-function createShaders(gl:WebGLRenderingContext) {
-  baseShader = SHADER.createShader(gl, SHADER_NAME, ['TC_GRID', 'PAL_LIGHTING']);
-  spriteShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE']);
-  baseFlatShader = SHADER.createShader(gl, SHADER_NAME, ['FLAT']);
-  spriteFlatShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT']);
+function createShaders(gl:WebGLRenderingContext, state:State) {
+  baseShader = SHADER.createShader(gl, SHADER_NAME, ['TC_GRID', 'PAL_LIGHTING'], (s)=>state.registerShader('baseShader', baseShader));
+  spriteShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE'], (s)=>state.registerShader('spriteShader', spriteShader));
+  baseFlatShader = SHADER.createShader(gl, SHADER_NAME, ['FLAT'], (s)=>state.registerShader('baseFlatShader', baseFlatShader));
+  spriteFlatShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT'], (s)=>state.registerShader('spriteFlatShader', spriteFlatShader));
 }
 
 export function setController(c:C.Controller3D) {
-  GLM.mat4.copy(state.getProjectionMatrix(), c.getProjectionMatrix());
-  GLM.mat4.copy(state.getViewMatrix(), c.getModelViewMatrix());
-  state.setEyePos(c.getCamera().getPos());
+  state.setUniform('P', c.getProjectionMatrix());
+  state.setUniform('V', c.getModelViewMatrix());
+  state.setUniform('eyepos', c.getCamera().getPos());
 }
 
 export function setCursorPosiotion(pos:GLM.Vec3Array) {
-  state.setCursorPos(pos);
+  state.setUniform('curpos', pos);
 }
 
 export function draw(gl:WebGLRenderingContext, renderable:Renderable, mode:number=gl.TRIANGLES) {
@@ -247,12 +234,12 @@ export function draw(gl:WebGLRenderingContext, renderable:Renderable, mode:numbe
   state.setShader(renderable.type == Type.SURFACE 
     ? (mode == gl.TRIANGLES ? baseShader : baseFlatShader) 
     : (mode == gl.TRIANGLES ? spriteShader : spriteFlatShader));
-  state.setTexture(renderable.tex);
+  state.setTexture('base', renderable.tex);
   state.setDrawElements(renderable.buff.get());
-  state.setColor([1, 1, 1, renderable.trans]);
-  state.setPal(renderable.pal);
-  state.setShade(renderable.shade);
-  GLM.mat4.copy(state.getTextureMatrix(), renderable.texMat);
+  state.setUniform('color', [1, 1, 1, renderable.trans]);
+  state.setUniform('pluN', renderable.pal);
+  state.setUniform('shade', renderable.shade);
+  state.setUniform('T', renderable.texMat);
   state.draw(gl, mode);
 }
 

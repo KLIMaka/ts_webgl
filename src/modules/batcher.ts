@@ -16,12 +16,12 @@ export function vertexBuffers(gl:WebGLRenderingContext, shader:DS.Shader, data:a
   if (shader == null)
     throw new Error('Attempt to set buffers wo shader');
   var attributes = shader.getAttributes();
-  for (var a = 0; a < attributes.length; a++) {
+  for (var a in attributes) {
     var attr = attributes[a];
-    var buf = data[attr];
+    var buf = data[attr.getName()];
     if (buf == undefined)
       throw new Error('No buffer for shader attribute <' + attr + '>');
-    var location = shader.getAttributeLocation(attr, gl);
+    var location = shader.getAttributeLocation(attr.getName(), gl);
     if (location == -1)
       continue;
     gl.bindBuffer(gl.ARRAY_BUFFER, buf.getBuffer());
