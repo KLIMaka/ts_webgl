@@ -18,7 +18,7 @@ const float totalPLUs = 15.0;
 
 float lightOffset() {
   float lightLevel = length(wpos - eyepos) / 1024.0;
-  return clamp(float(shade) + lightLevel, 0.5, 63.5) / 64.0;
+  return clamp(float(shade) + lightLevel, 0.5, 63.0) / 64.0;
 }
 
 vec4 palLookup() {
@@ -29,7 +29,7 @@ vec4 palLookup() {
 #ifdef PAL_LIGHTING
   float pluV = (float(pluN) + lightOffset()) / totalPLUs;
 #else
-  float pluV = float(pluN) / totalPLUs;
+  float pluV = float(pluN) / totalPLUs + 0.001;
 #endif
   float pluIdx = texture2D(plu, vec2(pluU, pluV)).r;
   vec3 c = texture2D(pal, vec2(pluIdx, 0)).rgb;

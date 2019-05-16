@@ -135,6 +135,7 @@ export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
 
 var selectType = -1;
 var selectId = -1;
+var gridSize = 128;
 
 var hit = new U.Hitscan();
 function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
@@ -151,6 +152,10 @@ function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   }
 }
 
+function snapGrid(coord:number, gridSize:number):number {
+  return Math.round(coord / gridSize) * gridSize;
+}
+
 export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
   BGL.setController(ctr);
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
@@ -159,17 +164,31 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
 
   hitscan(board, ms, ctr);
   if (hit.t != -1) {
-    BGL.setCursorPosiotion([hit.x, hit.z/-16, hit.y]);
+    var x = hit.x; var y = hit.y;
+    if (U.isSector(hit.type)) {
+      x = snapGrid(x, gridSize);
+      y = snapGrid(y, gridSize);
+    } else if (U.isWall(hit.type)) {
+      var w = hit.id; var wall= board.walls[w];
+      var w1 = BU.nextwall(board, w); var wall1 = board.walls[w1];
+      var dx = wall1.x - wall.x;
+      var dy = wall1.y - wall.y;
+      var repeat = 128 * wall.xrepeat;
+      var dt = gridSize / repeat;
+      var dxt = x - wall.x; var dyt = y - wall.y;
+      var t = MU.len2d(dxt, dyt) / MU.len2d(dx, dy);
+      t = (1 - t) < dt/2.0 ? 1 : snapGrid(t, dt);
+      x = MU.int(wall.x + (t * dx));
+      y = MU.int(wall.y + (t * dy));
+    }
+
+    BGL.setCursorPosiotion([x, 0, y]);
   }
 
   highlightSelected(gl);
 
-  if (U.isWall(selectType) && ctr.getKeys()['Q']) {
-    selectId = BU.pushWall(board, selectId, -128, artProvider, []);
-    queue.cache.invalidateAll();
-  }
-  if (U.isWall(selectType) && ctr.getKeys()['E']) {
-    selectId = BU.pushWall(board, selectId, 128, artProvider, []);
+  if (U.isWall(selectType) && ctr.getWheel() != 0) {
+    selectId = BU.pushWall(board, selectId, -ctr.getWheel() * gridSize, artProvider, []);
     queue.cache.invalidateAll();
   }
 }

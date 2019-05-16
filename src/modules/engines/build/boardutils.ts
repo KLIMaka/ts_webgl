@@ -116,7 +116,7 @@ function moveWalls(board:Board, secId:number, afterWallId:number, size:number, w
   }
 }
 
-function walllen(board:Board, wallId:number) {
+export function walllen(board:Board, wallId:number) {
   var wall = board.walls[wallId];
   var wall2 = board.walls[wall.point2];
   var dx = wall2.x - wall.x;
@@ -225,9 +225,9 @@ export function moveWall(board:Board, wallId:number, x:number, y:number) {
     } else {
       w = wallId;
       do {
-        var prevwall = prevwall(board, w);
-        if (walls[prevwall].nextwall != -1) {
-          w = walls[prevwall].nextwall;
+        var p = prevwall(board, w);
+        if (walls[p].nextwall != -1) {
+          w = walls[p].nextwall;
           doMoveWall(board, w, x, y);
         } else {
           break;

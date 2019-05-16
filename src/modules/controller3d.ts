@@ -30,6 +30,7 @@ export class Controller3D {
   private fov = 90;
   private click = false;
   private moveVec = [0, 0];
+  private wheel = 0;
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -37,6 +38,7 @@ export class Controller3D {
     this.gl.canvas.addEventListener('mousemove', (e:MouseEvent) => self.mousemove(e));
     this.gl.canvas.addEventListener('mouseup', (e:MouseEvent) => self.mouseup(e));
     this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
+    this.gl.canvas.addEventListener('wheel', (e:WheelEvent) => self.wheelevent(e));
 
     document.addEventListener('keyup', (e:KeyboardEvent) => self.keyup(e));
     document.addEventListener('keydown', (e:KeyboardEvent) => self.keydown(e));
@@ -61,6 +63,11 @@ export class Controller3D {
 
   private mousedown(e:MouseEvent):boolean {
     this.drag = true;
+    return false;
+  }
+
+  private wheelevent(e:WheelEvent):boolean {
+    this.wheel = e.deltaY > 0 ? 1 : -1;
     return false;
   }
 
@@ -121,6 +128,10 @@ export class Controller3D {
     return this.click;
   }
 
+  public getWheel():number {
+    return this.wheel;
+  }
+
   public getKeys() {
     return this.keys;
   }
@@ -154,6 +165,7 @@ export class Controller3D {
     GLM.vec3.add(campos, campos, sideways);
 
     this.click = false;
+    this.wheel = 0;
     this.camera.setPos(campos);    
   }
 }
