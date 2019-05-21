@@ -101,7 +101,7 @@ function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:str
   preprocess(fsh, barrier.callback('fsh'));
   barrier.wait((res) => {
     var program = compileProgram(gl, res.vsh, res.fsh);
-    var defs = processShaders(res.vsh, res.fsh);
+    var defs = processShaders(gl, program);
     shader.init(gl, program, defs);
   });
 }
@@ -135,18 +135,6 @@ function compileSource(gl:WebGLRenderingContext, type:number, source:string):Web
   return shader;
 }
 
-function processLine(line:string, defs:Definitions) {
-  var m = line.match(/^uniform +([a-zA-Z0-9_]+) +([a-zA-Z0-9_]+)/);
-  if (m != null)
-    defs.uniforms[m[2]] = new DefinitionImpl(m[1], m[2]);
-  m = line.match(/^attribute +([a-zA-Z0-9_]+) +([a-zA-Z0-9_]+)/);
-  if (m != null)
-    defs.attributes[m[2]] = new DefinitionImpl(m[1], m[2]);
-  m = line.match(/^uniform +(sampler2D) +([a-zA-Z0-9_]+)/);
-  if (m != null)
-    defs.samplers[m[2]] = new DefinitionImpl(m[1], m[2]);
-}
-
 export class DefinitionImpl implements DS.Definition {
   constructor(
     private type:string,
@@ -164,18 +152,43 @@ export class Definitions{
 }
 
 
-function processShaders(vsh:string, fsh:string):any {
+function processShaders(gl:WebGLRenderingContext, program:WebGLProgram):any {
   var defs = new Definitions();
-  var shaders = [vsh, fsh];
-  for (var i in shaders) {
-    var shader = shaders[i];
-    var lines = shader.split("\n");
-    for (var l in lines) {
-      var line = lines[l];
-      processLine(line, defs);
-    }
+  var attribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+  for (var a = 0; a < attribs; a++) {
+    var info = gl.getActiveAttrib(program, a);
+    defs.attributes[info.name] = convertToDefinition(info);
+  }
+  var uniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+  for (var u = 0; u < uniforms; u++) {
+    var info = gl.getActiveUniform(program, u);
+    var def = convertToDefinition(info);
+    defs.uniforms[info.name] = def;
+    if (def.getType() == 'sampler2D')
+      defs.samplers[info.name] = def;
   }
   return defs;
+}
+
+function convertToDefinition(info:WebGLActiveInfo):DefinitionImpl {
+  return new DefinitionImpl(type2String(info.type), info.name);
+}
+
+function type2String(type:number):string {
+  switch (type) {
+    case WebGLRenderingContext.SAMPLER_2D: return "sampler2D";
+    case WebGLRenderingContext.INT: return "int";
+    case WebGLRenderingContext.FLOAT: return "float";
+    case WebGLRenderingContext.FLOAT_MAT4: return "mat4";
+    case WebGLRenderingContext.FLOAT_MAT3: return "mat3";
+    case WebGLRenderingContext.FLOAT_VEC2: return "vec2";
+    case WebGLRenderingContext.FLOAT_VEC3: return "vec3";
+    case WebGLRenderingContext.FLOAT_VEC4: return "vec4";
+    case WebGLRenderingContext.INT_VEC2: return "ivec2";
+    case WebGLRenderingContext.INT_VEC3: return "ivec3";
+    case WebGLRenderingContext.INT_VEC4: return "ivec4";
+    default: throw new Error('Invalid type: ' + type);
+  }
 }
 
 function preprocess(shader:string, cb:(sh:string)=>void):void {

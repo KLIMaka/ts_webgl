@@ -6,6 +6,7 @@ import {Texture} from '../../../drawstruct';
 import * as U from '../utils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
+import * as BUFF from './buffers';
 
 const SCALE = -16;
 
@@ -60,7 +61,8 @@ export class Cache {
   public walls:EnsureArray<Entry<WallRenderable>> = createArray(wallRenerableFactory);
   public sprites:EnsureArray<Entry<SpriteRenderable>> = createArray(spriteRenerableFactory)
 
-  constructor(private board:Board, private art:ArtProvider) {}
+  constructor(private board:Board, private art:ArtProvider) {
+  }
 
   public getSector(id:number):SectorRenderable {
     var sector = this.sectors.get(id);

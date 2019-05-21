@@ -119,7 +119,7 @@ export interface PalProvider extends ArtProvider {
 
 var artProvider:PalProvider;
 var queue:DrawQueue;
-export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
+export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board, cb:()=>void) {
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
@@ -128,8 +128,8 @@ export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board) {
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
   artProvider = art;
-  BGL.init(gl, art.getPalTexture(), art.getPluTexture());
   queue = new DrawQueue(board, art);
+  BGL.init(gl, art.getPalTexture(), art.getPluTexture(), cb);
 }
 
 

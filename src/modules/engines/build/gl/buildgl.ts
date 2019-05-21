@@ -6,6 +6,7 @@ import * as C from '../../../../modules/controller3d';
 import * as BATCH from '../../../../modules/batcher';
 import * as BUFF from './buffers';
 import {Renderable, Type} from './renderable';
+import * as AB from '../../../../libs/asyncbarrier';
 
 function eqCmp<T>(lh:T, rh:T) {return lh == rh}
 function assign<T>(dst:T, src:T) {return src}
@@ -69,10 +70,11 @@ class State {
     u.set(value);
   }
 
-  public setShader(s:DS.Shader):DS.Shader {
-    var prev = this.shader.get();
+  public setShader(name:string) {
+    var s = this.shaders[name];
+    if (s == undefined)
+      throw new Error('Unknown shader: ' + name);
     this.shader.set(s);
-    return prev;
   }
 
   public setTexture(name:string, tex:DS.Texture) {
@@ -163,20 +165,16 @@ class State {
     BUFF.update(gl);
   }
 
-  private setUniformImpl<T>(gl:WebGLRenderingContext, name, value:StateValue<T>, rebindAll:boolean) {
-    if (rebindAll || value.isChanged()) {
-      SHADER.setUniform(gl, this.shader.get(), name, value.get());
-      value.setChanged(false);
-    }
-  }
-
   private updateUniforms(gl:WebGLRenderingContext, rebindAll:boolean) {
     var uniforms = this.shader.get().getUniforms();
     for (var u in uniforms) {
       var state = this.uniforms[u];
       if (state == undefined)
         continue;
-      this.setUniformImpl(gl, u, state, rebindAll);
+      if (rebindAll || state.isChanged()) {
+        SHADER.setUniform(gl, this.shader.get(), u, state.get());
+        state.setChanged(false);
+      }
     }
   }
 
@@ -193,29 +191,31 @@ class State {
   }
 }
 
-var state:State;
-export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture) {
-  BUFF.init(gl, 1024*1024, 1024*1024);
-  state = new State(gl);
-  state.setIndexBuffer(BUFF.getIdxBuffer());
-  state.setVertexBuffer('aPos', BUFF.getPosBuffer());
-  state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
-  state.setTexture('pal', pal);
-  state.setTexture('plu', plu);
-  createShaders(gl, state);
-}
-
-var baseShader:DS.Shader;
-var spriteShader:DS.Shader;
-var baseFlatShader:DS.Shader;
-var spriteFlatShader:DS.Shader;
-
 const SHADER_NAME = 'resources/shaders/build_base1';
-function createShaders(gl:WebGLRenderingContext, state:State) {
-  baseShader = SHADER.createShader(gl, SHADER_NAME, ['TC_GRID', 'PAL_LIGHTING'], (s)=>state.registerShader('baseShader', baseShader));
-  spriteShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE'], (s)=>state.registerShader('spriteShader', spriteShader));
-  baseFlatShader = SHADER.createShader(gl, SHADER_NAME, ['FLAT'], (s)=>state.registerShader('baseFlatShader', baseFlatShader));
-  spriteFlatShader = SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT'], (s)=>state.registerShader('spriteFlatShader', spriteFlatShader));
+var state:State;
+export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, cb:()=>void) {
+
+  var ab = AB.create();
+  SHADER.createShader(gl, SHADER_NAME, ['TC_GRID', 'PAL_LIGHTING'], ab.callback('baseShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['SPRITE'], ab.callback('spriteShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['FLAT'], ab.callback('baseFlatShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT'], ab.callback('spriteFlatShader'));
+  ab.wait((res) => {
+    state = new State(gl);
+    state.registerShader('baseShader', res['baseShader']);
+    state.registerShader('spriteShader', res['spriteShader']);
+    state.registerShader('baseFlatShader', res['baseFlatShader']);
+    state.registerShader('spriteFlatShader', res['spriteFlatShader']);
+    
+    BUFF.init(gl, 1024*1024, 1024*1024);
+    state.setIndexBuffer(BUFF.getIdxBuffer());
+    state.setVertexBuffer('aPos', BUFF.getPosBuffer());
+    state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
+    state.setTexture('pal', pal);
+    state.setTexture('plu', plu);
+
+    cb();
+  });
 }
 
 export function setController(c:C.Controller3D) {
@@ -232,8 +232,8 @@ export function draw(gl:WebGLRenderingContext, renderable:Renderable, mode:numbe
   if (renderable.buff.get() == null)
     return;
   state.setShader(renderable.type == Type.SURFACE 
-    ? (mode == gl.TRIANGLES ? baseShader : baseFlatShader) 
-    : (mode == gl.TRIANGLES ? spriteShader : spriteFlatShader));
+    ? (mode == gl.TRIANGLES ? 'baseShader' : 'baseFlatShader') 
+    : (mode == gl.TRIANGLES ? 'spriteShader' : 'spriteFlatShader'));
   state.setTexture('base', renderable.tex);
   state.setDrawElements(renderable.buff.get());
   state.setUniform('color', [1, 1, 1, renderable.trans]);
