@@ -225,9 +225,9 @@ export function moveWall(board:Board, wallId:number, x:number, y:number) {
     } else {
       w = wallId;
       do {
-        var prevwall = prevwall(board, w);
-        if (walls[prevwall].nextwall != -1) {
-          w = walls[prevwall].nextwall;
+        var p = prevwall(board, w);
+        if (walls[p].nextwall != -1) {
+          w = walls[p].nextwall;
           doMoveWall(board, w, x, y);
         } else {
           break;

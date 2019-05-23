@@ -47,6 +47,9 @@ void main() {
   vec4 c = palLookup();
 #endif
 
+  if (color.r > 1.0 && any(lessThan(fract(tc*8.0), vec2(0.04, 0.04))))
+    c *= 2.0;
+
 #ifdef TC_GRID 
   if (distance(wpos.xz, curpos.xz) < 16.0)
     c *= 4.0;

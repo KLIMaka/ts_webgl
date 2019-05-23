@@ -29,7 +29,7 @@ function visitAll(board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:Sprit
   }
 }
 
-function visitVisible(board:Board, ms:U.MoveStruct, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) {
+function visitVisibleImpl(board:Board, ms:U.MoveStruct, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) {
   var pvs = [ms.sec];
   var sectors = board.sectors;
   var walls = board.walls;
@@ -60,6 +60,10 @@ function visitVisible(board:Board, ms:U.MoveStruct, secv:SectorVisitor, wallv:Wa
       sprs.map((sid) => sprv(board, sid));
     }
   }
+}
+
+function visitVisible(ms:U.MoveStruct) {
+  return (board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => visitVisibleImpl(board, ms, secv, wallv, sprv);
 }
 
 export class DrawQueue {
@@ -180,10 +184,10 @@ function highlightSelected(gl:WebGLRenderingContext) {
     var sector = queue.cache.getSector(selectId);
     switch (selectType) {
       case U.HitType.CEILING:
-        BGL.draw(gl, sector.ceiling, gl.LINES);
+        BGL.draw(gl, sector.ceiling);
         break;
       case U.HitType.FLOOR:
-        BGL.draw(gl, sector.floor, gl.LINES);
+        BGL.draw(gl, sector.floor);
         break;
     }
   } 
@@ -191,19 +195,19 @@ function highlightSelected(gl:WebGLRenderingContext) {
     var wall = queue.cache.getWall(selectId, 0);
     switch (selectType) {
       case U.HitType.UPPER_WALL:
-        BGL.draw(gl, wall.top, gl.LINES);
+        BGL.draw(gl, wall.top);
         break;
       case U.HitType.MID_WALL:
-        BGL.draw(gl, wall.mid, gl.LINES);
+        BGL.draw(gl, wall.mid);
         break;
       case U.HitType.LOWER_WALL:
-        BGL.draw(gl, wall.bot, gl.LINES);
+        BGL.draw(gl, wall.bot);
         break;
     }
   }
   if (U.isSprite(selectType)) {
     var sprite = queue.cache.getSprite(selectId);
-    BGL.draw(gl, sprite, gl.LINES);
+    BGL.draw(gl, sprite);
   }
   gl.enable(gl.DEPTH_TEST);
 }
@@ -215,6 +219,6 @@ function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct) {
   if (ms.sec == -1) {
     queue.draw(gl, visitAll);
   } else {
-    queue.draw(gl, (board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => visitVisible(board, ms, secv, wallv, sprv));
+    queue.draw(gl, visitVisible(ms));
   }
 }
