@@ -234,8 +234,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   control.setFov(75);
   var ms = createMoveStruct(board, control);
 
-  RENDERER.init(gl, art, board);
-
+  RENDERER.init(gl, art, board, () => {
+  
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
     var pos = control.getCamera().getPos();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1])*-16);
@@ -259,6 +259,8 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   });
 
   gl.canvas.oncontextmenu = () => false;
+  });
+
 }
 
 var path = 'resources/engines/blood/';

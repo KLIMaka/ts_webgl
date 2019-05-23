@@ -1,22 +1,24 @@
 import * as BUFF from './buffers';
+import {Pointer} from '../../../buffergl';
 import * as DS from '../../../drawstruct';
 import * as GLM from '../../../../libs_js/glmatrix';
+import {State} from '../../../stategl';
 
 
 export class Buffer {
-  private ptr:BUFF.BufferPointer;
+  private ptr:Pointer;
 
-  public get():BUFF.BufferPointer {
+  public get():Pointer {
     return this.ptr;
   }
 
-  public allocate(vtxCount:number, triIndexCount:number, lineIndexCount:number) {
+  public allocate(vtxCount:number, triIndexCount:number) {
     if (this.ptr != null) {
-      if (this.ptr.vtx.size >= vtxCount && this.ptr.triIdx.size >= triIndexCount && this.ptr.lineIdx.size >= lineIndexCount)
+      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount)
         return;
       BUFF.remove(this.ptr);
     }
-    this.ptr = BUFF.allocate(vtxCount, triIndexCount, lineIndexCount);
+    this.ptr = BUFF.allocate(vtxCount, triIndexCount);
   }
 
   public deallocate() {
@@ -42,7 +44,7 @@ export class Buffer {
     return BUFF.writeQuad(this.ptr, off, a, b, c, d);
   }
 
-  public writeLine(off:number, a:number, b:number):number {
+  public writeLine(off:number, a:number, b:number) {
     return BUFF.writeLine(this.ptr, off, a, b);
   }
 }
@@ -52,7 +54,11 @@ export enum Type {
   FACE
 }
 
-export class Renderable {
+export interface Renderable {
+  draw(gl:WebGLRenderingContext, state:State);
+}
+
+export class Solid implements Renderable {
   public type:Type = Type.SURFACE;
   public buff:Buffer = new Buffer();
   public tex:DS.Texture;
@@ -60,4 +66,31 @@ export class Renderable {
   public trans:number = 1;
   public pal:number;
   public texMat:GLM.Mat4Array = GLM.mat4.create();
+
+  public draw(gl:WebGLRenderingContext, state:State) {
+    if (this.buff.get() == null)
+      return;
+    state.setShader(this.type == Type.SURFACE ? 'baseShader' : 'spriteShader' );
+    state.setTexture('base', this.tex);
+    state.setUniform('color', [1, 1, 1, this.trans]);
+    state.setUniform('pluN', this.pal);
+    state.setUniform('shade', this.shade);
+    state.setUniform('T', this.texMat);
+    state.setDrawElements(this.buff.get());
+    state.draw(gl);
+  }
+}
+
+export class Wireframe implements Renderable {
+  public type:Type = Type.SURFACE;
+  public buff:Buffer = new Buffer();
+
+  public draw(gl:WebGLRenderingContext, state:State) {
+    if (this.buff.get() == null)
+      return;
+    state.setShader(this.type == Type.SURFACE ? 'baseShaderFlat' : 'spriteShaderFlat' );
+    state.setUniform('color', [1, 1, 1, 1]);
+    state.setDrawElements(this.buff.get());
+    state.draw(gl);
+  }
 }
