@@ -25,9 +25,14 @@ export interface Shader {
   getUniformLocation(name:string, gl:WebGLRenderingContext):WebGLUniformLocation;
   getAttributeLocation(name:string, gl:WebGLRenderingContext):number;
   getProgram():WebGLProgram;
-  getUniforms():string[];
-  getAttributes():string[];
-  getSamplers():string[];
+  getUniforms():{[index:string]:Definition};
+  getAttributes():{[index:string]:Definition};
+  getSamplers():{[index:string]:Definition};
+}
+
+export interface Definition {
+   getName():string;
+   getType():string;
 }
 
 export interface Material {

@@ -9,7 +9,7 @@ import * as MU from '../../../../libs/mathutils';
 
 const SCALE = -16;
 
-class AutoCreatingArray<T> {
+class EnsureArray<T> {
   private array:Array<T> = [];
   constructor(private factory:()=>T) {}
 
@@ -26,8 +26,8 @@ class AutoCreatingArray<T> {
     this.array.map(f);
   }
 }
-function createArray<T>(factory:()=>T):AutoCreatingArray<T> {
-  return new AutoCreatingArray<T>(factory);
+function createArray<T>(factory:()=>T):EnsureArray<T> {
+  return new EnsureArray<T>(factory);
 }
 
 export interface ArtProvider extends ArtInfoProvider {
@@ -56,9 +56,9 @@ var wallRenerableFactory = () =>  new Entry<WallRenderable>(new WallRenderable()
 var spriteRenerableFactory = () => new Entry<SpriteRenderable>(new SpriteRenderable());
 
 export class Cache {
-  public sectors:AutoCreatingArray<Entry<SectorRenderable>> = createArray(sectorRenerableFactory);
-  public walls:AutoCreatingArray<Entry<WallRenderable>> = createArray(wallRenerableFactory);
-  public sprites:AutoCreatingArray<Entry<SpriteRenderable>> = createArray(spriteRenerableFactory)
+  public sectors:EnsureArray<Entry<SectorRenderable>> = createArray(sectorRenerableFactory);
+  public walls:EnsureArray<Entry<WallRenderable>> = createArray(wallRenerableFactory);
+  public sprites:EnsureArray<Entry<SpriteRenderable>> = createArray(spriteRenerableFactory)
 
   constructor(private board:Board, private art:ArtProvider) {}
 

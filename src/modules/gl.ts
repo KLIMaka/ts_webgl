@@ -89,15 +89,15 @@ export class UniformBinder {
 
   public bind(gl:WebGLRenderingContext, shader:DS.Shader):void {
     var uniforms = shader.getUniforms();
-    for (var i = 0; i < uniforms.length; i++) {
+    for (var i in uniforms) {
       var uniform = uniforms[i];
-      if (this.resolvers[uniform] == undefined)
+      if (this.resolvers[uniform.getName()] == undefined)
         continue;
-      var loc = shader.getUniformLocation(uniform, gl)
+      var loc = shader.getUniformLocation(uniform.getName(), gl)
       if (!loc)
         continue;
-      var value = this.resolvers[uniform]();
-      this.setters[uniform].setUniform(gl, loc, value);
+      var value = this.resolvers[uniform.getName()]();
+      this.setters[uniform.getName()].setUniform(gl, loc, value);
     }
   }
 
@@ -124,10 +124,11 @@ function globalUniforms(gl:WebGLRenderingContext, shader:DS.Shader, globalBinder
 
 function drawModel(gl:WebGLRenderingContext, shader:DS.Shader, model:DS.DrawStruct):DS.Shader {
   var samplers = shader.getSamplers();
-  for (var unit = 0; unit < samplers.length; unit++) {
-    var sampler = samplers[unit];
-    gl.activeTexture(gl.TEXTURE0 + unit);
-    gl.bindTexture(gl.TEXTURE_2D, model.getMaterial().getTexture(sampler).get());
+  var unit = 0;
+  for (var s in samplers) {
+    var sampler = samplers[s];
+    gl.activeTexture(gl.TEXTURE0 + unit++);
+    gl.bindTexture(gl.TEXTURE_2D, model.getMaterial().getTexture(sampler.getName()).get());
   }
   gl.drawElements(model.getMode(), model.getLength(), gl.UNSIGNED_SHORT, model.getOffset());
   return shader;
@@ -135,10 +136,11 @@ function drawModel(gl:WebGLRenderingContext, shader:DS.Shader, model:DS.DrawStru
 
 function initTextures(gl:WebGLRenderingContext, shader:DS.Shader, data:any):DS.Shader {
   var samplers = shader.getSamplers();
-  for (var unit = 0; unit < samplers.length; unit++) {
+  var unit = 0;
+  for (var s in samplers) {
     gl.activeTexture(gl.TEXTURE0 + unit);
-    var sampler = samplers[unit];
-    gl.uniform1i(shader.getUniformLocation(sampler, gl), unit);
+    var sampler = samplers[s];
+    gl.uniform1i(shader.getUniformLocation(sampler.getName(), gl), unit++);
   }
   return shader;
 }

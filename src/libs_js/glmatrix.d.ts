@@ -87,6 +87,8 @@ export declare module vec3 {
   export function transformMat4(out:Vec3Array, a:Vec3Array, m:Mat4Array): Vec3Array;
   export function transformQuat(out:Vec3Array, a:Vec3Array, q:Vec4Array): Vec3Array;
   export function str(a:Vec3Array): string;
+  export function equals(a:Vec3Array, b:Vec3Array): boolean;
+  export function exactEquals(a:Vec3Array, b:Vec3Array): boolean;
 }
 
 export declare module vec4 {
@@ -122,6 +124,8 @@ export declare module vec4 {
   export function transformMat4(out:Vec4Array, a:Vec4Array, m:Mat4Array): Vec4Array;
   export function transformQuat(out:Vec4Array, a:Vec4Array, q:Vec4Array): Vec4Array;
   export function str(a:Vec4Array): string;
+  export function equals(a:Vec3Array, b:Vec3Array): boolean;
+  export function exactEquals(a:Vec3Array, b:Vec3Array): boolean;
 }
 
 export declare module mat4 {
@@ -147,6 +151,8 @@ export declare module mat4 {
   export function perspective(out:Mat4Array, fovy:number, aspect:number, near:number, far:number): Mat4Array;
   export function ortho(out:Mat4Array, left:number, right:number, bottom:number, top:number, near:number, far:number): Mat4Array;
   export function lookAt(out:Mat4Array, eye:Vec3Array, center:Vec3Array, up:Vec3Array): Mat4Array;
+  export function equals(a:Mat4Array, b:Mat4Array): boolean;
+  export function exactEquals(a:Mat4Array, b:Mat4Array): boolean;
 }
 
 export declare module mat2d {

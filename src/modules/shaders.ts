@@ -12,9 +12,7 @@ export class Shader implements DS.Shader {
   private program:WebGLProgram;
   private uniforms = {};
   private attribs = {};
-  private uniformNames:string[] = []; 
-  private attributeNames:string[] = []; 
-  private samplers:string[] = [];
+  private definitions:Definitions = new Definitions();
   private initCallback:(Shader)=>void
 
   constructor(prog:WebGLProgram, initCallback:(Shader)=>void=null) {
@@ -22,11 +20,9 @@ export class Shader implements DS.Shader {
     this.initCallback = initCallback;
   }
 
-  public init(gl:WebGLRenderingContext, prog:WebGLProgram, params:any):void {
+  public init(gl:WebGLRenderingContext, prog:WebGLProgram, defs:Definitions):void {
     this.program = prog;
-    this.uniformNames = params.uniforms.values();
-    this.attributeNames = params.attributes.values();
-    this.samplers = params.samplers.values();
+    this.definitions = defs;
     this.initUniformLocations(gl);
     this.initAttributeLocations(gl);
     if (this.initCallback != null)
@@ -34,16 +30,16 @@ export class Shader implements DS.Shader {
   }
 
   private initUniformLocations(gl:WebGLRenderingContext):void {
-    for (var i in this.uniformNames) {
-      var uniform = this.uniformNames[i];
-      this.uniforms[uniform] = gl.getUniformLocation(this.program, uniform);
+    for (var i in this.definitions.uniforms) {
+      var uniform = this.definitions.uniforms[i];
+      this.uniforms[uniform.getName()] = gl.getUniformLocation(this.program, uniform.getName());
     }
   }
 
   private initAttributeLocations(gl:WebGLRenderingContext):void {
-    for (var i in this.attributeNames) {
-      var attrib = this.attributeNames[i];
-      this.attribs[attrib] = gl.getAttribLocation(this.program, attrib);
+    for (var i in this.definitions.attributes) {
+      var attrib = this.definitions.attributes[i];
+      this.attribs[attrib.getName()] = gl.getAttribLocation(this.program, attrib.getName());
     }
   }
 
@@ -59,16 +55,16 @@ export class Shader implements DS.Shader {
     return this.program;
   }
 
-  public getUniforms():string[] {
-    return this.uniformNames;
+  public getUniforms():{[index:string]:DS.Definition} {
+    return this.definitions.uniforms;
   }
 
-  public getAttributes():string[] {
-    return this.attributeNames;
+  public getAttributes():{[index:string]:DS.Definition} {
+    return this.definitions.attributes;
   }
 
-  public getSamplers():string[] {
-    return this.samplers;
+  public getSamplers():{[index:string]:DS.Definition} {
+    return this.definitions.samplers;
   }
 }
 
@@ -83,7 +79,7 @@ export function createShader(gl:WebGLRenderingContext, name:string, defines:stri
     defaultProgram = compileProgram(gl, defaultVSH, defaultFSH);
   }
 
-  var shader = new Shader(defaultProgram);
+  var shader = new Shader(defaultProgram, initCallback);
   var barrier = AB.create();
   var deftext = prepareDefines(defines);
   getter.preloadString(name+'.vsh', barrier.callback('vsh'));
@@ -105,8 +101,8 @@ function initShader(gl:WebGLRenderingContext, shader:Shader, vsh:string, fsh:str
   preprocess(fsh, barrier.callback('fsh'));
   barrier.wait((res) => {
     var program = compileProgram(gl, res.vsh, res.fsh);
-    var params = processShaders(res.vsh, res.fsh);
-    shader.init(gl, program, params);
+    var defs = processShaders(res.vsh, res.fsh);
+    shader.init(gl, program, defs);
   });
 }
 
@@ -139,38 +135,47 @@ function compileSource(gl:WebGLRenderingContext, type:number, source:string):Web
   return shader;
 }
 
-function processLine(line:string, params:any):any {
-  var m = line.match(/^uniform +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+function processLine(line:string, defs:Definitions) {
+  var m = line.match(/^uniform +([a-zA-Z0-9_]+) +([a-zA-Z0-9_]+)/);
   if (m != null)
-    params.uniforms.add(m[1]);
-  m = line.match(/^attribute +[a-zA-Z0-9_]+ +([a-zA-Z0-9_]+)/);
+    defs.uniforms[m[2]] = new DefinitionImpl(m[1], m[2]);
+  m = line.match(/^attribute +([a-zA-Z0-9_]+) +([a-zA-Z0-9_]+)/);
   if (m != null)
-    params.attributes.add(m[1]);
-  m = line.match(/^uniform sampler2D +([a-zA-Z0-9_]+)/);
+    defs.attributes[m[2]] = new DefinitionImpl(m[1], m[2]);
+  m = line.match(/^uniform +(sampler2D) +([a-zA-Z0-9_]+)/);
   if (m != null)
-    params.samplers.add(m[1]);
+    defs.samplers[m[2]] = new DefinitionImpl(m[1], m[2]);
 }
 
-function createParams():any {
-  var params:any = {};
-  params.uniforms = Set.create<string>();
-  params.attributes = Set.create<string>();
-  params.samplers = Set.create<string>();
-  return params;
+export class DefinitionImpl implements DS.Definition {
+  constructor(
+    private type:string,
+    private name:string
+  ){}
+
+  getName() {return this.name}
+  getType() {return this.type}
 }
+
+export class Definitions{
+  public uniforms:{[index:string]:DefinitionImpl} = {};
+  public attributes:{[index:string]:DefinitionImpl} = {};
+  public samplers:{[index:string]:DefinitionImpl} = {};
+}
+
 
 function processShaders(vsh:string, fsh:string):any {
-  var params = createParams();
+  var defs = new Definitions();
   var shaders = [vsh, fsh];
   for (var i in shaders) {
     var shader = shaders[i];
     var lines = shader.split("\n");
     for (var l in lines) {
       var line = lines[l];
-      processLine(line, params);
+      processLine(line, defs);
     }
   }
-  return params;
+  return defs;
 }
 
 function preprocess(shader:string, cb:(sh:string)=>void):void {
@@ -191,4 +196,26 @@ function preprocess(shader:string, cb:(sh:string)=>void):void {
     }
     cb(res.join("\n"));
   });
+}
+
+var setters = {
+  mat4 : (gl:WebGLRenderingContext, loc, val) => gl.uniformMatrix4fv(loc, false, val),
+  ivec2 : (gl:WebGLRenderingContext, loc, val) => gl.uniform2iv(loc, val),
+  vec2 : (gl:WebGLRenderingContext, loc, val) => gl.uniform2fv(loc, val),
+  vec3 : (gl:WebGLRenderingContext, loc, val) => gl.uniform3fv(loc, val),
+  vec4 : (gl:WebGLRenderingContext, loc, val) => gl.uniform4fv(loc, val),
+  int : (gl:WebGLRenderingContext, loc, val) => gl.uniform1i(loc, val),
+  float : (gl:WebGLRenderingContext, loc, val) => gl.uniform1f(loc, val),
+  sampler2D : (gl:WebGLRenderingContext, loc, val) => gl.uniform1i(loc, val),
+}
+
+export function setUniform(gl:WebGLRenderingContext, shader:DS.Shader, name:string, value) {
+  var uniform = shader.getUniforms()[name];
+  if (uniform == undefined)
+    return;
+  var loc = shader.getUniformLocation(name, gl);
+  var setter = setters[uniform.getType()];
+  if (setter == undefined)
+    throw new Error('Invalid type: ' + uniform.getType());
+  setter(gl, loc, value);
 }

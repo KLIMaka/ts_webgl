@@ -17,8 +17,8 @@ const float trans = float(255.0/256.0);
 const float totalPLUs = 15.0;
 
 float lightOffset() {
-  float lightLevel = length(wpos - eyepos) / 1024.0;
-  return clamp(float(shade) + lightLevel, 0.5, 63.0) / 64.0;
+  float lightLevel = length(wpos.xz - eyepos.xz) / 1024.0;
+  return clamp(float(shade) + lightLevel, 0.5, 63.5) / 64.0;
 }
 
 vec4 palLookup() {
