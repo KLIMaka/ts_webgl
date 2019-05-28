@@ -88,9 +88,9 @@ export class Wireframe implements Renderable {
   public draw(gl:WebGLRenderingContext, state:State) {
     if (this.buff.get() == null)
       return;
-    state.setShader(this.type == Type.SURFACE ? 'baseShaderFlat' : 'spriteShaderFlat' );
+    state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader' );
     state.setUniform('color', [1, 1, 1, 1]);
     state.setDrawElements(this.buff.get());
-    state.draw(gl);
+    state.draw(gl, gl.LINES);
   }
 }

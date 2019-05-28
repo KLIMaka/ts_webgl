@@ -120,7 +120,7 @@ export class Cache {
   }
 
   public getSpriteWireframe(sprId:number):SpriteWireframe {
-    prepareSpriteWireframe(this.board, sprId, this.spriteWireframe);
+    prepareSpriteWireframe(this.board, sprId, this.art, this.spriteWireframe);
     return this.spriteWireframe;
   }
 
@@ -169,15 +169,132 @@ function fillBuffersForSectorWireframe(sec:Sector, heinum:number, z:number, boar
 function prepareSectorWireframe(board:Board, secId:number, wireframe:SectorWireframe) {
   var sec = board.sectors[secId];
   fillBuffersForSectorWireframe(sec, sec.ceilingheinum, sec.ceilingz, board, wireframe.ceiling.buff);
-  fillBuffersForSectorWireframe(sec, sec.floorheinum, sec.floorz, board, wireframe.floor.buff);
+  fillBuffersForSectorWireframe(sec, sec.floorheinum,   sec.floorz,   board, wireframe.floor.buff);
+}
+
+function genWallWireframe(coords:number[], buff:Buffer) {
+  buff.allocate(4, 8);
+  var [x1, y1, x2, y2, z1, z2, z3, z4] = coords;
+  buff.writePos(0, x1, z1, y1);
+  buff.writePos(1, x2, z2, y2);
+  buff.writePos(2, x2, z3, y2);
+  buff.writePos(3, x1, z4, y1);
+  buff.writeLine(0, 0, 1);
+  buff.writeLine(2, 1, 2);
+  buff.writeLine(4, 2, 3);
+  buff.writeLine(6, 3, 0);
 }
 
 function prepareWallWireframe(board:Board, wallId:number, secId:number, wireframe:WallWireframe) {
-  
+  var wall = board.walls[wallId];
+  var sector = board.sectors[secId];
+  var wall2 = board.walls[wall.point2];
+  var x1 = wall.x; var y1 = wall.y;
+  var x2 = wall2.x; var y2 = wall2.y;
+  var slope = U.createSlopeCalculator(sector, board.walls);
+  var ceilingheinum = sector.ceilingheinum;
+  var ceilingz = sector.ceilingz;
+  var floorheinum = sector.floorheinum;
+  var floorz = sector.floorz;
+
+  if (wall.nextwall == -1 || wall.cstat.oneWay) {
+    var coords = fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
+    genWallWireframe(coords, wireframe.mid.buff);
+  } else {
+    var nextsector = board.sectors[wall.nextsector];
+    var nextslope = U.createSlopeCalculator(nextsector, board.walls);
+    var nextfloorz = nextsector.floorz;
+    var nextceilingz = nextsector.ceilingz;
+
+    var nextfloorheinum = nextsector.floorheinum;
+    var coords = fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
+    if (coords != null) {
+      genWallWireframe(coords, wireframe.bot.buff);
+    } 
+
+    var nextceilingheinum = nextsector.ceilingheinum;
+    var coords = fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
+    if (coords != null) {
+      genWallWireframe(coords, wireframe.top.buff);
+    }
+
+    if (wall.cstat.masking) {
+      var coords = fillBuffersForMaskedWall(x1, y1, x2, y2, slope, nextslope, 
+        ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
+        floorheinum, nextfloorheinum, floorz, nextfloorz);
+      genWallWireframe(coords, wireframe.mid.buff);
+    }
+  }
 }
 
-function prepareSpriteWireframe(board:Board, sprId:number, wireframe:SpriteWireframe) {
+function fillbuffersForWallSpriteWireframe(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, renderable:SpriteWireframe) {
+  var dx = Math.sin(ang)*hw;
+  var dy = Math.cos(ang)*hw;
+  renderable.buff.allocate(4, 8);
+  renderable.buff.writePos(0, x-dx, z-hh+yo, y-dy);
+  renderable.buff.writePos(1, x+dx, z-hh+yo, y+dy);
+  renderable.buff.writePos(2, x+dx, z+hh+yo, y+dy);
+  renderable.buff.writePos(3, x-dx, z+hh+yo, y-dy);
+  renderable.buff.writeLine(0, 0, 1);
+  renderable.buff.writeLine(2, 1, 2);
+  renderable.buff.writeLine(4, 2, 3);
+  renderable.buff.writeLine(6, 3, 0);
+}
 
+function fillbuffersForFloorSpriteWireframe(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, renderable:SpriteWireframe) {
+  var dwx = Math.sin(-ang)*hw;
+  var dwy = Math.cos(-ang)*hw;
+  var dhx = Math.sin(-ang+Math.PI/2)*hh;
+  var dhy = Math.cos(-ang+Math.PI/2)*hh;
+  renderable.buff.allocate(4, 8);
+  renderable.buff.writePos(0, x-dwx-dhx, z, y-dwy-dhy);
+  renderable.buff.writePos(1, x+dwx-dhx, z, y+dwy-dhy);
+  renderable.buff.writePos(2, x+dwx+dhx, z, y+dwy+dhy);
+  renderable.buff.writePos(3, x-dwx+dhx, z, y-dwy+dhy);
+  renderable.buff.writeLine(0, 0, 1);
+  renderable.buff.writeLine(2, 1, 2);
+  renderable.buff.writeLine(4, 2, 3);
+  renderable.buff.writeLine(6, 3, 0);
+}
+
+function fillBuffersForFaceSpriteWireframe(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, renderable:SpriteWireframe) {
+  renderable.buff.allocate(4, 8);
+  renderable.buff.writePos(0, x, z, y);
+  renderable.buff.writePos(1, x, z, y);
+  renderable.buff.writePos(2, x, z, y);
+  renderable.buff.writePos(3, x, z, y);
+  renderable.buff.writeNormal(0, -hw+xo, +hh+yo);
+  renderable.buff.writeNormal(1, +hw+xo, +hh+yo);
+  renderable.buff.writeNormal(2, +hw+xo, -hh+yo);
+  renderable.buff.writeNormal(3, -hw+xo, -hh+yo);
+  renderable.buff.writeLine(0, 0, 1);
+  renderable.buff.writeLine(2, 1, 2);
+  renderable.buff.writeLine(4, 2, 3);
+  renderable.buff.writeLine(6, 3, 0);
+}
+
+
+function prepareSpriteWireframe(board:Board, sprId:number, art:ArtProvider, wireframe:SpriteWireframe) {
+  var spr = board.sprites[sprId];
+  if (spr.picnum == 0 || spr.cstat.invicible)
+    return;
+
+  var x = spr.x; var y = spr.y; var z = spr.z / SCALE;
+  var info = art.getInfo(spr.picnum);
+  var w = (info.w * spr.xrepeat) / 4; var hw = w >> 1;
+  var h = (info.h * spr.yrepeat) / 4; var hh = h >> 1;
+  var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
+  var xo = (info.attrs.xoff * spr.xrepeat) / 4;
+  var yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
+  
+  if (spr.cstat.type == FACE) {
+    fillBuffersForFaceSpriteWireframe(x, y, z, xo, yo, hw, hh, wireframe);
+    wireframe.type = Type.FACE;
+  } else if (spr.cstat.type == WALL) {
+    fillbuffersForWallSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
+  } else if (spr.cstat.type == FLOOR) {
+    fillbuffersForFloorSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
+  }
 }
 
 function applySectorTextureTransform(sector:Sector, ceiling:boolean, walls:Wall[], info:ArtInfo, texMat:GLM.Mat4Array) {
@@ -269,20 +386,19 @@ function prepareSector(board:Board, art:ArtProvider, secId:number, renderable:Se
 }
 
 function fillBuffersForWall(x1:number, y1:number, x2:number, y2:number, 
-  slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean, buff:Buffer):boolean {
+  slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean):number[] {
   var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
   if (check && (z4 >= z1 && z3 >= z2))
-    return false;
-  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
-  return true;
+    return null;
+  return [x1, y1, x2, y2, z1, z2, z3, z4];
 }
 
 function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, 
   ceilheinum:number, ceilnextheinum:number, ceilz:number, ceilnextz:number,
-  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number, buff:Buffer):void {
+  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number):number[] {
   var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE; 
   var currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
   var currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
@@ -295,11 +411,12 @@ function fillBuffersForMaskedWall(x1:number, y1:number, x2:number, y2:number, sl
   var z2 = Math.min(currz2, nextz2);
   var z3 = Math.max(currz3, nextz3);
   var z4 = Math.max(currz4, nextz4);
-  genWallQuad(x1, y1, x2, y2, z1, z2, z3, z4, buff);
+  return [x1, y1, x2, y2, z1, z2, z3, z4];
 }
 
-function genWallQuad(x1:number, y1:number, x2:number, y2:number, z1:number, z2:number, z3:number, z4:number, buff:Buffer) {
+function genWallQuad(coords:number[], buff:Buffer) {
   buff.allocate(4, 6);
+  var [x1, y1, x2, y2, z1, z2, z3, z4] = coords;
   buff.writePos(0, x1, z1, y1);
   buff.writePos(1, x2, z2, y2);
   buff.writePos(2, x2, z3, y2);
@@ -344,7 +461,8 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
   var trans = (wall.cstat.translucent || wall.cstat.translucentReversed) ? 0.6 : 1;
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
-    fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false, renderable.mid.buff);
+    var coords = fillBuffersForWall(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
+    genWallQuad(coords, renderable.mid.buff);
     var base = wall.cstat.alignBottom ? floorz : ceilingz;
     applyWallTextureTransform(wall, wall2, info, base, wall, renderable.mid.texMat);
     renderable.mid.tex = tex;
@@ -357,7 +475,9 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
     var nextceilingz = nextsector.ceilingz;
 
     var nextfloorheinum = nextsector.floorheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, renderable.bot.buff)) {
+    var coords = fillBuffersForWall(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
+    if (coords != null) {
+      genWallQuad(coords, renderable.bot.buff);
       var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
       var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
       var tex_ = wall.cstat.swapBottoms ? art.get(wall_.picnum) : tex;
@@ -370,7 +490,9 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
     } 
 
     var nextceilingheinum = nextsector.ceilingheinum;
-    if (fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, renderable.top.buff)) {
+    var coords = fillBuffersForWall(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
+    if (coords != null) {
+      genWallQuad(coords, renderable.top.buff);
       var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
       applyWallTextureTransform(wall, wall2, info, base, wall, renderable.top.texMat);
       renderable.top.tex = tex;
@@ -381,9 +503,10 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
     if (wall.cstat.masking) {
       var tex1 = art.get(wall.overpicnum);
       var info1 = art.getInfo(wall.overpicnum);
-      fillBuffersForMaskedWall(x1, y1, x2, y2, slope, nextslope, 
+      var coords = fillBuffersForMaskedWall(x1, y1, x2, y2, slope, nextslope, 
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
-        floorheinum, nextfloorheinum, floorz, nextfloorz, renderable.mid.buff);
+        floorheinum, nextfloorheinum, floorz, nextfloorz);
+      genWallQuad(coords, renderable.mid.buff);
       var base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
       applyWallTextureTransform(wall, wall2, info1, base, wall, renderable.mid.texMat);
       renderable.mid.tex = tex1;

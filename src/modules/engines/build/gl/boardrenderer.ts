@@ -181,7 +181,7 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
 function highlightSelected(gl:WebGLRenderingContext) {
   gl.disable(gl.DEPTH_TEST);
   if (U.isSector(selectType)) {
-    var sector = queue.cache.getSector(selectId);
+    var sector = queue.cache.getSectorWireframe(selectId);
     switch (selectType) {
       case U.HitType.CEILING:
         BGL.draw(gl, sector.ceiling);
@@ -192,7 +192,7 @@ function highlightSelected(gl:WebGLRenderingContext) {
     }
   } 
   if (U.isWall(selectType)) {
-    var wall = queue.cache.getWall(selectId, 0);
+    var wall = queue.cache.getWallWireframe(selectId, 0);
     switch (selectType) {
       case U.HitType.UPPER_WALL:
         BGL.draw(gl, wall.top);
@@ -206,7 +206,7 @@ function highlightSelected(gl:WebGLRenderingContext) {
     }
   }
   if (U.isSprite(selectType)) {
-    var sprite = queue.cache.getSprite(selectId);
+    var sprite = queue.cache.getSpriteWireframe(selectId);
     BGL.draw(gl, sprite);
   }
   gl.enable(gl.DEPTH_TEST);
