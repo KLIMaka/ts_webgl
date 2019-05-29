@@ -54,3 +54,7 @@ export function writeLine(ptr:Pointer, off:number, a:number, b:number):number {
   buffer.writeIndex(ptr, off, [a, b]);
   return off+2;
 }
+
+export function getFreeSpace() {
+  return buffer.getVertexFreeSpace();
+}

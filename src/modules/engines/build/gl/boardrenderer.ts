@@ -6,6 +6,7 @@ import * as U from '../utils';
 import * as C from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
 import * as BGL from './buildgl';
+import * as BUFF from './buffers';
 import * as BU from '../boardutils';
 import * as MU from '../../../../libs/mathutils';
 
@@ -99,6 +100,7 @@ export class DrawQueue {
 
     PROFILE.startProfile('processing');
     boardVisitor(this.board, this.secv, this.wallv, this.sprv);
+    PROFILE.set('buffer', BUFF.getFreeSpace());
     PROFILE.endProfile();
 
     PROFILE.startProfile('draw');
@@ -166,7 +168,7 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
     BGL.setCursorPosiotion([hit.x, hit.z/-16, hit.y]);
   }
 
-  highlightSelected(gl);
+  highlightSelected(gl, board);
 
   if (U.isWall(selectType) && ctr.getKeys()['Q']) {
     selectId = BU.pushWall(board, selectId, -128, artProvider, []);
@@ -178,7 +180,7 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
   }
 }
 
-function highlightSelected(gl:WebGLRenderingContext) {
+function highlightSelected(gl:WebGLRenderingContext, board:Board) {
   gl.disable(gl.DEPTH_TEST);
   if (U.isSector(selectType)) {
     var sector = queue.cache.getSectorWireframe(selectId);
@@ -192,7 +194,7 @@ function highlightSelected(gl:WebGLRenderingContext) {
     }
   } 
   if (U.isWall(selectType)) {
-    var wall = queue.cache.getWallWireframe(selectId, 0);
+    var wall = queue.cache.getWallWireframe(selectId, BU.findSector(board, selectId));
     switch (selectType) {
       case U.HitType.UPPER_WALL:
         BGL.draw(gl, wall.top);

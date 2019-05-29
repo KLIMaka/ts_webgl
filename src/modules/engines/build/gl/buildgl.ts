@@ -22,7 +22,7 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, c
     state.registerShader('baseFlatShader', res['baseFlatShader']);
     state.registerShader('spriteFlatShader', res['spriteFlatShader']);
     
-    BUFF.init(gl, 1024*1024);
+    BUFF.init(gl, 1024*64);
     state.setIndexBuffer(BUFF.getIdxBuffer());
     state.setVertexBuffer('aPos', BUFF.getPosBuffer());
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer());

@@ -75,6 +75,14 @@ export class Bag {
     this.holes = new L.List<Place>();
     this.holes.insertAfter(new Place(0, this.size));
   }
+
+  public freeSpace() {
+    var freeSpace = 0;
+    for (var hole = this.holes.first(); hole != this.holes.terminator(); hole = hole.next) {
+      freeSpace += hole.obj.size;
+    }
+    return freeSpace;
+  }
 }
 
 export class BagController {
@@ -122,6 +130,10 @@ export class BagController {
       offset += place.size;
     }
     this.bag.get(offset);
+  }
+
+  public freeSpace() {
+    return this.bag.freeSpace();
   }
 }
 

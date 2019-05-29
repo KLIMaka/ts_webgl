@@ -76,8 +76,11 @@ export class Cache {
   public sprites:EnsureArray<Entry<SpriteSolid>> = createArray(spriteRenerableFactory);
 
   private sectorWireframe = new SectorWireframe();
+  private sectorWireframeId:number = -1;
   private wallWireframe = new WallWireframe();
+  private wallWireframeId:number = -1;
   private spriteWireframe = new SpriteWireframe();
+  private spriteWireframeId:number = -1;
 
   constructor(private board:Board, private art:ArtProvider) {
   }
@@ -110,17 +113,32 @@ export class Cache {
   }
 
   public getSectorWireframe(secId:number):SectorWireframe {
-    prepareSectorWireframe(this.board, secId, this.sectorWireframe);
+    if (secId != this.sectorWireframeId) {
+      this.sectorWireframe.ceiling.buff.deallocate();
+      this.sectorWireframe.floor.buff.deallocate();
+      prepareSectorWireframe(this.board, secId, this.sectorWireframe);
+      this.sectorWireframeId = secId;
+    }
     return this.sectorWireframe;
   }
 
   public getWallWireframe(wallId:number, secId:number):WallWireframe {
-    prepareWallWireframe(this.board, wallId, secId, this.wallWireframe);
+    if (wallId != this.wallWireframeId) {
+      this.wallWireframe.bot.buff.deallocate();
+      this.wallWireframe.top.buff.deallocate();
+      this.wallWireframe.mid.buff.deallocate();
+      prepareWallWireframe(this.board, wallId, secId, this.wallWireframe);
+      this.wallWireframeId = wallId;
+    }
     return this.wallWireframe;
   }
 
   public getSpriteWireframe(sprId:number):SpriteWireframe {
-    prepareSpriteWireframe(this.board, sprId, this.art, this.spriteWireframe);
+    if (sprId != this.spriteWireframeId) {
+      this.spriteWireframe.buff.deallocate();
+      prepareSpriteWireframe(this.board, sprId, this.art, this.spriteWireframe);
+      this.spriteWireframeId = sprId;
+    }
     return this.spriteWireframe;
   }
 
@@ -140,6 +158,10 @@ export class Cache {
     this.sectors.map(s => {if (s != undefined) {s.valid = false; s.value.ceiling.buff.deallocate(); s.value.floor.buff.deallocate();}});
     this.walls.map(w => {if (w != undefined) {w.valid = false; w.value.bot.buff.deallocate(); w.value.mid.buff.deallocate(); w.value.top.buff.deallocate();}});
     this.sprites.map(s => {if (s != undefined) {s.valid = false; s.value.buff.deallocate();}});
+
+    this.sectorWireframeId = -1;
+    this.wallWireframeId = -1;
+    this.spriteWireframeId = -1;
   }
 }
 

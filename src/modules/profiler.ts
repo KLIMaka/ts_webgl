@@ -48,6 +48,10 @@ export class Section {
     var count = this.counts[name];
     this.counts[name] = (count == undefined ? 0 : count) + 1;
   }
+
+  public set(name:string, value) {
+    this.counts[name] = value;
+  }
 }
 
 var mainSection = new Section(null, 'Main');
@@ -74,6 +78,10 @@ export function startGlobalProfile(name:string) {
 
 export function incCount(name:string) {
   currentSection.inc(name);
+}
+
+export function set(name:string, value) {
+  currentSection.set(name, value);
 }
 
 export function endProfile() {
