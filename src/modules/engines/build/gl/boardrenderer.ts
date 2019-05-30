@@ -69,6 +69,7 @@ function visitVisible(ms:U.MoveStruct) {
 
 export class DrawQueue {
   private surfaces:Renderable[];
+  private surfacesTrans:Renderable[];
   private sprites:Renderable[];
   private secv:SectorVisitor;
   private wallv:WallVisitor;
@@ -84,7 +85,12 @@ export class DrawQueue {
     }
     this.wallv = (board:Board, wallId:number, sectorId:number) => {
       var wall = this.cache.getWall(wallId, sectorId);
-      this.surfaces.push(wall.bot, wall.mid, wall.top);
+      if (wall.mid.trans != 1) {
+        this.surfacesTrans.push(wall.mid);
+        this.surfaces.push(wall.bot, wall.top);
+      } else {
+        this.surfaces.push(wall.bot, wall.mid, wall.top);
+      }
       PROFILE.incCount('walls');
     }
     this.sprv = (board:Board, spriteId:number) => {
@@ -96,6 +102,7 @@ export class DrawQueue {
 
   public draw(gl:WebGLRenderingContext, boardVisitor:BoardVisitor) {
     this.surfaces = [];
+    this.surfacesTrans = [];
     this.sprites = [];
 
     PROFILE.startProfile('processing');
@@ -108,11 +115,15 @@ export class DrawQueue {
       BGL.draw(gl, this.surfaces[i]);
     }
 
-    gl.polygonOffset(-1, -8);
     for (var i = 0; i < this.sprites.length; i++) {
+      gl.polygonOffset(-1, -2 -i%8);
       BGL.draw(gl, this.sprites[i]);
     }
     gl.polygonOffset(0, 0);
+
+    for (var i = 0; i < this.surfacesTrans.length; i++) {
+      BGL.draw(gl, this.surfacesTrans[i]);
+    }
     PROFILE.endProfile();
   }
 }

@@ -7,6 +7,7 @@ import * as BUFF from './buffers';
 import {Renderable, Type} from './renderable';
 import * as AB from '../../../../libs/asyncbarrier';
 
+
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state:State;
 export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, cb:()=>void) {

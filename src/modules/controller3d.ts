@@ -46,7 +46,7 @@ export class Controller3D {
     var x = e.clientX;
     var y = e.clientY;
     if (this.drag) {
-      this.camera.updateAngles(x - this.oldX, y - this.oldY);
+      this.camera.updateAngles((x - this.oldX)/2, (y - this.oldY)/2);
     }
     this.oldX = x;
     this.oldY = y;
