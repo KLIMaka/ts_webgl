@@ -16,13 +16,14 @@ varying vec3 wpos;
 
 const float trans = float(255.0/256.0);
 const float totalPLUs = 15.0;
+const float PI = 3.1415926538;
 
 float lightOffset() {
   float lightLevel = length(wpos.xz - eyepos.xz) / 1024.0;
   return clamp(float(shade) + lightLevel, 0.5, 63.5) / 64.0;
 }
 
-vec3 palLookup() {
+vec3 palLookup(vec2 tc) {
   float palIdx = texture2D(base, fract(tc)).r;
   if (palIdx >= trans)
     discard;
@@ -41,14 +42,19 @@ vec3 palLookup() {
 #endif
 }
 
+
 void main() {
-//  float n = texture2D(noise, gl_FragCoord.xy/16.0).r;
-//  if (n > color.a)
-//    discard;
 #ifdef FLAT
   vec3 c = vec3(1.0);
 #else
-  vec3 c = palLookup();
+#ifdef PARALLAX
+  vec3 toPixel = normalize(wpos - eyepos);
+  float hang = (atan(toPixel.z, toPixel.x) + PI) / (2.0 * PI);
+  float vang = (1.0 - toPixel.y) / 2.0;
+  vec3 c = palLookup(vec2(hang, vang));
+#else
+  vec3 c = palLookup(tc);
+#endif
 #endif
 
   if (color.r > 1.0 && any(lessThan(fract(tc*8.0), vec2(0.04, 0.04))))

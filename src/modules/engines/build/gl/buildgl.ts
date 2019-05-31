@@ -16,12 +16,14 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, c
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE'], ab.callback('spriteShader'));
   SHADER.createShader(gl, SHADER_NAME, ['FLAT'], ab.callback('baseFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT'], ab.callback('spriteFlatShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['PARALLAX'], ab.callback('parallax'));
   ab.wait((res) => {
     state = new State(gl);
     state.registerShader('baseShader', res['baseShader']);
     state.registerShader('spriteShader', res['spriteShader']);
     state.registerShader('baseFlatShader', res['baseFlatShader']);
     state.registerShader('spriteFlatShader', res['spriteFlatShader']);
+    state.registerShader('parallax', res['parallax']);
     
     BUFF.init(gl, 1024*64);
     state.setIndexBuffer(BUFF.getIdxBuffer());

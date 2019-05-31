@@ -33,6 +33,7 @@ function createArray<T>(factory:()=>T):EnsureArray<T> {
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum:number):Texture;
+  getParallaxTexture(picnum:number):Texture
 }
 
 class SectorSolid {
@@ -322,7 +323,8 @@ function applySectorTextureTransform(sector:Sector, ceiling:boolean, walls:Wall[
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
   var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
-  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (info.w * scale);
+  var parallaxscale = stats.parallaxing ? 6.0 : 1.0;
+  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (info.w * scale * parallaxscale);
   var tcscaley = (stats.yflip ? -1.0 :  1.0) / (info.h * scale);
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [xpan / 256.0, ypan / 256.0, 0, 0]);
@@ -391,14 +393,16 @@ function fillBuffersForSector(ceil:boolean, board:Board, sec:Sector, renderable:
 function prepareSector(board:Board, art:ArtProvider, secId:number, renderable:SectorSolid) {
   var sec = board.sectors[secId];
   fillBuffersForSector(true, board, sec, renderable);
-  renderable.ceiling.tex = art.get(sec.ceilingpicnum);
+  renderable.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
+  renderable.ceiling.parallax = sec.ceilingstat.parallaxing;
   renderable.ceiling.pal = sec.ceilingpal;
   renderable.ceiling.shade = sec.ceilingshade;
   var info = art.getInfo(sec.ceilingpicnum);
   applySectorTextureTransform(sec, true, board.walls, info, renderable.ceiling.texMat);
 
   fillBuffersForSector(false, board, sec, renderable);
-  renderable.floor.tex = art.get(sec.floorpicnum);
+  renderable.floor.tex = sec.floorstat.parallaxing ? art.getParallaxTexture(sec.floorpicnum) : art.get(sec.floorpicnum);
+  renderable.floor.parallax = sec.floorstat.parallaxing;
   renderable.floor.pal = sec.floorpal;
   renderable.floor.shade = sec.floorshade;
   var info = art.getInfo(sec.floorpicnum);
@@ -441,13 +445,13 @@ function genQuad(coords:number[], normals:number[], buff:Buffer, onesided:number
   buff.writePos(1, x2, z2, y2);
   buff.writePos(2, x3, z3, y3);
   buff.writePos(3, x4, z4, y4);
-  buff.writeQuad(0, 0, 1, 2, 3);
   if (normals != null) {
     buff.writeNormal(0, normals[0], normals[1]);
     buff.writeNormal(1, normals[2], normals[3]);
     buff.writeNormal(2, normals[4], normals[5]);
     buff.writeNormal(3, normals[6], normals[7]);
   }
+  buff.writeQuad(0, 0, 1, 2, 3);
   if (!onesided)
     buff.writeQuad(6, 3, 2, 1, 0);
 }

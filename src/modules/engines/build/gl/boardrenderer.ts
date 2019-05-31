@@ -1,5 +1,5 @@
 import {Board, Sector, Wall, Sprite} from '../structs';
-import {Renderable} from './renderable';
+import {Renderable, Type} from './renderable';
 import {Cache, ArtProvider} from './cache';
 import * as DS from '../../../drawstruct';
 import * as U from '../utils';
@@ -95,7 +95,7 @@ export class DrawQueue {
     }
     this.sprv = (board:Board, spriteId:number) => {
       var sprite = this.cache.getSprite(spriteId);
-      this.sprites.push(sprite);
+      (sprite.type == Type.FACE ? this.sprites : this.surfaces).push(sprite);
       PROFILE.incCount('sprites');
     } 
   }
