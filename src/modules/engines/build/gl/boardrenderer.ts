@@ -71,6 +71,7 @@ export class DrawQueue {
   private surfaces:Renderable[];
   private surfacesTrans:Renderable[];
   private sprites:Renderable[];
+  private spritesTrans:Renderable[];
   private secv:SectorVisitor;
   private wallv:WallVisitor;
   private sprv:SpriteVisitor;
@@ -95,7 +96,11 @@ export class DrawQueue {
     }
     this.sprv = (board:Board, spriteId:number) => {
       var sprite = this.cache.getSprite(spriteId);
-      (sprite.type == Type.FACE ? this.sprites : this.surfaces).push(sprite);
+      var trans = sprite.trans != 1;
+      (sprite.type == Type.FACE 
+        ? (trans ? this.spritesTrans : this.sprites) 
+        : (trans ? this.surfacesTrans : this.surfaces))
+      .push(sprite);
       PROFILE.incCount('sprites');
     } 
   }
@@ -104,6 +109,7 @@ export class DrawQueue {
     this.surfaces = [];
     this.surfacesTrans = [];
     this.sprites = [];
+    this.spritesTrans = [];
 
     PROFILE.startProfile('processing');
     boardVisitor(this.board, this.secv, this.wallv, this.sprv);
@@ -124,6 +130,13 @@ export class DrawQueue {
     for (var i = 0; i < this.surfacesTrans.length; i++) {
       BGL.draw(gl, this.surfacesTrans[i]);
     }
+    
+    for (var i = 0; i < this.spritesTrans.length; i++) {
+      gl.polygonOffset(-1, -2 -i%8);
+      BGL.draw(gl, this.spritesTrans[i]);
+    }
+    gl.polygonOffset(0, 0);
+
     PROFILE.endProfile();
   }
 }

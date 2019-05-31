@@ -510,26 +510,40 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
     var coords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
     if (coords != null) {
       genQuad(coords, null, renderable.bot.buff);
-      var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
-      var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
-      var tex_ = wall.cstat.swapBottoms ? art.get(wall_.picnum) : tex;
-      var info_ = wall.cstat.swapBottoms ? art.getInfo(wall_.picnum) : info;
-      var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
-      applyWallTextureTransform(wall_, wall2_, info_, base, wall, renderable.bot.texMat);
-      renderable.bot.tex = tex_;
-      renderable.bot.shade = wall_.shade;
-      renderable.bot.pal = wall_.pal;
+      if (sector.floorstat.parallaxing && nextsector.floorstat.parallaxing && sector.floorpicnum == nextsector.floorpicnum) {
+        renderable.bot.tex = art.getParallaxTexture(sector.floorpicnum);
+        renderable.bot.shade = sector.floorshade;
+        renderable.bot.pal = sector.floorpal;
+        renderable.bot.parallax = true;
+      } else {
+        var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
+        var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
+        var tex_ = wall.cstat.swapBottoms ? art.get(wall_.picnum) : tex;
+        var info_ = wall.cstat.swapBottoms ? art.getInfo(wall_.picnum) : info;
+        var base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
+        applyWallTextureTransform(wall_, wall2_, info_, base, wall, renderable.bot.texMat);
+        renderable.bot.tex = tex_;
+        renderable.bot.shade = wall_.shade;
+        renderable.bot.pal = wall_.pal;
+      }
     } 
 
     var nextceilingheinum = nextsector.ceilingheinum;
     var coords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
     if (coords != null) {
       genQuad(coords, null, renderable.top.buff);
-      var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
-      applyWallTextureTransform(wall, wall2, info, base, wall, renderable.top.texMat);
-      renderable.top.tex = tex;
-      renderable.top.shade = wall.shade;
-      renderable.top.pal = wall.pal;
+      if (sector.ceilingstat.parallaxing && nextsector.ceilingstat.parallaxing && sector.ceilingpicnum == nextsector.ceilingpicnum) {
+        renderable.top.tex = art.getParallaxTexture(sector.ceilingpicnum);
+        renderable.top.shade = sector.ceilingshade;
+        renderable.top.pal = sector.ceilingpal;
+        renderable.top.parallax = true;
+      } else {
+        var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
+        applyWallTextureTransform(wall, wall2, info, base, wall, renderable.top.texMat);
+        renderable.top.tex = tex_;
+        renderable.top.shade = wall.shade;
+        renderable.top.pal = wall.pal;
+      }
     }
 
     if (wall.cstat.masking) {
@@ -598,9 +612,9 @@ function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:nu
     x, y, z,
     x, y, z
     ], [
-    -hw+xo, +hh+yo
-    +hw+xo, +hh+yo
-    +hw+xo, -hh+yo
+    -hw+xo, +hh+yo,
+    +hw+xo, +hh+yo,
+    +hw+xo, -hh+yo,
     -hw+xo, -hh+yo
     ], renderable.buff);
 
