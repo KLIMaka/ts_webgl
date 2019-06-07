@@ -540,7 +540,7 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
       } else {
         var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
         applyWallTextureTransform(wall, wall2, info, base, wall, renderable.top.texMat);
-        renderable.top.tex = tex_;
+        renderable.top.tex = tex;
         renderable.top.shade = wall.shade;
         renderable.top.pal = wall.pal;
       }

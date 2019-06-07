@@ -2,7 +2,6 @@ import {State} from '../../../stategl';
 import * as DS from '../../../drawstruct';
 import * as SHADER from '../../../shaders';
 import * as GLM from '../../../../libs_js/glmatrix';
-import * as C from '../../../../modules/controller3d';
 import * as BUFF from './buffers';
 import {Renderable, Type} from './renderable';
 import * as AB from '../../../../libs/asyncbarrier';
@@ -36,10 +35,10 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, c
   });
 }
 
-export function setController(c:C.Controller3D) {
-  state.setUniform('P', c.getProjectionMatrix());
-  state.setUniform('V', c.getModelViewMatrix());
-  state.setUniform('eyepos', c.getCamera().getPos());
+export function setViewMatrices(proj:GLM.Mat4Array, view:GLM.Mat4Array, pos:GLM.Vec3Array) {
+  state.setUniform('P', proj);
+  state.setUniform('V', view);
+  state.setUniform('eyepos', pos);
 }
 
 export function setCursorPosiotion(pos:GLM.Vec3Array) {
