@@ -65,12 +65,13 @@ export class Solid implements Renderable {
   public shade:number;
   public trans:number = 1;
   public pal:number;
+  public parallax;
   public texMat:GLM.Mat4Array = GLM.mat4.create();
 
   public draw(gl:WebGLRenderingContext, state:State) {
     if (this.buff.get() == null)
       return;
-    state.setShader(this.type == Type.SURFACE ? 'baseShader' : 'spriteShader' );
+    state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     state.setTexture('base', this.tex);
     state.setUniform('color', [1, 1, 1, this.trans]);
     state.setUniform('pluN', this.pal);
@@ -88,9 +89,9 @@ export class Wireframe implements Renderable {
   public draw(gl:WebGLRenderingContext, state:State) {
     if (this.buff.get() == null)
       return;
-    state.setShader(this.type == Type.SURFACE ? 'baseShaderFlat' : 'spriteShaderFlat' );
+    state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader' );
     state.setUniform('color', [1, 1, 1, 1]);
     state.setDrawElements(this.buff.get());
-    state.draw(gl);
+    state.draw(gl, gl.LINES);
   }
 }

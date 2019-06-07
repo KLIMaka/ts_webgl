@@ -25,15 +25,23 @@ var cfgFile = 'build.cfg';
 
 class BuildArtProvider implements RENDERER.PalProvider {
   private textures:DS.Texture[] = [];
+  private parallaxTextures:DS.Texture[] = [];
   private infos:ART.ArtInfo[] = [];
   private palTexture:DS.Texture = null;
   private pluTexture:DS.Texture = null;
+  private parallaxPics = 16;
   
   constructor(
     private arts:ART.ArtFiles, 
     private pal:Uint8Array,
     private PLUs:Uint8Array[],
     private gl:WebGLRenderingContext) {}
+
+  private createTexture(w:number, h:number, arr:Uint8Array):DS.Texture {
+    var repeat = WebGLRenderingContext.CLAMP_TO_EDGE;
+    var filter = WebGLRenderingContext.NEAREST;
+    return TEX.createTexture(w, h, this.gl, {filter:filter, repeat:repeat}, arr, this.gl.LUMINANCE);
+  }
 
   public get(picnum:number): DS.Texture {
     var tex = this.textures[picnum];
@@ -44,12 +52,48 @@ class BuildArtProvider implements RENDERER.PalProvider {
     if (info.h <= 0 || info.w <= 0)
        return this.get(0);
     var arr = this.axisSwap(info.img, info.h, info.w);
-    var repeat = WebGLRenderingContext.CLAMP_TO_EDGE;
-    var filter = WebGLRenderingContext.NEAREST;
-    tex = TEX.createTexture(info.w, info.h, this.gl, {filter:filter, repeat:repeat}, arr, this.gl.LUMINANCE);
+    tex = this.createTexture(info.w, info.h, arr);
 
     this.textures[picnum] = tex;
     return tex;
+  }
+
+  public getParallaxTexture(picnum:number):DS.Texture {
+    var tex = this.parallaxTextures[picnum];
+    if (tex != undefined)
+      return tex;
+
+    var infos:ART.ArtInfo[] = [];
+    var axisSwapped:Uint8Array[] = [];
+    for (var i = 0; i < this.parallaxPics; i++) {
+      infos[i] = this.arts.getInfo(picnum+i);
+      if (i != 0) {
+        if (infos[i].w != infos[i-1].w || infos[i].h != infos[i-1].h) {
+          console.warn('Invalid parallax texture #'+picnum);
+          return this.get(0);
+        }
+      }
+      axisSwapped[i] = this.axisSwap(infos[i].img, infos[i].h, infos[i].w);
+    }
+    var w = infos[0].w;
+    var h = infos[0].h;
+    var merged = this.mergeParallax(w, h, axisSwapped);
+    tex = this.createTexture(w*this.parallaxPics, h, merged);
+
+    this.parallaxTextures[picnum] = tex;
+    return tex;
+  }
+
+  private mergeParallax(w:number, h:number, arrs:Uint8Array[]):Uint8Array {
+    var result = new Uint8Array(w*h*this.parallaxPics);
+    for (var y = 0; y < h; y++) {
+      for (var i = 0; i < this.parallaxPics; i++) {
+        for (var x = 0; x < w; x++) {
+          result[y*w*this.parallaxPics+i*w+x] = arrs[i][y*w+x];
+        }
+      }
+    }
+    return result;
   }
 
   private axisSwap(data:Uint8Array, w:number, h:number):Uint8Array {
@@ -215,11 +259,11 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     'Walls:':0,
     'Sprites:':0,
     'FaceSprites:':0,
-    'BufferUpdates:':0
+    'Buffer:':''
   }
 
   var panel = UI.panel('Info');
-  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'FaceSprites:', 'BufferUpdates:']);
+  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'FaceSprites:', 'Buffer:']);
   panel.append(props);
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
@@ -252,6 +296,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
     info['Y:'] = ms.y;
+    info['Buffer:'] = (100 * PROFILE.get('processing').counts['buffer']).toFixed(2)+'%';
     props.refresh(info);
     drawCompass(compass, control.getCamera().forward());
 
