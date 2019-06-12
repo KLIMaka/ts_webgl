@@ -1,5 +1,6 @@
 import * as GLM from './../libs_js/glmatrix';
 import * as MU from './../libs/mathutils';
+import * as VEC from './../libs/vecmath';
 
 export class Camera {
 
@@ -70,37 +71,19 @@ export class Camera {
   }
 
   public getMirroredTransformMatrix(mirrorNormal:GLM.Vec3Array, mirrorD:number):GLM.Mat4Array {
-    var fwd = this.forward();
-    var dot = GLM.vec3.dot(fwd, mirrorNormal);
-    if (dot == 0)
-      return null;
-
-    var trans =   this.getTransformMatrix();
-    var side =    this.reflect(GLM.vec3.fromValues(trans[0], trans[4], trans[8]), mirrorNormal);
-    var up =      this.reflect(GLM.vec3.fromValues(trans[1], trans[5], trans[9]), mirrorNormal);
-    var forward = this.reflect(GLM.vec3.fromValues(trans[2], trans[6], trans[10]), mirrorNormal);
-
-    var position = GLM.vec3.clone(this.pos);
-    var t = -(GLM.vec3.dot(position, mirrorNormal) + mirrorD) / dot;
-    var reflect = this.reflect(fwd, mirrorNormal);
-    GLM.vec3.negate(reflect, reflect);
-    var mirroredPos = GLM.vec3.add(position, position, GLM.vec3.scale(fwd, fwd, t));
-    GLM.vec3.add(mirroredPos, mirroredPos, GLM.vec3.scale(reflect, reflect, t));
+    var trans =       this.getTransformMatrix();
+    var side =        VEC.reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(trans[0], trans[4], trans[8]), mirrorNormal);
+    var up =          VEC.reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(trans[1], trans[5], trans[9]), mirrorNormal);
+    var forward =     VEC.reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(trans[2], trans[6], trans[10]), mirrorNormal);
+    var mirroredPos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorD, this.getPos());
 
     var mat = GLM.mat4.create();
-    mat[0] = side[0]; mat[1] = up[0]; mat[2] = forward[0], mat[3] = 0;
-    mat[4] = side[1]; mat[5] = up[1]; mat[6] = forward[1], mat[7] = 0;
-    mat[8] = side[2]; mat[9] = up[2]; mat[10] = forward[2], mat[11] = 0;
-    mat[12] = -mirroredPos[0]; mat[13] = -mirroredPos[1]; mat[14] = -mirroredPos[2], mat[15] = 1;
+    GLM.mat4.identity(mat);
+    mat[0] = side[0]; mat[1] = up[0]; mat[2] = forward[0]; mat[3] = 0;
+    mat[4] = side[1]; mat[5] = up[1]; mat[6] = forward[1]; mat[7] = 0;
+    mat[8] = side[2]; mat[9] = up[2]; mat[10] = forward[2]; mat[11] = 0;
+    GLM.vec3.negate(mirroredPos, mirroredPos);
+    GLM.mat4.translate(mat, mat, mirroredPos);
     return mat;
   }
-
-  private reflect(id:GLM.Vec3Array, n:GLM.Vec3Array):GLM.Vec3Array {
-    var dot = GLM.vec3.dot(n, id);
-    var result = GLM.vec3.create();
-    GLM.vec3.scale(result, n, dot * 2);
-    GLM.vec3.sub(result, id, result);
-    return result;
-  }
-
 }

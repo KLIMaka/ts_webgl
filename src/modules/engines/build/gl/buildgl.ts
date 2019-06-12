@@ -45,7 +45,12 @@ export function setCursorPosiotion(pos:GLM.Vec3Array) {
   state.setUniform('curpos', pos);
 }
 
+export function setClipPlane(x:number, y:number, z:number, w:number) {
+  state.setUniform('clipPlane', [x, y, z, w]);
+}
+
 export function draw(gl:WebGLRenderingContext, renderable:Renderable) {
   renderable.draw(gl, state);
 }
+
 

@@ -246,7 +246,7 @@ function createBoard() {
 }
 
 function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array, PLUs:Uint8Array[]) {
-  var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:true});
+  var gl = GL.createContext(cfg.width, cfg.height, {alpha:false, antialias:true, stencil:true});
 
   var info = {
     'X:':0,

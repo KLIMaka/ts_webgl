@@ -1,4 +1,3 @@
-
 import * as GLM from '../libs_js/glmatrix';
 import * as MU from './mathutils';
 
@@ -67,6 +66,20 @@ export function intersect3d(p1s:GLM.Vec3Array, p1e:GLM.Vec3Array, p2s:GLM.Vec3Ar
     return null;
   return GLM.vec3.lerp(GLM.vec3.create(), p1s, p1e, t);
 }
+
+export function reflectVec3d(out:GLM.Vec3Array, id:GLM.Vec3Array, n:GLM.Vec3Array):GLM.Vec3Array {
+  var dot = GLM.vec3.dot(n, id);
+  GLM.vec3.scale(out, n, dot * 2);
+  GLM.vec3.sub(out, id, out);
+  return out;
+}
+
+export function reflectPoint3d(out:GLM.Vec3Array, mirrorNormal:GLM.Vec3Array, mirrorD:number, point:GLM.Vec3Array) {
+  var t = GLM.vec3.dot(point, mirrorNormal) + mirrorD;
+  GLM.vec3.scale(out, mirrorNormal, -t * 2)
+  return GLM.vec3.add(out, point, out);
+}
+
 /*
 export function normal2d(v1:GLM.Vec2Array, v2:GLM.Vec2Array):GLM.Vec2Array {
   var tmp = normalize2d(subCopy2d(v2, v1));

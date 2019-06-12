@@ -616,7 +616,7 @@ function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:nu
     +hw+xo, +hh+yo,
     +hw+xo, -hh+yo,
     -hw+xo, -hh+yo
-    ], renderable.buff);
+    ], renderable.buff, 0);
 
   var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);

@@ -97,7 +97,7 @@ export function getSprites(board:BS.Board, secnum:number):number[] {
   return ret;
 }
 
-export function groupSprites(sprites:BS.Sprite[]) {
+export function groupSprites(sprites:BS.Sprite[]):{[index:number]:number[]} {
   var sec2spr = {};
   for (var s = 0; s < sprites.length; s++) {
     var spr = sprites[s];

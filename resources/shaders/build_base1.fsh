@@ -9,6 +9,7 @@ uniform vec4 color;
 uniform vec3 curpos;
 uniform int shade;
 uniform vec3 eyepos;
+uniform vec4 clipPlane;
 
 varying float lightLevel;
 varying vec2 tc;
@@ -42,8 +43,13 @@ vec3 palLookup(vec2 tc) {
 #endif
 }
 
+void clip() {
+  if (dot(wpos, clipPlane.xyz) + clipPlane.w > 0.0)
+    discard;
+}
 
 void main() {
+  clip();
 #ifdef FLAT
   vec3 c = vec3(1.0);
 #else
