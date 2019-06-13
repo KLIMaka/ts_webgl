@@ -187,9 +187,10 @@ function drawStack(gl:WebGLRenderingContext, board:Board, ctr:C.Controller3D, sr
   var stackTransform = GLM.mat4.clone(ctr.getCamera().getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
 
-  BGL.setViewMatrices(ctr.getProjectionMatrix(), stackTransform, ctr.getCamera().getPos());
   var ms = new U.MoveStruct();
-  ms.sec = dst.sectnum; ms.x = dst.x; ms.y = dst.y; ms.z = dst.z;
+  var position = ctr.getCamera().getPos();
+  ms.sec = dst.sectnum; ms.x = position[0]-diff[0]; ms.y = position[2]-diff[2]; ms.z = position[1]-diff[1];
+  BGL.setViewMatrices(ctr.getProjectionMatrix(), stackTransform, [ms.x, ms.z, ms.y]);
   writeStenciledOnly(gl, stencilValue);
   drawRooms(gl, board, VIS.visible(board, ms));
 
@@ -243,7 +244,7 @@ function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, m
     // draw mirror surface into stencil
     var r = cache.getWall(w, mirrorWallsCollector.walls[i].sectorId);
     BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
-    writeStencilOnly(gl, i+1);
+    writeStencilOnly(gl, i+127);
     BGL.draw(gl, r);
 
     // draw reflections in stenciled area
@@ -257,18 +258,18 @@ function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, m
     gl.cullFace(gl.FRONT);
     var mpos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorrD, [ms.x, ms.z, ms.y]);
     msMirrored.sec = ms.sec; msMirrored.x = mpos[0]; msMirrored.y = mpos[2]; msMirrored.z = mpos[1];
-    writeStenciledOnly(gl, i+1);
+    writeStenciledOnly(gl, i+127);
     drawRooms(gl, board, VIS.visible(board, msMirrored));
     gl.cullFace(gl.BACK);
 
     // seal reflections by writing depth of mirror surface
     BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
     writeDepthOnly(gl);
+    BGL.setClipPlane(0, 0, 0, 0);
     BGL.draw(gl, r);
   }
   gl.disable(gl.STENCIL_TEST);
   gl.colorMask(true, true, true, true);
-  BGL.setClipPlane(0, 0, 0, 0);
 }
 
 function drawArray(gl:WebGLRenderingContext, arr:Renderable[]) {
@@ -308,7 +309,7 @@ function drawRooms(gl:WebGLRenderingContext, board:Board, result:VIS.Result) {
     var trans = sprite.trans != 1;
     (sprite.type == Type.FACE 
       ? (trans ? spritesTrans : sprites) 
-      : (trans ? surfacesTrans : surfaces))
+      : (trans ? spritesTrans : sprites))
     .push(sprite);
     PROFILE.incCount('sprites');
   });

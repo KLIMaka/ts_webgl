@@ -599,11 +599,12 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   var dwy = Math.cos(-ang)*hw;
   var dhx = Math.sin(-ang+Math.PI/2)*hh;
   var dhy = Math.cos(-ang+Math.PI/2)*hh;
+  var s = !(xf || yf) ? 1 : -1;
   genQuad([
     x-dwx-dhx, y-dwy-dhy, z,
-    x+dwx-dhx, y+dwy-dhy, z,
+    x+s*(-dwx+dhx), y+s*(-dwy+dhy), z,
     x+dwx+dhx, y+dwy+dhy, z,
-    x-dwx+dhx, y-dwy+dhy, z], 
+    x+s*(dwx-dhx), y+s*(dwy-dhy), z], 
   null, renderable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
@@ -612,7 +613,7 @@ function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:n
   GLM.mat4.identity(texMat);
   GLM.mat4.scale(texMat, texMat, [xf/(hw*2), yf/(hh*2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
-  GLM.mat4.rotateZ(texMat, texMat, -ang - Math.PI/2);
+  GLM.mat4.rotateZ(texMat, texMat, ang - Math.PI/2);
   GLM.mat4.translate(texMat, texMat, [-x, -y, 0, 0]);
   GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
 }
