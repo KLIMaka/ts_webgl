@@ -69,21 +69,4 @@ export class Camera {
     }
     return mat;
   }
-
-  public getMirroredTransformMatrix(mirrorNormal:GLM.Vec3Array, mirrorD:number):GLM.Mat4Array {
-    var trans =       this.getTransformMatrix();
-    var side =        VEC.reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(trans[0], trans[4], trans[8]), mirrorNormal);
-    var up =          VEC.reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(trans[1], trans[5], trans[9]), mirrorNormal);
-    var forward =     VEC.reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(trans[2], trans[6], trans[10]), mirrorNormal);
-    var mirroredPos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorD, this.getPos());
-
-    var mat = GLM.mat4.create();
-    GLM.mat4.identity(mat);
-    mat[0] = side[0]; mat[1] = up[0]; mat[2] = forward[0]; mat[3] = 0;
-    mat[4] = side[1]; mat[5] = up[1]; mat[6] = forward[1]; mat[7] = 0;
-    mat[8] = side[2]; mat[9] = up[2]; mat[10] = forward[2]; mat[11] = 0;
-    GLM.vec3.negate(mirroredPos, mirroredPos);
-    GLM.mat4.translate(mat, mat, mirroredPos);
-    return mat;
-  }
 }

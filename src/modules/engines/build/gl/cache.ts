@@ -1,4 +1,4 @@
-import {Solid, Wireframe, Buffer, Type} from './renderable';
+import {Solid, Wireframe, Buffer, Type, Renderable} from './renderable';
 import {ArtInfo, ArtInfoProvider} from '../art';
 import {Board, Sector, Sprite, Wall, FACE, WALL, FLOOR} from '../structs';
 import {tesselate} from '../../../../libs_js/glutess';
@@ -7,6 +7,7 @@ import * as U from '../utils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
 import * as BUFF from './buffers';
+import {State} from '../../../stategl';
 
 const SCALE = -16;
 
@@ -36,15 +37,26 @@ export interface ArtProvider extends ArtInfoProvider {
   getParallaxTexture(picnum:number):Texture
 }
 
-class SectorSolid {
+class SectorSolid implements Renderable {
   public ceiling:Solid = new Solid();
   public floor:Solid = new Solid();
+
+  draw(gl:WebGLRenderingContext, state:State) {
+    this.ceiling.draw(gl, state);
+    this.floor.draw(gl, state);
+  }
 }
 
-class WallSolid {
+class WallSolid implements Renderable {
   public top:Solid = new Solid();
   public mid:Solid = new Solid();
   public bot:Solid = new Solid();
+
+  draw(gl:WebGLRenderingContext, state:State) {
+    this.top.draw(gl, state);
+    this.mid.draw(gl, state);
+    this.bot.draw(gl, state);
+  }
 }
 
 class SpriteSolid extends Solid {}
