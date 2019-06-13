@@ -1,4 +1,3 @@
-
 import * as GLM from '../libs_js/glmatrix';
 import * as MU from './mathutils';
 
@@ -67,6 +66,40 @@ export function intersect3d(p1s:GLM.Vec3Array, p1e:GLM.Vec3Array, p2s:GLM.Vec3Ar
     return null;
   return GLM.vec3.lerp(GLM.vec3.create(), p1s, p1e, t);
 }
+
+export function reflectVec3d(out:GLM.Vec3Array, id:GLM.Vec3Array, n:GLM.Vec3Array):GLM.Vec3Array {
+  var dot = GLM.vec3.dot(n, id);
+  GLM.vec3.scale(out, n, dot * 2);
+  GLM.vec3.sub(out, id, out);
+  return out;
+}
+
+export function reflectPoint3d(out:GLM.Vec3Array, mirrorNormal:GLM.Vec3Array, mirrorD:number, point:GLM.Vec3Array) {
+  var t = GLM.vec3.dot(point, mirrorNormal) + mirrorD;
+  GLM.vec3.scale(out, mirrorNormal, -t * 2)
+  return GLM.vec3.add(out, point, out);
+}
+
+export function normal2d(out:GLM.Vec2Array, vec:GLM.Vec2Array) {
+  GLM.vec2.set(out, vec[1], -vec[0]);
+  return GLM.vec2.normalize(out, out);
+}
+
+export function mirrorBasis(out:GLM.Mat4Array, mat:GLM.Mat4Array, point:GLM.Vec3Array, mirrorNormal:GLM.Vec3Array, mirrorD:number) {
+  var side =        reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(mat[0], mat[4], mat[8]), mirrorNormal);
+  var up =          reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(mat[1], mat[5], mat[9]), mirrorNormal);
+  var forward =     reflectVec3d(GLM.vec3.create(), GLM.vec3.fromValues(mat[2], mat[6], mat[10]), mirrorNormal);
+  var mirroredPos = reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorD, point);
+
+  GLM.mat4.identity(out);
+  out[0] = side[0]; out[1] = up[0]; out[2] = forward[0]; out[3] = 0;
+  out[4] = side[1]; out[5] = up[1]; out[6] = forward[1]; out[7] = 0;
+  out[8] = side[2]; out[9] = up[2]; out[10] = forward[2]; out[11] = 0;
+  GLM.vec3.negate(mirroredPos, mirroredPos);
+  GLM.mat4.translate(out, out, mirroredPos);
+  return out;
+}
+
 /*
 export function normal2d(v1:GLM.Vec2Array, v2:GLM.Vec2Array):GLM.Vec2Array {
   var tmp = normalize2d(subCopy2d(v2, v1));
