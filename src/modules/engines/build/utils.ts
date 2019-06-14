@@ -328,6 +328,8 @@ function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wal
 }
 
 function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Sprite, sprId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
+  if (spr.picnum == 0 || spr.cstat.invicible)
+    return;
   var x = spr.x, y = spr.y, z = spr.z;
   var info = artInfo.getInfo(spr.picnum);
   if (spr.cstat.type == BS.FACE) {
@@ -342,10 +344,14 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
       z += (h >> 1);
     z -= info.attrs.yoff * spr.yrepeat << 2;
     if ((intz > z) || (intz < z - h)) return;
+    var t1 = MU.cross2d(vx, vy, dx, dy) / vl;
+    var offx = MU.int(vx * t1);
+    var offy = MU.int(vy * t1);
+    var dist = MU.sqrLen2d(offx, offy);
+    var w = info.w * spr.xrepeat << 2;
+    if (dist > w) return;
     var intx = xs + MU.int(vx * t);
     var inty = ys + MU.int(vy * t);
-    var w = (info.w * spr.xrepeat) / 4;
-    if (MU.len2d(x-intx, y-inty) > w >> 1) return;
     hit.hit(intx, inty, intz, t, sprId, HitType.SPRITE);
   } else if (spr.cstat.type == BS.WALL) {
     var xoff = info.attrs.xoff + spr.xoffset;

@@ -40,10 +40,12 @@ vec3 palLookup(vec2 tc) {
   lightLevel = clamp(lightLevel - specular, 0.5/64.0, 63.5/64.0);
 #endif
 
-  float dist = distance(wpos, curpos);
-  if (dist < 2048.0 && dot(wnormal, toLight) >= 0.0) {
-    lightLevel = clamp(lightLevel - pow(1.0-(dist / 2048.0), 2.0), 0.5/64.0, 63.5/64.0);
-  }
+  float dist = distance(wpos.xz, curpos.xz);
+  if (dist < 16.0)
+    lightLevel = clamp(lightLevel - 1.0, 0.5/64.0, 63.5/64.0);
+  // if (dist < 2048.0 && dot(wnormal, toLight) >= 0.0) {
+  //   lightLevel = clamp(lightLevel - pow(1.0-(dist / 2048.0), 2.0), 0.5/64.0, 63.5/64.0);
+  // }
 
   float pluU = palIdx;
 #ifdef PAL_LIGHTING
