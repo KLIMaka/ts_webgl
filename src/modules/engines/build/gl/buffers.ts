@@ -7,7 +7,7 @@ var buffer:Buffer;
 export function init(gl:WebGLRenderingContext, vCount:number) {
   buffer = new Buffer(gl, new BufferBuilder(vCount)
     .addVertexBuffer(gl, 'aPos', gl.FLOAT, 3)
-    .addVertexBuffer(gl, 'aNorm', gl.FLOAT, 2));
+    .addVertexBuffer(gl, 'aNorm', gl.FLOAT, 3));
 }
 
 export function getPosBuffer():MB.VertexBufferDynamic {
@@ -35,8 +35,8 @@ export function writePos(ptr:Pointer, off:number, x:number, y:number, z:number):
   return off+1;
 }
 
-export function writeNormal(ptr:Pointer, off:number, x:number, y:number):number {
-  buffer.writeVertex(ptr, 'aNorm', off, [x, y]);
+export function writeNormal(ptr:Pointer, off:number, x:number, y:number, z:number):number {
+  buffer.writeVertex(ptr, 'aNorm', off, [x, y, z]);
   return off+1;
 }
 

@@ -1,5 +1,4 @@
 import * as GL from './modules/gl';
-import * as shaders from './modules/shaders';
 import * as getter from './libs/getter';
 import * as data from './libs/dataviewstream';
 import * as MU from './libs/mathutils';
@@ -9,8 +8,6 @@ import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
 import * as DS from './modules/drawstruct';
 import * as ART from './modules/engines/build/art';
-import * as GRP from './modules/engines/build/grp';
-import * as pixel from './modules/pixelprovider';
 import * as TEX from './modules/textures';
 import * as CFG from './libs/config';
 import * as RFF from './modules/engines/build/rff';

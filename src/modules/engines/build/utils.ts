@@ -2,6 +2,7 @@ import * as BS from './structs';
 import * as ART from './art';
 import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
+import * as GLM from '../../../libs_js/glmatrix';
 
 export function getPlayerStart(board:BS.Board):BS.Sprite {
   for (var i = 0; i < board.sprites.length; i++) {
@@ -49,7 +50,7 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
       if ((dx1 ^ dx2) >= 0)
         inter ^= dx1; 
       else 
-        inter ^= cross(dx1, dy1, dx2, dy2)^dy2;
+        inter ^= MU.cross2d(dx1, dy1, dx2, dy2)^dy2;
     }
   }
   return (inter>>>31) == 1;
@@ -125,7 +126,7 @@ export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
   return function (x:number, y:number, heinum:number):number {
     var dx1 = x - wall1.x;
     var dy1 = y - wall1.y;
-    var k = cross(dx, dy, dx1, dy1);
+    var k = MU.cross2d(dx, dy, dx1, dy1);
     return MU.int((heinum * ANGSCALE) * k * ZSCALE);
   };
 }
@@ -137,23 +138,23 @@ export function lineIntersect(
 
   var x21 = x2 - x1, x34 = x3 - x4;
   var y21 = y2 - y1, y34 = y3 - y4;
-  var bot = cross(x21, y21, x34, y34);
+  var bot = MU.cross2d(x21, y21, x34, y34);
   
   if (bot == 0) return null;
   
   var x31 = x3 - x1, y31 = y3 - y1;
-  var topt = cross(x31, y31, x34, y34);
+  var topt = MU.cross2d(x31, y31, x34, y34);
 
   if (bot > 0) {
     if ((topt < 0) || (topt >= bot))
       return null;
-    var topu = cross(x21, y31, x31, y31);
+    var topu = MU.cross2d(x21, y31, x31, y31);
     if ((topu < 0) || (topu >= bot))
       return null;
   } else {
     if ((topt > 0) || (topt <= bot))
       return null;
-    var topu = cross(x21, y21, x31, y31);
+    var topu = MU.cross2d(x21, y21, x31, y31);
     if ((topu > 0) || (topu <= bot))
       return null;
   }
@@ -173,20 +174,20 @@ export function  rayIntersect(
 
   var x34 = x3 - x4;
   var y34 = y3 - y4;
-  var bot = cross(vx, vy, x34, y34);
+  var bot = MU.cross2d(vx, vy, x34, y34);
   if (bot == 0) return null;
   var x31 = x3 - x1;
   var y31 = y3 - y1;
-  var topt = cross(x31, y31, x34, y34);
+  var topt = MU.cross2d(x31, y31, x34, y34);
  
   if (bot > 0) {
     if (topt < 0) return null;
-    var topu = cross(vx, vy, x31, y31);
+    var topu = MU.cross2d(vx, vy, x31, y31);
     if ((topu < 0) || (topu >= bot)) 
       return null;
   } else {
     if (topt > 0) return null;
-    var topu = cross(vx, vy, x31, y31);
+    var topu = MU.cross2d(vx, vy, x31, y31);
     if ((topu > 0) || (topu <= bot))
       return null;
   } 
@@ -234,10 +235,7 @@ export class Hitscan {
 
   private testHit(x:number, y:number, z:number, t:number):boolean {
     if (this.t == -1 || this.t >= t) {
-      this.x = x;
-      this.y = y;
-      this.z = z;
-      this.t = t;
+      this.x = x; this.y = y; this.z = z; this.t = t;
       return true;
     }
     return false;
@@ -251,13 +249,6 @@ export class Hitscan {
   }
 }
 
-function cross(x1:number, y1:number, x2:number, y2:number) {
-  return x1*y2 - y1*x2;
-}
-
-function dot(x1:number, y1:number, x2:number, y2:number) {
-  return x1*x2 + y1*y2;
-}
 
 function hitSector(board:BS.Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, t:number, hit:Hitscan, type:HitType) {
   var x = xs + MU.int(vx * t);
@@ -281,7 +272,7 @@ function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:n
   var ndx = dx / dl;
   var ndy = dy / dl;
 
-  var angk = cross(ndx, ndy, nvx, nvy);
+  var angk = MU.cross2d(ndx, ndy, nvx, nvy);
   var slope = createSlopeCalculator(sec, board.walls);
 
   var ceilk = sec.ceilingheinum * ANGSCALE * angk;
@@ -343,7 +334,7 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     var dx = x - xs; var dy = y - ys;
     var vl = MU.sqrLen2d(vx, vy);
     if (vl == 0) return;
-    var t = dot(vx, vy, dx, dy) / vl;
+    var t = MU.dot2d(vx, vy, dx, dy) / vl;
     if (t <= 0) return;
     var intz = zs + MU.int(vz * t) * ZSCALE;
     var h = info.h * spr.yrepeat << 2;
@@ -420,5 +411,25 @@ export function wallVisible(wall1:BS.Wall, wall2:BS.Wall, ms:MoveStruct) {
   var dy1 = wall2.y - wall1.y;
   var dx2 = ms.x - wall1.x;
   var dy2 = ms.y - wall1.y;
-  return cross(dx1, dy1, dx2, dy2) >= 0;
+  return MU.cross2d(dx1, dy1, dx2, dy2) >= 0;
+}
+
+export function wallNormal(board:BS.Board, wallId:number):GLM.Vec3Array {
+  var w1 = board.walls[wallId];
+  var w2 = board.walls[w1.point2];
+  var wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x-w1.x, w2.y-w1.y]);
+  return GLM.vec3.fromValues(-wallNormal[0], 0, -wallNormal[1]);
+}
+
+export function sectorNormal(board:BS.Board, sectorId:number, ceiling:boolean):GLM.Vec3Array {
+  var sec = board.sectors[sectorId];
+  var wn = wallNormal(board, sec.wallptr);
+  var h = ceiling ? sec.ceilingheinum : sec.floorheinum;
+  var normal = ceiling ? [0, -1, 0] : [0, 1, 0];
+  return GLM.vec3.lerp(normal, normal, wn, Math.atan(h/ANGSCALE) / (Math.PI/2));
+}
+
+export function ang2vec(ang:number):GLM.Vec3Array {
+  ang += Math.PI/2;
+  return GLM.vec3.fromValues(Math.sin(ang), 0, Math.cos(ang))
 }

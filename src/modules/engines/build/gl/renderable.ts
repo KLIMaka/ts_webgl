@@ -32,8 +32,8 @@ export class Buffer {
     return BUFF.writePos(this.ptr, off, x, y, z);
   }
 
-  public writeNormal(off:number, x:number, y:number):number {
-    return BUFF.writeNormal(this.ptr, off, x, y);
+  public writeNormal(off:number, x:number, y:number, z:number):number {
+    return BUFF.writeNormal(this.ptr, off, x, y, z);
   }
 
   public writeTriangle(off:number, a:number, b:number, c:number):number {

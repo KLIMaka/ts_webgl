@@ -12,7 +12,7 @@ var state:State;
 export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, cb:()=>void) {
   var ab = AB.create();
   SHADER.createShader(gl, SHADER_NAME, ['TC_GRID', 'PAL_LIGHTING'], ab.callback('baseShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE'], ab.callback('spriteShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'PAL_LIGHTING'], ab.callback('spriteShader'));
   SHADER.createShader(gl, SHADER_NAME, ['FLAT'], ab.callback('baseFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT'], ab.callback('spriteFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['PARALLAX'], ab.callback('parallax'));
@@ -38,6 +38,7 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, c
 export function setViewMatrices(proj:GLM.Mat4Array, view:GLM.Mat4Array, pos:GLM.Vec3Array) {
   state.setUniform('P', proj);
   state.setUniform('V', view);
+  state.setUniform('IV', GLM.mat4.invert(GLM.mat4.create(), view));
   state.setUniform('eyepos', pos);
 }
 

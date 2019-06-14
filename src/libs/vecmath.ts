@@ -139,13 +139,6 @@ export function isCW(polygon:GLM.VecArray[]):boolean {
   return MU.rad2deg(angsum) == 180*(N-2);
 }
 
-export function polygonNormal(verts:GLM.Vec3Array[]) {
-  var a = subCopy3d(verts[1], verts[0]);
-  var b = subCopy3d(verts[2], verts[0]);
-  var res = normalize3d(crossCopy3d(b, a));
-  release3d(a); release3d(b);
-  return res;
-}
 
 export function projectionSpace(vtxs:GLM.Vec3Array[], n:GLM.Vec3Array) {
   var a = normalize3d(subCopy3d(vtxs[0], vtxs[1]));
