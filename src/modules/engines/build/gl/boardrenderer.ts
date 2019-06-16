@@ -1,22 +1,55 @@
-import {Board, Sector, Wall, Sprite} from '../structs';
-import {Renderable, Type} from './renderable';
-import {Cache, ArtProvider} from './cache';
-import * as VIS from '../boardvisitor';
-import * as DS from '../../../drawstruct';
-import * as U from '../utils';
-import * as C from '../../../../modules/controller3d';
-import * as PROFILE from '../../../../modules/profiler';
-import * as BGL from './buildgl';
-import * as BUFF from './buffers';
-import * as BU from '../boardutils';
 import * as MU from '../../../../libs/mathutils';
 import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
+import { Controller3D } from '../../../../modules/controller3d';
+import * as PROFILE from '../../../../modules/profiler';
+import { Texture } from '../../../drawstruct';
+import * as BU from '../boardutils';
+import * as VIS from '../boardvisitor';
+import { Board, Sprite } from '../structs';
+import * as U from '../utils';
+import * as BUFF from './buffers';
+import * as BGL from './buildgl';
+import { ArtProvider, Cache } from './cache';
+import { Renderable, Type } from './renderable';
+import { BloodSprite } from '../bloodstructs';
 
 
 export interface PalProvider extends ArtProvider {
-  getPalTexture():DS.Texture;
-  getPluTexture():DS.Texture;
+  getPalTexture():Texture;
+  getPluTexture():Texture;
+}
+
+
+var upStacks = {}
+var downStacks = {}
+function initRorLinks(board:Board) {
+  var linkRegistry = {};
+  for (var s = 0; s < board.sprites.length; s++) {
+    var spr = board.sprites[s];
+    if (spr.lotag == 11 || spr.lotag == 12) {
+      var id = (<BloodSprite>spr).extraData.data1;
+      var links = linkRegistry[id];
+      if (links == undefined) {
+        links = [];
+        linkRegistry[id] = links;
+      }
+      links.push(s);
+    }
+  }
+
+  for (var linkId in linkRegistry) {
+    var spriteIds = linkRegistry[linkId];
+    if (spriteIds.length != 2)
+      throw new Error('Invalid link in sprites: ' + spriteIds);
+    var [s1, s2] = spriteIds;
+    var spr1 = board.sprites[s1];
+    var spr2 = board.sprites[s2];
+    [s1, s2] = spr1.lotag == 11 ? [s1, s2] : [s2, s1];
+    [spr1, spr2] = spr1.lotag == 11 ? [spr1, spr2] : [spr2, spr1];
+    downStacks[spr1.sectnum] = [s1, s2];
+    upStacks[spr2.sectnum] = [s2, s1];
+  }
 }
 
 var artProvider:PalProvider;
@@ -31,16 +64,16 @@ export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board, cb:
 
   artProvider = art;
   cache = new Cache(board, art);
+  initRorLinks(board);
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), cb);
 }
-
 
 var selectType = -1;
 var selectId = -1;
 var gridSize = 128;
 
 var hit = new U.Hitscan();
-function hitscan(board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
+function hitscan(board:Board, ms:U.MoveStruct, ctr:Controller3D) {
   var [vx, vz, vy] = ctr.getForwardMouse();
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
   if (ctr.isClick()) {
@@ -83,28 +116,28 @@ function snap(board:Board) {
   }
 }
 
-export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
+export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:Controller3D) {
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   drawImpl(gl, board, ms, ctr);
 
-  hitscan(board, ms, ctr);
-  snap(board);
+  // hitscan(board, ms, ctr);
+  // snap(board);
 
-  highlightSelected(gl, board);
+  // highlightSelected(gl, board);
 
-  if (U.isWall(selectType) && ctr.getKeys()['Q']) {
-    selectId = BU.pushWall(board, selectId, -128, artProvider, []);
-    cache.invalidateAll();
-  }
-  if (U.isWall(selectType) && ctr.getKeys()['E']) {
-    selectId = BU.pushWall(board, selectId, 128, artProvider, []);
-    cache.invalidateAll();
-  }
-  if (U.isWall(selectType) && ctr.getKeys()['M']) {
-    board.walls[selectId].picnum = 504;
-  }
+  // if (U.isWall(selectType) && ctr.getKeys()['Q']) {
+  //   selectId = BU.pushWall(board, selectId, -128, artProvider, []);
+  //   cache.invalidateAll();
+  // }
+  // if (U.isWall(selectType) && ctr.getKeys()['E']) {
+  //   selectId = BU.pushWall(board, selectId, 128, artProvider, []);
+  //   cache.invalidateAll();
+  // }
+  // if (U.isWall(selectType) && ctr.getKeys()['M']) {
+  //   board.walls[selectId].picnum = 504;
+  // }
 }
 
 function highlightSelected(gl:WebGLRenderingContext, board:Board) {
@@ -151,7 +184,7 @@ function writeDepthOnly(gl:WebGLRenderingContext) {
   gl.colorMask(false, false, false, false);
 }
 
-function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.Controller3D) {
+function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:Controller3D) {
   if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
   }
@@ -168,21 +201,13 @@ function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:C.
   drawRooms(gl, board, result);
 }
 
-var upStacks = {}
-var downStacks = {}
-
-upStacks[30] = [46, 47];
-upStacks[65] = [0, 140];
-downStacks[28] = [47, 46];
-downStacks[90] = [140, 0];
-
 var rorSectorCollector = VIS.createSectorCollector((board:Board, sectorId:number) => {
   var sector = board.sectors[sectorId];
   return (sector.floorpicnum == 504 && downStacks[sectorId] != undefined) 
   || (sector.ceilingpicnum == 504 && upStacks[sectorId] != undefined);
 });
 
-function drawStack(gl:WebGLRenderingContext, board:Board, ctr:C.Controller3D, src:Sprite, dst:Sprite, surface:Renderable, stencilValue:number) {
+function drawStack(gl:WebGLRenderingContext, board:Board, ctr:Controller3D, src:Sprite, dst:Sprite, surface:Renderable, stencilValue:number) {
   BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
   writeStencilOnly(gl, stencilValue);
   BGL.draw(gl, surface);
@@ -203,7 +228,7 @@ function drawStack(gl:WebGLRenderingContext, board:Board, ctr:C.Controller3D, sr
   BGL.draw(gl, surface);
 }
 
-function drawRor(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:C.Controller3D) {
+function drawRor(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:Controller3D) {
   result.forSector(board, rorSectorCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
@@ -233,7 +258,7 @@ var mirrorWallsCollector = VIS.createWallCollector((board:Board, wallId:number, 
 });
 
 
-function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:C.Controller3D) {
+function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:Controller3D) {
   result.forWall(board, mirrorWallsCollector.visit());
   
   gl.enable(gl.STENCIL_TEST);

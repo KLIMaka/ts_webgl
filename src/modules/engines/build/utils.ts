@@ -1,10 +1,10 @@
-import * as BS from './structs';
-import * as ART from './art';
 import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
+import { Board, Sprite, Sector, Wall, FACE, WALL, FLOOR } from './structs';
+import { ArtInfoProvider } from './art';
 
-export function getPlayerStart(board:BS.Board):BS.Sprite {
+export function getPlayerStart(board:Board):Sprite {
   for (var i = 0; i < board.sprites.length; i++) {
     var sprite = board.sprites[i];
     if (sprite.lotag == 1)
@@ -23,13 +23,13 @@ export class MoveStruct {
   public zvel:number;
 }
 
-export function getSector(board:BS.Board, ms:MoveStruct):number {
+export function getSector(board:Board, ms:MoveStruct):number {
   if (inSector(board, ms.x, ms.y, ms.sec))
     return ms.sec;
   return -1;
 }
 
-export function inSector(board:BS.Board, x:number, y:number, secnum:number):boolean {
+export function inSector(board:Board, x:number, y:number, secnum:number):boolean {
   x = MU.int(x);
   y = MU.int(y);
   var sec = board.sectors[secnum];
@@ -56,7 +56,7 @@ export function inSector(board:BS.Board, x:number, y:number, secnum:number):bool
   return (inter>>>31) == 1;
 }
 
-export function findSector(board:BS.Board, x:number, y:number, secnum:number = -1):number {
+export function findSector(board:Board, x:number, y:number, secnum:number = -1):number {
   if (secnum == -1)
     return findSectorAll(board, x, y);
   var secs = [secnum];
@@ -79,7 +79,7 @@ export function findSector(board:BS.Board, x:number, y:number, secnum:number = -
   return -1;
 }
 
-function findSectorAll(board:BS.Board, x:number, y:number) {
+function findSectorAll(board:Board, x:number, y:number) {
   for (var s = 0; s < board.sectors.length; s++) {
     var sec = board.sectors[s];
     if (inSector(board, x, y, s))
@@ -88,7 +88,7 @@ function findSectorAll(board:BS.Board, x:number, y:number) {
   return -1;
 }
 
-export function getSprites(board:BS.Board, secnum:number):number[] {
+export function getSprites(board:Board, secnum:number):number[] {
   var ret = [];
   var sprites = board.sprites;
   for (var i = 0; i < sprites.length; i++) {
@@ -98,7 +98,7 @@ export function getSprites(board:BS.Board, secnum:number):number[] {
   return ret;
 }
 
-export function groupSprites(sprites:BS.Sprite[]):{[index:number]:number[]} {
+export function groupSprites(sprites:Sprite[]):{[index:number]:number[]} {
   var sec2spr = {};
   for (var s = 0; s < sprites.length; s++) {
     var spr = sprites[s];
@@ -115,7 +115,7 @@ export function groupSprites(sprites:BS.Sprite[]):{[index:number]:number[]} {
 var ANGSCALE = (1 / 4096);
 var ZSCALE = 16;
 
-export function createSlopeCalculator(sector:BS.Sector, walls:BS.Wall[]) {
+export function createSlopeCalculator(sector:Sector, walls:Wall[]) {
   var wall1 = walls[sector.wallptr];
   var wall2 = walls[wall1.point2];
   var dx = wall2.x - wall1.x;
@@ -250,7 +250,7 @@ export class Hitscan {
 }
 
 
-function hitSector(board:BS.Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, t:number, hit:Hitscan, type:HitType) {
+function hitSector(board:Board, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, t:number, hit:Hitscan, type:HitType) {
   var x = xs + MU.int(vx * t);
   var y = ys + MU.int(vy * t);
   var z = zs + MU.int(vz * t) * ZSCALE;
@@ -258,7 +258,7 @@ function hitSector(board:BS.Board, secId:number, xs:number, ys:number, zs:number
     hit.hit(x, y, z, t, secId, type);
 }
 
-function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
+function intersectSectorPlanes(board:Board, sec:Sector, secId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
   var vl = MU.len2d(vx, vy);
   var nvx = vx / vl;
   var nvy = vy / vl;
@@ -294,7 +294,7 @@ function intersectSectorPlanes(board:BS.Board, sec:BS.Sector, secId:number, xs:n
   }
 }
 
-function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wall, wallId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan):number {
+function intersectWall(board:Board, sec:Sector, wall:Wall, wall2:Wall, wallId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan):number {
   var x1 = wall.x, y1 = wall.y;
   var x2 = wall2.x, y2 = wall2.y;
 
@@ -327,12 +327,12 @@ function intersectWall(board:BS.Board, sec:BS.Sector, wall:BS.Wall, wall2:BS.Wal
   return nextsecId;
 }
 
-function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Sprite, sprId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
+function intersectSprite(board:Board, artInfo:ArtInfoProvider, spr:Sprite, sprId:number, xs:number, ys:number, zs:number, vx:number, vy:number, vz:number, hit:Hitscan) {
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
   var x = spr.x, y = spr.y, z = spr.z;
   var info = artInfo.getInfo(spr.picnum);
-  if (spr.cstat.type == BS.FACE) {
+  if (spr.cstat.type == FACE) {
     var dx = x - xs; var dy = y - ys;
     var vl = MU.sqrLen2d(vx, vy);
     if (vl == 0) return;
@@ -353,25 +353,25 @@ function intersectSprite(board:BS.Board, artInfo:ART.ArtInfoProvider, spr:BS.Spr
     var intx = xs + MU.int(vx * t);
     var inty = ys + MU.int(vy * t);
     hit.hit(intx, inty, intz, t, sprId, HitType.SPRITE);
-  } else if (spr.cstat.type == BS.WALL) {
+  } else if (spr.cstat.type == WALL) {
     var xoff = info.attrs.xoff + spr.xoffset;
     if (spr.cstat.xflip) xoff = -xoff;
     var w = (info.w * spr.xrepeat) / 4; var hw = w >> 1;
     var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
     var dx = Math.sin(ang)*hw;
     var dy = Math.cos(ang)*hw;
-  } else if (spr.cstat.type == BS.FLOOR) {
+  } else if (spr.cstat.type == FLOOR) {
   }
 }
 
-function fillStack(board:BS.Board):number[] {
+function fillStack(board:Board):number[] {
   var arr = new Array<number>(board.sectors.length);
   for (var i = 0; i < board.sectors.length; i++)
     arr[i] = i;
   return arr;
 }
 
-export function hitscan(board:BS.Board, artInfo:ART.ArtInfoProvider, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number) {
+export function hitscan(board:Board, artInfo:ArtInfoProvider, xs:number, ys:number, zs:number, secId:number, vx:number, vy:number, vz:number, hit:Hitscan, cliptype:number) {
   hit.reset();
 
   var stack = (secId < 0) ? fillStack(board) : [secId];
@@ -404,7 +404,7 @@ export function hitscan(board:BS.Board, artInfo:ART.ArtInfoProvider, xs:number, 
   }
 }  
 
-export function getFirstWallAngle(sector:BS.Sector, walls:BS.Wall[]):number {
+export function getFirstWallAngle(sector:Sector, walls:Wall[]):number {
   var w1 = walls[sector.wallptr];
   var w2 = walls[w1.point2];
   var dx = w2.x - w1.x;
@@ -412,7 +412,7 @@ export function getFirstWallAngle(sector:BS.Sector, walls:BS.Wall[]):number {
   return  Math.atan2(-dy, dx);
 }
 
-export function wallVisible(wall1:BS.Wall, wall2:BS.Wall, ms:MoveStruct) {
+export function wallVisible(wall1:Wall, wall2:Wall, ms:MoveStruct) {
   var dx1 = wall2.x - wall1.x;
   var dy1 = wall2.y - wall1.y;
   var dx2 = ms.x - wall1.x;
@@ -420,19 +420,20 @@ export function wallVisible(wall1:BS.Wall, wall2:BS.Wall, ms:MoveStruct) {
   return MU.cross2d(dx1, dy1, dx2, dy2) >= 0;
 }
 
-export function wallNormal(board:BS.Board, wallId:number):GLM.Vec3Array {
+export function wallNormal(board:Board, wallId:number):GLM.Vec3Array {
   var w1 = board.walls[wallId];
   var w2 = board.walls[w1.point2];
-  var wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x-w1.x, w2.y-w1.y]);
-  return GLM.vec3.fromValues(-wallNormal[0], 0, -wallNormal[1]);
+  var wallNormal = VEC.normal2d(GLM.vec2.create(), [w1.x-w2.x, w1.y-w2.y]);
+  return GLM.vec3.fromValues(wallNormal[0], 0, wallNormal[1]);
 }
 
-export function sectorNormal(board:BS.Board, sectorId:number, ceiling:boolean):GLM.Vec3Array {
+export function sectorNormal(board:Board, sectorId:number, ceiling:boolean):GLM.Vec3Array {
   var sec = board.sectors[sectorId];
   var wn = wallNormal(board, sec.wallptr);
+  GLM.vec3.negate(wn, wn);
   var h = ceiling ? sec.ceilingheinum : sec.floorheinum;
   var normal = ceiling ? [0, -1, 0] : [0, 1, 0];
-  return GLM.vec3.lerp(normal, normal, wn, Math.atan(h/ANGSCALE) / (Math.PI/2));
+  return GLM.vec3.lerp(normal, normal, wn, Math.atan(h * ANGSCALE) / (Math.PI/2));
 }
 
 export function ang2vec(ang:number):GLM.Vec3Array {

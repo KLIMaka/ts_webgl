@@ -196,12 +196,13 @@ export class Board {
   public ang:number;
   public cursectnum:number;
   public numsectors:number;
-  public numwalls:number;
-  public numsprites:number;
   public sectors:Sector[];
+  public numwalls:number;
   public walls:Wall[];
+  public numsprites:number;
   public sprites:Sprite[];
 }
+
 
 export class Header1 {
   public startX:number;

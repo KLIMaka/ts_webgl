@@ -22,7 +22,7 @@ const float PI = 3.1415926538;
 
 float lightOffset() {
   float lightLevel = length(wpos.xz - eyepos.xz) / 1024.0;
-  return clamp(float(shade) + lightLevel, 0.5, 63.5) / 64.0;
+  return float(shade) + lightLevel;
 }
 
 vec3 palLookup(vec2 tc) {
@@ -36,18 +36,19 @@ vec3 palLookup(vec2 tc) {
 
 #ifdef SPECULAR
   vec3 r = reflect(-toLight, wnormal);
-  float specular = pow(dot(r, normalize(eyepos-wpos)), 100.0);
-  lightLevel = clamp(lightLevel - specular, 0.5/64.0, 63.5/64.0);
+  float specular = pow(dot(r, normalize(eyepos - wpos)), 100.0);
+  lightLevel = lightLevel - specular * 64.0;
 #endif
 
-  float dist = distance(wpos.xz, curpos.xz);
-  if (dist < 16.0)
-    lightLevel = clamp(lightLevel - 1.0, 0.5/64.0, 63.5/64.0);
-  // if (dist < 2048.0 && dot(wnormal, toLight) >= 0.0) {
-  //   lightLevel = clamp(lightLevel - pow(1.0-(dist / 2048.0), 2.0), 0.5/64.0, 63.5/64.0);
-  // }
+  float dist = distance(wpos, curpos);
+  // if (dist < 16.0)
+  //   lightLevel = clamp(lightLevel - 1.0, 0.5/64.0, 63.5/64.0);
+  if (dist < 4096.0 && dot(wnormal, toLight) >= -0.001) {
+    lightLevel = lightLevel - pow(1.0 - (dist / 4096.0), 1.0) * 64.0;
+  }
 
   float pluU = palIdx;
+  lightLevel = clamp(lightLevel, 0.5, 63.5) / 64.0;
 #ifdef PAL_LIGHTING
   float pluV = (float(activePal) + lightLevel) / totalPLUs;
 #else
@@ -86,4 +87,5 @@ void main() {
     c *= 2.0;
 
   gl_FragColor = vec4(vec3(color.rgb * c), color.a);
+  // gl_FragColor = vec4(vec3((wnormal + 1.0) / 2.0), color.a);
 }

@@ -1,4 +1,4 @@
-import * as data  from '../../../libs/dataviewstream';
+import * as data from '../../../libs/dataviewstream';
 
 export class ArtInfo {
   constructor(public w:number, public h:number, public attrs:Attributes, public img:Uint8Array) {}
