@@ -99,7 +99,7 @@ export function getSprites(board:Board, secnum:number):number[] {
 }
 
 export function groupSprites(sprites:Sprite[]):{[index:number]:number[]} {
-  var sec2spr = {};
+  var sec2spr:{[index:number]:number[]} = {};
   for (var s = 0; s < sprites.length; s++) {
     var spr = sprites[s];
     var sprs = sec2spr[spr.sectnum];

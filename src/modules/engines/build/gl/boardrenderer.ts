@@ -20,14 +20,22 @@ export interface PalProvider extends ArtProvider {
   getPluTexture():Texture;
 }
 
+function isUpperLink(spr:Sprite) {
+  return spr.lotag == 11 || spr.lotag == 7 || spr.lotag == 9 || spr.lotag == 13;
+}
 
-var upStacks = {}
-var downStacks = {}
+function isLowerLink(spr:Sprite) {
+  return spr.lotag == 12 || spr.lotag == 6 || spr.lotag == 10 || spr.lotag == 14;
+}
+
+var ceilingLinks = {}
+var floorLinks = {}
+
 function initRorLinks(board:Board) {
   var linkRegistry = {};
   for (var s = 0; s < board.sprites.length; s++) {
     var spr = board.sprites[s];
-    if (spr.lotag == 11 || spr.lotag == 12) {
+    if (isUpperLink(spr) || isLowerLink(spr)) {
       var id = (<BloodSprite>spr).extraData.data1;
       var links = linkRegistry[id];
       if (links == undefined) {
@@ -45,10 +53,14 @@ function initRorLinks(board:Board) {
     var [s1, s2] = spriteIds;
     var spr1 = board.sprites[s1];
     var spr2 = board.sprites[s2];
-    [s1, s2] = spr1.lotag == 11 ? [s1, s2] : [s2, s1];
-    [spr1, spr2] = spr1.lotag == 11 ? [spr1, spr2] : [spr2, spr1];
-    downStacks[spr1.sectnum] = [s1, s2];
-    upStacks[spr2.sectnum] = [s2, s1];
+    if (!isUpperLink(spr1)) {
+      [s1, s2] = [s2, s1];
+      [spr1, spr2] = [spr2, spr1];
+    }
+    if (board.sectors[spr1.sectnum].floorpicnum == 504)
+      floorLinks[spr1.sectnum] = [s1, s2];
+    if (board.sectors[spr2.sectnum].ceilingpicnum == 504)
+      ceilingLinks[spr2.sectnum] = [s2, s1];
   }
 }
 
@@ -122,22 +134,22 @@ export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   drawImpl(gl, board, ms, ctr);
 
-  // hitscan(board, ms, ctr);
-  // snap(board);
+  hitscan(board, ms, ctr);
+  snap(board);
 
-  // highlightSelected(gl, board);
+  highlightSelected(gl, board);
 
-  // if (U.isWall(selectType) && ctr.getKeys()['Q']) {
-  //   selectId = BU.pushWall(board, selectId, -128, artProvider, []);
-  //   cache.invalidateAll();
-  // }
-  // if (U.isWall(selectType) && ctr.getKeys()['E']) {
-  //   selectId = BU.pushWall(board, selectId, 128, artProvider, []);
-  //   cache.invalidateAll();
-  // }
-  // if (U.isWall(selectType) && ctr.getKeys()['M']) {
-  //   board.walls[selectId].picnum = 504;
-  // }
+  if (U.isWall(selectType) && ctr.getKeys()['Q']) {
+    selectId = BU.pushWall(board, selectId, -128, artProvider, []);
+    cache.invalidateAll();
+  }
+  if (U.isWall(selectType) && ctr.getKeys()['E']) {
+    selectId = BU.pushWall(board, selectId, 128, artProvider, []);
+    cache.invalidateAll();
+  }
+  if (U.isWall(selectType) && ctr.getKeys()['M']) {
+    board.walls[selectId].picnum = 504;
+  }
 }
 
 function highlightSelected(gl:WebGLRenderingContext, board:Board) {
@@ -201,17 +213,12 @@ function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:Co
   drawRooms(gl, board, result);
 }
 
-var rorSectorCollector = VIS.createSectorCollector((board:Board, sectorId:number) => {
-  var sector = board.sectors[sectorId];
-  return (sector.floorpicnum == 504 && downStacks[sectorId] != undefined) 
-  || (sector.ceilingpicnum == 504 && upStacks[sectorId] != undefined);
-});
 
 function drawStack(gl:WebGLRenderingContext, board:Board, ctr:Controller3D, src:Sprite, dst:Sprite, surface:Renderable, stencilValue:number) {
   BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
   writeStencilOnly(gl, stencilValue);
   BGL.draw(gl, surface);
-
+  
   var diff = GLM.vec3.sub(GLM.vec3.create(), [src.x, src.z/-16, src.y], [dst.x, dst.z/-16, dst.y]);
   var stackTransform = GLM.mat4.clone(ctr.getCamera().getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
@@ -222,11 +229,13 @@ function drawStack(gl:WebGLRenderingContext, board:Board, ctr:Controller3D, src:
   BGL.setViewMatrices(ctr.getProjectionMatrix(), stackTransform, [ms.x, ms.z, ms.y]);
   writeStenciledOnly(gl, stencilValue);
   drawRooms(gl, board, VIS.visible(board, ms));
-
+  
   BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
   writeDepthOnly(gl);
   BGL.draw(gl, surface);
 }
+
+var rorSectorCollector = VIS.createSectorCollector((board:Board, sectorId:number) => floorLinks[sectorId] != undefined || ceilingLinks[sectorId] != undefined);
 
 function drawRor(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:Controller3D) {
   result.forSector(board, rorSectorCollector.visit());
@@ -235,17 +244,16 @@ function drawRor(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.
   for (var i = 0; i < rorSectorCollector.sectors.length; i++) {
     var s = rorSectorCollector.sectors[i];
     var sector = board.sectors[s];
+    var r = cache.getSector(s);
 
-    if (upStacks[s] != undefined) {
-      var src = board.sprites[upStacks[s][0]];
-      var dst = board.sprites[upStacks[s][1]];
-      var r = cache.getSector(s);
+    if (ceilingLinks[s] != undefined) {
+      var src = board.sprites[ceilingLinks[s][0]];
+      var dst = board.sprites[ceilingLinks[s][1]];
       drawStack(gl, board, ctr, src, dst, r.ceiling, i+1);
     }
-    if (downStacks[s] != undefined) {
-      var src = board.sprites[downStacks[s][0]];
-      var dst = board.sprites[downStacks[s][1]];
-      var r = cache.getSector(s);
+    if (floorLinks[s] != undefined) {
+      var src = board.sprites[floorLinks[s][0]];
+      var dst = board.sprites[floorLinks[s][1]];
       drawStack(gl, board, ctr, src, dst, r.floor, i+1); 
     }
   }
@@ -315,9 +323,9 @@ function drawRooms(gl:WebGLRenderingContext, board:Board, result:VIS.Result) {
 
   result.forSector(board, (board:Board, sectorId:number) => {
     var sector = cache.getSector(sectorId);
-    if (board.sectors[sectorId].floorpicnum != 504)
+    if (floorLinks[sectorId] == undefined)
       surfaces.push(sector.floor);
-    if (board.sectors[sectorId].ceilingpicnum != 504)
+    if (ceilingLinks[sectorId] == undefined)
       surfaces.push(sector.ceiling);
     PROFILE.incCount('sectors');
   });

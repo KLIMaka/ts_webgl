@@ -43,8 +43,9 @@ vec3 palLookup(vec2 tc) {
   float dist = distance(wpos, curpos);
   // if (dist < 16.0)
   //   lightLevel = clamp(lightLevel - 1.0, 0.5/64.0, 63.5/64.0);
-  if (dist < 4096.0 && dot(wnormal, toLight) >= -0.001) {
-    lightLevel = lightLevel - pow(1.0 - (dist / 4096.0), 1.0) * 64.0;
+  float ldot = dot(wnormal, toLight);
+  if (dist < 4096.0 && ldot >= -0.001) {
+    lightLevel = lightLevel - ldot * pow(1.0 - (dist / 4096.0), 1.0) * 64.0;
   }
 
   float pluU = palIdx;
