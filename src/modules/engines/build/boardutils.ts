@@ -57,13 +57,22 @@ function distanceToWall(board:Board, wallId:number, x:number, y:number):number {
   return MU.len2d(x-bx, y-by);
 }
 
+export function closestWallOnWall(board:Board, w1:number, x:number, y:number):number {
+  var wall1 = board.walls[w1];
+  var w2 = wall1.point2;
+  var wall2 = board.walls[w2];
+  var dist1 = MU.len2d(wall1.x-x, wall1.y-y);
+  var dist2 = MU.len2d(wall2.x-x, wall2.y-y);
+  return dist2 > dist1 ? w1 : w2;
+}
+
 export function closestWall(board:Board, x:number, y:number, secId:number):number[] {
   secId = U.findSector(board, x, y, secId);
+  var mindist = Number.MAX_VALUE;
   if (secId != -1) {
     var start = board.sectors[secId].wallptr;
     var end = start + board.sectors[secId].wallnum;
     var wallId = start;
-    var mindist = Number.MAX_VALUE;
     for (var w = start; w < end; w++) {
       var dist = distanceToWall(board, w, x, y);
       if (dist <= mindist) {
@@ -74,7 +83,6 @@ export function closestWall(board:Board, x:number, y:number, secId:number):numbe
     return [wallId, mindist];
   } else {
     var wallId = 0;
-    var mindist = Number.MAX_VALUE;
     for (var w = 0; w < board.walls.length; w++) {
       var wall = board.walls[w];
       if (wall.nextwall != -1)

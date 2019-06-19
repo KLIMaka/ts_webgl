@@ -16,22 +16,22 @@ import { BloodSprite } from '../bloodstructs';
 
 
 export interface PalProvider extends ArtProvider {
-  getPalTexture():Texture;
-  getPluTexture():Texture;
+  getPalTexture(): Texture;
+  getPluTexture(): Texture;
 }
 
-function isUpperLink(spr:Sprite) {
+function isUpperLink(spr: Sprite) {
   return spr.lotag == 11 || spr.lotag == 7 || spr.lotag == 9 || spr.lotag == 13;
 }
 
-function isLowerLink(spr:Sprite) {
+function isLowerLink(spr: Sprite) {
   return spr.lotag == 12 || spr.lotag == 6 || spr.lotag == 10 || spr.lotag == 14;
 }
 
 var ceilingLinks = {}
 var floorLinks = {}
 
-function initRorLinks(board:Board) {
+function initRorLinks(board: Board) {
   var linkRegistry = {};
   for (var s = 0; s < board.sprites.length; s++) {
     var spr = board.sprites[s];
@@ -64,9 +64,9 @@ function initRorLinks(board:Board) {
   }
 }
 
-var artProvider:PalProvider;
-var cache:Cache;
-export function init(gl:WebGLRenderingContext, art:PalProvider, board:Board, cb:()=>void) {
+var artProvider: PalProvider;
+var cache: Cache;
+export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, cb: () => void) {
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
@@ -85,7 +85,7 @@ var selectId = -1;
 var gridSize = 128;
 
 var hit = new U.Hitscan();
-function hitscan(board:Board, ms:U.MoveStruct, ctr:Controller3D) {
+function hitscan(board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   var [vx, vz, vy] = ctr.getForwardMouse();
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
   if (ctr.isClick()) {
@@ -93,18 +93,63 @@ function hitscan(board:Board, ms:U.MoveStruct, ctr:Controller3D) {
       selectType = -1;
       selectId = -1;
     } else {
+      movingz = hit.z;
       selectType = hit.type;
       selectId = hit.id;
-      console.log(selectId);
+      switch (selectType) {
+        case U.HitType.CEILING:
+        case U.HitType.FLOOR:
+          console.log(selectId, board.sectors[selectId]);
+          break;
+        case U.HitType.UPPER_WALL:
+        case U.HitType.MID_WALL:
+        case U.HitType.LOWER_WALL:
+          console.log(selectId, board.walls[selectId]);
+          break;
+        case U.HitType.SPRITE:
+          console.log(selectId, board.sprites[selectId]);
+          break;
+      }
     }
   }
 }
 
-function snapGrid(coord:number, gridSize:number):number {
+var movingz = 0;
+var movingId = -1;
+function move(board: Board, ctr: Controller3D) {
+  if (hit.t != -1 && U.isWall(hit.type)) {
+    var w = BU.closestWallOnWall(board, hit.id, hit.x, hit.y);
+    BGL.setCursorPosiotion([board.walls[w].x, hit.z / -16, board.walls[w].y]);
+  }
+  if (movingId == -1 && ctr.isDragging() && hit.t != -1 && U.isWall(hit.type) && ctr.getKeys()['SHIFT']) {
+    movingId = BU.closestWallOnWall(board, hit.id, hit.x, hit.y);
+    movingz = hit.z;
+  }
+  if (!ctr.isDragging()) {
+    movingId = -1;
+  }
+
+  if (movingId == -1)
+    return;
+
+  var wall = board.walls[movingId];
+  var fwd = ctr.getForwardMouse();
+  var pos = ctr.getCamera().getPos();
+  var dz = movingz / -16 - pos[1];
+  var t = dz / fwd[1];
+  GLM.vec3.scale(fwd, fwd, t);
+  var x = pos[0] + fwd[0];
+  var y = pos[2] + fwd[2]
+  // spr.x = snapGrid(x, gridSize); spr.y = snapGrid(y, gridSize);
+  BU.moveWall(board, movingId, snapGrid(x, gridSize), snapGrid(y, gridSize));
+  cache.invalidateAll();
+}
+
+function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
 }
 
-function snap(board:Board) {
+function snap(board: Board) {
   if (hit.t != -1) {
     // var x = hit.x; var y = hit.y;
     // if (U.isSector(hit.type)) {
@@ -124,35 +169,52 @@ function snap(board:Board) {
     //   x = MU.int(wall.x + (t * dx));
     //   y = MU.int(wall.y + (t * dy));
     // }
-    BGL.setCursorPosiotion([hit.x, hit.z/-16, hit.y]);
+    BGL.setCursorPosiotion([hit.x, hit.z / -16, hit.y]);
   }
 }
 
-export function draw(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:Controller3D) {
+export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   drawImpl(gl, board, ms, ctr);
 
   hitscan(board, ms, ctr);
-  snap(board);
+  move(board, ctr);
+  // snap(board);
 
-  highlightSelected(gl, board);
+  // highlightSelected(gl, board);
 
-  if (U.isWall(selectType) && ctr.getKeys()['Q']) {
-    selectId = BU.pushWall(board, selectId, -128, artProvider, []);
-    cache.invalidateAll();
-  }
-  if (U.isWall(selectType) && ctr.getKeys()['E']) {
-    selectId = BU.pushWall(board, selectId, 128, artProvider, []);
-    cache.invalidateAll();
-  }
-  if (U.isWall(selectType) && ctr.getKeys()['M']) {
-    board.walls[selectId].picnum = 504;
-  }
+  // if (U.isWall(selectType) && ctr.getKeys()['Q']) {
+  //   selectId = BU.pushWall(board, selectId, -128, artProvider, []);
+  //   cache.invalidateAll();
+  // }
+  // if (U.isWall(selectType) && ctr.getKeys()['E']) {
+  //   selectId = BU.pushWall(board, selectId, 128, artProvider, []);
+  //   cache.invalidateAll();
+  // }
+  // if (U.isWall(selectType) && ctr.getKeys()['M']) {
+  //   board.walls[selectId].picnum = 504;
+  // }
+
+  // if (U.isSector(selectType) && ctr.getKeys()['O']) {
+  //   if (selectType == U.HitType.CEILING)
+  //     board.sectors[selectId].ceilingxpanning += 1;
+  //   if (selectType == U.HitType.FLOOR)
+  //     board.sectors[selectId].floorxpanning += 1;
+  //   cache.invalidateSectors([selectId]);
+  // }
+
+  // if (U.isSector(selectType) && ctr.getKeys()['P']) {
+  //   if (selectType == U.HitType.CEILING)
+  //     board.sectors[selectId].ceilingypanning += 1;
+  //   if (selectType == U.HitType.FLOOR)
+  //     board.sectors[selectId].floorypanning += 1;
+  //   cache.invalidateSectors([selectId]);
+  // }
 }
 
-function highlightSelected(gl:WebGLRenderingContext, board:Board) {
+function highlightSelected(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
   switch (selectType) {
     case U.HitType.CEILING:
@@ -177,7 +239,7 @@ function highlightSelected(gl:WebGLRenderingContext, board:Board) {
   gl.enable(gl.DEPTH_TEST);
 }
 
-function writeStencilOnly(gl:WebGLRenderingContext, value:number) {
+function writeStencilOnly(gl: WebGLRenderingContext, value: number) {
   gl.stencilFunc(gl.ALWAYS, value, 0xff);
   gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
   gl.stencilMask(0xff);
@@ -185,26 +247,27 @@ function writeStencilOnly(gl:WebGLRenderingContext, value:number) {
   gl.colorMask(false, false, false, false);
 }
 
-function writeStenciledOnly(gl:WebGLRenderingContext, value:number) {
+function writeStenciledOnly(gl: WebGLRenderingContext, value: number) {
   gl.stencilFunc(gl.EQUAL, value, 0xff);
   gl.stencilMask(0x0);
   gl.depthMask(true);
   gl.colorMask(true, true, true, true);
 }
 
-function writeDepthOnly(gl:WebGLRenderingContext) {
+function writeDepthOnly(gl: WebGLRenderingContext) {
   gl.colorMask(false, false, false, false);
 }
 
-function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:Controller3D) {
+function drawImpl(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
   }
 
   PROFILE.startProfile('processing');
-  var result = ms.sec == -1 
-    ? VIS.all(board) 
+  var result = ms.sec == -1
+    ? VIS.all(board)
     : VIS.visible(board, ms);
+  PROFILE.endProfile();
 
   drawMirrors(gl, board, result, ms, ctr);
   drawRor(gl, board, result, ms, ctr);
@@ -214,30 +277,30 @@ function drawImpl(gl:WebGLRenderingContext, board:Board, ms:U.MoveStruct, ctr:Co
 }
 
 
-function drawStack(gl:WebGLRenderingContext, board:Board, ctr:Controller3D, src:Sprite, dst:Sprite, surface:Renderable, stencilValue:number) {
+function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, src: Sprite, dst: Sprite, surface: Renderable, stencilValue: number) {
   BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
   writeStencilOnly(gl, stencilValue);
   BGL.draw(gl, surface);
-  
-  var diff = GLM.vec3.sub(GLM.vec3.create(), [src.x, src.z/-16, src.y], [dst.x, dst.z/-16, dst.y]);
+
+  var diff = GLM.vec3.sub(GLM.vec3.create(), [src.x, src.z / -16, src.y], [dst.x, dst.z / -16, dst.y]);
   var stackTransform = GLM.mat4.clone(ctr.getCamera().getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
 
   var ms = new U.MoveStruct();
   var position = ctr.getCamera().getPos();
-  ms.sec = dst.sectnum; ms.x = position[0]-diff[0]; ms.y = position[2]-diff[2]; ms.z = position[1]-diff[1];
+  ms.sec = dst.sectnum; ms.x = position[0] - diff[0]; ms.y = position[2] - diff[2]; ms.z = position[1] - diff[1];
   BGL.setViewMatrices(ctr.getProjectionMatrix(), stackTransform, [ms.x, ms.z, ms.y]);
   writeStenciledOnly(gl, stencilValue);
   drawRooms(gl, board, VIS.visible(board, ms));
-  
+
   BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
   writeDepthOnly(gl);
   BGL.draw(gl, surface);
 }
 
-var rorSectorCollector = VIS.createSectorCollector((board:Board, sectorId:number) => floorLinks[sectorId] != undefined || ceilingLinks[sectorId] != undefined);
+var rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => floorLinks[sectorId] != undefined || ceilingLinks[sectorId] != undefined);
 
-function drawRor(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:Controller3D) {
+function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forSector(board, rorSectorCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
@@ -249,26 +312,26 @@ function drawRor(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.
     if (ceilingLinks[s] != undefined) {
       var src = board.sprites[ceilingLinks[s][0]];
       var dst = board.sprites[ceilingLinks[s][1]];
-      drawStack(gl, board, ctr, src, dst, r.ceiling, i+1);
+      drawStack(gl, board, ctr, src, dst, r.ceiling, i + 1);
     }
     if (floorLinks[s] != undefined) {
       var src = board.sprites[floorLinks[s][0]];
       var dst = board.sprites[floorLinks[s][1]];
-      drawStack(gl, board, ctr, src, dst, r.floor, i+1); 
+      drawStack(gl, board, ctr, src, dst, r.floor, i + 1);
     }
   }
   gl.disable(gl.STENCIL_TEST);
   gl.colorMask(true, true, true, true);
 }
 
-var mirrorWallsCollector = VIS.createWallCollector((board:Board, wallId:number, sectorId:number) => {
+var mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => {
   return board.walls[wallId].picnum == 504;
 });
 
 
-function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, ms:U.MoveStruct, ctr:Controller3D) {
+function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forWall(board, mirrorWallsCollector.visit());
-  
+
   gl.enable(gl.STENCIL_TEST);
   var msMirrored = new U.MoveStruct();
   for (var i = 0; i < mirrorWallsCollector.walls.length; i++) {
@@ -281,11 +344,11 @@ function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, m
     // draw mirror surface into stencil
     var r = cache.getWall(w, mirrorWallsCollector.walls[i].sectorId);
     BGL.setViewMatrices(ctr.getProjectionMatrix(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos());
-    writeStencilOnly(gl, i+127);
+    writeStencilOnly(gl, i + 127);
     BGL.draw(gl, r);
 
     // draw reflections in stenciled area
-    var wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x-w1.x, w2.y-w1.y]);
+    var wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x - w1.x, w2.y - w1.y]);
     var mirrorNormal = GLM.vec3.fromValues(wallNormal[0], 0, wallNormal[1]);
     var mirrorrD = -MU.dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
     var mirroredTransform = VEC.mirrorBasis(GLM.mat4.create(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPos(), mirrorNormal, mirrorrD);
@@ -295,7 +358,7 @@ function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, m
     gl.cullFace(gl.FRONT);
     var mpos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorrD, [ms.x, ms.z, ms.y]);
     msMirrored.sec = ms.sec; msMirrored.x = mpos[0]; msMirrored.y = mpos[2]; msMirrored.z = mpos[1];
-    writeStenciledOnly(gl, i+127);
+    writeStenciledOnly(gl, i + 127);
     drawRooms(gl, board, VIS.visible(board, msMirrored));
     gl.cullFace(gl.BACK);
 
@@ -309,19 +372,19 @@ function drawMirrors(gl:WebGLRenderingContext, board:Board, result:VIS.Result, m
   gl.colorMask(true, true, true, true);
 }
 
-function drawArray(gl:WebGLRenderingContext, arr:Renderable[]) {
+function drawArray(gl: WebGLRenderingContext, arr: Renderable[]) {
   for (var i = 0; i < arr.length; i++) {
     BGL.draw(gl, arr[i]);
   }
 }
 
-function drawRooms(gl:WebGLRenderingContext, board:Board, result:VIS.Result) {
-  var surfaces:Renderable[] = [];
-  var surfacesTrans:Renderable[] = [];
-  var sprites:Renderable[] = [];
-  var spritesTrans:Renderable[] = [];
+function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) {
+  var surfaces: Renderable[] = [];
+  var surfacesTrans: Renderable[] = [];
+  var sprites: Renderable[] = [];
+  var spritesTrans: Renderable[] = [];
 
-  result.forSector(board, (board:Board, sectorId:number) => {
+  result.forSector(board, (board: Board, sectorId: number) => {
     var sector = cache.getSector(sectorId);
     if (floorLinks[sectorId] == undefined)
       surfaces.push(sector.floor);
@@ -329,7 +392,7 @@ function drawRooms(gl:WebGLRenderingContext, board:Board, result:VIS.Result) {
       surfaces.push(sector.ceiling);
     PROFILE.incCount('sectors');
   });
-  result.forWall(board, (board:Board, wallId:number, sectorId:number) => {
+  result.forWall(board, (board: Board, wallId: number, sectorId: number) => {
     if (board.walls[wallId].picnum == 504)
       return;
     var wall = cache.getWall(wallId, sectorId);
@@ -341,13 +404,13 @@ function drawRooms(gl:WebGLRenderingContext, board:Board, result:VIS.Result) {
     }
     PROFILE.incCount('walls');
   });
-  result.forSprite(board, (board:Board, spriteId:number) => {
+  result.forSprite(board, (board: Board, spriteId: number) => {
     var sprite = cache.getSprite(spriteId);
     var trans = sprite.trans != 1;
-    (sprite.type == Type.FACE 
-      ? (trans ? spritesTrans : sprites) 
+    (sprite.type == Type.FACE
+      ? (trans ? spritesTrans : sprites)
       : (trans ? spritesTrans : sprites))
-    .push(sprite);
+      .push(sprite);
     PROFILE.incCount('sprites');
   });
   PROFILE.set('buffer', BUFF.getFreeSpace());
@@ -362,7 +425,7 @@ function drawRooms(gl:WebGLRenderingContext, board:Board, result:VIS.Result) {
   gl.polygonOffset(0, 0);
 
   drawArray(gl, surfacesTrans);
-  
+
   gl.polygonOffset(-1, -8);
   drawArray(gl, spritesTrans);
   gl.polygonOffset(0, 0);

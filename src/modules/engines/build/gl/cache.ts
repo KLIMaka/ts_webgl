@@ -1,12 +1,11 @@
 import {Solid, Wireframe, Buffer, Type, Renderable} from './renderable';
 import {ArtInfo, ArtInfoProvider} from '../art';
-import {Board, Sector, Sprite, Wall, FACE, WALL, FLOOR} from '../structs';
+import {Board, Sector, Wall, FACE, WALL, FLOOR} from '../structs';
 import {tesselate} from '../../../../libs_js/glutess';
 import {Texture} from '../../../drawstruct';
 import * as U from '../utils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
-import * as BUFF from './buffers';
 import {State} from '../../../stategl';
 
 const SCALE = -16;
@@ -156,15 +155,15 @@ export class Cache {
   }
 
   public invalidateSectors(ids:number[]) {
-    ids.map((id) => this.sectors.get(ids[id]).valid = false);
+    ids.map((id) => this.sectors.get(id).valid = false);
   }
 
   public invalidateWalls(ids:number[]) {
-    ids.map((id) => this.walls.get(ids[id]).valid = false);
+    ids.map((id) => this.walls.get(id).valid = false);
   }
 
   public invalidateSprites(ids:number[]) {
-    ids.map((id) => this.sprites.get(ids[id]).valid = false);
+    ids.map((id) => this.sprites.get(id).valid = false);
   }
 
   public invalidateAll() {
@@ -350,7 +349,7 @@ function applySectorTextureTransform(sector:Sector, ceiling:boolean, walls:Wall[
     GLM.mat4.rotateZ(texMat, texMat, U.getFirstWallAngle(sector, walls));
     GLM.mat4.translate(texMat, texMat, [-w1.x, -w1.y, 0, 0])
   }
-  GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
+  GLM.mat4.rotateX(texMat, texMat, Math.PI/2);
 }
 
 function triangulate(sector:Sector, walls:Wall[]):number[][] {

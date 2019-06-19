@@ -47,7 +47,7 @@ export class Controller3D {
   private mousemove(e:MouseEvent):boolean {
     var x = e.clientX;
     var y = e.clientY;
-    if (this.drag) {
+    if (this.drag && e.buttons == 2) {
       this.camera.updateAngles((x - this.oldX)/2, (y - this.oldY)/2);
     }
     this.oldX = x;
@@ -134,6 +134,10 @@ export class Controller3D {
 
   public getKeys() {
     return this.keys;
+  }
+
+  public isDragging() {
+    return this.drag;
   }
 
   public getForwardMouse():GLM.Vec3Array {
