@@ -121,11 +121,11 @@ function move(board: Board, ctr: Controller3D) {
     var w = BU.closestWallOnWall(board, hit.id, hit.x, hit.y);
     BGL.setCursorPosiotion([board.walls[w].x, hit.z / -16, board.walls[w].y]);
   }
-  if (movingId == -1 && ctr.isDragging() && hit.t != -1 && U.isWall(hit.type) && ctr.getKeys()['SHIFT']) {
+  if (movingId == -1 && ctr.getMouseButtons()[0] && hit.t != -1 && U.isWall(hit.type)) {
     movingId = BU.closestWallOnWall(board, hit.id, hit.x, hit.y);
     movingz = hit.z;
   }
-  if (!ctr.isDragging()) {
+  if (!ctr.getMouseButtons()[0]) {
     movingId = -1;
   }
 
@@ -195,22 +195,6 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   // }
   // if (U.isWall(selectType) && ctr.getKeys()['M']) {
   //   board.walls[selectId].picnum = 504;
-  // }
-
-  // if (U.isSector(selectType) && ctr.getKeys()['O']) {
-  //   if (selectType == U.HitType.CEILING)
-  //     board.sectors[selectId].ceilingxpanning += 1;
-  //   if (selectType == U.HitType.FLOOR)
-  //     board.sectors[selectId].floorxpanning += 1;
-  //   cache.invalidateSectors([selectId]);
-  // }
-
-  // if (U.isSector(selectType) && ctr.getKeys()['P']) {
-  //   if (selectType == U.HitType.CEILING)
-  //     board.sectors[selectId].ceilingypanning += 1;
-  //   if (selectType == U.HitType.FLOOR)
-  //     board.sectors[selectId].floorypanning += 1;
-  //   cache.invalidateSectors([selectId]);
   // }
 }
 

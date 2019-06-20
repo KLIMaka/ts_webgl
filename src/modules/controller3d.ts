@@ -23,14 +23,13 @@ export class Controller3D {
   private gl:WebGLRenderingContext;
   private camera = new camera.Camera(0, 0, 0, 0, 0);
   private projection = GLM.mat4.create();
-  private drag = false;
   private oldX = 0;
   private oldY = 0;
   private keys = {};
   private fov = 90;
   private click = false;
-  private moveVec = [0, 0];
   private wheel = 0;
+  private mouseButtons =[false, false, false];
 
   constructor(gl:WebGLRenderingContext) {
     this.gl = gl;
@@ -47,7 +46,7 @@ export class Controller3D {
   private mousemove(e:MouseEvent):boolean {
     var x = e.clientX;
     var y = e.clientY;
-    if (this.drag && e.buttons == 2) {
+    if (this.mouseButtons[2]) {
       this.camera.updateAngles((x - this.oldX)/2, (y - this.oldY)/2);
     }
     this.oldX = x;
@@ -56,13 +55,13 @@ export class Controller3D {
   }
 
   private mouseup(e:MouseEvent):boolean {
-    this.drag = false;
+    this.mouseButtons[e.button] = false;
     this.click = true;
     return false;
   }
-
+  
   private mousedown(e:MouseEvent):boolean {
-    this.drag = true;
+    this.mouseButtons[e.button] = true;
     return false;
   }
 
@@ -136,9 +135,9 @@ export class Controller3D {
     return this.keys;
   }
 
-  public isDragging() {
-    return this.drag;
-  }
+public getMouseButtons() {
+  return this.mouseButtons;
+}
 
   public getForwardMouse():GLM.Vec3Array {
     var invertTrans = GLM.mat4.invert(GLM.mat4.create(), this.getCamera().getTransformMatrix());
