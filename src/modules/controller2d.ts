@@ -28,7 +28,7 @@ export class Controller2D {
     if (this.drag) {
       var dx = (e.clientX - this.dragStartX) * this.scale;
       var dy = (e.clientY - this.dragStartY) * this.scale;
-      this.camera.setPosXYZ(this.cameraX - dx, this.cameraY - dy, 0);
+      this.camera.setPositionXYZ(this.cameraX - dx, this.cameraY - dy, 0);
     }
     return false;
   }
@@ -46,7 +46,7 @@ export class Controller2D {
     this.drag = true;
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
-    var campos = this.camera.getPos();
+    var campos = this.camera.getPosition();
     this.cameraX = campos[0];
     this.cameraY = campos[1];
     return false;
@@ -59,11 +59,11 @@ export class Controller2D {
     var k = -MU.sign(e.deltaY) / 10;
     this.scale *= k + 1;
 
-    var campos = this.camera.getPos();
+    var campos = this.camera.getPosition();
     var koef = this.scale * -(k/(k+1));
     var newX = campos[0] + dx * koef;
     var newY = campos[1] + dy * koef;
-    this.camera.setPosXYZ(newX, newY, 0);
+    this.camera.setPositionXYZ(newX, newY, 0);
     return false;
   }
 
@@ -72,7 +72,7 @@ export class Controller2D {
   }
 
   public setPos(x:number, y:number):void {
-    this.camera.setPosXYZ(x, y, 0);
+    this.camera.setPositionXYZ(x, y, 0);
   }
 
   public getMatrix():GLM.Mat4Array {
@@ -85,7 +85,7 @@ export class Controller2D {
   }
 
   public unproject(x:number, y:number):number[] {
-    var campos = this.camera.getPos();
+    var campos = this.camera.getPosition();
     var dx = this.gl.drawingBufferWidth/2;
     var dy = this.gl.drawingBufferHeight/2;
     return [(x-dx)*this.scale + campos[0], (y-dy)*this.scale + campos[1]];

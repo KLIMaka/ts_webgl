@@ -56,6 +56,27 @@ export function inSector(board:Board, x:number, y:number, secnum:number):boolean
   return (inter>>>31) == 1;
 }
 
+export function sectorOfWall(board:Board, wallId:number):number {
+  if (wallId < 0 || wallId >= board.walls.length)
+    return -1;
+  var wall = board.walls[wallId];
+  if (wall.nextwall != -1)
+    return board.walls[wall.nextwall].nextsector;
+  var start = 0;
+  var end = board.sectors.length - 1;
+  while (end - start >= 0) {
+    var pivot = MU.int(start + (end - start) / 2);
+    var sec = board.sectors[pivot];
+    if (sec.wallptr <= wallId && sec.wallptr+sec.wallnum >= wallId)
+      return pivot;
+    if (sec.wallptr > wallId) {
+      end = pivot - 1;
+    } else {
+      start = pivot + 1;
+    }
+  }
+}
+
 export function findSector(board:Board, x:number, y:number, secnum:number = -1):number {
   if (secnum == -1)
     return findSectorAll(board, x, y);
@@ -409,7 +430,7 @@ export function getFirstWallAngle(sector:Sector, walls:Wall[]):number {
   var w2 = walls[w1.point2];
   var dx = w2.x - w1.x;
   var dy = w2.y - w1.y;
-  return  Math.atan2(-dy, dx);
+  return  -Math.atan2(-dy, dx);
 }
 
 export function wallVisible(wall1:Wall, wall2:Wall, ms:MoveStruct) {

@@ -370,9 +370,9 @@ var screen = buildScreen(gl, base1_shader, lm);
 var control = new controller.Controller3D(gl);
 var binder = new GL.UniformBinder();
 binder.addResolver('MVP', GL.mat4Setter,     ()=>control.getMatrix());
-binder.addResolver('MV', GL.mat4Setter,      ()=>control.getModelViewMatrix());
+binder.addResolver('MV', GL.mat4Setter,      ()=>control.getViewMatrix());
 binder.addResolver('P', GL.mat4Setter,       ()=>control.getProjectionMatrix());
-binder.addResolver('eyepos', GL.vec3Setter,  ()=>control.getCamera().getPos());
+binder.addResolver('eyepos', GL.vec3Setter,  ()=>control.getCamera().getPosition());
 binder.addResolver('eyedir', GL.vec3Setter,  ()=>control.getCamera().forward());
 binder.addResolver('size', GL.float1Setter,  ()=>10);
 
@@ -384,8 +384,8 @@ var ms = new buildutils.MoveStruct();
 GL.animate(gl, function (gl:WebGLRenderingContext, time:number) {
 
   control.move(time);
-  ms.x = control.getCamera().getPos()[0];
-  ms.y = control.getCamera().getPos()[2];
+  ms.x = control.getCamera().getPosition()[0];
+  ms.y = control.getCamera().getPosition()[2];
 
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);

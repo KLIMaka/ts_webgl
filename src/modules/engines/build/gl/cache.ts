@@ -1,20 +1,20 @@
-import {Solid, Wireframe, Buffer, Type, Renderable} from './renderable';
-import {ArtInfo, ArtInfoProvider} from '../art';
-import {Board, Sector, Wall, FACE, WALL, FLOOR} from '../structs';
-import {tesselate} from '../../../../libs_js/glutess';
-import {Texture} from '../../../drawstruct';
+import { Solid, Wireframe, Buffer, Type, Renderable } from './renderable';
+import { ArtInfo, ArtInfoProvider } from '../art';
+import { Board, Sector, Wall, FACE, WALL, FLOOR } from '../structs';
+import { tesselate } from '../../../../libs_js/glutess';
+import { Texture } from '../../../drawstruct';
 import * as U from '../utils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
-import {State} from '../../../stategl';
+import { State } from '../../../stategl';
 
 const SCALE = -16;
 
 class EnsureArray<T> {
-  private array:Array<T> = [];
-  constructor(private factory:()=>T) {}
+  private array: Array<T> = [];
+  constructor(private factory: () => T) { }
 
-  public get(id:number):T {
+  public get(id: number): T {
     var ent = this.array[id];
     if (ent == undefined) {
       ent = this.factory();
@@ -27,77 +27,77 @@ class EnsureArray<T> {
     this.array.map(f);
   }
 }
-function createArray<T>(factory:()=>T):EnsureArray<T> {
+function createArray<T>(factory: () => T): EnsureArray<T> {
   return new EnsureArray<T>(factory);
 }
 
 export interface ArtProvider extends ArtInfoProvider {
-  get(picnum:number):Texture;
-  getParallaxTexture(picnum:number):Texture
+  get(picnum: number): Texture;
+  getParallaxTexture(picnum: number): Texture
 }
 
 class SectorSolid implements Renderable {
-  public ceiling:Solid = new Solid();
-  public floor:Solid = new Solid();
+  public ceiling: Solid = new Solid();
+  public floor: Solid = new Solid();
 
-  draw(gl:WebGLRenderingContext, state:State) {
+  draw(gl: WebGLRenderingContext, state: State) {
     this.ceiling.draw(gl, state);
     this.floor.draw(gl, state);
   }
 }
 
 class WallSolid implements Renderable {
-  public top:Solid = new Solid();
-  public mid:Solid = new Solid();
-  public bot:Solid = new Solid();
+  public top: Solid = new Solid();
+  public mid: Solid = new Solid();
+  public bot: Solid = new Solid();
 
-  draw(gl:WebGLRenderingContext, state:State) {
+  draw(gl: WebGLRenderingContext, state: State) {
     this.top.draw(gl, state);
     this.mid.draw(gl, state);
     this.bot.draw(gl, state);
   }
 }
 
-class SpriteSolid extends Solid {}
+class SpriteSolid extends Solid { }
 
 class SectorWireframe {
-  public ceiling:Wireframe = new Wireframe();
-  public floor:Wireframe = new Wireframe();
+  public ceiling: Wireframe = new Wireframe();
+  public floor: Wireframe = new Wireframe();
 }
 
 class WallWireframe {
-  public top:Wireframe = new Wireframe();
-  public mid:Wireframe = new Wireframe();
-  public bot:Wireframe = new Wireframe();
+  public top: Wireframe = new Wireframe();
+  public mid: Wireframe = new Wireframe();
+  public bot: Wireframe = new Wireframe();
 }
 
-class SpriteWireframe extends Wireframe {}
+class SpriteWireframe extends Wireframe { }
 
 
 class Entry<T> {
-  constructor(public value:T, public valid:boolean=false) {}
+  constructor(public value: T, public valid: boolean = false) { }
 }
 
-var sectorRenerableFactory = () =>  new Entry<SectorSolid>(new SectorSolid());
-var wallRenerableFactory = () =>  new Entry<WallSolid>(new WallSolid());
+var sectorRenerableFactory = () => new Entry<SectorSolid>(new SectorSolid());
+var wallRenerableFactory = () => new Entry<WallSolid>(new WallSolid());
 var spriteRenerableFactory = () => new Entry<SpriteSolid>(new SpriteSolid());
 
 export class Cache {
-  public sectors:EnsureArray<Entry<SectorSolid>> = createArray(sectorRenerableFactory);
-  public walls:EnsureArray<Entry<WallSolid>> = createArray(wallRenerableFactory);
-  public sprites:EnsureArray<Entry<SpriteSolid>> = createArray(spriteRenerableFactory);
+  public sectors: EnsureArray<Entry<SectorSolid>> = createArray(sectorRenerableFactory);
+  public walls: EnsureArray<Entry<WallSolid>> = createArray(wallRenerableFactory);
+  public sprites: EnsureArray<Entry<SpriteSolid>> = createArray(spriteRenerableFactory);
 
   private sectorWireframe = new SectorWireframe();
-  private sectorWireframeId:number = -1;
+  private sectorWireframeId: number = -1;
   private wallWireframe = new WallWireframe();
-  private wallWireframeId:number = -1;
+  private wallWireframeId: number = -1;
   private spriteWireframe = new SpriteWireframe();
-  private spriteWireframeId:number = -1;
+  private spriteWireframeId: number = -1;
 
-  constructor(private board:Board, private art:ArtProvider) {
+  constructor(private board: Board, private art: ArtProvider) {
   }
 
-  public getSector(id:number):SectorSolid {
+  public getSector(id: number): SectorSolid {
     var sector = this.sectors.get(id);
     if (!sector.valid) {
       prepareSector(this.board, this.art, id, sector.value);
@@ -106,7 +106,7 @@ export class Cache {
     return sector.value;
   }
 
-  public getWall(wallId:number, sectorId:number):WallSolid {
+  public getWall(wallId: number, sectorId: number): WallSolid {
     var wall = this.walls.get(wallId);
     if (!wall.valid) {
       prepareWall(this.board, this.art, wallId, sectorId, wall.value);
@@ -115,7 +115,7 @@ export class Cache {
     return wall.value;
   }
 
-  public getSprite(spriteId:number):SpriteSolid {
+  public getSprite(spriteId: number): SpriteSolid {
     var sprite = this.sprites.get(spriteId);
     if (!sprite.valid) {
       prepareSprite(this.board, this.art, spriteId, sprite.value);
@@ -124,7 +124,7 @@ export class Cache {
     return sprite.value;
   }
 
-  public getSectorWireframe(secId:number):SectorWireframe {
+  public getSectorWireframe(secId: number): SectorWireframe {
     if (secId != this.sectorWireframeId) {
       this.sectorWireframe.ceiling.buff.deallocate();
       this.sectorWireframe.floor.buff.deallocate();
@@ -134,7 +134,7 @@ export class Cache {
     return this.sectorWireframe;
   }
 
-  public getWallWireframe(wallId:number, secId:number):WallWireframe {
+  public getWallWireframe(wallId: number, secId: number): WallWireframe {
     if (wallId != this.wallWireframeId) {
       this.wallWireframe.bot.buff.deallocate();
       this.wallWireframe.top.buff.deallocate();
@@ -145,7 +145,7 @@ export class Cache {
     return this.wallWireframe;
   }
 
-  public getSpriteWireframe(sprId:number):SpriteWireframe {
+  public getSpriteWireframe(sprId: number): SpriteWireframe {
     if (sprId != this.spriteWireframeId) {
       this.spriteWireframe.buff.deallocate();
       prepareSpriteWireframe(this.board, sprId, this.art, this.spriteWireframe);
@@ -154,32 +154,54 @@ export class Cache {
     return this.spriteWireframe;
   }
 
-  public invalidateSectors(ids:number[]) {
+  public invalidateSectors(ids: number[]) {
     ids.map((id) => this.sectors.get(id).valid = false);
   }
 
-  public invalidateWalls(ids:number[]) {
+  public invalidateWalls(ids: number[]) {
     ids.map((id) => this.walls.get(id).valid = false);
   }
 
-  public invalidateSprites(ids:number[]) {
+  public invalidateSprites(ids: number[]) {
     ids.map((id) => this.sprites.get(id).valid = false);
   }
 
   public invalidateAll() {
-    this.sectors.map(s => {if (s != undefined) {s.valid = false; s.value.ceiling.buff.deallocate(); s.value.floor.buff.deallocate();}});
-    this.walls.map(w => {if (w != undefined) {w.valid = false; w.value.bot.buff.deallocate(); w.value.mid.buff.deallocate(); w.value.top.buff.deallocate();}});
-    this.sprites.map(s => {if (s != undefined) {s.valid = false; s.value.buff.deallocate();}});
+    this.sectors.map(s => { if (s != undefined) { s.valid = false; s.value.ceiling.buff.deallocate(); s.value.floor.buff.deallocate(); } });
+    this.walls.map(w => { if (w != undefined) { w.valid = false; w.value.bot.buff.deallocate(); w.value.mid.buff.deallocate(); w.value.top.buff.deallocate(); } });
+    this.sprites.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
 
     this.sectorWireframeId = -1;
     this.wallWireframeId = -1;
     this.spriteWireframeId = -1;
   }
+
+  public createRenderable() {
+    return new Solid();
+  }
+
+  public getByIdType(id: number, addId: number, type: U.HitType, wireframe: boolean = false): Renderable {
+    switch (type) {
+      case U.HitType.CEILING:
+        return wireframe ? this.getSectorWireframe(id).ceiling : this.getSector(id).ceiling;
+      case U.HitType.FLOOR:
+        return wireframe ? this.getSectorWireframe(id).floor : this.getSector(id).floor;
+      case U.HitType.LOWER_WALL:
+        return wireframe ? this.getWallWireframe(id, addId).bot : this.getWall(id, addId).bot;
+      case U.HitType.MID_WALL:
+        return wireframe ? this.getWallWireframe(id, addId).mid : this.getWall(id, addId).mid;
+      case U.HitType.UPPER_WALL:
+        return wireframe ? this.getWallWireframe(id, addId).top : this.getWall(id, addId).top;
+      case U.HitType.SPRITE:
+        return wireframe ? this.getSpriteWireframe(id) : this.getSprite(id);
+    }
+    return null;
+  }
 }
 
-function fillBuffersForSectorWireframe(sec:Sector, heinum:number, z:number, board:Board, buff:Buffer) {
+function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, board: Board, buff: Buffer) {
   var slope = U.createSlopeCalculator(sec, board.walls);
-  buff.allocate(sec.wallnum, sec.wallnum*2);
+  buff.allocate(sec.wallnum, sec.wallnum * 2);
 
   var fw = sec.wallptr;
   var off = 0;
@@ -191,22 +213,22 @@ function fillBuffersForSectorWireframe(sec:Sector, heinum:number, z:number, boar
     var vz = (slope(vx, vy, heinum) + z) / SCALE;
     buff.writePos(w, vx, vz, vy);
     if (fw != wid) {
-      off = buff.writeLine(off, w-1, w);
+      off = buff.writeLine(off, w - 1, w);
     }
     if (wall.point2 == fw) {
-      off = buff.writeLine(off, w, fw-sec.wallptr);
+      off = buff.writeLine(off, w, fw - sec.wallptr);
       fw = wid + 1;
-    } 
+    }
   }
 }
 
-function prepareSectorWireframe(board:Board, secId:number, wireframe:SectorWireframe) {
+function prepareSectorWireframe(board: Board, secId: number, wireframe: SectorWireframe) {
   var sec = board.sectors[secId];
   fillBuffersForSectorWireframe(sec, sec.ceilingheinum, sec.ceilingz, board, wireframe.ceiling.buff);
-  fillBuffersForSectorWireframe(sec, sec.floorheinum,   sec.floorz,   board, wireframe.floor.buff);
+  fillBuffersForSectorWireframe(sec, sec.floorheinum, sec.floorz, board, wireframe.floor.buff);
 }
 
-function genQuadWireframe(coords:number[], normals:number[], buff:Buffer) {
+function genQuadWireframe(coords: number[], normals: number[], buff: Buffer) {
   buff.allocate(4, 8);
   var [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4] = coords;
   buff.writePos(0, x1, z1, y1);
@@ -225,7 +247,7 @@ function genQuadWireframe(coords:number[], normals:number[], buff:Buffer) {
   buff.writeLine(6, 3, 0);
 }
 
-function prepareWallWireframe(board:Board, wallId:number, secId:number, wireframe:WallWireframe) {
+function prepareWallWireframe(board: Board, wallId: number, secId: number, wireframe: WallWireframe) {
   var wall = board.walls[wallId];
   var sector = board.sectors[secId];
   var wall2 = board.walls[wall.point2];
@@ -250,7 +272,7 @@ function prepareWallWireframe(board:Board, wallId:number, secId:number, wirefram
     var coords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
     if (coords != null) {
       genQuadWireframe(coords, null, wireframe.bot.buff);
-    } 
+    }
 
     var nextceilingheinum = nextsector.ceilingheinum;
     var coords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
@@ -259,7 +281,7 @@ function prepareWallWireframe(board:Board, wallId:number, secId:number, wirefram
     }
 
     if (wall.cstat.masking) {
-      var coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope, 
+      var coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope,
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
         floorheinum, nextfloorheinum, floorz, nextfloorz);
       genQuadWireframe(coords, null, wireframe.mid.buff);
@@ -267,46 +289,46 @@ function prepareWallWireframe(board:Board, wallId:number, secId:number, wirefram
   }
 }
 
-function fillbuffersForWallSpriteWireframe(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, renderable:SpriteWireframe) {
-  var dx = Math.sin(ang)*hw;
-  var dy = Math.cos(ang)*hw;
+function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, renderable: SpriteWireframe) {
+  var dx = Math.sin(ang) * hw;
+  var dy = Math.cos(ang) * hw;
   genQuadWireframe([
-    x-dx, y-dy, z-hh+yo,
-    x+dx, y+dy, z-hh+yo,
-    x+dx, y+dy, z+hh+yo,
-    x-dx, y-dy, z+hh+yo], 
-  null, renderable.buff);
+    x - dx, y - dy, z - hh + yo,
+    x + dx, y + dy, z - hh + yo,
+    x + dx, y + dy, z + hh + yo,
+    x - dx, y - dy, z + hh + yo],
+    null, renderable.buff);
 }
 
-function fillbuffersForFloorSpriteWireframe(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, renderable:SpriteWireframe) {
-  var dwx = Math.sin(-ang)*hw;
-  var dwy = Math.cos(-ang)*hw;
-  var dhx = Math.sin(-ang+Math.PI/2)*hh;
-  var dhy = Math.cos(-ang+Math.PI/2)*hh;
+function fillbuffersForFloorSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, renderable: SpriteWireframe) {
+  var dwx = Math.sin(-ang) * hw;
+  var dwy = Math.cos(-ang) * hw;
+  var dhx = Math.sin(-ang + Math.PI / 2) * hh;
+  var dhy = Math.cos(-ang + Math.PI / 2) * hh;
   genQuadWireframe([
-    x-dwx-dhx, y-dwy-dhy, z,
-    x+dwx-dhx, y+dwy-dhy, z,
-    x+dwx+dhx, y+dwy+dhy, z,
-    x-dwx+dhx, y-dwy+dhy, z], 
-  null, renderable.buff);
+    x - dwx - dhx, y - dwy - dhy, z,
+    x + dwx - dhx, y + dwy - dhy, z,
+    x + dwx + dhx, y + dwy + dhy, z,
+    x - dwx + dhx, y - dwy + dhy, z],
+    null, renderable.buff);
 }
 
-function fillBuffersForFaceSpriteWireframe(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, renderable:SpriteWireframe) {
+function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, renderable: SpriteWireframe) {
   genQuadWireframe([
     x, y, z,
     x, y, z,
     x, y, z,
     x, y, z
-    ],[
-    -hw+xo, +hh+yo,
-    +hw+xo, +hh+yo,
-    +hw+xo, -hh+yo,
-    -hw+xo, -hh+yo],
-  renderable.buff);
+  ], [
+      -hw + xo, +hh + yo,
+      +hw + xo, +hh + yo,
+      +hw + xo, -hh + yo,
+      -hw + xo, -hh + yo],
+    renderable.buff);
 }
 
 
-function prepareSpriteWireframe(board:Board, sprId:number, art:ArtProvider, wireframe:SpriteWireframe) {
+function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, wireframe: SpriteWireframe) {
   var spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
@@ -318,7 +340,7 @@ function prepareSpriteWireframe(board:Board, sprId:number, art:ArtProvider, wire
   var ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
   var xo = (info.attrs.xoff * spr.xrepeat) / 4;
   var yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
-  
+
   if (spr.cstat.type == FACE) {
     fillBuffersForFaceSpriteWireframe(x, y, z, xo, yo, hw, hh, wireframe);
     wireframe.type = Type.FACE;
@@ -329,19 +351,19 @@ function prepareSpriteWireframe(board:Board, sprId:number, art:ArtProvider, wire
   }
 }
 
-function applySectorTextureTransform(sector:Sector, ceiling:boolean, walls:Wall[], info:ArtInfo, texMat:GLM.Mat4Array) {
+function applySectorTextureTransform(sector: Sector, ceiling: boolean, walls: Wall[], info: ArtInfo, texMat: GLM.Mat4Array) {
   var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
   var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
   var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
   var parallaxscale = stats.parallaxing ? 6.0 : 1.0;
-  var tcscalex = (stats.xflip ? -1.0 :  1.0) / (info.w * scale * parallaxscale);
-  var tcscaley = (stats.yflip ? -1.0 :  1.0) / (info.h * scale);
+  var tcscalex = (stats.xflip ? -1.0 : 1.0) / (info.w * scale * parallaxscale);
+  var tcscaley = (stats.yflip ? -1.0 : 1.0) / (info.h * scale);
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [xpan / 256.0, ypan / 256.0, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
   if (stats.swapXY) {
-    GLM.mat4.rotateZ(texMat, texMat, -Math.PI/2);
+    GLM.mat4.rotateZ(texMat, texMat, -Math.PI / 2);
     GLM.mat4.scale(texMat, texMat, [-1, 1, 1, 1]);
   }
   if (stats.alignToFirstWall) {
@@ -349,10 +371,10 @@ function applySectorTextureTransform(sector:Sector, ceiling:boolean, walls:Wall[
     GLM.mat4.rotateZ(texMat, texMat, U.getFirstWallAngle(sector, walls));
     GLM.mat4.translate(texMat, texMat, [-w1.x, -w1.y, 0, 0])
   }
-  GLM.mat4.rotateX(texMat, texMat, Math.PI/2);
+  GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
 }
 
-function triangulate(sector:Sector, walls:Wall[]):number[][] {
+function triangulate(sector: Sector, walls: Wall[]): number[][] {
   var contour = [];
   var contours = [];
   var fw = sector.wallptr;
@@ -369,11 +391,11 @@ function triangulate(sector:Sector, walls:Wall[]):number[][] {
   return tesselate(contours);
 }
 
-function cacheTriangulate(board:Board, sec:Sector):any {
+function cacheTriangulate(board: Board, sec: Sector): any {
   return triangulate(sec, board.walls);
 }
 
-function fillBuffersForSectorNormal(ceil:boolean, board:Board, sec:Sector, buff:Buffer, vtxs:number[][], vidxs:number[], normal:GLM.Vec3Array) {
+function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, buff: Buffer, vtxs: number[][], vidxs: number[], normal: GLM.Vec3Array) {
   var heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   var z = ceil ? sec.ceilingz : sec.floorz;
   var slope = U.createSlopeCalculator(sec, board.walls);
@@ -386,23 +408,23 @@ function fillBuffersForSectorNormal(ceil:boolean, board:Board, sec:Sector, buff:
     buff.writeNormal(i, normal[0], normal[1], normal[2]);
   }
 
-  for (var i = 0; i < vidxs.length; i+=3) {
+  for (var i = 0; i < vidxs.length; i += 3) {
     if (ceil) {
-      buff.writeTriangle(i, vidxs[i+0], vidxs[i+1], vidxs[i+2]);
+      buff.writeTriangle(i, vidxs[i + 0], vidxs[i + 1], vidxs[i + 2]);
     } else {
-      buff.writeTriangle(i, vidxs[i+2], vidxs[i+1], vidxs[i+0]);
+      buff.writeTriangle(i, vidxs[i + 2], vidxs[i + 1], vidxs[i + 0]);
     }
   }
 }
 
-function fillBuffersForSector(ceil:boolean, board:Board, sec:Sector, renderable:SectorSolid, normal:GLM.Vec3Array) {
-    var [vtxs, vidxs] = cacheTriangulate(board, sec);
-    var d = ceil ? renderable.ceiling : renderable.floor;
-    d.buff.allocate(vtxs.length+sec.wallnum, vidxs.length);
-    fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal);
+function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderable: SectorSolid, normal: GLM.Vec3Array) {
+  var [vtxs, vidxs] = cacheTriangulate(board, sec);
+  var d = ceil ? renderable.ceiling : renderable.floor;
+  d.buff.allocate(vtxs.length + sec.wallnum, vidxs.length);
+  fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal);
 }
 
-function prepareSector(board:Board, art:ArtProvider, secId:number, renderable:SectorSolid) {
+function prepareSector(board: Board, art: ArtProvider, secId: number, renderable: SectorSolid) {
   var sec = board.sectors[secId];
   fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(board, secId, true));
   renderable.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
@@ -421,9 +443,9 @@ function prepareSector(board:Board, art:ArtProvider, secId:number, renderable:Se
   applySectorTextureTransform(sec, false, board.walls, info, renderable.floor.texMat);
 }
 
-function getWallCoords(x1:number, y1:number, x2:number, y2:number, 
-  slope:any, nextslope:any, heinum:number, nextheinum:number, z:number, nextz:number, check:boolean):number[] {
-  var z1 = (slope(x1, y1, heinum) + z) / SCALE; 
+function getWallCoords(x1: number, y1: number, x2: number, y2: number,
+  slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean): number[] {
+  var z1 = (slope(x1, y1, heinum) + z) / SCALE;
   var z2 = (slope(x2, y2, heinum) + z) / SCALE;
   var z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
   var z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
@@ -432,14 +454,14 @@ function getWallCoords(x1:number, y1:number, x2:number, y2:number,
   return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
 }
 
-function getMaskedWallCoords(x1:number, y1:number, x2:number, y2:number, slope:any, nextslope:any, 
-  ceilheinum:number, ceilnextheinum:number, ceilz:number, ceilnextz:number,
-  floorheinum:number, floornextheinum:number, floorz:number, floornextz:number):number[] {
-  var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE; 
+function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slope: any, nextslope: any,
+  ceilheinum: number, ceilnextheinum: number, ceilz: number, ceilnextz: number,
+  floorheinum: number, floornextheinum: number, floorz: number, floornextz: number): number[] {
+  var currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE;
   var currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
   var currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
   var currz4 = (slope(x1, y1, floorheinum) + floorz) / SCALE;
-  var nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / SCALE; 
+  var nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / SCALE;
   var nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / SCALE;
   var nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / SCALE;
   var nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / SCALE;
@@ -450,11 +472,11 @@ function getMaskedWallCoords(x1:number, y1:number, x2:number, y2:number, slope:a
   return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
 }
 
-function normals(n:GLM.Vec3Array) {
+function normals(n: GLM.Vec3Array) {
   return [n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2]];
 }
 
-function genQuad(coords:number[], n:number[], buff:Buffer, onesided:number=1) {
+function genQuad(coords: number[], n: number[], buff: Buffer, onesided: number = 1) {
   buff.allocate(4, onesided ? 6 : 12);
   var [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4] = coords;
   buff.writePos(0, x1, z1, y1);
@@ -470,7 +492,7 @@ function genQuad(coords:number[], n:number[], buff:Buffer, onesided:number=1) {
     buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-function applyWallTextureTransform(wall:Wall, wall2:Wall, info:ArtInfo, base:number, originalWall:Wall=wall, texMat:GLM.Mat4Array) {
+function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base: number, originalWall: Wall = wall, texMat: GLM.Mat4Array) {
   var wall1 = wall;
   if (originalWall.cstat.xflip)
     [wall1, wall2] = [wall2, wall1];
@@ -483,7 +505,7 @@ function applyWallTextureTransform(wall:Wall, wall2:Wall, info:ArtInfo, base:num
   var tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0);
   var tcxoff = originalWall.xpanning / tw;
   var tcyoff = wall.ypanning / 256.0;
-  
+
   GLM.mat4.identity(texMat);
   GLM.mat4.translate(texMat, texMat, [tcxoff, tcyoff, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
@@ -491,7 +513,7 @@ function applyWallTextureTransform(wall:Wall, wall2:Wall, info:ArtInfo, base:num
   GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / SCALE, -wall1.y, 0]);
 }
 
-function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, renderable:WallSolid) {
+function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: number, renderable: WallSolid) {
   var wall = board.walls[wallId];
   var sector = board.sectors[secId];
   var wall2 = board.walls[wall.point2];
@@ -541,7 +563,7 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
         renderable.bot.shade = wall_.shade;
         renderable.bot.pal = wall_.pal;
       }
-    } 
+    }
 
     var nextceilingheinum = nextsector.ceilingheinum;
     var coords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
@@ -564,7 +586,7 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
     if (wall.cstat.masking) {
       var tex1 = art.get(wall.overpicnum);
       var info1 = art.getInfo(wall.overpicnum);
-      var coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope, 
+      var coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope,
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
         floorheinum, nextfloorheinum, floorz, nextfloorz);
       genQuad(coords, normal, renderable.mid.buff);
@@ -574,75 +596,75 @@ function prepareWall(board:Board, art:ArtProvider, wallId:number, secId:number, 
       renderable.mid.shade = wall.shade;
       renderable.mid.pal = wall.pal;
       renderable.mid.trans = trans;
-    } 
+    }
   }
 }
 
-function fillbuffersForWallSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, renderable:SpriteSolid) {
-  var dx = Math.sin(ang)*hw;
-  var dy = Math.cos(ang)*hw;
+function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SpriteSolid) {
+  var dx = Math.sin(ang) * hw;
+  var dy = Math.cos(ang) * hw;
   genQuad([
-    x-dx, y-dy, z-hh+yo,
-    x+dx, y+dy, z-hh+yo,
-    x+dx, y+dy, z+hh+yo,
-    x-dx, y-dy, z+hh+yo], 
-    normals(U.ang2vec(ang)), 
+    x - dx, y - dy, z - hh + yo,
+    x + dx, y + dy, z - hh + yo,
+    x + dx, y + dy, z + hh + yo,
+    x - dx, y - dy, z + hh + yo],
+    normals(U.ang2vec(ang)),
     renderable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
   var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [xf/(hw*2), -yf/(hh*2), 1, 1]);
-  GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI/2);
-  GLM.mat4.translate(texMat, texMat, [-x-xf*dx, -z-yf*hh-yo, -y-xf*dy, 0]);
+  GLM.mat4.scale(texMat, texMat, [xf / (hw * 2), -yf / (hh * 2), 1, 1]);
+  GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI / 2);
+  GLM.mat4.translate(texMat, texMat, [-x - xf * dx, -z - yf * hh - yo, -y - xf * dy, 0]);
 }
 
-function fillbuffersForFloorSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, ang:number, xf:number, yf:number, onesided:number, renderable:SpriteSolid) {
-  var dwx = Math.sin(-ang)*hw;
-  var dwy = Math.cos(-ang)*hw;
-  var dhx = Math.sin(-ang+Math.PI/2)*hh;
-  var dhy = Math.cos(-ang+Math.PI/2)*hh;
+function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SpriteSolid) {
+  var dwx = Math.sin(-ang) * hw;
+  var dwy = Math.cos(-ang) * hw;
+  var dhx = Math.sin(-ang + Math.PI / 2) * hh;
+  var dhy = Math.cos(-ang + Math.PI / 2) * hh;
   var s = !(xf || yf) ? 1 : -1;
   genQuad([
-    x-dwx-dhx, y-dwy-dhy, z,
-    x+s*(-dwx+dhx), y+s*(-dwy+dhy), z,
-    x+dwx+dhx, y+dwy+dhy, z,
-    x+s*(dwx-dhx), y+s*(dwy-dhy), z], 
-    normals([0, s, 0]), 
+    x - dwx - dhx, y - dwy - dhy, z,
+    x + s * (-dwx + dhx), y + s * (-dwy + dhy), z,
+    x + dwx + dhx, y + dwy + dhy, z,
+    x + s * (dwx - dhx), y + s * (dwy - dhy), z],
+    normals([0, s, 0]),
     renderable.buff, onesided);
 
   var xf = xf ? -1.0 : 1.0;
   var yf = yf ? -1.0 : 1.0;
   var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [xf/(hw*2), yf/(hh*2), 1, 1]);
+  GLM.mat4.scale(texMat, texMat, [xf / (hw * 2), yf / (hh * 2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
-  GLM.mat4.rotateZ(texMat, texMat, ang - Math.PI/2);
+  GLM.mat4.rotateZ(texMat, texMat, ang - Math.PI / 2);
   GLM.mat4.translate(texMat, texMat, [-x, -y, 0, 0]);
-  GLM.mat4.rotateX(texMat, texMat, -Math.PI/2);
+  GLM.mat4.rotateX(texMat, texMat, -Math.PI / 2);
 }
 
-function fillBuffersForFaceSprite(x:number, y:number, z:number, xo:number, yo:number, hw:number, hh:number, xf:number, yf:number, renderable:SpriteSolid) {
+function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, xf: number, yf: number, renderable: SpriteSolid) {
   genQuad([
     x, y, z,
     x, y, z,
     x, y, z,
     x, y, z
-    ], [
-    -hw+xo, +hh+yo, 0,
-    +hw+xo, +hh+yo, 0,
-    +hw+xo, -hh+yo, 0,
-    -hw+xo, -hh+yo, 0
+  ], [
+      -hw + xo, +hh + yo, 0,
+      +hw + xo, +hh + yo, 0,
+      +hw + xo, -hh + yo, 0,
+      -hw + xo, -hh + yo, 0
     ], renderable.buff, 0);
 
   var texMat = renderable.texMat;
   GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [1/(hw*2), -1/(hh*2), 1, 1]);
-  GLM.mat4.translate(texMat, texMat, [hw-xo, -hh-yo, 0, 0]);
+  GLM.mat4.scale(texMat, texMat, [1 / (hw * 2), -1 / (hh * 2), 1, 1]);
+  GLM.mat4.translate(texMat, texMat, [hw - xo, -hh - yo, 0, 0]);
 }
 
-function prepareSprite(board:Board, art:ArtProvider, sprId:number, renderable:SpriteSolid) {
+function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable: SpriteSolid) {
   var spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
@@ -664,7 +686,7 @@ function prepareSprite(board:Board, art:ArtProvider, sprId:number, renderable:Sp
   renderable.shade = shade;
   renderable.pal = spr.pal;
   renderable.trans = trans;
-  
+
   if (spr.cstat.type == FACE) {
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, renderable);
     renderable.type = Type.FACE;

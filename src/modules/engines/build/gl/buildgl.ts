@@ -51,6 +51,8 @@ export function setClipPlane(x:number, y:number, z:number, w:number) {
 }
 
 export function draw(gl:WebGLRenderingContext, renderable:Renderable) {
+  if (renderable == null)
+    return;
   renderable.draw(gl, state);
 }
 

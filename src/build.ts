@@ -3,6 +3,7 @@ import * as getter from './libs/getter';
 import * as data from './libs/dataviewstream';
 import * as MU from './libs/mathutils';
 import * as controller from './modules/controller3d';
+import * as INPUT from './modules/input';
 import * as bloodloader from './modules/engines/build/bloodloader';
 import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
@@ -179,7 +180,7 @@ function createMoveStruct(board:BS.Board, control:controller.Controller3D) {
   ms.x = playerstart.x;
   ms.y = playerstart.y;
   ms.z = playerstart.z;
-  control.getCamera().setPosXYZ(ms.x, ms.z/-16 + 1024, ms.y);
+  control.getCamera().setPositionXYZ(ms.x, ms.z/-16 + 1024, ms.y);
   return ms;
 }
 
@@ -271,20 +272,22 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   var board = bloodloader.loadBloodMap(stream);
   console.log(board);
   var art = new BuildArtProvider(artFiles, pal, PLUs, gl);
-  var control = new controller.Controller3D(gl);
+  var control = new controller.Controller3D();
+  INPUT.bind();
   control.setFov(75);
   var ms = createMoveStruct(board, control);
 
   RENDERER.init(gl, art, board, () => {
   
   GL.animate(gl,(gl:WebGLRenderingContext, time:number) => {
-    var pos = control.getCamera().getPos();
+    
+    var pos = control.getCamera().getPosition();
     ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1])*-16);
-
+    
     PROFILE.start();
     RENDERER.draw(gl, board, ms, control);
     PROFILE.endProfile()
-
+    
     info['Rendering:'] = PROFILE.get('draw').time.toFixed(2)+'ms';
     info['Processing:'] = PROFILE.get('processing').time.toFixed(2)+'ms';
     info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
@@ -296,8 +299,9 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     info['Buffer:'] = (100 * PROFILE.get('processing').counts['buffer']).toFixed(2)+'%';
     props.refresh(info);
     drawCompass(compass, control.getCamera().forward());
-
-    control.move(time);
+    
+    control.think(time);
+    INPUT.postFrame();
   });
 
   gl.canvas.oncontextmenu = () => false;

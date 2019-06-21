@@ -1,34 +1,32 @@
 import * as GLM from './../libs_js/glmatrix';
 import * as MU from './../libs/mathutils';
-import * as VEC from './../libs/vecmath';
 
 export class Camera {
-
   private transform:GLM.Mat4Array;
-  private pos:GLM.Vec3Array;
+  private position:GLM.Vec3Array;
   private angleX:number;
   private angleY:number;
   private needUpdate:boolean = true;
 
   constructor(x:number, y:number, z:number, ax:number, ay:number) {
     this.transform = GLM.mat4.create();
-    this.pos = GLM.vec3.fromValues(x, y, z);
+    this.position = GLM.vec3.fromValues(x, y, z);
     this.angleX = ax;
     this.angleY = ay;
   }
 
-  public setPos(pos:GLM.Vec3Array):void {
-    this.pos = pos;
+  public setPosition(pos:GLM.Vec3Array):void {
+    this.position = pos;
     this.needUpdate = true;
   }
 
-  public setPosXYZ(x:number, y:number, z:number):void {
-    GLM.vec3.set(this.pos, x, y, z);
+  public setPositionXYZ(x:number, y:number, z:number):void {
+    GLM.vec3.set(this.position, x, y, z);
     this.needUpdate = true;
   }
 
-  public getPos():GLM.Vec3Array {
-    return this.pos;
+  public getPosition():GLM.Vec3Array {
+    return this.position;
   }
 
   public forward():GLM.Vec3Array {
@@ -55,10 +53,9 @@ export class Camera {
   }
 
   public getTransformMatrix():GLM.Mat4Array {
-
     var mat = this.transform;
-    var pos = this.pos;
     if (this.needUpdate) {
+      var pos = this.position;
       GLM.mat4.identity(mat);
       GLM.mat4.rotateX(mat, mat, MU.deg2rad(-this.angleX));
       GLM.mat4.rotateY(mat, mat, MU.deg2rad(-this.angleY));

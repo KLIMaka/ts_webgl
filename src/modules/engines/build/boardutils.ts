@@ -7,27 +7,6 @@ const DELTA_DIST = Math.SQRT2;
 const DELTA = 1e-6;
 const DEFAULT_REPEAT_RATE = 128;
 
-export function findSector(board:Board, wallId:number):number {
-  if (wallId < 0 || wallId >= board.walls.length)
-    return -1;
-  var wall = board.walls[wallId];
-  if (wall.nextwall != -1)
-    return board.walls[wall.nextwall].nextsector;
-  var start = 0;
-  var end = board.sectors.length - 1;
-  while (end - start >= 0) {
-    var pivot = MU.int(start + (end - start) / 2);
-    var sec = board.sectors[pivot];
-    if (sec.wallptr <= wallId && sec.wallptr+sec.wallnum >= wallId)
-      return pivot;
-    if (sec.wallptr > wallId) {
-      end = pivot - 1;
-    } else {
-      start = pivot + 1;
-    }
-  }
-}
-
 function pointOnWall(board:Board, wallId:number, x:number, y:number):number {
   var wall = board.walls[wallId];
   var wall2 = board.walls[wall.point2];
@@ -64,6 +43,25 @@ export function closestWallOnWall(board:Board, w1:number, x:number, y:number):nu
   var dist1 = MU.len2d(wall1.x-x, wall1.y-y);
   var dist2 = MU.len2d(wall2.x-x, wall2.y-y);
   return dist2 > dist1 ? w1 : w2;
+}
+
+export function closestWallInSector(board:Board, secId:number, x:number, y:number, d:number):number {
+  var sec = board.sectors[secId];
+  if (sec == undefined)
+    return -1;
+  var start = sec.wallptr;
+  var end = sec.wallptr + sec.wallnum;
+  var mindist = Number.MAX_VALUE;
+  var result = -1;
+  for (var w = start; w < end; w++) {
+    var wall = board.walls[w];
+    var dist = MU.len2d(wall.x-x, wall.y-y);
+    if (dist < d && dist < mindist) {
+      mindist = dist;
+      result = w;
+    }
+  }
+  return result;
 }
 
 export function closestWall(board:Board, x:number, y:number, secId:number):number[] {
@@ -144,7 +142,7 @@ function fixpoint2xpan(board:Board, wallId:number, art:ArtInfoProvider) {
 }
 
 function insertPoint(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider, wallptrs:number[]) {
-  var secId = findSector(board, wallId);
+  var secId = U.sectorOfWall(board, wallId);
   var wall = board.walls[wallId];
   var lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
   moveWalls(board, secId, wallId, 1, wallptrs);
