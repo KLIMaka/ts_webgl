@@ -40,6 +40,7 @@ vec3 palLookup(vec2 tc) {
   lightLevel = lightLevel - specular * 64.0;
 #endif
 
+
   float dist = distance(wpos.xz, curpos.xz);
   if (dist < 16.0)
     lightLevel = lightLevel - 64.0;
@@ -72,17 +73,19 @@ void clip() {
 
 void main() {
   clip();
-#ifdef FLAT
+#if defined FLAT
   vec3 c = vec3(1.0);
-#else
-#ifdef PARALLAX
+#elif defined PARALLAX
   vec3 toPixel = normalize(wpos - eyepos);
   float hang = (atan(toPixel.z, toPixel.x) + PI) / (2.0 * PI);
   float vang = (1.0 - toPixel.y) / 2.0;
   vec3 c = palLookup(vec2(hang, vang));
+#elif defined HELPER
+  vec3 c = vec3(texture2D(base, fract(tc)).r);
+  if (c.r >= trans)
+    discard;
 #else
   vec3 c = palLookup(tc);
-#endif
 #endif
 
   if (color.r > 1.0 && any(lessThan(fract(tc*8.0), vec2(0.04, 0.04))))

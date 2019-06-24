@@ -1,6 +1,4 @@
 import * as DS from './drawstruct';
-import * as MU from '../libs/mathutils';
-import * as pixel from './pixelprovider';
 
 export class TextureStub implements DS.Texture {
   constructor(public w:number, public h:number) {}
@@ -9,6 +7,19 @@ export class TextureStub implements DS.Texture {
   public getHeight():number { return this.h }
   public getFormat():number { return null }
   public getType():number { return null }
+}
+
+function getMagFilter(filter:number):number {
+  switch(filter) {
+    case WebGLRenderingContext.NEAREST:
+    case WebGLRenderingContext.NEAREST_MIPMAP_LINEAR:
+    case WebGLRenderingContext.NEAREST_MIPMAP_NEAREST:
+      return WebGLRenderingContext.NEAREST;
+    case WebGLRenderingContext.LINEAR:
+    case WebGLRenderingContext.LINEAR_MIPMAP_LINEAR:
+    case WebGLRenderingContext.LINEAR_MIPMAP_NEAREST:
+      return WebGLRenderingContext.LINEAR;
+  }
 }
 
 export class TextureImpl implements DS.Texture {
@@ -28,7 +39,7 @@ export class TextureImpl implements DS.Texture {
     this.type = gl.UNSIGNED_BYTE;
 
     gl.bindTexture(gl.TEXTURE_2D, this.id);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.filter || gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, getMagFilter(options.filter || gl.NEAREST));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.filter || gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.repeat || gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.repeat || gl.CLAMP_TO_EDGE);

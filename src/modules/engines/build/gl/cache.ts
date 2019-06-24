@@ -1,4 +1,4 @@
-import { Solid, Wireframe, Buffer, Type, Renderable } from './renderable';
+import { Solid, Wireframe, Buffer, Type, Renderable, Helper } from './renderable';
 import { ArtInfo, ArtInfoProvider } from '../art';
 import { Board, Sector, Wall, FACE, WALL, FLOOR } from '../structs';
 import { tesselate } from '../../../../libs_js/glutess';
@@ -177,7 +177,7 @@ export class Cache {
   }
 
   public createRenderable() {
-    return new Solid();
+    return new Helper();
   }
 
   public getByIdType(id: number, addId: number, type: U.HitType, wireframe: boolean = false): Renderable {

@@ -13,7 +13,7 @@ import * as U from '../utils';
 import * as BUFF from './buffers';
 import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
-import { Renderable, Type } from './renderable';
+import { Renderable, Type, Helper } from './renderable';
 import { BloodSprite } from '../bloodstructs';
 
 
@@ -216,22 +216,29 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 }
 
 function createTexture(gl: WebGLRenderingContext): Texture {
-  var img = new Uint8Array(16 * 16);
-  for (var i = 0; i < 16; i++) {
-    img[i] = 32; img[16 * i] = 32;
+  var img = new Uint8Array(128 * 128);
+  img.fill(255);
+  for (var i = 0; i < 128; i++) {
+    img[i] = 254; img[128 * i] = 254;
+    img[i+128] = 127; img[128 * i+1] = 127;
+    if (i != 0) {
+      img[127*128+i] = 127; img[128*i + 127] = 127;
+    }
   }
-  return TEX.createTexture(16, 16, gl, { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE }, img, gl.LUMINANCE);
+  var tex = TEX.createTexture(128, 128, gl, { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.CLAMP_TO_EDGE }, img, gl.LUMINANCE);
+  gl.bindTexture(gl.TEXTURE_2D, tex.get());
+  gl.generateMipmap(gl.TEXTURE_2D);
+  return tex;
 }
 
-var helper;
+var helper:Helper;
 function createHelper(gl:WebGLRenderingContext) {
   if (helper != null)
     return;
   helper = cache.createRenderable();
   helper.buff.allocate(4, 12);
   helper.tex = createTexture(gl);
-  helper.pal = 1;
-  helper.trans = 0.5;
+  helper.trans = 0.2;
   helper.buff.writePos(0, -64000, 0, -64000);
   helper.buff.writePos(1, 64000, 0, -64000);
   helper.buff.writePos(2, 64000, 0, 64000);
@@ -239,13 +246,16 @@ function createHelper(gl:WebGLRenderingContext) {
   helper.buff.writeQuad(0, 0, 1, 2, 3);
   helper.buff.writeQuad(6, 3, 2, 1, 0);
   var tmat = GLM.mat4.create();
-  GLM.mat4.scale(tmat, tmat, [1 / 256, 1 / 256, 1, 1]);
+  GLM.mat4.scale(tmat, tmat, [1 / 128, 1 / 128, 1, 1]);
   GLM.mat4.rotateX(tmat, tmat, Math.PI / 2);
   helper.texMat = tmat;
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   createHelper(gl);
+  var id = movingId;
+  if (id != -1) {
+  }
 
   if (hit.t != -1 && U.isSector(hit.type)) {
     var z = (hit.type == U.HitType.CEILING ? board.sectors[hit.id].ceilingz : board.sectors[hit.id].floorz) / -16;
@@ -254,11 +264,13 @@ function drawHelpers(gl: WebGLRenderingContext, board: Board) {
     helper.buff.writePos(2, 64000, z, 64000);
     helper.buff.writePos(3, -64000, z, 64000);
 
-    gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.STENCIL_TEST);
     writeStencilOnly(gl, 42);
+    gl.polygonOffset(-1, -8);
     BGL.draw(gl, cache.getByIdType(hit.id, U.isWall(hit.id) ? U.sectorOfWall(board, hit.id) : -1, hit.type));
+    gl.polygonOffset(0, 0);
     writeStenciledOnly(gl, 42);
+    gl.disable(gl.DEPTH_TEST);
     BGL.draw(gl, helper);
     gl.disable(gl.STENCIL_TEST);
     gl.enable(gl.DEPTH_TEST);
