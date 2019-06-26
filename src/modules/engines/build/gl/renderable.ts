@@ -67,35 +67,19 @@ export class Solid implements Renderable {
   public pal: number;
   public parallax;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
+  public grid = false;
   
   public draw(gl: WebGLRenderingContext, state: State) {
     if (this.buff.get() == null)
     return;
-    state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
+    state.setShader(this.grid ? 'grid' : this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     state.setTexture('base', this.tex);
     state.setUniform('color', [1, 1, 1, this.trans]);
     state.setUniform('pluN', this.pal);
     state.setUniform('shade', this.shade);
     state.setUniform('T', this.texMat);
+    state.setUniform('GT', this.texMat);
     state.setDrawElements(this.buff.get());
-    state.draw(gl);
-  }
-}
-
-export class Helper implements Renderable {
-  public buff: Buffer = new Buffer();
-  public tex: DS.Texture;
-  public texMat: GLM.Mat4Array = GLM.mat4.create();
-  public trans: number = 1;
-  
-  public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.buff.get() == null)
-    return;
-    state.setShader('helper');
-    state.setTexture('base', this.tex);
-    state.setUniform('T', this.texMat);
-    state.setDrawElements(this.buff.get());
-    state.setUniform('color', [1, 1, 1, this.trans]);
     state.draw(gl);
   }
 }

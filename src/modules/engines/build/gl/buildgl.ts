@@ -9,14 +9,14 @@ import * as AB from '../../../../libs/asyncbarrier';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state:State;
-export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, cb:()=>void) {
+export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, grid:DS.Texture, cb:()=>void) {
   var ab = AB.create();
-  SHADER.createShader(gl, SHADER_NAME, ['TC_GRID', 'PAL_LIGHTING'], ab.callback('baseShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['PAL_LIGHTING'], ab.callback('baseShader'));
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'PAL_LIGHTING'], ab.callback('spriteShader'));
   SHADER.createShader(gl, SHADER_NAME, ['FLAT'], ab.callback('baseFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT'], ab.callback('spriteFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['PARALLAX'], ab.callback('parallax'));
-  SHADER.createShader(gl, SHADER_NAME, ['HELPER'], ab.callback('helper'));
+  SHADER.createShader(gl, SHADER_NAME, ['GRID'], ab.callback('grid'));
   ab.wait((res) => {
     state = new State(gl);
     state.registerShader('baseShader', res['baseShader']);
@@ -24,7 +24,7 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, c
     state.registerShader('baseFlatShader', res['baseFlatShader']);
     state.registerShader('spriteFlatShader', res['spriteFlatShader']);
     state.registerShader('parallax', res['parallax']);
-    state.registerShader('helper', res['helper']);
+    state.registerShader('grid', res['grid']);
     
     BUFF.init(gl, 1024*64);
     state.setIndexBuffer(BUFF.getIdxBuffer());
@@ -32,15 +32,17 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, c
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
     state.setTexture('pal', pal);
     state.setTexture('plu', plu);
+    state.setTexture('grid', grid);
 
     cb();
   });
 }
 
+let inv = GLM.mat4.create();
 export function setViewMatrices(proj:GLM.Mat4Array, view:GLM.Mat4Array, pos:GLM.Vec3Array) {
   state.setUniform('P', proj);
   state.setUniform('V', view);
-  state.setUniform('IV', GLM.mat4.invert(GLM.mat4.create(), view));
+  state.setUniform('IV', GLM.mat4.invert(inv, view));
   state.setUniform('eyepos', pos);
 }
 

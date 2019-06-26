@@ -13,7 +13,7 @@ import * as U from '../utils';
 import * as BUFF from './buffers';
 import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
-import { Renderable, Type, Helper } from './renderable';
+import { Renderable, Type, Solid } from './renderable';
 import { BloodSprite } from '../bloodstructs';
 import { loadImage } from '../../../../libs/imgutils';
 
@@ -33,16 +33,16 @@ function isLowerLink(spr: Sprite) {
 
 
 
-var ceilingLinks = {}
-var floorLinks = {}
+let ceilingLinks = {}
+let floorLinks = {}
 
 function initRorLinks(board: Board) {
-  var linkRegistry = {};
-  for (var s = 0; s < board.sprites.length; s++) {
-    var spr = board.sprites[s];
+  let linkRegistry = {};
+  for (let s = 0; s < board.sprites.length; s++) {
+    let spr = board.sprites[s];
     if (isUpperLink(spr) || isLowerLink(spr)) {
-      var id = (<BloodSprite>spr).extraData.data1;
-      var links = linkRegistry[id];
+      let id = (<BloodSprite>spr).extraData.data1;
+      let links = linkRegistry[id];
       if (links == undefined) {
         links = [];
         linkRegistry[id] = links;
@@ -51,13 +51,13 @@ function initRorLinks(board: Board) {
     }
   }
 
-  for (var linkId in linkRegistry) {
-    var spriteIds = linkRegistry[linkId];
+  for (let linkId in linkRegistry) {
+    let spriteIds = linkRegistry[linkId];
     if (spriteIds.length != 2)
       throw new Error('Invalid link in sprites: ' + spriteIds);
-    var [s1, s2] = spriteIds;
-    var spr1 = board.sprites[s1];
-    var spr2 = board.sprites[s2];
+    let [s1, s2] = spriteIds;
+    let spr1 = board.sprites[s1];
+    let spr2 = board.sprites[s2];
     if (!isUpperLink(spr1)) {
       [s1, s2] = [s2, s1];
       [spr1, spr2] = [spr2, spr1];
@@ -69,8 +69,8 @@ function initRorLinks(board: Board) {
   }
 }
 
-var artProvider: PalProvider;
-var cache: Cache;
+let artProvider: PalProvider;
+let cache: Cache;
 export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, cb: () => void) {
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
@@ -82,39 +82,43 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   artProvider = art;
   cache = new Cache(board, art);
   initRorLinks(board);
-  loadGridTexture(gl, () => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), cb));
+  loadGridTexture(gl, (gridTex: Texture) => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), gridTex, cb));
 }
 
-var selectType = -1;
-var selectId = -1;
-var gridSize = 128;
+let selectType = -1;
+let selectId = -1;
+let gridSize = 128;
 
-var hit = new U.Hitscan();
-function hitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
-  var [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
-  U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+function print(board: Board, id: number, type: U.HitType) {
   if (INPUT.mouseClicks[0]) {
-    if (hit.t == -1) {
-      selectType = -1;
-      selectId = -1;
-    } else {
-      selectType = hit.type;
-      selectId = hit.id;
-      switch (selectType) {
-        case U.HitType.CEILING:
-        case U.HitType.FLOOR:
-          console.log(selectId, board.sectors[selectId]);
-          break;
-        case U.HitType.UPPER_WALL:
-        case U.HitType.MID_WALL:
-        case U.HitType.LOWER_WALL:
-          console.log(selectId, board.walls[selectId]);
-          break;
-        case U.HitType.SPRITE:
-          console.log(selectId, board.sprites[selectId]);
-          break;
-      }
+    switch (type) {
+      case U.HitType.CEILING:
+      case U.HitType.FLOOR:
+        console.log(id, board.sectors[id]);
+        break;
+      case U.HitType.UPPER_WALL:
+      case U.HitType.MID_WALL:
+      case U.HitType.LOWER_WALL:
+        console.log(id, board.walls[id]);
+        break;
+      case U.HitType.SPRITE:
+        console.log(id, board.sprites[id]);
+        break;
     }
+  }
+}
+
+let hit = new U.Hitscan();
+function hitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
+  let [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
+  U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+  if (hit.t == -1) {
+    selectType = -1;
+    selectId = -1;
+  } else {
+    selectType = hit.type;
+    selectId = hit.id;
+    print(board, selectId, selectType);
   }
 }
 
@@ -129,10 +133,10 @@ function getClosestWall(board: Board): number {
   return -1;
 }
 
-var movingz = 0;
-var movingId = -1;
+let movingz = 0;
+let movingId = -1;
 function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
-  var w = movingId == -1 ? getClosestWall(board) : movingId;
+  let w = movingId == -1 ? getClosestWall(board) : movingId;
   if (w == -1) {
     BGL.setCursorPosiotion([0, 0, 0]);
     return;
@@ -150,13 +154,13 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
   if (movingId == -1)
     return;
 
-  var fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
-  var pos = ctr.getCamera().getPosition();
-  var dz = movingz / -16 - pos[1];
-  var t = dz / fwd[1];
+  let fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
+  let pos = ctr.getCamera().getPosition();
+  let dz = movingz / -16 - pos[1];
+  let t = dz / fwd[1];
   GLM.vec3.scale(fwd, fwd, t);
-  var x = pos[0] + fwd[0];
-  var y = pos[2] + fwd[2]
+  let x = pos[0] + fwd[0];
+  let y = pos[2] + fwd[2]
   BU.moveWall(board, movingId, snapGrid(x, gridSize), snapGrid(y, gridSize));
   cache.invalidateAll();
 }
@@ -167,20 +171,20 @@ function snapGrid(coord: number, gridSize: number): number {
 
 function snap(board: Board) {
   if (hit.t != -1) {
-    // var x = hit.x; var y = hit.y;
+    // let x = hit.x; let y = hit.y;
     // if (U.isSector(hit.type)) {
     //   x = snapGrid(x, gridSize);
     //   y = snapGrid(y, gridSize);
     // } else if (U.isWall(hit.type)) {
-    //   var w = hit.id; 
-    //   var wall = board.walls[w];
-    //   var w1 = BU.nextwall(board, w); var wall1 = board.walls[w1];
-    //   var dx = wall1.x - wall.x;
-    //   var dy = wall1.y - wall.y;
-    //   var repeat = 128 * wall.xrepeat;
-    //   var dt = gridSize / repeat;
-    //   var dxt = x - wall.x; var dyt = y - wall.y;
-    //   var t = MU.len2d(dxt, dyt) / MU.len2d(dx, dy);
+    //   let w = hit.id; 
+    //   let wall = board.walls[w];
+    //   let w1 = BU.nextwall(board, w); let wall1 = board.walls[w1];
+    //   let dx = wall1.x - wall.x;
+    //   let dy = wall1.y - wall.y;
+    //   let repeat = 128 * wall.xrepeat;
+    //   let dt = gridSize / repeat;
+    //   let dxt = x - wall.x; let dyt = y - wall.y;
+    //   let t = MU.len2d(dxt, dyt) / MU.len2d(dx, dy);
     //   t = (1 - t) < dt/2.0 ? 1 : snapGrid(t, dt);
     //   x = MU.int(wall.x + (t * dx));
     //   y = MU.int(wall.y + (t * dy));
@@ -203,14 +207,6 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
   highlightSelected(gl, board);
 
-  // if (U.isWall(selectType) && ctr.getKeys()['Q']) {
-  //   selectId = BU.pushWall(board, selectId, -128, artProvider, []);
-  //   cache.invalidateAll();
-  // }
-  // if (U.isWall(selectType) && ctr.getKeys()['E']) {
-  //   selectId = BU.pushWall(board, selectId, 128, artProvider, []);
-  //   cache.invalidateAll();
-  // }
   if (U.isWall(selectType) && INPUT.keys['M']) {
     board.walls[selectId].picnum = 504;
     cache.invalidateWalls([selectId]);
@@ -225,67 +221,39 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   }
 }
 
-var gridTexture: Texture;
-function loadGridTexture(gl: WebGLRenderingContext, cb: () => void): void {
+function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => void): void {
   loadImage('resources/engines/blood/grid.png', (w: number, h: number, img: Uint8Array) => {
-    gridTexture = TEX.createTexture(w, h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, img, gl.RGBA);
+    let gridTexture = TEX.createTexture(w, h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, img, gl.RGBA);
     gl.bindTexture(gl.TEXTURE_2D, gridTexture.get());
     gl.generateMipmap(gl.TEXTURE_2D);
-    cb();
+    cb(gridTexture);
   });
 }
 
-var helper: Helper;
-function createHelper() {
-  if (helper != null)
-    return;
-  helper = cache.createRenderable();
-  helper.buff.allocate(4, 12);
-  helper.tex = gridTexture;
-  helper.trans = 0.2;
-  helper.buff.writePos(0, -64000, 0, -64000);
-  helper.buff.writePos(1, 64000, 0, -64000);
-  helper.buff.writePos(2, 64000, 0, 64000);
-  helper.buff.writePos(3, -64000, 0, 64000);
-  helper.buff.writeQuad(0, 0, 1, 2, 3);
-  helper.buff.writeQuad(6, 3, 2, 1, 0);
-  var tmat = GLM.mat4.create();
-  GLM.mat4.scale(tmat, tmat, [1 / 512, 1 / 512, 1, 1]);
-  GLM.mat4.rotateX(tmat, tmat, Math.PI / 2);
-  helper.texMat = tmat;
-}
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
-  createHelper();
   if (movingId != -1) {
-    var s = U.sectorOfWall(board, movingId);
-    var sec = board.sectors[s];
-    drawHelperPlane(gl, sec.ceilingz, s, U.HitType.CEILING);
-    drawHelperPlane(gl, sec.floorz, s, U.HitType.FLOOR);
+    let s = U.sectorOfWall(board, movingId);
+    drawHelperPlane(gl, movingId, s, U.HitType.UPPER_WALL);
+    drawHelperPlane(gl, movingId, s, U.HitType.MID_WALL);
+    drawHelperPlane(gl, movingId, s, U.HitType.LOWER_WALL);
+    drawHelperPlane(gl, s, -1, U.HitType.CEILING);
+    drawHelperPlane(gl, s, -1, U.HitType.FLOOR);
   } else if (hit.t != -1 && U.isSector(hit.type)) {
-    let id = hit.id;
-    let z = hit.type == U.HitType.CEILING ? board.sectors[id].ceilingz : board.sectors[id].floorz;
-    drawHelperPlane(gl, z, id, hit.type);
+    drawHelperPlane(gl, hit.id, -1, hit.type);
+  } else if (hit.t != -1 && U.isWall(hit.type)) {
+    let s = U.sectorOfWall(board, hit.id);
+    drawHelperPlane(gl, hit.id, s, hit.type);
   }
 }
 
-function drawHelperPlane(gl: WebGLRenderingContext, z:number, id:number, type:U.HitType) {
-  helper.buff.writePos(0, -64000, z/-16, -64000);
-  helper.buff.writePos(1, 64000, z/-16, -64000);
-  helper.buff.writePos(2, 64000, z/-16, 64000);
-  helper.buff.writePos(3, -64000, z/-16, 64000);
-
-  gl.enable(gl.STENCIL_TEST);
+function drawHelperPlane(gl: WebGLRenderingContext, id: number, addId: number, type: U.HitType) {
+  let r = <Solid> cache.getByIdType(id, addId, type);
+  r.grid = true;
   gl.disable(gl.DEPTH_TEST);
-  writeStencilOnly(gl, 42);
-  // gl.polygonOffset(-1, -8);
-  BGL.draw(gl, cache.getByIdType(id, -1, type));
-  // gl.polygonOffset(0, 0);
-  writeStenciledOnly(gl, 42);
-  BGL.draw(gl, helper);
-  gl.disable(gl.STENCIL_TEST);
+  BGL.draw(gl, r);
   gl.enable(gl.DEPTH_TEST);
-  writeAll(gl);
+  r.grid = false;
 }
 
 function highlightSelected(gl: WebGLRenderingContext, board: Board) {
@@ -351,7 +319,7 @@ function drawImpl(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr
   }
 
   PROFILE.startProfile('processing');
-  var result = ms.sec == -1
+  let result = ms.sec == -1
     ? VIS.all(board)
     : VIS.visible(board, ms);
   PROFILE.endProfile();
@@ -369,12 +337,12 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, s
   writeStencilOnly(gl, stencilValue);
   BGL.draw(gl, surface);
 
-  var diff = GLM.vec3.sub(GLM.vec3.create(), [src.x, src.z / -16, src.y], [dst.x, dst.z / -16, dst.y]);
-  var stackTransform = GLM.mat4.clone(ctr.getCamera().getTransformMatrix());
+  let diff = GLM.vec3.sub(GLM.vec3.create(), [src.x, src.z / -16, src.y], [dst.x, dst.z / -16, dst.y]);
+  let stackTransform = GLM.mat4.clone(ctr.getCamera().getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
 
-  var ms = new U.MoveStruct();
-  var position = ctr.getCamera().getPosition();
+  let ms = new U.MoveStruct();
+  let position = ctr.getCamera().getPosition();
   ms.sec = dst.sectnum; ms.x = position[0] - diff[0]; ms.y = position[2] - diff[2]; ms.z = position[1] - diff[1];
   BGL.setViewMatrices(ctr.getProjectionMatrix(gl), stackTransform, [ms.x, ms.z, ms.y]);
   writeStenciledOnly(gl, stencilValue);
@@ -385,24 +353,23 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, s
   BGL.draw(gl, surface);
 }
 
-var rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => floorLinks[sectorId] != undefined || ceilingLinks[sectorId] != undefined);
-
+let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => floorLinks[sectorId] != undefined || ceilingLinks[sectorId] != undefined);
 function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forSector(board, rorSectorCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
-  for (var i = 0; i < rorSectorCollector.sectors.length; i++) {
-    var s = rorSectorCollector.sectors[i];
-    var r = cache.getSector(s);
+  for (let i = 0; i < rorSectorCollector.sectors.length; i++) {
+    let s = rorSectorCollector.sectors[i];
+    let r = cache.getSector(s);
 
     if (ceilingLinks[s] != undefined) {
-      var src = board.sprites[ceilingLinks[s][0]];
-      var dst = board.sprites[ceilingLinks[s][1]];
+      let src = board.sprites[ceilingLinks[s][0]];
+      let dst = board.sprites[ceilingLinks[s][1]];
       drawStack(gl, board, ctr, src, dst, r.ceiling, i + 1);
     }
     if (floorLinks[s] != undefined) {
-      var src = board.sprites[floorLinks[s][0]];
-      var dst = board.sprites[floorLinks[s][1]];
+      let src = board.sprites[floorLinks[s][0]];
+      let dst = board.sprites[floorLinks[s][1]];
       drawStack(gl, board, ctr, src, dst, r.floor, i + 1);
     }
   }
@@ -410,35 +377,35 @@ function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms
   writeAll(gl);
 }
 
-var mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => board.walls[wallId].picnum == 504);
+let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => board.walls[wallId].picnum == 504);
 function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forWall(board, mirrorWallsCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
-  var msMirrored = new U.MoveStruct();
-  for (var i = 0; i < mirrorWallsCollector.walls.length; i++) {
-    var w = mirrorWallsCollector.walls[i].wallId;
-    var w1 = board.walls[w];
-    var w2 = board.walls[w1.point2];
+  let msMirrored = new U.MoveStruct();
+  for (let i = 0; i < mirrorWallsCollector.walls.length; i++) {
+    let w = mirrorWallsCollector.walls[i].wallId;
+    let w1 = board.walls[w];
+    let w2 = board.walls[w1.point2];
     if (!U.wallVisible(w1, w2, ms))
       continue;
 
     // draw mirror surface into stencil
-    var r = cache.getWall(w, mirrorWallsCollector.walls[i].sectorId);
+    let r = cache.getWall(w, mirrorWallsCollector.walls[i].sectorId);
     BGL.setViewMatrices(ctr.getProjectionMatrix(gl), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition());
     writeStencilOnly(gl, i + 127);
     BGL.draw(gl, r);
 
     // draw reflections in stenciled area
-    var wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x - w1.x, w2.y - w1.y]);
-    var mirrorNormal = GLM.vec3.fromValues(wallNormal[0], 0, wallNormal[1]);
-    var mirrorrD = -MU.dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
-    var mirroredTransform = VEC.mirrorBasis(GLM.mat4.create(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition(), mirrorNormal, mirrorrD);
+    let wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x - w1.x, w2.y - w1.y]);
+    let mirrorNormal = GLM.vec3.fromValues(wallNormal[0], 0, wallNormal[1]);
+    let mirrorrD = -MU.dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
+    let mirroredTransform = VEC.mirrorBasis(GLM.mat4.create(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition(), mirrorNormal, mirrorrD);
 
     BGL.setViewMatrices(ctr.getProjectionMatrix(gl), mirroredTransform, ctr.getCamera().getPosition());
     BGL.setClipPlane(mirrorNormal[0], mirrorNormal[1], mirrorNormal[2], mirrorrD);
     gl.cullFace(gl.FRONT);
-    var mpos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorrD, [ms.x, ms.z, ms.y]);
+    let mpos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorrD, [ms.x, ms.z, ms.y]);
     msMirrored.sec = ms.sec; msMirrored.x = mpos[0]; msMirrored.y = mpos[2]; msMirrored.z = mpos[1];
     writeStenciledOnly(gl, i + 127);
     drawRooms(gl, board, VIS.visible(board, msMirrored));
@@ -455,20 +422,20 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
 }
 
 function drawArray(gl: WebGLRenderingContext, arr: Renderable[]) {
-  for (var i = 0; i < arr.length; i++) {
+  for (let i = 0; i < arr.length; i++) {
     BGL.draw(gl, arr[i]);
   }
 }
 
 function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) {
-  var surfaces: Renderable[] = [];
-  var surfacesTrans: Renderable[] = [];
-  var sprites: Renderable[] = [];
-  var spritesTrans: Renderable[] = [];
+  let surfaces: Renderable[] = [];
+  let surfacesTrans: Renderable[] = [];
+  let sprites: Renderable[] = [];
+  let spritesTrans: Renderable[] = [];
 
   PROFILE.startProfile('processing');
   result.forSector(board, (board: Board, sectorId: number) => {
-    var sector = cache.getSector(sectorId);
+    let sector = cache.getSector(sectorId);
     if (floorLinks[sectorId] == undefined)
       surfaces.push(sector.floor);
     if (ceilingLinks[sectorId] == undefined)
@@ -478,7 +445,7 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
   result.forWall(board, (board: Board, wallId: number, sectorId: number) => {
     if (board.walls[wallId].picnum == 504)
       return;
-    var wall = cache.getWall(wallId, sectorId);
+    let wall = cache.getWall(wallId, sectorId);
     if (wall.mid.trans != 1) {
       surfacesTrans.push(wall.mid);
       surfaces.push(wall.bot, wall.top);
@@ -488,8 +455,8 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
     PROFILE.incCount('walls');
   });
   result.forSprite(board, (board: Board, spriteId: number) => {
-    var sprite = cache.getSprite(spriteId);
-    var trans = sprite.trans != 1;
+    let sprite = cache.getSprite(spriteId);
+    let trans = sprite.trans != 1;
     (sprite.type == Type.FACE
       ? (trans ? spritesTrans : sprites)
       : (trans ? spritesTrans : sprites))
