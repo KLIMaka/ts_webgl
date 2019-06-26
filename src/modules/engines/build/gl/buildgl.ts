@@ -58,4 +58,8 @@ export function draw(gl:WebGLRenderingContext, renderable:Renderable) {
   renderable.draw(gl, state);
 }
 
+export function newFrame() {
+  state.setUniform('time', performance.now());
+}
+
 

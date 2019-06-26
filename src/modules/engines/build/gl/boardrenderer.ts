@@ -15,6 +15,7 @@ import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
 import { Renderable, Type, Helper } from './renderable';
 import { BloodSprite } from '../bloodstructs';
+import { loadImage } from '../../../../libs/imgutils';
 
 
 export interface PalProvider extends ArtProvider {
@@ -81,7 +82,7 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   artProvider = art;
   cache = new Cache(board, art);
   initRorLinks(board);
-  BGL.init(gl, art.getPalTexture(), art.getPluTexture(), cb);
+  loadGridTexture(gl, () => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), cb));
 }
 
 var selectType = -1;
@@ -121,9 +122,9 @@ function getClosestWall(board: Board): number {
   if (hit.t == -1)
     return -1;
   if (U.isWall(hit.type)) {
-    return BU.closestWallInSector(board, U.sectorOfWall(board, hit.id), hit.x, hit.y, 128);
+    return BU.closestWallInSector(board, U.sectorOfWall(board, hit.id), hit.x, hit.y, 64);
   } else if (U.isSector(hit.type)) {
-    return BU.closestWallInSector(board, hit.id, hit.x, hit.y, 128);
+    return BU.closestWallInSector(board, hit.id, hit.x, hit.y, 64);
   }
   return -1;
 }
@@ -192,6 +193,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   gl.clearColor(0.1, 0.3, 0.1, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+  BGL.newFrame();
   drawImpl(gl, board, ms, ctr);
 
   hitscan(gl, board, ms, ctr);
@@ -213,31 +215,33 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
     board.walls[selectId].picnum = 504;
     cache.invalidateWalls([selectId]);
   }
-}
-
-function createTexture(gl: WebGLRenderingContext): Texture {
-  var img = new Uint8Array(128 * 128);
-  img.fill(255);
-  for (var i = 0; i < 128; i++) {
-    img[i] = 254; img[128 * i] = 254;
-    img[i+128] = 127; img[128 * i+1] = 127;
-    if (i != 0) {
-      img[127*128+i] = 127; img[128*i + 127] = 127;
-    }
+  if (U.isSector(selectType) && INPUT.keys['G']) {
+    board.sectors[selectId].floorxpanning = (board.sectors[selectId].floorxpanning + 16) % 256;
+    cache.invalidateSectors([selectId]);
   }
-  var tex = TEX.createTexture(128, 128, gl, { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.CLAMP_TO_EDGE }, img, gl.LUMINANCE);
-  gl.bindTexture(gl.TEXTURE_2D, tex.get());
-  gl.generateMipmap(gl.TEXTURE_2D);
-  return tex;
+  if (U.isSector(selectType) && INPUT.keys['H']) {
+    board.sectors[selectId].floorypanning = (board.sectors[selectId].floorypanning + 16) % 256;
+    cache.invalidateSectors([selectId]);
+  }
 }
 
-var helper:Helper;
-function createHelper(gl:WebGLRenderingContext) {
+var gridTexture: Texture;
+function loadGridTexture(gl: WebGLRenderingContext, cb: () => void): void {
+  loadImage('resources/engines/blood/grid.png', (w: number, h: number, img: Uint8Array) => {
+    gridTexture = TEX.createTexture(w, h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, img, gl.RGBA);
+    gl.bindTexture(gl.TEXTURE_2D, gridTexture.get());
+    gl.generateMipmap(gl.TEXTURE_2D);
+    cb();
+  });
+}
+
+var helper: Helper;
+function createHelper() {
   if (helper != null)
     return;
   helper = cache.createRenderable();
   helper.buff.allocate(4, 12);
-  helper.tex = createTexture(gl);
+  helper.tex = gridTexture;
   helper.trans = 0.2;
   helper.buff.writePos(0, -64000, 0, -64000);
   helper.buff.writePos(1, 64000, 0, -64000);
@@ -246,41 +250,74 @@ function createHelper(gl:WebGLRenderingContext) {
   helper.buff.writeQuad(0, 0, 1, 2, 3);
   helper.buff.writeQuad(6, 3, 2, 1, 0);
   var tmat = GLM.mat4.create();
-  GLM.mat4.scale(tmat, tmat, [1 / 128, 1 / 128, 1, 1]);
+  GLM.mat4.scale(tmat, tmat, [1 / 512, 1 / 512, 1, 1]);
   GLM.mat4.rotateX(tmat, tmat, Math.PI / 2);
   helper.texMat = tmat;
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
-  createHelper(gl);
-  var id = movingId;
-  if (id != -1) {
+  createHelper();
+  if (movingId != -1) {
+    var s = U.sectorOfWall(board, movingId);
+    var sec = board.sectors[s];
+    drawHelperPlane(gl, sec.ceilingz, s, U.HitType.CEILING);
+    drawHelperPlane(gl, sec.floorz, s, U.HitType.FLOOR);
+  } else if (hit.t != -1 && U.isSector(hit.type)) {
+    let id = hit.id;
+    let z = hit.type == U.HitType.CEILING ? board.sectors[id].ceilingz : board.sectors[id].floorz;
+    drawHelperPlane(gl, z, id, hit.type);
   }
+}
 
-  if (hit.t != -1 && U.isSector(hit.type)) {
-    var z = (hit.type == U.HitType.CEILING ? board.sectors[hit.id].ceilingz : board.sectors[hit.id].floorz) / -16;
-    helper.buff.writePos(0, -64000, z, -64000);
-    helper.buff.writePos(1, 64000, z, -64000);
-    helper.buff.writePos(2, 64000, z, 64000);
-    helper.buff.writePos(3, -64000, z, 64000);
+function drawHelperPlane(gl: WebGLRenderingContext, z:number, id:number, type:U.HitType) {
+  helper.buff.writePos(0, -64000, z/-16, -64000);
+  helper.buff.writePos(1, 64000, z/-16, -64000);
+  helper.buff.writePos(2, 64000, z/-16, 64000);
+  helper.buff.writePos(3, -64000, z/-16, 64000);
 
-    gl.enable(gl.STENCIL_TEST);
-    writeStencilOnly(gl, 42);
-    gl.polygonOffset(-1, -8);
-    BGL.draw(gl, cache.getByIdType(hit.id, U.isWall(hit.id) ? U.sectorOfWall(board, hit.id) : -1, hit.type));
-    gl.polygonOffset(0, 0);
-    writeStenciledOnly(gl, 42);
-    gl.disable(gl.DEPTH_TEST);
-    BGL.draw(gl, helper);
-    gl.disable(gl.STENCIL_TEST);
-    gl.enable(gl.DEPTH_TEST);
-    writeAll(gl);
-  }
+  gl.enable(gl.STENCIL_TEST);
+  gl.disable(gl.DEPTH_TEST);
+  writeStencilOnly(gl, 42);
+  // gl.polygonOffset(-1, -8);
+  BGL.draw(gl, cache.getByIdType(id, -1, type));
+  // gl.polygonOffset(0, 0);
+  writeStenciledOnly(gl, 42);
+  BGL.draw(gl, helper);
+  gl.disable(gl.STENCIL_TEST);
+  gl.enable(gl.DEPTH_TEST);
+  writeAll(gl);
 }
 
 function highlightSelected(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
   BGL.draw(gl, cache.getByIdType(selectId, U.isWall(selectType) ? U.sectorOfWall(board, selectId) : -1, selectType, true));
+  if (U.isSector(selectType)) {
+    let sec = board.sectors[selectId];
+    let start = sec.wallptr;
+    let end = sec.wallptr + sec.wallnum;
+    let slope = U.createSlopeCalculator(sec, board.walls);
+    let z = selectType == U.HitType.CEILING ? sec.ceilingz : sec.floorz;
+    let heinum = selectType == U.HitType.CEILING ? sec.ceilingheinum : sec.floorheinum;
+    for (let w = start; w < end; w++) {
+      let wall = board.walls[w];
+      let zz = (slope(wall.x, wall.y, heinum) + z) / -16;
+      BGL.draw(gl, cache.getWallPoint(w, 32, zz));
+    }
+  } else if (U.isWall(selectType)) {
+    let s = U.sectorOfWall(board, selectId);
+    let sec = board.sectors[s];
+    let wall = board.walls[selectId];
+    let wall1 = board.walls[wall.point2];
+    let slope = U.createSlopeCalculator(sec, board.walls);
+    let zf1 = (slope(wall.x, wall.y, sec.floorheinum) + sec.floorz) / -16;
+    let zf2 = (slope(wall1.x, wall1.y, sec.floorheinum) + sec.floorz) / -16;
+    let zc1 = (slope(wall.x, wall.y, sec.ceilingheinum) + sec.ceilingz) / -16;
+    let zc2 = (slope(wall1.x, wall1.y, sec.ceilingheinum) + sec.ceilingz) / -16;
+    BGL.draw(gl, cache.getWallPoint(selectId, 32, zf1));
+    BGL.draw(gl, cache.getWallPoint(selectId, 32, zc1));
+    BGL.draw(gl, cache.getWallPoint(wall.point2, 32, zf2));
+    BGL.draw(gl, cache.getWallPoint(wall.point2, 32, zc2));
+  }
   gl.enable(gl.DEPTH_TEST);
 }
 
@@ -429,6 +466,7 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
   var sprites: Renderable[] = [];
   var spritesTrans: Renderable[] = [];
 
+  PROFILE.startProfile('processing');
   result.forSector(board, (board: Board, sectorId: number) => {
     var sector = cache.getSector(sectorId);
     if (floorLinks[sectorId] == undefined)

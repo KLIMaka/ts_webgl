@@ -94,6 +94,8 @@ export class Cache {
   private spriteWireframe = new SpriteWireframe();
   private spriteWireframeId: number = -1;
 
+  private wallPoint = new Wireframe();
+
   constructor(private board: Board, private art: ArtProvider) {
   }
 
@@ -176,7 +178,7 @@ export class Cache {
     this.spriteWireframeId = -1;
   }
 
-  public createRenderable() {
+  public createRenderable():Helper {
     return new Helper();
   }
 
@@ -197,6 +199,23 @@ export class Cache {
     }
     return null;
   }
+
+  public getWallPoint(id:number, d:number, z:number):Wireframe {
+    this.wallPoint.mode = WebGLRenderingContext.TRIANGLES;
+    fillBufferForWallPoint(this.board, id, this.wallPoint.buff, d, z);
+    return this.wallPoint;
+  }
+}
+
+function fillBufferForWallPoint(board:Board, wallId:number, buff:Buffer, d:number, z:number) {
+  buff.allocate(4, 12);
+  let wall = board.walls[wallId];
+  buff.writePos(0, wall.x - d, z, wall.y - d);
+  buff.writePos(1, wall.x + d, z, wall.y - d);
+  buff.writePos(2, wall.x + d, z, wall.y + d);
+  buff.writePos(3, wall.x - d, z, wall.y + d);
+  buff.writeQuad(0, 0, 1, 2, 3);
+  buff.writeQuad(6, 3, 2, 1, 0);
 }
 
 function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, board: Board, buff: Buffer) {
@@ -352,26 +371,26 @@ function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, w
 }
 
 function applySectorTextureTransform(sector: Sector, ceiling: boolean, walls: Wall[], info: ArtInfo, texMat: GLM.Mat4Array) {
-  var xpan = ceiling ? sector.ceilingxpanning : sector.floorxpanning;
-  var ypan = ceiling ? sector.ceilingypanning : sector.floorypanning;
+  var xpan = (ceiling ? sector.ceilingxpanning : sector.floorxpanning) / 256.0;
+  var ypan = (ceiling ? sector.ceilingypanning : sector.floorypanning) / 256.0;
   var stats = ceiling ? sector.ceilingstat : sector.floorstat;
   var scale = stats.doubleSmooshiness ? 8.0 : 16.0;
   var parallaxscale = stats.parallaxing ? 6.0 : 1.0;
   var tcscalex = (stats.xflip ? -1.0 : 1.0) / (info.w * scale * parallaxscale);
   var tcscaley = (stats.yflip ? -1.0 : 1.0) / (info.h * scale);
   GLM.mat4.identity(texMat);
-  GLM.mat4.translate(texMat, texMat, [xpan / 256.0, ypan / 256.0, 0, 0]);
-  GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
+  GLM.mat4.translate(texMat, texMat, [xpan, ypan, 0, 0]);
+  GLM.mat4.scale(texMat, texMat, [tcscalex, -tcscaley, 1, 1]);
   if (stats.swapXY) {
-    GLM.mat4.rotateZ(texMat, texMat, -Math.PI / 2);
-    GLM.mat4.scale(texMat, texMat, [-1, 1, 1, 1]);
+    GLM.mat4.scale(texMat, texMat, [-1, -1, 1, 1]);
+    GLM.mat4.rotateZ(texMat, texMat, Math.PI / 2);
   }
   if (stats.alignToFirstWall) {
     var w1 = walls[sector.wallptr];
     GLM.mat4.rotateZ(texMat, texMat, U.getFirstWallAngle(sector, walls));
     GLM.mat4.translate(texMat, texMat, [-w1.x, -w1.y, 0, 0])
   }
-  GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
+  GLM.mat4.rotateX(texMat, texMat, -Math.PI / 2);
 }
 
 function triangulate(sector: Sector, walls: Wall[]): number[][] {

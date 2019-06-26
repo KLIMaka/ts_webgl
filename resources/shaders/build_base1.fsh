@@ -10,6 +10,7 @@ uniform vec3 curpos;
 uniform int shade;
 uniform vec3 eyepos;
 uniform vec4 clipPlane;
+uniform float time;
 
 varying float lightLevel;
 varying vec2 tc;
@@ -33,6 +34,7 @@ vec3 palLookup(vec2 tc) {
   int activePal = pluN;
   float lightLevel = lightOffset();
   vec3 toLight = normalize(curpos - wpos);
+  float overbright = 1.0;
 
 #ifdef SPECULAR
   vec3 r = reflect(-toLight, wnormal);
@@ -42,8 +44,8 @@ vec3 palLookup(vec2 tc) {
 
 
   float dist = distance(wpos.xz, curpos.xz);
-  if (dist < 16.0)
-    lightLevel = lightLevel - 64.0;
+  if (dist < 32.0)
+    overbright = 2.0 + (sin(time/ 100.0) + 1.0);
   // float dist = distance(wpos, curpos);
   // float ldot = dot(wnormal, toLight);
   // if (dist < 4096.0 && ldot >= -0.001) {
@@ -60,9 +62,9 @@ vec3 palLookup(vec2 tc) {
   float pluIdx = texture2D(plu, vec2(pluU, pluV)).r;
   vec3 c = texture2D(pal, vec2(pluIdx, 0)).rgb;
 #ifdef PAL_LIGHTING
-  return c;
+  return c * overbright;
 #else
-  return c * (1.0 - lightLevel);
+  return c * (1.0 - lightLevel) * overbright;
 #endif
 }
 
@@ -81,16 +83,17 @@ void main() {
   float vang = (1.0 - toPixel.y) / 2.0;
   vec3 c = palLookup(vec2(hang, vang));
 #elif defined HELPER
-  vec3 c = vec3(texture2D(base, fract(tc)).r);
-  if (c.r >= trans)
-    discard;
+  gl_FragColor = texture2D(base, tc);
+  return;
+  // if (c.r >= trans)
+  //   discard;
 #else
   vec3 c = palLookup(tc);
 #endif
 
-  if (color.r > 1.0 && any(lessThan(fract(tc*8.0), vec2(0.04, 0.04))))
-    c *= 2.0;
-
+#ifdef HELPER
+#else
   gl_FragColor = vec4(vec3(color.rgb * c), color.a);
+#endif
   // gl_FragColor = vec4(vec3((wnormal + 1.0) / 2.0), color.a);
 }

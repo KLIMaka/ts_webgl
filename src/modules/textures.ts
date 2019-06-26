@@ -44,6 +44,12 @@ export class TextureImpl implements DS.Texture {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.repeat || gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.repeat || gl.CLAMP_TO_EDGE);
 
+    if (options.aniso) {
+      var ext = gl.getExtension('EXT_texture_filter_anisotropic');
+      var max = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+      gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, max);
+    }
+
     if (img == null) 
       img = new Uint8Array(width*height*bpp);
     this.data = img;

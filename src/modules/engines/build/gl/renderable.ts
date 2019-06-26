@@ -103,6 +103,7 @@ export class Helper implements Renderable {
 export class Wireframe implements Renderable {
   public type: Type = Type.SURFACE;
   public buff: Buffer = new Buffer();
+  public mode: number = WebGLRenderingContext.LINES;
 
   public draw(gl: WebGLRenderingContext, state: State) {
     if (this.buff.get() == null)
@@ -110,6 +111,6 @@ export class Wireframe implements Renderable {
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', [1, 1, 1, 1]);
     state.setDrawElements(this.buff.get());
-    state.draw(gl, gl.LINES);
+    state.draw(gl, this.mode);
   }
 }

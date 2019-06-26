@@ -50,7 +50,7 @@ export function loadImageFromBuffer(buff:ArrayBuffer, cb:(provider:pixel.PixelPr
   }
 }
 
-export function loadImage(name:string, cb:(img:Uint8Array)=>void):void {
+export function loadImage(name:string, cb:(w:number, h:number, img:Uint8Array)=>void):void {
   var image = new Image();
   image.src = name;
   image.onload = (evt) => {
@@ -60,6 +60,6 @@ export function loadImage(name:string, cb:(img:Uint8Array)=>void):void {
     canvas.height = img.height;
     var ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    cb(new Uint8Array(ctx.getImageData(0, 0, img.width, img.height).data));
+    cb(img.width, img.height, new Uint8Array(ctx.getImageData(0, 0, img.width, img.height).data));
   }
 }
