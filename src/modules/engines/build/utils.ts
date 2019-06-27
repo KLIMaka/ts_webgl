@@ -364,14 +364,10 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, spr: Sprite, sp
       z += (h >> 1);
     z -= info.attrs.yoff * spr.yrepeat << 2;
     if ((intz > z) || (intz < z - h)) return;
-    let t1 = MU.cross2d(vx, vy, dx, dy) / vl;
-    let offx = MU.int(vx * t1);
-    let offy = MU.int(vy * t1);
-    let dist = MU.sqrLen2d(offx, offy);
-    let w = info.w * spr.xrepeat << 2;
-    if (dist > w) return;
     let intx = xs + MU.int(vx * t);
     let inty = ys + MU.int(vy * t);
+    let w = (info.w * spr.xrepeat) / 4;
+    if (MU.len2d(x-intx, y-inty) > w >> 1) return;
     hit.hit(intx, inty, intz, t, sprId, HitType.SPRITE);
   } else if (spr.cstat.type == WALL) {
     let xoff = info.attrs.xoff + spr.xoffset;

@@ -2,11 +2,12 @@ import * as MU from '../../../libs/mathutils';
 import { ArtInfoProvider } from './art';
 import { Board, Wall } from './structs';
 import * as U from './utils';
+import { NumberVector } from '../../vector';
 
 const DELTA_DIST = Math.SQRT2;
 const DEFAULT_REPEAT_RATE = 128;
 
-function pointOnWall(board:Board, wallId:number, x:number, y:number):number {
+function pointOnWall(board: Board, wallId: number, x: number, y: number): number {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let wx = wall2.x - wall.x;
@@ -16,7 +17,7 @@ function pointOnWall(board:Board, wallId:number, x:number, y:number):number {
   return MU.dot2d(dx, dy, wx, wy) / MU.dot2d(wx, wy, wx, wy);
 }
 
-function distanceToWall(board:Board, wallId:number, x:number, y:number):number {
+function distanceToWall(board: Board, wallId: number, x: number, y: number): number {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let wx = wall2.x - wall.x;
@@ -28,23 +29,23 @@ function distanceToWall(board:Board, wallId:number, x:number, y:number):number {
     return MU.len2d(dx, dy);
   let c2 = MU.dot2d(wx, wy, wx, wy);
   if (c2 <= c1)
-    return MU.len2d(x-wall2.x, y-wall2.y);
+    return MU.len2d(x - wall2.x, y - wall2.y);
   let b = c1 / c2;
   let bx = wall.x + wx * b;
   let by = wall.y + wy * b;
-  return MU.len2d(x-bx, y-by);
+  return MU.len2d(x - bx, y - by);
 }
 
-export function closestWallOnWall(board:Board, w1:number, x:number, y:number):number {
+export function closestWallOnWall(board: Board, w1: number, x: number, y: number): number {
   let wall1 = board.walls[w1];
   let w2 = wall1.point2;
   let wall2 = board.walls[w2];
-  let dist1 = MU.len2d(wall1.x-x, wall1.y-y);
-  let dist2 = MU.len2d(wall2.x-x, wall2.y-y);
+  let dist1 = MU.len2d(wall1.x - x, wall1.y - y);
+  let dist2 = MU.len2d(wall2.x - x, wall2.y - y);
   return dist2 > dist1 ? w1 : w2;
 }
 
-export function closestWallInSector(board:Board, secId:number, x:number, y:number, d:number):number {
+export function closestWallInSector(board: Board, secId: number, x: number, y: number, d: number): number {
   let sec = board.sectors[secId];
   if (sec == undefined)
     return -1;
@@ -54,7 +55,7 @@ export function closestWallInSector(board:Board, secId:number, x:number, y:numbe
   let result = -1;
   for (let w = start; w < end; w++) {
     let wall = board.walls[w];
-    let dist = MU.len2d(wall.x-x, wall.y-y);
+    let dist = MU.len2d(wall.x - x, wall.y - y);
     if (dist < d && dist < mindist) {
       mindist = dist;
       result = w;
@@ -63,7 +64,7 @@ export function closestWallInSector(board:Board, secId:number, x:number, y:numbe
   return result;
 }
 
-export function closestWall(board:Board, x:number, y:number, secId:number):number[] {
+export function closestWall(board: Board, x: number, y: number, secId: number): number[] {
   secId = U.findSector(board, x, y, secId);
   let mindist = Number.MAX_VALUE;
   if (secId != -1) {
@@ -94,7 +95,7 @@ export function closestWall(board:Board, x:number, y:number, secId:number):numbe
   }
 }
 
-function moveWalls(board:Board, secId:number, afterWallId:number, size:number, wallptrs:number[]) {
+function moveWalls(board: Board, secId: number, afterWallId: number, size: number, wallptrs: number[]) {
   for (let w = 0; w < board.walls.length; w++) {
     let wall = board.walls[w];
     if (wall.point2 > afterWallId)
@@ -108,10 +109,10 @@ function moveWalls(board:Board, secId:number, afterWallId:number, size:number, w
   }
   let end = board.walls.length - 1;
   for (let i = end; i > afterWallId; i--) {
-    board.walls[i+size] = board.walls[i];
+    board.walls[i + size] = board.walls[i];
   }
   for (let i = 0; i < size; i++) {
-    board.walls[i+afterWallId+1] = null;
+    board.walls[i + afterWallId + 1] = null;
   }
   board.sectors[secId].wallnum += size;
   for (let i = 0; i < board.sectors.length; i++) {
@@ -121,7 +122,7 @@ function moveWalls(board:Board, secId:number, afterWallId:number, size:number, w
   }
 }
 
-export function walllen(board:Board, wallId:number) {
+export function walllen(board: Board, wallId: number) {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let dx = wall2.x - wall.x;
@@ -129,31 +130,31 @@ export function walllen(board:Board, wallId:number) {
   return MU.len2d(dx, dy);
 }
 
-function fixxrepeat(board:Board, wallId:number, reprate:number=DEFAULT_REPEAT_RATE) {
+function fixxrepeat(board: Board, wallId: number, reprate: number = DEFAULT_REPEAT_RATE) {
   let wall = board.walls[wallId];
-  wall.xrepeat = Math.min(255, Math.max(1, Math.round((walllen(board, wallId)+0.5) / reprate)))
+  wall.xrepeat = Math.min(255, Math.max(1, Math.round((walllen(board, wallId) + 0.5) / reprate)))
 }
 
-function fixpoint2xpan(board:Board, wallId:number, art:ArtInfoProvider) {
+function fixpoint2xpan(board: Board, wallId: number, art: ArtInfoProvider) {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   wall2.xpanning = ((wall.xpanning + (wall.xrepeat << 3)) % art.getInfo(wall.picnum).w) & 0xff;
 }
 
-function insertPoint(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider, wallptrs:number[]) {
+function insertPoint(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]) {
   let secId = U.sectorOfWall(board, wallId);
   let wall = board.walls[wallId];
   let lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
   moveWalls(board, secId, wallId, 1, wallptrs);
   let nwall = copyWall(wall, x, y);
-  board.walls[wallId+1] = nwall;
-  wall.point2 = wallId+1;
+  board.walls[wallId + 1] = nwall;
+  wall.point2 = wallId + 1;
   fixxrepeat(board, wallId, lenperrep);
   fixpoint2xpan(board, wallId, art);
-  fixxrepeat(board, wallId+1, lenperrep);
+  fixxrepeat(board, wallId + 1, lenperrep);
 }
 
-function copyWall(wall:Wall, x:number, y:number):Wall {
+function copyWall(wall: Wall, x: number, y: number): Wall {
   let nwall = new Wall();
   nwall.x = x;
   nwall.y = y;
@@ -175,41 +176,41 @@ function copyWall(wall:Wall, x:number, y:number):Wall {
   return nwall;
 }
 
-export function splitWall(board:Board, wallId:number, x:number, y:number, art:ArtInfoProvider, wallptrs:number[]):number {
+export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
   let wall = board.walls[wallId];
-  if (MU.len2d(wall.x-x, wall.y-y) < DELTA_DIST)
+  if (MU.len2d(wall.x - x, wall.y - y) < DELTA_DIST)
     return wallId;
   let wall2 = board.walls[wall.point2];
-  if (MU.len2d(wall2.x-x, wall2.y-y) < DELTA_DIST)
+  if (MU.len2d(wall2.x - x, wall2.y - y) < DELTA_DIST)
     return wallId;
   insertPoint(board, wallId, x, y, art, wallptrs);
   if (wall.nextwall != -1) {
     let nextwallId = wall.nextwall;
     insertPoint(board, nextwallId, x, y, art, wallptrs);
     let wallId = board.walls[nextwallId].nextwall;
-    board.walls[wallId].nextwall = nextwallId+1; 
-    board.walls[wallId+1].nextwall = nextwallId; 
-    board.walls[nextwallId].nextwall = wallId+1; 
-    board.walls[nextwallId+1].nextwall = wallId; 
+    board.walls[wallId].nextwall = nextwallId + 1;
+    board.walls[wallId + 1].nextwall = nextwallId;
+    board.walls[nextwallId].nextwall = wallId + 1;
+    board.walls[nextwallId + 1].nextwall = wallId;
     return wallId;
   }
   return wallId;
 }
 
-export function prevwall(board:Board, wallId:number):number {
-  if (wallId > 0 && board.walls[wallId-1].point2 == wallId)
-    return wallId-1;
-  for(let w = wallId;; w = board.walls[w].point2) {
+export function prevwall(board: Board, wallId: number): number {
+  if (wallId > 0 && board.walls[wallId - 1].point2 == wallId)
+    return wallId - 1;
+  for (let w = wallId; ; w = board.walls[w].point2) {
     if (board.walls[w].point2 == wallId)
       return w;
   }
 }
 
-export function nextwall(board:Board, wallId:number):number {
+export function nextwall(board: Board, wallId: number): number {
   return board.walls[wallId].point2;
 }
 
-function doMoveWall(board:Board, w:number, x:number, y:number) {
+function doMoveWall(board: Board, w: number, x: number, y: number) {
   let walls = board.walls;
   let p = prevwall(board, w);
   walls[w].x = x;
@@ -218,14 +219,18 @@ function doMoveWall(board:Board, w:number, x:number, y:number) {
   fixxrepeat(board, p);
 }
 
-export function moveWall(board:Board, wallId:number, x:number, y:number) {
+let movedWalls = new NumberVector();
+export function moveWall(board: Board, wallId: number, x: number, y: number): NumberVector {
+  movedWalls.clear();
   let walls = board.walls;
   let w = wallId;
   doMoveWall(board, w, x, y);
+  movedWalls.push(w);
   do {
     if (walls[w].nextwall != -1) {
       w = walls[walls[w].nextwall].point2;
       doMoveWall(board, w, x, y);
+      movedWalls.push(w);
     } else {
       w = wallId;
       do {
@@ -233,24 +238,26 @@ export function moveWall(board:Board, wallId:number, x:number, y:number) {
         if (walls[p].nextwall != -1) {
           w = walls[p].nextwall;
           doMoveWall(board, w, x, y);
+          movedWalls.push(w);
         } else {
           break;
         }
       } while (w != wallId)
     }
   } while (w != wallId);
+  return movedWalls;
 }
 
-export function pushWall(board:Board, wallId:number, len:number, art:ArtInfoProvider, wallptrs:number[]) {
+export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: number[]) {
   let w1 = wallId; let wall1 = board.walls[w1];
   let w2 = wall1.point2; let wall2 = board.walls[w2];
   let p1 = prevwall(board, w1); let prev1 = board.walls[p1];
   let n2 = wall2.point2; let next2 = board.walls[n2];
   let dx = wall2.x - wall1.x; let dy = wall2.y - wall1.y;
   let l = MU.len2d(dx, dy);
-  dx = MU.int(dx/l * len); dy = MU.int(dy/l * len);
-  let x1 = wall1.x-dy; let y1 = wall1.y+dx;
-  let x2 = wall2.x-dy; let y2 = wall2.y+dx;
+  dx = MU.int(dx / l * len); dy = MU.int(dy / l * len);
+  let x1 = wall1.x - dy; let y1 = wall1.y + dx;
+  let x2 = wall2.x - dy; let y2 = wall2.y + dx;
   let extent1 = MU.cross2d(x1 - prev1.x, y1 - prev1.y, wall1.x - prev1.x, wall1.y - prev1.y) == 0;
   let extent2 = MU.cross2d(x2 - next2.x, y2 - next2.y, wall2.x - next2.x, wall2.y - next2.y) == 0;
 
