@@ -1,8 +1,8 @@
-import * as BUFF from './buffers';
+import * as GLM from '../../../../libs_js/glmatrix';
 import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
-import * as GLM from '../../../../libs_js/glmatrix';
 import { State } from '../../../stategl';
+import * as BUFF from './buffers';
 
 
 export class Buffer {
@@ -55,9 +55,10 @@ export enum Type {
 }
 
 export interface Renderable {
-  draw(gl: WebGLRenderingContext, state: State);
+  draw(gl: WebGLRenderingContext, state: State): void;
 }
 
+let color = GLM.vec4.create();
 export class Solid implements Renderable {
   public type: Type = Type.SURFACE;
   public buff: Buffer = new Buffer();
@@ -65,23 +66,42 @@ export class Solid implements Renderable {
   public shade: number;
   public trans: number = 1;
   public pal: number;
-  public parallax;
+  public parallax: number;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
-  public grid = false;
-  
+
   public draw(gl: WebGLRenderingContext, state: State) {
     if (this.buff.get() == null)
-    return;
-    state.setShader(this.grid ? 'grid' : this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
+      return;
+    state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     state.setTexture('base', this.tex);
-    state.setUniform('color', [1, 1, 1, this.trans]);
+    state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, this.trans));
     state.setUniform('pluN', this.pal);
     state.setUniform('shade', this.shade);
     state.setUniform('T', this.texMat);
-    state.setUniform('GT', this.texMat);
     state.setDrawElements(this.buff.get());
     state.draw(gl);
   }
+}
+
+class Grid implements Renderable {
+  public solid: Solid;
+  public gridTexMat:GLM.Mat4Array;
+  
+  public draw(gl: WebGLRenderingContext, state: State) {
+    if (this.solid.buff.get() == null)
+    return;
+    state.setShader('grid');
+    state.setUniform('GT', this.gridTexMat);
+    state.setDrawElements(this.solid.buff.get());
+    state.draw(gl);
+  }
+}
+
+let grid = new Grid();
+export function wrapInGrid(solid: Solid, texMat: GLM.Mat4Array) {
+  grid.solid = solid;
+  grid.gridTexMat = texMat;
+  return grid;
 }
 
 export class Wireframe implements Renderable {
@@ -93,7 +113,7 @@ export class Wireframe implements Renderable {
     if (this.buff.get() == null)
       return;
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
-    state.setUniform('color', [1, 1, 1, 1]);
+    state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, 1));
     state.setDrawElements(this.buff.get());
     state.draw(gl, this.mode);
   }

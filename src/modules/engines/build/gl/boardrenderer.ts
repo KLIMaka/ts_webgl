@@ -13,9 +13,10 @@ import * as U from '../utils';
 import * as BUFF from './buffers';
 import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
-import { Renderable, Type, Solid } from './renderable';
+import { Renderable, Type, Solid, wrapInGrid } from './renderable';
 import { BloodSprite } from '../bloodstructs';
 import { loadImage } from '../../../../libs/imgutils';
+import { ObjectVector } from '../../../vector';
 
 
 export interface PalProvider extends ArtProvider {
@@ -67,6 +68,15 @@ function initRorLinks(board: Board) {
     if (board.sectors[spr2.sectnum].ceilingpicnum == 504)
       ceilingLinks[spr2.sectnum] = [s2, s1];
   }
+}
+
+function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => void): void {
+  loadImage('resources/engines/blood/grid.png', (w: number, h: number, img: Uint8Array) => {
+    let gridTexture = TEX.createTexture(w, h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, img, gl.RGBA);
+    gl.bindTexture(gl.TEXTURE_2D, gridTexture.get());
+    gl.generateMipmap(gl.TEXTURE_2D);
+    cb(gridTexture);
+  });
 }
 
 let artProvider: PalProvider;
@@ -194,10 +204,7 @@ function snap(board: Board) {
 }
 
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
-  gl.clearColor(0.1, 0.3, 0.1, 1.0);
-  gl.clearStencil(0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-  BGL.newFrame();
+  BGL.newFrame(gl);
   drawImpl(gl, board, ms, ctr);
 
   hitscan(gl, board, ms, ctr);
@@ -221,39 +228,54 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   }
 }
 
-function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => void): void {
-  loadImage('resources/engines/blood/grid.png', (w: number, h: number, img: Uint8Array) => {
-    let gridTexture = TEX.createTexture(w, h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, img, gl.RGBA);
-    gl.bindTexture(gl.TEXTURE_2D, gridTexture.get());
-    gl.generateMipmap(gl.TEXTURE_2D);
-    cb(gridTexture);
-  });
-}
-
-
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
+  gl.disable(gl.DEPTH_TEST);
   if (movingId != -1) {
     let s = U.sectorOfWall(board, movingId);
-    drawHelperPlane(gl, movingId, s, U.HitType.UPPER_WALL);
-    drawHelperPlane(gl, movingId, s, U.HitType.MID_WALL);
-    drawHelperPlane(gl, movingId, s, U.HitType.LOWER_WALL);
-    drawHelperPlane(gl, s, -1, U.HitType.CEILING);
-    drawHelperPlane(gl, s, -1, U.HitType.FLOOR);
+    drawHelperPlane(gl, board, movingId, s, U.HitType.UPPER_WALL);
+    drawHelperPlane(gl, board, movingId, s, U.HitType.MID_WALL);
+    drawHelperPlane(gl, board, movingId, s, U.HitType.LOWER_WALL);
+    let point2 = board.walls[movingId].point2;
+    drawHelperPlane(gl, board, point2, s, U.HitType.UPPER_WALL);
+    drawHelperPlane(gl, board, point2, s, U.HitType.MID_WALL);
+    drawHelperPlane(gl, board, point2, s, U.HitType.LOWER_WALL);
+    drawHelperPlane(gl, board, s, -1, U.HitType.CEILING);
+    drawHelperPlane(gl, board, s, -1, U.HitType.FLOOR);
   } else if (hit.t != -1 && U.isSector(hit.type)) {
-    drawHelperPlane(gl, hit.id, -1, hit.type);
+    drawHelperPlane(gl, board, hit.id, -1, hit.type);
   } else if (hit.t != -1 && U.isWall(hit.type)) {
     let s = U.sectorOfWall(board, hit.id);
-    drawHelperPlane(gl, hit.id, s, hit.type);
+    drawHelperPlane(gl, board, hit.id, s, hit.type);
   }
+  gl.enable(gl.DEPTH_TEST);
 }
 
-function drawHelperPlane(gl: WebGLRenderingContext, id: number, addId: number, type: U.HitType) {
-  let r = <Solid> cache.getByIdType(id, addId, type);
-  r.grid = true;
-  gl.disable(gl.DEPTH_TEST);
-  BGL.draw(gl, r);
-  gl.enable(gl.DEPTH_TEST);
-  r.grid = false;
+let texMat = GLM.mat4.create();
+let tmp = GLM.vec4.create();
+function gridMatrix(board: Board, id: number, type: U.HitType): GLM.Mat4Array {
+  GLM.mat4.identity(texMat);
+  if (U.isSector(type)) {
+    GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
+    GLM.mat4.scale(texMat, texMat, tmp);
+    GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
+  } else if (U.isWall(type)) {
+    let wall1 = board.walls[id];
+    let wall2 = board.walls[wall1.point2];
+    let dx = wall2.x - wall1.x;
+    let dy = wall2.y - wall1.y;
+    let d = 128 / (BU.walllen(board, id) / wall1.xrepeat);
+    GLM.vec4.set(tmp, d / 512, 1 / 512, 1, 1);
+    GLM.mat4.scale(texMat, texMat, tmp);
+    GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
+    // GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
+    // GLM.mat4.translate(texMat, texMat, tmp);
+  }
+  return texMat;
+}
+
+function drawHelperPlane(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: U.HitType) {
+  let r = <Solid>cache.getByIdType(id, addId, type);
+  BGL.draw(gl, wrapInGrid(r, gridMatrix(board, id, type)));
 }
 
 function highlightSelected(gl: WebGLRenderingContext, board: Board) {
@@ -313,6 +335,8 @@ function writeAll(gl: WebGLRenderingContext) {
   gl.colorMask(true, true, true, true);
 }
 
+let all = new VIS.AllBoardVisitorResult();
+let visible = new VIS.PvsBoardVisitorResult();
 function drawImpl(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
@@ -320,46 +344,59 @@ function drawImpl(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr
 
   PROFILE.startProfile('processing');
   let result = ms.sec == -1
-    ? VIS.all(board)
-    : VIS.visible(board, ms);
+    ? all.visit(board)
+    : visible.visit(board, ms);
   PROFILE.endProfile();
 
+  BGL.setProjectionMatrix(ctr.getProjectionMatrix(gl));
   drawMirrors(gl, board, result, ms, ctr);
   drawRor(gl, board, result, ms, ctr);
 
-  BGL.setViewMatrices(ctr.getProjectionMatrix(gl), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition());
+  BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
+  BGL.setPosition(ctr.getCamera().getPosition());
   drawRooms(gl, board, result);
 }
 
+let additionVisible = new VIS.PvsBoardVisitorResult();
+let diff = GLM.vec3.create();
+let stackTransform = GLM.mat4.create();
+let mstmp = new U.MoveStruct();
+let srcPos = GLM.vec3.create();
+let dstPos = GLM.vec3.create();
+let npos = GLM.vec3.create();
 
 function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, src: Sprite, dst: Sprite, surface: Renderable, stencilValue: number) {
-  BGL.setViewMatrices(ctr.getProjectionMatrix(gl), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition());
+  BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
+  BGL.setPosition(ctr.getCamera().getPosition());
   writeStencilOnly(gl, stencilValue);
   BGL.draw(gl, surface);
 
-  let diff = GLM.vec3.sub(GLM.vec3.create(), [src.x, src.z / -16, src.y], [dst.x, dst.z / -16, dst.y]);
-  let stackTransform = GLM.mat4.clone(ctr.getCamera().getTransformMatrix());
+  GLM.vec3.set(srcPos, src.x, src.z / -16, src.y);
+  GLM.vec3.set(dstPos, dst.x, dst.z / -16, dst.y);
+  GLM.vec3.sub(diff, srcPos, dstPos);
+  GLM.mat4.copy(stackTransform, ctr.getCamera().getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
+  GLM.vec3.sub(npos, ctr.getCamera().getPosition(), diff);
 
-  let ms = new U.MoveStruct();
-  let position = ctr.getCamera().getPosition();
-  ms.sec = dst.sectnum; ms.x = position[0] - diff[0]; ms.y = position[2] - diff[2]; ms.z = position[1] - diff[1];
-  BGL.setViewMatrices(ctr.getProjectionMatrix(gl), stackTransform, [ms.x, ms.z, ms.y]);
+  mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1];
+  BGL.setViewMatrix(stackTransform);
+  BGL.setPosition(npos);
   writeStenciledOnly(gl, stencilValue);
-  drawRooms(gl, board, VIS.visible(board, ms));
+  drawRooms(gl, board, additionVisible.visit(board, mstmp));
 
-  BGL.setViewMatrices(ctr.getProjectionMatrix(gl), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition());
+  BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
+  BGL.setPosition(ctr.getCamera().getPosition());
   writeDepthOnly(gl);
   BGL.draw(gl, surface);
 }
 
 let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => floorLinks[sectorId] != undefined || ceilingLinks[sectorId] != undefined);
 function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
-  result.forSector(board, rorSectorCollector.visit());
+  result.forSector(rorSectorCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
-  for (let i = 0; i < rorSectorCollector.sectors.length; i++) {
-    let s = rorSectorCollector.sectors[i];
+  for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
+    let s = rorSectorCollector.sectors.get(i);
     let r = cache.getSector(s);
 
     if (ceilingLinks[s] != undefined) {
@@ -378,13 +415,18 @@ function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms
 }
 
 let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => board.walls[wallId].picnum == 504);
+let msMirrored = new U.MoveStruct();
+let wallNormal = GLM.vec2.create();
+let mirrorNormal = GLM.vec3.create();
+let mirroredTransform = GLM.mat4.create();
+let mpos = GLM.vec3.create();
+
 function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
-  result.forWall(board, mirrorWallsCollector.visit());
+  result.forWall(mirrorWallsCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
-  let msMirrored = new U.MoveStruct();
-  for (let i = 0; i < mirrorWallsCollector.walls.length; i++) {
-    let w = mirrorWallsCollector.walls[i].wallId;
+  for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
+    let w = VIS.unpackWallId(mirrorWallsCollector.walls.get(i));
     let w1 = board.walls[w];
     let w2 = board.walls[w1.point2];
     if (!U.wallVisible(w1, w2, ms))
@@ -392,27 +434,30 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
 
     // draw mirror surface into stencil
     let r = cache.getWall(w, mirrorWallsCollector.walls[i].sectorId);
-    BGL.setViewMatrices(ctr.getProjectionMatrix(gl), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition());
+    BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
+    BGL.setPosition(ctr.getCamera().getPosition());
     writeStencilOnly(gl, i + 127);
     BGL.draw(gl, r);
 
     // draw reflections in stenciled area
-    let wallNormal = VEC.normal2d(GLM.vec2.create(), [w2.x - w1.x, w2.y - w1.y]);
-    let mirrorNormal = GLM.vec3.fromValues(wallNormal[0], 0, wallNormal[1]);
+    GLM.vec2.set(wallNormal, w2.x - w1.x, w2.y - w1.y);
+    VEC.normal2d(wallNormal, wallNormal);
+    GLM.vec3.set(mirrorNormal, wallNormal[0], 0, wallNormal[1]);
     let mirrorrD = -MU.dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
-    let mirroredTransform = VEC.mirrorBasis(GLM.mat4.create(), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition(), mirrorNormal, mirrorrD);
+    VEC.mirrorBasis(mirroredTransform, ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition(), mirrorNormal, mirrorrD);
 
-    BGL.setViewMatrices(ctr.getProjectionMatrix(gl), mirroredTransform, ctr.getCamera().getPosition());
+    BGL.setViewMatrix(mirroredTransform);
     BGL.setClipPlane(mirrorNormal[0], mirrorNormal[1], mirrorNormal[2], mirrorrD);
     gl.cullFace(gl.FRONT);
-    let mpos = VEC.reflectPoint3d(GLM.vec3.create(), mirrorNormal, mirrorrD, [ms.x, ms.z, ms.y]);
+    GLM.vec3.set(mpos, ms.x, ms.z, ms.y);
+    VEC.reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     msMirrored.sec = ms.sec; msMirrored.x = mpos[0]; msMirrored.y = mpos[2]; msMirrored.z = mpos[1];
     writeStenciledOnly(gl, i + 127);
-    drawRooms(gl, board, VIS.visible(board, msMirrored));
+    drawRooms(gl, board, additionVisible.visit(board, msMirrored));
     gl.cullFace(gl.BACK);
 
     // seal reflections by writing depth of mirror surface
-    BGL.setViewMatrices(ctr.getProjectionMatrix(gl), ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition());
+    BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
     writeDepthOnly(gl);
     BGL.setClipPlane(0, 0, 0, 0);
     BGL.draw(gl, r);
@@ -421,20 +466,24 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
   writeAll(gl);
 }
 
-function drawArray(gl: WebGLRenderingContext, arr: Renderable[]) {
-  for (let i = 0; i < arr.length; i++) {
-    BGL.draw(gl, arr[i]);
+function drawArray(gl: WebGLRenderingContext, arr: ObjectVector) {
+  for (let i = 0; i < arr.length(); i++) {
+    BGL.draw(gl, arr.get(i));
   }
 }
 
+let surfaces = new ObjectVector();
+let surfacesTrans = new ObjectVector();
+let sprites = new ObjectVector();
+let spritesTrans = new ObjectVector();
 function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) {
-  let surfaces: Renderable[] = [];
-  let surfacesTrans: Renderable[] = [];
-  let sprites: Renderable[] = [];
-  let spritesTrans: Renderable[] = [];
-
   PROFILE.startProfile('processing');
-  result.forSector(board, (board: Board, sectorId: number) => {
+  surfaces.clear();
+  surfacesTrans.clear();
+  sprites.clear();
+  spritesTrans.clear();
+
+  result.forSector((board: Board, sectorId: number) => {
     let sector = cache.getSector(sectorId);
     if (floorLinks[sectorId] == undefined)
       surfaces.push(sector.floor);
@@ -442,19 +491,20 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
       surfaces.push(sector.ceiling);
     PROFILE.incCount('sectors');
   });
-  result.forWall(board, (board: Board, wallId: number, sectorId: number) => {
+  result.forWall((board: Board, wallId: number, sectorId: number) => {
     if (board.walls[wallId].picnum == 504)
       return;
     let wall = cache.getWall(wallId, sectorId);
     if (wall.mid.trans != 1) {
       surfacesTrans.push(wall.mid);
-      surfaces.push(wall.bot, wall.top);
+      surfaces.push(wall.bot);
+      surfaces.push(wall.top);
     } else {
       surfaces.push(wall);
     }
     PROFILE.incCount('walls');
   });
-  result.forSprite(board, (board: Board, spriteId: number) => {
+  result.forSprite((board: Board, spriteId: number) => {
     let sprite = cache.getSprite(spriteId);
     let trans = sprite.trans != 1;
     (sprite.type == Type.FACE

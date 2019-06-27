@@ -1,15 +1,14 @@
-import {State} from '../../../stategl';
+import * as AB from '../../../../libs/asyncbarrier';
+import * as GLM from '../../../../libs_js/glmatrix';
 import * as DS from '../../../drawstruct';
 import * as SHADER from '../../../shaders';
-import * as GLM from '../../../../libs_js/glmatrix';
+import { State } from '../../../stategl';
 import * as BUFF from './buffers';
-import {Renderable, Type} from './renderable';
-import * as AB from '../../../../libs/asyncbarrier';
-
+import { Renderable } from './renderable';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
-var state:State;
-export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, grid:DS.Texture, cb:()=>void) {
+var state: State;
+export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture, grid: DS.Texture, cb: () => void) {
   var ab = AB.create();
   SHADER.createShader(gl, SHADER_NAME, ['PAL_LIGHTING'], ab.callback('baseShader'));
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'PAL_LIGHTING'], ab.callback('spriteShader'));
@@ -25,8 +24,8 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, g
     state.registerShader('spriteFlatShader', res['spriteFlatShader']);
     state.registerShader('parallax', res['parallax']);
     state.registerShader('grid', res['grid']);
-    
-    BUFF.init(gl, 1024*64);
+
+    BUFF.init(gl, 1024 * 64);
     state.setIndexBuffer(BUFF.getIdxBuffer());
     state.setVertexBuffer('aPos', BUFF.getPosBuffer());
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
@@ -38,29 +37,40 @@ export function init(gl:WebGLRenderingContext, pal:DS.Texture, plu:DS.Texture, g
   });
 }
 
-let inv = GLM.mat4.create();
-export function setViewMatrices(proj:GLM.Mat4Array, view:GLM.Mat4Array, pos:GLM.Vec3Array) {
+export function setProjectionMatrix(proj: GLM.Mat4Array) {
   state.setUniform('P', proj);
+}
+
+let inv = GLM.mat4.create();
+export function setViewMatrix(view: GLM.Mat4Array) {
   state.setUniform('V', view);
   state.setUniform('IV', GLM.mat4.invert(inv, view));
+}
+
+export function setPosition(pos: GLM.Vec3Array) {
   state.setUniform('eyepos', pos);
 }
 
-export function setCursorPosiotion(pos:GLM.Vec3Array) {
+export function setCursorPosiotion(pos: GLM.Vec3Array) {
   state.setUniform('curpos', pos);
 }
 
-export function setClipPlane(x:number, y:number, z:number, w:number) {
-  state.setUniform('clipPlane', [x, y, z, w]);
+let clipPlane = GLM.vec4.create();
+export function setClipPlane(x: number, y: number, z: number, w: number) {
+  GLM.vec4.set(clipPlane, x, y, z, w);
+  state.setUniform('clipPlane', clipPlane);
 }
 
-export function draw(gl:WebGLRenderingContext, renderable:Renderable) {
+export function draw(gl: WebGLRenderingContext, renderable: Renderable) {
   if (renderable == null)
     return;
   renderable.draw(gl, state);
 }
 
-export function newFrame() {
+export function newFrame(gl: WebGLRenderingContext) {
+  gl.clearColor(0.1, 0.3, 0.1, 1.0);
+  gl.clearStencil(0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   state.setUniform('time', performance.now());
 }
 

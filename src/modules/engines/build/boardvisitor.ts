@@ -1,170 +1,185 @@
-import {Board, Sector, Wall, Sprite} from './structs';
+import { Board } from './structs';
 import * as U from './utils';
+import { NumberVector } from '../../vector';
 
-class WallSectorId {
-  constructor(public wallId:number, public sectorId:number) {}
+export function packWallSectorId(wallId: number, sectorId: number) {
+  return wallId | (sectorId << 16)
+}
+
+export function unpackWallId(wallSectorId: number) {
+  return wallSectorId & 0xffff;
+}
+
+export function unpackSectorId(wallSectorId: number) {
+  return (wallSectorId >> 16) & 0xffff;
 }
 
 export interface Result {
-  forSector(board:Board, secv:SectorVisitor);
-  forWall(board:Board, wallv:WallVisitor);
-  forSprite(board:Board, sprv:SpriteVisitor);
+  forSector(secv: SectorVisitor): void;
+  forWall(wallv: WallVisitor): void;
+  forSprite(sprv: SpriteVisitor): void;
 }
 
-export type BoardVisitor = (board:Board, secv:SectorVisitor, wallv:WallVisitor, sprv:SpriteVisitor) => void;
-export type SectorVisitor = (board:Board, sectorId:number) => void;
-export type SectorPredicate = (board:Board, sectorId:number) => boolean;
-export type WallVisitor = (board:Board, wallId:number, sectorId:number) => void;
-export type WallPredicate = (board:Board, wallId:number, sectorId:number) => boolean;
-export type SpriteVisitor = (board:Board, spriteId:number) => void;
-export type SpritePredicate = (board:Board, spriteId:number) => boolean;
+export type BoardVisitor = (board: Board, secv: SectorVisitor, wallv: WallVisitor, sprv: SpriteVisitor) => void;
+export type SectorVisitor = (board: Board, sectorId: number) => void;
+export type SectorPredicate = (board: Board, sectorId: number) => boolean;
+export type WallVisitor = (board: Board, wallId: number, sectorId: number) => void;
+export type WallPredicate = (board: Board, wallId: number, sectorId: number) => boolean;
+export type SpriteVisitor = (board: Board, spriteId: number) => void;
+export type SpritePredicate = (board: Board, spriteId: number) => boolean;
 
 export class SectorCollector {
-  private visitor:SectorVisitor;
-  public sectors:number[];
+  private visitor: SectorVisitor;
+  public sectors = new NumberVector();
 
-  constructor(private pred:SectorPredicate) {
-    this.visitor = (board:Board, sectorId:number) => {
-      if (this.pred(board, sectorId))
+  constructor(pred: SectorPredicate) {
+    this.visitor = (board: Board, sectorId: number) => {
+      if (pred(board, sectorId))
         this.sectors.push(sectorId);
     }
   }
 
-  public visit():SectorVisitor {
-    this.sectors = [];
+  public visit(): SectorVisitor {
+    this.sectors.clear();
     return this.visitor;
   }
 }
 
-export function createSectorCollector(pred:SectorPredicate) {
+export function createSectorCollector(pred: SectorPredicate) {
   return new SectorCollector(pred);
 }
 
 export class WallCollector {
-  private visitor:WallVisitor;
-  public walls:WallSectorId[];
+  private visitor: WallVisitor;
+  public walls = new NumberVector();
 
-  constructor(private pred:WallPredicate) {
-    this.visitor = (board:Board, wallId:number, sectorId:number) => {
-      if (this.pred(board, wallId, sectorId))
-        this.walls.push(new WallSectorId(wallId, sectorId));
+  constructor(pred: WallPredicate) {
+    this.visitor = (board: Board, wallId: number, sectorId: number) => {
+      if (pred(board, wallId, sectorId))
+        this.walls.push(packWallSectorId(wallId, sectorId));
     }
   }
 
-  public visit():WallVisitor {
-    this.walls = [];
+  public visit(): WallVisitor {
+    this.walls.clear();
     return this.visitor;
   }
 }
 
-export function createWallCollector(pred:WallPredicate) {
+export function createWallCollector(pred: WallPredicate) {
   return new WallCollector(pred);
 }
 
 export class SpriteCollector {
-  private visitor:SpriteVisitor;
-  public sprites:number[];
+  private visitor: SpriteVisitor;
+  public sprites = new NumberVector();
 
-  constructor(private pred:SpritePredicate) {
-    this.visitor = (board:Board, spriteId:number) => {
-      if (this.pred(board, spriteId))
+  constructor(pred: SpritePredicate) {
+    this.visitor = (board: Board, spriteId: number) => {
+      if (pred(board, spriteId))
         this.sprites.push(spriteId);
     }
   }
 
-  public visit():SectorVisitor {
-    this.sprites = [];
+  public visit(): SectorVisitor {
+    this.sprites.clear();
     return this.visitor;
   }
 }
 
-export function createSpriteCollector(pred:SpritePredicate) {
+export function createSpriteCollector(pred: SpritePredicate) {
   return new SpriteCollector(pred);
 }
 
 
-class AllBoardVisitorResult implements Result {
-  
-  constructor(private board:Board) {}
+export class AllBoardVisitorResult implements Result {
+  private board: Board;
 
-  public forSector(board:Board, secv:SectorVisitor) {
-    for (var s = 0; s < this.board.sectors.length; s++)
+  visit(board: Board): Result {
+    this.board = board;
+    return this;
+  }
+
+  public forSector(secv: SectorVisitor) {
+    for (let s = 0; s < this.board.sectors.length; s++)
       secv(this.board, s);
   }
-  
-  public forWall(board:Board, wallv:WallVisitor) {
-    for (var s = 0; s < this.board.sectors.length; s++) {
-      var sec = this.board.sectors[s];
-      var endwall = sec.wallptr+sec.wallnum;
-      for (var w = sec.wallptr; w < endwall; w++)
+
+  public forWall(wallv: WallVisitor) {
+    for (let s = 0; s < this.board.sectors.length; s++) {
+      let sec = this.board.sectors[s];
+      let endwall = sec.wallptr + sec.wallnum;
+      for (let w = sec.wallptr; w < endwall; w++)
         wallv(this.board, w, s);
     }
   }
 
-  public forSprite(board:Board, sprv:SpriteVisitor) {
-    for (var s = 0; s < this.board.sprites.length; s++)
+  public forSprite(sprv: SpriteVisitor) {
+    for (let s = 0; s < this.board.sprites.length; s++)
       sprv(this.board, s);
   }
 }
 
-class PvsBoardVisitorResult implements Result {
-  private sectors:number[] = [];
-  private walls:WallSectorId[] = [];
-  private sprites:number[] = [];
+export class PvsBoardVisitorResult implements Result {
+  private sectors = new NumberVector();
+  private walls = new NumberVector();
+  private sprites = new NumberVector();
+  private pvs = new NumberVector();
+  private board: Board;
 
-  constructor(private board:Board, private ms:U.MoveStruct) {
-    var pvs = [this.ms.sec];
-    var sectors = this.board.sectors;
-    var walls = this.board.walls;
-    var sec2spr = U.groupSprites(this.board.sprites);
-    for (var i = 0; i < pvs.length; i++) {
-      var s = pvs[i];
-      var sec = sectors[s];
+  public visit(board: Board, ms: U.MoveStruct): Result {
+    this.board = board;
+    this.sectors.clear();
+    this.walls.clear();
+    this.sprites.clear();
+    this.pvs.clear();
+    this.pvs.push(ms.sec);
+
+    let sectors = board.sectors;
+    let walls = board.walls;
+    let sec2spr = U.groupSprites(board.sprites);
+    for (let i = 0; i < this.pvs.length(); i++) {
+      let s = this.pvs.get(i);
+      let sec = sectors[s];
       if (sec == undefined)
         continue;
 
       this.sectors.push(s);
-      var endwall = sec.wallptr + sec.wallnum;
-      for (var w = sec.wallptr; w < endwall; w++) {
-        var wall = walls[w];
-        if (U.wallVisible(wall, walls[wall.point2], this.ms)) {
-          this.walls.push(new WallSectorId(w, s));
-          var nextsector = wall.nextsector;
+      let endwall = sec.wallptr + sec.wallnum;
+      for (let w = sec.wallptr; w < endwall; w++) {
+        let wall = walls[w];
+        if (U.wallVisible(wall, walls[wall.point2], ms)) {
+          this.walls.push(packWallSectorId(w, s));
+          let nextsector = wall.nextsector;
           if (nextsector == -1) continue;
-          if (pvs.indexOf(nextsector) == -1)
-            pvs.push(nextsector);
+          if (this.pvs.indexOf(nextsector) == -1)
+            this.pvs.push(nextsector);
         }
       }
 
-      var sprs = sec2spr[s];
+      let sprs = sec2spr[s];
       if (sprs != undefined) {
-        Array.prototype.push.apply(this.sprites, sprs);
+        for (let i = 0; i < sprs.length; i++)
+          this.sprites.push(sprs[i]);
       }
     }
+    return this;
   }
 
-  public forSector(board:Board, secv:SectorVisitor) {
-    for (var i = 0; i < this.sectors.length; i++)
-      secv(this.board, this.sectors[i]);
+  public forSector(secv: SectorVisitor) {
+    for (let i = 0; i < this.sectors.length(); i++)
+      secv(this.board, this.sectors.get(i));
   }
 
-  public forWall(board:Board, wallv:WallVisitor) {
-    for (var i = 0; i < this.walls.length; i++) {
-      var id = this.walls[i];
-      wallv(this.board, id.wallId, id.sectorId);
+  public forWall(wallv: WallVisitor) {
+    for (let i = 0; i < this.walls.length(); i++) {
+      let id = this.walls.get(i);
+      wallv(this.board, unpackWallId(id), unpackSectorId(id));
     }
   }
 
-  public forSprite(board:Board, sprv:SpriteVisitor) {
-    for (var i = 0; i < this.sprites.length; i++)
-      sprv(this.board, this.sprites[i]);
+  public forSprite(sprv: SpriteVisitor) {
+    for (let i = 0; i < this.sprites.length(); i++)
+      sprv(this.board, this.sprites.get(i));
   }
-}
-
-export function all(board:Board):Result {
-  return new AllBoardVisitorResult(board);
-}
-
-export function visible(board:Board, ms:U.MoveStruct):Result {
-  return new PvsBoardVisitorResult(board, ms);
 }

@@ -96,11 +96,7 @@ void clip() {
 }
 
 void writeColor(vec3 c, vec4 m) {
-#ifdef GRID
-  gl_FragColor = texture2D(grid, gridtc);
-#else
   gl_FragColor = vec4(vec3(m.rgb * c), m.a);
-#endif
 }
 
 void main() {
@@ -115,6 +111,8 @@ void main() {
   writeColor(c, vec4(1.0));
 #elif defined NORMAL
   writeColor(vec3((wnormal + 1.0) / 2.0), color);
+#elif defined GRID
+  writeColor(vec3(1.0), texture2D(grid, gridtc));
 #else
   writeColor(palLookup(tc), color);
 #endif

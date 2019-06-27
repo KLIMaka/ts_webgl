@@ -439,9 +439,10 @@ function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderab
   fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal);
 }
 
+let sectorNorlam = GLM.vec3.create();
 function prepareSector(board: Board, art: ArtProvider, secId: number, renderable: SectorSolid) {
   var sec = board.sectors[secId];
-  fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(board, secId, true));
+  fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(sectorNorlam, board, secId, true));
   renderable.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
   renderable.ceiling.parallax = sec.ceilingstat.parallaxing;
   renderable.ceiling.pal = sec.ceilingpal;
@@ -449,7 +450,7 @@ function prepareSector(board: Board, art: ArtProvider, secId: number, renderable
   var info = art.getInfo(sec.ceilingpicnum);
   applySectorTextureTransform(sec, true, board.walls, info, renderable.ceiling.texMat);
 
-  fillBuffersForSector(false, board, sec, renderable, U.sectorNormal(board, secId, false));
+  fillBuffersForSector(false, board, sec, renderable, U.sectorNormal(sectorNorlam, board, secId, false));
   renderable.floor.tex = sec.floorstat.parallaxing ? art.getParallaxTexture(sec.floorpicnum) : art.get(sec.floorpicnum);
   renderable.floor.parallax = sec.floorstat.parallaxing;
   renderable.floor.pal = sec.floorpal;
@@ -528,6 +529,7 @@ function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base:
   GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / SCALE, -wall1.y, 0]);
 }
 
+let wallNormal = GLM.vec3.create();
 function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: number, renderable: WallSolid) {
   var wall = board.walls[wallId];
   var sector = board.sectors[secId];
@@ -542,7 +544,7 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
   var floorheinum = sector.floorheinum;
   var floorz = sector.floorz;
   var trans = (wall.cstat.translucent || wall.cstat.translucentReversed) ? 0.6 : 1;
-  var normal = normals(U.wallNormal(board, wallId));
+  var normal = normals(U.wallNormal(wallNormal, board, wallId));
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     var coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
@@ -566,7 +568,7 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
         renderable.bot.tex = art.getParallaxTexture(sector.floorpicnum);
         renderable.bot.shade = sector.floorshade;
         renderable.bot.pal = sector.floorpal;
-        renderable.bot.parallax = true;
+        renderable.bot.parallax = 1;
       } else {
         var wall_ = wall.cstat.swapBottoms ? board.walls[wall.nextwall] : wall;
         var wall2_ = wall.cstat.swapBottoms ? board.walls[wall_.point2] : wall2;
@@ -588,7 +590,7 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
         renderable.top.tex = art.getParallaxTexture(sector.ceilingpicnum);
         renderable.top.shade = sector.ceilingshade;
         renderable.top.pal = sector.ceilingpal;
-        renderable.top.parallax = true;
+        renderable.top.parallax = 1;
       } else {
         var base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
         applyWallTextureTransform(wall, wall2, info, base, wall, renderable.top.texMat);
