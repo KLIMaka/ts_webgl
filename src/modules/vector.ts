@@ -36,19 +36,19 @@ export class NumberVector {
   }
 }
 
-export class ObjectVector {
+export class ObjectVector<T> {
   private pointer = 0;
-  private array: any[];
+  private array: T[];
 
   constructor(size: number = 10) {
-    this.array = new Array<any>(size);
+    this.array = new Array<T>(size);
   }
 
   public get(i: number) {
     return this.array[i];
   }
 
-  public push(value: any) {
+  public push(value: T) {
     this.array[this.pointer++] = value;
   }
 

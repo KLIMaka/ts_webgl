@@ -51,7 +51,9 @@ export function setPosition(pos: GLM.Vec3Array) {
   state.setUniform('eyepos', pos);
 }
 
-export function setCursorPosiotion(pos: GLM.Vec3Array) {
+let pos = GLM.vec3.create();
+export function setCursorPosiotion(x: number, y:number, z:number) {
+  GLM.vec3.set(pos, x, y, z);
   state.setUniform('curpos', pos);
 }
 

@@ -211,16 +211,13 @@ export function nextwall(board: Board, wallId: number): number {
 }
 
 function doMoveWall(board: Board, w: number, x: number, y: number) {
-  let walls = board.walls;
-  let p = prevwall(board, w);
-  walls[w].x = x;
-  walls[w].y = y;
+  board.walls[w].x = x;
+  board.walls[w].y = y;
   fixxrepeat(board, w);
-  fixxrepeat(board, p);
+  fixxrepeat(board, prevwall(board, w));
 }
 
-let movedWalls = new NumberVector();
-export function moveWall(board: Board, wallId: number, x: number, y: number): NumberVector {
+export function moveWall(board: Board, wallId: number, x: number, y: number, movedWalls:NumberVector): NumberVector {
   movedWalls.clear();
   let walls = board.walls;
   let w = wallId;
@@ -248,35 +245,43 @@ export function moveWall(board: Board, wallId: number, x: number, y: number): Nu
   return movedWalls;
 }
 
-export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: number[]) {
-  let w1 = wallId; let wall1 = board.walls[w1];
-  let w2 = wall1.point2; let wall2 = board.walls[w2];
-  let p1 = prevwall(board, w1); let prev1 = board.walls[p1];
-  let n2 = wall2.point2; let next2 = board.walls[n2];
-  let dx = wall2.x - wall1.x; let dy = wall2.y - wall1.y;
-  let l = MU.len2d(dx, dy);
-  dx = MU.int(dx / l * len); dy = MU.int(dy / l * len);
-  let x1 = wall1.x - dy; let y1 = wall1.y + dx;
-  let x2 = wall2.x - dy; let y2 = wall2.y + dx;
-  let extent1 = MU.cross2d(x1 - prev1.x, y1 - prev1.y, wall1.x - prev1.x, wall1.y - prev1.y) == 0;
-  let extent2 = MU.cross2d(x2 - next2.x, y2 - next2.y, wall2.x - next2.x, wall2.y - next2.y) == 0;
-
-  if (extent1 && extent2) {
-    moveWall(board, w1, x1, y1);
-    moveWall(board, w2, x2, y2);
-    return w1;
-  } else if (extent1 && !extent2) {
-    moveWall(board, w1, x1, y1);
-    return splitWall(board, w1, x2, y2, art, wallptrs);
-  } else if (!extent1 && extent2) {
-    w1 = splitWall(board, w1, x1, y1, art, wallptrs);
-    w2 = nextwall(board, nextwall(board, w1));
-    moveWall(board, w2, x2, y2);
-    return nextwall(board, w1);
-  } else if (!extent1 && !extent2) {
-    w1 = splitWall(board, w1, x1, y1, art, wallptrs);
-    w2 = board.walls[w1].point2;
-    return splitWall(board, w2, x2, y2, art, wallptrs);
-  }
+export function moveSprite(board: Board, sprId: number, x: number, y: number) {
+  var spr = board.sprites[sprId];
+  spr.x = x;
+  spr.y = y;
+  spr.sectnum = U.findSector(board, x, y, spr.sectnum);
 }
+
+
+// export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: number[]) {
+//   let w1 = wallId; let wall1 = board.walls[w1];
+//   let w2 = wall1.point2; let wall2 = board.walls[w2];
+//   let p1 = prevwall(board, w1); let prev1 = board.walls[p1];
+//   let n2 = wall2.point2; let next2 = board.walls[n2];
+//   let dx = wall2.x - wall1.x; let dy = wall2.y - wall1.y;
+//   let l = MU.len2d(dx, dy);
+//   dx = MU.int(dx / l * len); dy = MU.int(dy / l * len);
+//   let x1 = wall1.x - dy; let y1 = wall1.y + dx;
+//   let x2 = wall2.x - dy; let y2 = wall2.y + dx;
+//   let extent1 = MU.cross2d(x1 - prev1.x, y1 - prev1.y, wall1.x - prev1.x, wall1.y - prev1.y) == 0;
+//   let extent2 = MU.cross2d(x2 - next2.x, y2 - next2.y, wall2.x - next2.x, wall2.y - next2.y) == 0;
+
+//   if (extent1 && extent2) {
+//     moveWall(board, w1, x1, y1);
+//     moveWall(board, w2, x2, y2);
+//     return w1;
+//   } else if (extent1 && !extent2) {
+//     moveWall(board, w1, x1, y1);
+//     return splitWall(board, w1, x2, y2, art, wallptrs);
+//   } else if (!extent1 && extent2) {
+//     w1 = splitWall(board, w1, x1, y1, art, wallptrs);
+//     w2 = nextwall(board, nextwall(board, w1));
+//     moveWall(board, w2, x2, y2);
+//     return nextwall(board, w1);
+//   } else if (!extent1 && !extent2) {
+//     w1 = splitWall(board, w1, x1, y1, art, wallptrs);
+//     w2 = board.walls[w1].point2;
+//     return splitWall(board, w2, x2, y2, art, wallptrs);
+//   }
+// }
 

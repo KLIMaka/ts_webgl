@@ -9,7 +9,8 @@ var named = {
   37: 'LEFT',
   38: 'UP',
   39: 'RIGHT',
-  40: 'DOWN'
+  40: 'DOWN',
+  45: 'INSERT'
 };
 
 function mapKeyCode(code: number): string {

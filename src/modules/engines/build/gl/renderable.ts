@@ -66,7 +66,7 @@ export class Solid implements Renderable {
   public shade: number;
   public trans: number = 1;
   public pal: number;
-  public parallax: number;
+  public parallax: number = 0;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
   public draw(gl: WebGLRenderingContext, state: State) {
@@ -80,6 +80,13 @@ export class Solid implements Renderable {
     state.setUniform('T', this.texMat);
     state.setDrawElements(this.buff.get());
     state.draw(gl);
+  }
+
+  public reset() {
+    this.buff.deallocate();
+    this.type = Type.SURFACE;
+    this.trans = 1;
+    this.parallax = 0;
   }
 }
 
