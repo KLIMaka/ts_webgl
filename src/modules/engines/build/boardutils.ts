@@ -217,39 +217,53 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
   fixxrepeat(board, prevwall(board, w));
 }
 
-export function moveWall(board: Board, wallId: number, x: number, y: number, movedWalls:NumberVector): NumberVector {
-  movedWalls.clear();
+export function connectedWalls(board: Board, wallId: number, result: NumberVector): NumberVector {
   let walls = board.walls;
+  result.push(wallId);
   let w = wallId;
-  doMoveWall(board, w, x, y);
-  movedWalls.push(w);
+  result.push(w);
   do {
     if (walls[w].nextwall != -1) {
       w = walls[walls[w].nextwall].point2;
-      doMoveWall(board, w, x, y);
-      movedWalls.push(w);
+      result.push(w);
     } else {
       w = wallId;
       do {
         let p = prevwall(board, w);
         if (walls[p].nextwall != -1) {
           w = walls[p].nextwall;
-          doMoveWall(board, w, x, y);
-          movedWalls.push(w);
+          result.push(w);
         } else {
           break;
         }
       } while (w != wallId)
     }
-  } while (w != wallId);
-  return movedWalls;
+  } while (w != wallId)
+  return result;
 }
 
-export function moveSprite(board: Board, sprId: number, x: number, y: number) {
+let wallsToMove = new NumberVector();
+export function moveWall(board: Board, wallId: number, x: number, y: number): boolean {
+  let walls = board.walls;
+  let wall = walls[wallId];
+  if (wall.x == x && wall.y == y)
+    return false;
+  connectedWalls(board, wallId, wallsToMove.clear());
+  for (let i = 0; i < wallsToMove.length(); i++) {
+    doMoveWall(board, wallsToMove.get(i), x, y);
+  }
+  return true;
+}
+
+export function moveSprite(board: Board, sprId: number, x: number, y: number, z:number): boolean {
   var spr = board.sprites[sprId];
+  if (spr.x == x && spr.y == y && spr.z == z)
+    return false;
   spr.x = x;
   spr.y = y;
+  spr.z = z;
   spr.sectnum = U.findSector(board, x, y, spr.sectnum);
+  return true;
 }
 
 

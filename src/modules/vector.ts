@@ -20,8 +20,9 @@ export class NumberVector {
     this.array[this.pointer++] = value;
   }
 
-  public clear() {
+  public clear(): NumberVector {
     this.pointer = 0;
+    return this;
   }
 
   public length() {

@@ -252,16 +252,16 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     'Batches:':0,
     'Sector:':0,
     'Processing:':'',
+    'Frame Time:':'',
     'Rendering:':'',
     'Sectors:':0,
     'Walls:':0,
     'Sprites:':0,
-    'FaceSprites:':0,
     'Buffer:':''
   }
+  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'Frame Time:', 'Buffer:']);
 
   var panel = UI.panel('Info');
-  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'FaceSprites:', 'Buffer:']);
   panel.append(props);
   var compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
@@ -295,6 +295,7 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
+    info['Frame Time:'] = PROFILE.get(null).time.toFixed(2)+'ms';
     info['Y:'] = ms.y;
     info['Buffer:'] = (100 * PROFILE.get('processing').counts['buffer']).toFixed(2)+'%';
     props.refresh(info);

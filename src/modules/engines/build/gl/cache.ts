@@ -211,6 +211,7 @@ export class Cache {
       let wall = this.board.walls[id];
       let zz = (slope(wall.x, wall.y, h) + z) / SCALE;
       fillBufferForWallPoint(this.board, id, point.value.buff, d, zz);
+      point.valid = true;
     }
     return point.value;
   }
