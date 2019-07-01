@@ -42,6 +42,7 @@ export function bind() {
 
 function updateState(e: KeyboardEvent, state: boolean) {
   keys['ALT'] = e.altKey;
+  console.log('alt ' + keys['ALT']);
   keys['SHIFT'] = e.shiftKey;
   keys['CTRL'] = e.ctrlKey;
   var key = mapKeyCode(e.keyCode);
@@ -51,11 +52,13 @@ function updateState(e: KeyboardEvent, state: boolean) {
 
 function keydown(e: KeyboardEvent) {
   updateState(e, true);
+  e.preventDefault();
   return false;
 }
 
 function keyup(e: KeyboardEvent) {
   updateState(e, false);
+  e.preventDefault();
   return false;
 }
 

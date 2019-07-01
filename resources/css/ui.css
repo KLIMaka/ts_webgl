@@ -16,6 +16,7 @@
 
 body {
 	margin: 0px;
+	user-select: none;
 }
 
 .frame {
@@ -27,14 +28,12 @@ body {
 	background: #CCC;
 	font-family: 'Nokia';
 	font-size: 8px;
-	font-smooth: never;
 	-webkit-font-smoothing: none;
 }
 
 .header {
 	padding: 5px 10px;
 	font-size: 16px;
-	/*font-weight: bold;*/
 	color: black;
 	cursor: default;
 	text-align: center;
@@ -55,7 +54,6 @@ body {
 	border-bottom: 2px solid #999;
 	display: inline-block;
 	background: #CCC;
-	/*font-weight: bold;*/
 	color: black;
 	cursor: default;
 }
@@ -88,7 +86,4 @@ body {
 
 .content {
 	margin: 5px 5px;
-}
-
-.property_name {
 }

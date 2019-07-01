@@ -51,7 +51,6 @@ interface Editable {
   canMove(): boolean;
   start(board: Board): void;
   move(board: Board, handle: MovingHandle): void;
-  elevate(board: Board, handle: MovingHandle): void;
   end(board: Board): void;
   highlight(gl: WebGLRenderingContext, board: Board): void;
 }
@@ -71,14 +70,10 @@ class WallEditable implements Editable {
   }
 
   public move(board: Board, handle: MovingHandle) {
-    let x = this.origin[0] + handle.dx();
-    let y = this.origin[2] + handle.dy();
+    let x = snapGrid(this.origin[0] + handle.dx(), gridSize);
+    let y = snapGrid(this.origin[2] + handle.dy(), gridSize);
     if (BU.moveWall(board, this.wallId, x, y))
       cache.invalidateAll();
-  }
-
-  public elevate(board: Board, handle: MovingHandle): void {
-
   }
 
   public end(board: Board): void {
@@ -118,16 +113,12 @@ class SpriteEditable implements Editable {
   }
 
   public move(board: Board, handle: MovingHandle) {
-    let x = this.origin[0] + handle.dx();
-    let y = this.origin[2] + handle.dy();
-    let z = (this.origin[1] + handle.dz()) * -16;
+    let x = snapGrid(this.origin[0] + handle.dx(), gridSize);
+    let y = snapGrid(this.origin[2] + handle.dy(), gridSize);
+    let z = snapGrid(this.origin[1] + handle.dz(), gridSize) * -16;
     if (BU.moveSprite(board, this.spriteId, x, y, z)) {
       cache.invalidateAll();
     }
-  }
-
-  public elevate(board: Board, handle: MovingHandle): void {
-
   }
 
   public end(board: Board): void {
@@ -142,40 +133,54 @@ function editableSprite(wallId: number) {
 }
 
 class SectorEditable implements Editable {
-  constructor(private sectorId: number) { }
-  public canMove(): boolean { return false }
+  private originz = 0;
+
+  constructor(private sectorId: number, private type: U.HitType) { }
+  public canMove(): boolean { return true }
 
   public highlight(gl: WebGLRenderingContext, board: Board) {
-    highlightSector(gl, board, this.sectorId);
+    highlight(gl, board, this.sectorId, -1, this.type);
   }
 
   public start(board: Board): void {
+    let sec = board.sectors[this.sectorId];
+    this.originz = (this.type == U.HitType.CEILING ? sec.ceilingz : sec.floorz) / -16;
   }
-
+  
   public move(board: Board, handle: MovingHandle) {
-  }
-
-  public elevate(board: Board, handle: MovingHandle): void {
-
+    let z = snapGrid(this.originz + handle.dz(), gridSize) * -16;
+    let sec = board.sectors[this.sectorId];
+    if (this.type == U.HitType.CEILING) {
+      if (sec.ceilingz != z) {
+        sec.ceilingz = z;
+        cache.invalidateAll();
+      }
+    } else {
+      if (sec.floorz != z) {
+        sec.floorz = z;
+        cache.invalidateAll();
+      }
+    }
   }
 
   public end(board: Board): void {
   }
 }
-function editableSector(sectorId: number) {
-  return new SectorEditable(sectorId);
+function editableSector(sectorId: number, type:U.HitType) {
+  return new SectorEditable(sectorId, type);
 }
 
-function getUnderCursor(board: Board): Editable {
+function getUnderCursor(board: Board): Editable[] {
   let w = getClosestWall(board);
   if (w != -1) {
-    return editableWall(w);
+    return [editableWall(w)];
   } else if (U.isWall(hit.type)) {
-    return editableWall(hit.id);
+    let w1 = board.walls[hit.id].point2;
+    return [editableWall(hit.id), editableWall(w1)];
   } else if (U.isSector(hit.type)) {
-    return editableSector(hit.id);
+    return [editableSector(hit.id, hit.type)];
   } else if (U.isSprite(hit.type)) {
-    return editableSprite(hit.id);
+    return [editableSprite(hit.id)];
   } else {
     return null;
   }
@@ -208,10 +213,12 @@ class Selection {
     }
   }
 
-  public add(item: Editable) {
-    if (item == null)
+  public add(items: Editable[]) {
+    if (items == null)
       return;
-    this.items.push(item);
+    for (let i = 0; i < items.length; i++) {
+      this.items.push(items[i]);
+    }
   }
 
   public clear() {
@@ -234,26 +241,28 @@ class Selection {
 class MovingHandle {
   private startPoint = GLM.vec3.create();
   private currentPoint = GLM.vec3.create();
+  private dzoff = 0;
   private active = false;
+  private parallel = false;
+  private elevate = false;
 
   public start(x: number, y: number, z: number) {
     GLM.vec3.set(this.startPoint, x, y, z);
     GLM.vec3.set(this.currentPoint, x, y, z);
+    this.dzoff = 0;
     this.active = true;
   }
 
-  public update(s: GLM.Vec3Array, v: GLM.Vec3Array, elevate: boolean) {
+  public update(s: GLM.Vec3Array, v: GLM.Vec3Array, elevate: boolean, parallel: boolean) {
+    this.parallel = parallel;
+    this.elevate = elevate;
     if (elevate) {
-      let dx = this.startPoint[0] - s[0];
-      let dy = this.startPoint[2] - s[2];
-      let dz = this.startPoint[1] - s[1];
-      let zt = dz / v[1];
-      let tt = GLM.vec3.set(GLM.vec3.create(), v[0], v[1], v[2]);
-      GLM.vec3.scale(tt, tt, zt);
-      let t = MU.len2d(dx, dy) / MU.len2d(tt[0], tt[2]);
-      GLM.vec3.scale(tt, tt, t);
-      this.startPoint[1] = tt[1] + s[1];
+      let dx = this.currentPoint[0] - s[0];
+      let dy = this.currentPoint[2] - s[2];
+      let t = MU.len2d(dx, dy) / MU.len2d(v[0], v[2]);
+      this.dzoff = v[1] * t + s[1] - this.currentPoint[1];
     } else {
+      this.dzoff = 0;
       let dz = this.startPoint[1] - s[1];
       let t = dz / v[1];
       GLM.vec3.set(this.currentPoint, v[0], v[1], v[2]);
@@ -271,15 +280,25 @@ class MovingHandle {
   }
 
   public dx() {
-    return snapGrid(this.currentPoint[0] - this.startPoint[0], gridSize);
+    let dx = this.currentPoint[0] - this.startPoint[0];
+    if (this.parallel) {
+      let dy = this.currentPoint[2] - this.startPoint[2];
+      return Math.abs(dx) > Math.abs(dy) ? dx : 0;
+    }
+    return dx;
   }
-
+  
   public dy() {
-    return snapGrid(this.currentPoint[2] - this.startPoint[2], gridSize);
+    let dy = this.currentPoint[2] - this.startPoint[2];
+    if (this.parallel) {
+      let dx = this.currentPoint[0] - this.startPoint[0];
+      return Math.abs(dy) > Math.abs(dx) ? dy : 0;
+    }
+    return dy;
   }
 
   public dz() {
-    return snapGrid(this.currentPoint[1] - this.startPoint[1], gridSize);
+    return this.elevate ? this.currentPoint[1] - this.startPoint[1] + this.dzoff : 0;
   }
 }
 
@@ -336,18 +355,12 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
 
   let fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
   let pos = ctr.getCamera().getPosition();
-  handle.update(pos, fwd, INPUT.keys['ALT']);
+  handle.update(pos, fwd, INPUT.keys['ALT'], INPUT.keys['SHIFT']);
   selection.move(board, handle);
 }
 
 function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
-}
-
-function snapGridVec(vec: GLM.Vec3Array, gridSize: number) {
-  vec[0] = snapGrid(vec[0], gridSize);
-  vec[1] = snapGrid(vec[1], gridSize);
-  vec[2] = snapGrid(vec[2], gridSize);
 }
 
 let snappedX: number;
@@ -381,14 +394,16 @@ function select(board: Board) {
   if (handle.isActive())
     return;
 
-  selection.clear();
-  selection.add(getUnderCursor(board));
+  if (INPUT.mouseClicks[0]) {
+    selection.clear();
+    selection.add(getUnderCursor(board));
+  }
 }
 
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   hitscan(gl, board, ms, ctr);
-  select(board)
   move(gl, board, ctr);
+  select(board)
   snap(board);
 
   // if (U.isWall(selectType) && INPUT.keys['M']) {
