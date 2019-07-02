@@ -434,7 +434,9 @@ export function getFirstWallAngle(sector: Sector, walls: Wall[]): number {
   return Math.atan2(-dy, dx);
 }
 
-export function wallVisible(wall1: Wall, wall2: Wall, ms: MoveStruct) {
+export function wallVisible(board:Board, wallId:number,  ms: MoveStruct) {
+  let wall1 = board.walls[wallId];
+  let wall2 = board.walls[wall1.point2];
   let dx1 = wall2.x - wall1.x;
   let dy1 = wall2.y - wall1.y;
   let dx2 = ms.x - wall1.x;

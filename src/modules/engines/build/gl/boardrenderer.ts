@@ -33,7 +33,7 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
   });
 }
 
-let context:Context;
+let context: Context;
 let artProvider: PalProvider;
 let cache: Cache;
 let rorLinks: BLOOD.RorLinks;
@@ -50,33 +50,6 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   cache = context.cache = new Cache(board, art);
   rorLinks = BLOOD.loadRorLinks(board);
   loadGridTexture(gl, (gridTex: Texture) => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), gridTex, cb));
-}
-
-function getClosestWall(board: Board): number {
-  if (U.isWall(hit.type)) {
-    return BU.closestWallInSector(board, U.sectorOfWall(board, hit.id), hit.x, hit.y, 64);
-  } else if (U.isSector(hit.type)) {
-    return BU.closestWallInSector(board, hit.id, hit.x, hit.y, 64);
-  }
-  return -1;
-}
-
-let list = new ObjectVector<MessageHandler>();
-function getUnderCursor(board: Board): ObjectVector<MessageHandler> {
-  list.clear();
-  let w = getClosestWall(board);
-  if (w != -1) {
-    list.push(EDIT.wallHandlerFactory.handler(new EDIT.WallEnt(w)));
-  } else if (U.isWall(hit.type)) {
-    let w1 = board.walls[hit.id].point2;
-    list.push(EDIT.wallHandlerFactory.handler(new EDIT.WallEnt(hit.id)));
-    list.push(EDIT.wallHandlerFactory.handler(new EDIT.WallEnt(w1)));
-  } else if (U.isSector(hit.type)) {
-    list.push(EDIT.sectorHandlerFactory.handler(new EDIT.SectorEnt(hit.id, hit.type)));
-  } else if (U.isSprite(hit.type)) {
-    list.push(EDIT.spriteHandlerFactory.handler(new EDIT.SpriteEnt(hit.id)));
-  }
-  return list;
 }
 
 let selection = new List<MessageHandler>();
@@ -155,7 +128,7 @@ function select(board: Board) {
     return;
 
   selection.clear();
-  let list = getUnderCursor(board);
+  let list = EDIT.getFromHitscan(board, hit);
   for (let i = 0; i < list.length(); i++) {
     selection.push(list.get(i));
   }
@@ -184,7 +157,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
-  sendMessage(EDIT.HIGHLIGHT, context, selection);
+  // sendMessage(EDIT.HIGHLIGHT, context, selection);
   gl.enable(gl.DEPTH_TEST);
 }
 
@@ -222,7 +195,7 @@ function drawImpl(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr
   PROFILE.startProfile('processing');
   let result = ms.sec == -1
     ? all.visit(board)
-    : visible.visit(board, ms);
+    : visible.visit(board, ms, ctr.getCamera().forward());
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(ctr.getProjectionMatrix(gl));
@@ -264,7 +237,7 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, l
   BGL.setViewMatrix(stackTransform);
   BGL.setPosition(npos);
   writeStenciledOnly(gl, stencilValue);
-  drawRooms(gl, board, additionVisible.visit(board, mstmp));
+  drawRooms(gl, board, additionVisible.visit(board, mstmp, ctr.getCamera().forward()));
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
@@ -300,19 +273,19 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
     let w = VIS.unpackWallId(mirrorWallsCollector.walls.get(i));
-    let w1 = board.walls[w];
-    let w2 = board.walls[w1.point2];
-    if (!U.wallVisible(w1, w2, ms))
-      continue;
-
+    if (!U.wallVisible(board, w, ms))
+    continue;
+    
     // draw mirror surface into stencil
     let r = cache.getWall(w, VIS.unpackSectorId(mirrorWallsCollector.walls.get(i)));
     BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
     BGL.setPosition(ctr.getCamera().getPosition());
     writeStencilOnly(gl, i + 127);
     BGL.draw(gl, r);
-
+    
     // draw reflections in stenciled area
+    let w1 = board.walls[w];
+    let w2 = board.walls[w1.point2];
     GLM.vec2.set(wallNormal, w2.x - w1.x, w2.y - w1.y);
     VEC.normal2d(wallNormal, wallNormal);
     GLM.vec3.set(mirrorNormal, wallNormal[0], 0, wallNormal[1]);
@@ -326,7 +299,7 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
     VEC.reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     msMirrored.sec = ms.sec; msMirrored.x = mpos[0]; msMirrored.y = mpos[2]; msMirrored.z = mpos[1];
     writeStenciledOnly(gl, i + 127);
-    drawRooms(gl, board, additionVisible.visit(board, msMirrored));
+    drawRooms(gl, board, additionVisible.visit(board, msMirrored, ctr.getCamera().forward()));
     gl.cullFace(gl.BACK);
 
     // seal reflections by writing depth of mirror surface

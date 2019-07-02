@@ -1,10 +1,10 @@
-import { Message, MessageHandlerFactory } from "./messages";
+import { Message, MessageHandlerFactory, MessageHandler } from "./messages";
 import { Board } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import * as BU from "./boardutils";
-import { NumberVector } from "../../vector";
+import { NumberVector, ObjectVector } from "../../vector";
 import { len2d } from "../../../libs/mathutils";
-import { HitType, sectorOfWall, Hitscan, isSector, sectorZ, ZSCALE } from "./utils";
+import { HitType, sectorOfWall, Hitscan, isSector, sectorZ, ZSCALE, isWall, isSprite } from "./utils";
 import { ArtProvider } from "./gl/cache";
 
 class MovingHandle {
@@ -13,7 +13,7 @@ class MovingHandle {
   private dzoff = 0;
   private active = false;
   private parallel = false;
-  private elevate = false;
+  public elevate = false;
   public snappedSector = -1;
   public snappedSectorZ = 0;
 
@@ -30,7 +30,7 @@ class MovingHandle {
     if (elevate) {
       if (isSector(hit.type)) {
         this.snappedSector = hit.id;
-        this.snappedSectorZ = sectorZ(board, hit.id, hit.type);
+        this.snappedSectorZ = sectorZ(board, hit.id, hit.type) / ZSCALE;
       } else {
         this.snappedSector = -1;
       }
@@ -81,12 +81,12 @@ export let END_MOVE = new EndMove();
 export let HIGHLIGHT = new Highlight();
 export let SPLIT_WALL = new SplitWall();
 
-export class WallEnt { constructor(public wallId: number, public origin = GLM.vec2.create(), public active = false) { } }
-export class SpriteEnt { constructor(public spriteId: number, public origin = GLM.vec3.create()) { } }
-export class SectorEnt { constructor(public sectorId: number, public type: HitType, public originz = 0) { } }
+class WallEnt { constructor(public wallId: number, public origin = GLM.vec2.create(), public active = false) { } }
+class SpriteEnt { constructor(public spriteId: number, public origin = GLM.vec3.create()) { } }
+class SectorEnt { constructor(public sectorId: number, public type: HitType, public originz = 0) { } }
 
 let connectedWalls = new NumberVector();
-export let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
+let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
   .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => {
     let wall = ctx.board.walls[obj.wallId];
     GLM.vec2.set(obj.origin, wall.x, wall.y);
@@ -122,9 +122,9 @@ export let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
     ctx.invalidateAll();
   });
 
-export let spriteHandlerFactory = new MessageHandlerFactory<SpriteEnt>()
+let spriteHandlerFactory = new MessageHandlerFactory<SpriteEnt>()
   .register(StartMove, (obj: SpriteEnt, msg: StartMove, ctx: BuildContext) => {
-    let spr = ctx.board.sprites[this.spriteId];
+    let spr = ctx.board.sprites[obj.spriteId];
     GLM.vec3.set(obj.origin, spr.x, spr.z / ZSCALE, spr.y);
   })
   .register(Move, (obj: SpriteEnt, msg: Move, ctx: BuildContext) => {
@@ -148,11 +148,13 @@ function setSectorZ(board: Board, sectorId: number, type: HitType, z: number): b
   return true;
 }
 
-export let sectorHandlerFactory = new MessageHandlerFactory<SectorEnt>()
+let sectorHandlerFactory = new MessageHandlerFactory<SectorEnt>()
   .register(StartMove, (obj: SectorEnt, msg: StartMove, ctx: BuildContext) => {
     obj.originz = sectorZ(ctx.board, obj.sectorId, obj.type) / ZSCALE;
   })
   .register(Move, (obj: SectorEnt, msg: Move, ctx: BuildContext) => {
+    if (!msg.elevate)
+      return;
     let useSectorElevation = msg.snappedSector != obj.sectorId && msg.snappedSector != -1;
     let z = (useSectorElevation ? msg.snappedSectorZ : ctx.snap(obj.originz + msg.dz())) * ZSCALE;
     if (setSectorZ(ctx.board, obj.sectorId, obj.type, z)) {
@@ -162,3 +164,30 @@ export let sectorHandlerFactory = new MessageHandlerFactory<SectorEnt>()
   .register(Highlight, (obj: SectorEnt, msg: Highlight, ctx: BuildContext) => {
     ctx.highlight(ctx.gl, ctx.board, obj.sectorId, -1, obj.type);
   });
+
+function getClosestWall(board: Board, hit: Hitscan): number {
+  if (isWall(hit.type)) {
+    return BU.closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, 64);
+  } else if (isSector(hit.type)) {
+    return BU.closestWallInSector(board, hit.id, hit.x, hit.y, 64);
+  }
+  return -1;
+}
+
+let list = new ObjectVector<MessageHandler>();
+export function getFromHitscan(board: Board, hit: Hitscan): ObjectVector<MessageHandler> {
+  list.clear();
+  let w = getClosestWall(board, hit);
+  if (w != -1) {
+    list.push(wallHandlerFactory.handler(new WallEnt(w)));
+  } else if (isWall(hit.type)) {
+    let w1 = board.walls[hit.id].point2;
+    list.push(wallHandlerFactory.handler(new WallEnt(hit.id)));
+    list.push(wallHandlerFactory.handler(new WallEnt(w1)));
+  } else if (isSector(hit.type)) {
+    list.push(sectorHandlerFactory.handler(new SectorEnt(hit.id, hit.type)));
+  } else if (isSprite(hit.type)) {
+    list.push(spriteHandlerFactory.handler(new SpriteEnt(hit.id)));
+  }
+  return list;
+}
