@@ -1,5 +1,5 @@
 module.exports = function (grunt) {
-  grunt.loadNpmTasks('grunt-typescript');
+  grunt.loadNpmTasks('grunt-ts');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.initConfig({});
 
@@ -36,28 +36,29 @@ module.exports = function (grunt) {
   for (var i = 0; i < modules.length; i++) {
     var module = modules[i];
 
-    grunt.config(['typescript', module], {
+    grunt.config(['ts', module], {
       src: ['src/' + module + '.ts'],
       dest: 'distr/',
       options: {
         rootDir: 'src/',
         module: 'amd',
-        target: 'es5'
+        target: 'es5',
+        lib: ['es2015', 'dom']
       }
     });
     grunt.config(['watch', module], {
       files: '**/*.ts',
-      tasks: ['typescript:' + module]
+      tasks: ['ts:' + module]
     });
 
-    grunt.registerTask(module, ['typescript:' + module]);
+    grunt.registerTask(module, ['ts:' + module]);
     grunt.registerTask('watch_' + module, ['watch:' + module]);
   }
 
   for (var i = 0; i < nodemodules.length; i++) {
     var module = nodemodules[i];
 
-    grunt.config(['typescript', module], {
+    grunt.config(['ts', module], {
       src: ['src/' + module + '.ts'],
       dest: 'node_distr/',
       options: {
@@ -67,9 +68,9 @@ module.exports = function (grunt) {
     });
     grunt.config(['watch', module], {
       files: '**/*.ts',
-      tasks: ['typescript:' + module]
+      tasks: ['ts:' + module]
     });
-    grunt.registerTask(module, ['typescript:' + module]);
+    grunt.registerTask(module, ['ts:' + module]);
     grunt.registerTask('watch_' + module, ['watch:' + module]);
   }
 }

@@ -1,6 +1,6 @@
 
 export class Node<T> {
-  constructor(public obj:T=null, public next:Node<T>=null, public prev:Node<T>=null) {
+  constructor(public obj: T = null, public next: Node<T> = null, public prev: Node<T> = null) {
   }
 }
 
@@ -9,33 +9,43 @@ export class List<T> {
   private nil = new Node<T>();
 
   constructor() {
-    this.nil.next = this.nil;
-    this.nil.prev = this.nil;
+    this.clear();
   }
 
-  public first():Node<T> {
+  public first(): Node<T> {
     return this.nil.next;
   }
 
-  public last():Node<T> {
+  public last(): Node<T> {
     return this.nil.prev;
   }
 
-  public terminator():Node<T> {
+  public terminator(): Node<T> {
     return this.nil;
   }
 
-  public pop():T {
-    var ret = this.last().obj;
+  public pop(): T {
+    let ret = this.last().obj;
     this.remove(this.last());
     return ret;
   }
 
-  public isEmpty():boolean {
+  public push(value: T): Node<T>{
+    return this.insertAfter(value);
+  }
+
+  public pushAll(values: T[]): Node<T>[]{
+    let nodes = [];
+    for (let i = 0; i < values.length; i++)
+      nodes.push(this.insertAfter(values[i]));
+    return nodes;
+  }
+
+  public isEmpty(): boolean {
     return this.nil.next == this.nil;
   }
 
-  public insertNodeBefore(node:Node<T>, ref:Node<T> = this.nil.next):Node<T> {
+  public insertNodeBefore(node: Node<T>, ref: Node<T> = this.nil.next): Node<T> {
     node.next = ref;
     node.prev = ref.prev;
     node.prev.next = node;
@@ -43,11 +53,11 @@ export class List<T> {
     return node;
   }
 
-  public insertBefore(val:T, ref:Node<T>=this.nil.next):Node<T> {
+  public insertBefore(val: T, ref: Node<T> = this.nil.next): Node<T> {
     return this.insertNodeBefore(new Node<T>(val), ref);
   }
 
-  public insertNodeAfter(node:Node<T>, ref:Node<T> = this.nil.prev):Node<T> {
+  public insertNodeAfter(node: Node<T>, ref: Node<T> = this.nil.prev): Node<T> {
     node.next = ref.next;
     node.next.prev = node;
     ref.next = node;
@@ -55,16 +65,21 @@ export class List<T> {
     return node;
   }
 
-  public insertAfter(val:T, ref:Node<T>=this.nil.prev):Node<T> {
+  public insertAfter(val: T, ref: Node<T> = this.nil.prev): Node<T> {
     return this.insertNodeAfter(new Node<T>(val), ref);
   }
 
-  public remove(ref:Node<T>):Node<T> {
+  public remove(ref: Node<T>): Node<T> {
     if (ref == this.nil)
       return;
 
     ref.next.prev = ref.prev;
     ref.prev.next = ref.next;
     return ref;
+  }
+
+  public clear() {
+    this.nil.next = this.nil;
+    this.nil.prev = this.nil;
   }
 }

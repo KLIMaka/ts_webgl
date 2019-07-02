@@ -1,6 +1,5 @@
-import * as BAG from '../../../../libs/bag';
+import { Buffer, BufferBuilder, Pointer } from '../../../buffergl';
 import * as MB from '../../../meshbuilder';
-import {BufferBuilder, Buffer, Pointer} from '../../../buffergl';
 
 var buffer:Buffer;
 
