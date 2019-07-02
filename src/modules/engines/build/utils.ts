@@ -76,6 +76,11 @@ export function sectorOfWall(board: Board, wallId: number): number {
   }
 }
 
+export function sectorZ(board:Board, sectorId:number, type:HitType) {
+  let sec = board.sectors[sectorId];
+  return (type == HitType.CEILING ? sec.ceilingz : sec.floorz);
+}
+
 export function findSector(board: Board, x: number, y: number, secnum: number = -1): number {
   if (secnum == -1)
     return findSectorAll(board, x, y);

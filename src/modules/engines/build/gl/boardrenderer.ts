@@ -11,15 +11,15 @@ import { NumberVector, ObjectVector } from '../../../vector';
 import * as BLOOD from '../bloodutils';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
-import { Board } from '../structs';
+import { Board, Sector } from '../structs';
 import * as U from '../utils';
 import * as BUFF from './buffers';
 import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
 import { Renderable, Solid, Type, wrapInGrid } from './renderable';
 import { List } from '../../../../libs/list';
-import { MessageReceiver, sendMessage, RegistrableMessageReceiver, Message } from '../edit';
-
+import { MessageHandler, sendMessage, MessageHandlerFactory, Message } from '../messages';
+import * as EDIT from "../buildedit";
 
 export interface PalProvider extends ArtProvider {
   getPalTexture(): Texture;
@@ -32,6 +32,42 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
   });
 }
 
+class Context implements EDIT.BuildContext {
+  art: ArtProvider = null;
+  board: Board = null;
+  gl: WebGLRenderingContext = null;
+
+
+  snap = (x: number) => snapGrid(x, gridSize);
+  invalidateAll = () => cache.invalidateAll();
+
+  highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number) {
+    drawGrid(gl, board, sectorId, -1, U.HitType.CEILING);
+    drawGrid(gl, board, sectorId, -1, U.HitType.FLOOR);
+    drawEdges(gl, board, sectorId, -1, U.HitType.CEILING);
+    drawEdges(gl, board, sectorId, -1, U.HitType.FLOOR);
+  };
+
+  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
+    drawGrid(gl, board, wallId, sectorId, U.HitType.UPPER_WALL);
+    drawGrid(gl, board, wallId, sectorId, U.HitType.MID_WALL);
+    drawGrid(gl, board, wallId, sectorId, U.HitType.LOWER_WALL);
+    drawEdges(gl, board, wallId, sectorId, U.HitType.UPPER_WALL);
+    drawEdges(gl, board, wallId, sectorId, U.HitType.MID_WALL);
+    drawEdges(gl, board, wallId, sectorId, U.HitType.LOWER_WALL);
+  };
+
+  highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number) {
+    drawEdges(gl, board, spriteId, -1, U.HitType.SPRITE);
+  };
+
+  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: U.HitType) {
+    drawGrid(gl, board, id, addId, type);
+    drawEdges(gl, board, id, addId, type);
+  };
+}
+let context = new Context();
+
 let artProvider: PalProvider;
 let cache: Cache;
 let rorLinks: BLOOD.RorLinks;
@@ -43,220 +79,41 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   gl.enable(gl.BLEND);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
-  artProvider = art;
+  artProvider = context.art = art;
   cache = new Cache(board, art);
   rorLinks = BLOOD.loadRorLinks(board);
   loadGridTexture(gl, (gridTex: Texture) => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), gridTex, cb));
 }
 
-class StartMove implements Message { constructor(public board: Board) { } }
-class Move implements Message { constructor(public board: Board, public handle: MovingHandle) { } }
-class EndMove implements Message { constructor(public board: Board) { } }
-class Highlight implements Message { constructor(public gl: WebGLRenderingContext, public board: Board) { } }
-
-let startMoveMsg = new StartMove(null); let createStartMoveMsg = (board: Board) => { startMoveMsg.board = board; return startMoveMsg; }
-let moveMsg = new Move(null, null); let createMoveMsg = (board: Board, handle: MovingHandle) => { moveMsg.board = board; moveMsg.handle = handle; return moveMsg }
-let endMoveMsg = new EndMove(null); let createEndMoveMsd = (board: Board) => { endMoveMsg.board = board; return endMoveMsg }
-let highlightMsg = new Highlight(null, null); let createHighlightMsg = (gl: WebGLRenderingContext, board: Board) => { highlightMsg.gl = gl; highlightMsg.board = board; return highlightMsg; }
-
-let connectedWalls = new NumberVector();
-class EditableWall extends RegistrableMessageReceiver {
-  private origin = GLM.vec3.create();
-  private active = false;
-
-  constructor(private wallId: number) {
-    super();
-    this.register(StartMove, this.startMove.bind(this));
-    this.register(Move, this.move.bind(this));
-    this.register(EndMove, this.endMove.bind(this));
-    this.register(Highlight, this.highlight.bind(this));
+function getClosestWall(board: Board): number {
+  if (U.isWall(hit.type)) {
+    return BU.closestWallInSector(board, U.sectorOfWall(board, hit.id), hit.x, hit.y, 64);
+  } else if (U.isSector(hit.type)) {
+    return BU.closestWallInSector(board, hit.id, hit.x, hit.y, 64);
   }
-
-  private startMove(msg: StartMove) {
-    let wall = msg.board.walls[this.wallId];
-    GLM.vec3.set(this.origin, wall.x, 0, wall.y);
-    this.active = true;
-  }
-
-  private move(msg: Move) {
-    let x = snapGrid(this.origin[0] + msg.handle.dx(), gridSize);
-    let y = snapGrid(this.origin[2] + msg.handle.dy(), gridSize);
-    if (BU.moveWall(msg.board, this.wallId, x, y))
-      cache.invalidateAll();
-  }
-
-  private endMove(msg: EndMove) {
-    this.active = false;
-  }
-
-  private highlight(msg: Highlight) {
-    if (this.active) {
-      BU.connectedWalls(msg.board, this.wallId, connectedWalls.clear());
-      for (let i = 0; i < connectedWalls.length(); i++) {
-        let w = connectedWalls.get(i);
-        let s = U.sectorOfWall(msg.board, w);
-        highlightWall(msg.gl, msg.board, w, s);
-        let p = BU.prevwall(msg.board, w);
-        highlightWall(msg.gl, msg.board, p, s);
-        highlightSector(msg.gl, msg.board, s);
-      }
-    } else {
-      let s = U.sectorOfWall(msg.board, this.wallId);
-      highlightWall(msg.gl, msg.board, this.wallId, s);
-    }
-  }
+  return -1;
 }
 
-class EditableSprite extends RegistrableMessageReceiver {
-  private origin = GLM.vec3.create();
-
-  constructor(private spriteId: number) {
-    super();
-    this.register(StartMove, this.startMove.bind(this));
-    this.register(Move, this.move.bind(this));
-    this.register(Highlight, this.highlight.bind(this));
-  }
-
-  private startMove(msg: StartMove): void {
-    let spr = msg.board.sprites[this.spriteId];
-    GLM.vec3.set(this.origin, spr.x, spr.z / -16, spr.y);
-  }
-
-  private move(msg: Move) {
-    let x = snapGrid(this.origin[0] + msg.handle.dx(), gridSize);
-    let y = snapGrid(this.origin[2] + msg.handle.dy(), gridSize);
-    let z = snapGrid(this.origin[1] + msg.handle.dz(), gridSize) * -16;
-    if (BU.moveSprite(msg.board, this.spriteId, x, y, z)) {
-      cache.invalidateAll();
-    }
-  }
-
-  private highlight(msg: Highlight) {
-    highlightSprite(msg.gl, msg.board, this.spriteId);
-  }
-}
-
-class EditableSector extends RegistrableMessageReceiver {
-  private originz = 0;
-
-  constructor(private sectorId: number, private type: U.HitType) {
-    super();
-    this.register(StartMove, this.startMove.bind(this));
-    this.register(Move, this.move.bind(this));
-    this.register(Highlight, this.highlight.bind(this));
-  }
-
-  public highlight(msg: Highlight) {
-    highlight(msg.gl, msg.board, this.sectorId, -1, this.type);
-  }
-
-  public startMove(msg: StartMove): void {
-    let sec = msg.board.sectors[this.sectorId];
-    this.originz = (this.type == U.HitType.CEILING ? sec.ceilingz : sec.floorz) / -16;
-  }
-
-  public move(msg: Move) {
-    let z = snapGrid(this.originz + msg.handle.dz(), gridSize) * -16;
-    let sec = msg.board.sectors[this.sectorId];
-    if (this.type == U.HitType.CEILING) {
-      if (sec.ceilingz != z) {
-        sec.ceilingz = z;
-        cache.invalidateAll();
-      }
-    } else {
-      if (sec.floorz != z) {
-        sec.floorz = z;
-        cache.invalidateAll();
-      }
-    }
-  }
-}
-
-let list = new ObjectVector<MessageReceiver>();
-function getUnderCursor(board: Board): ObjectVector<MessageReceiver> {
+let list = new ObjectVector<MessageHandler>();
+function getUnderCursor(board: Board): ObjectVector<MessageHandler> {
   list.clear();
   let w = getClosestWall(board);
   if (w != -1) {
-    list.push(new EditableWall(w).receiver());
+    list.push(EDIT.wallHandlerFactory.handler(new EDIT.WallEnt(w)));
   } else if (U.isWall(hit.type)) {
     let w1 = board.walls[hit.id].point2;
-    list.push(new EditableWall(hit.id).receiver());
-    list.push(new EditableWall(w1).receiver());
+    list.push(EDIT.wallHandlerFactory.handler(new EDIT.WallEnt(hit.id)));
+    list.push(EDIT.wallHandlerFactory.handler(new EDIT.WallEnt(w1)));
   } else if (U.isSector(hit.type)) {
-    list.push(new EditableSector(hit.id, hit.type).receiver());
+    list.push(EDIT.sectorHandlerFactory.handler(new EDIT.SectorEnt(hit.id, hit.type)));
   } else if (U.isSprite(hit.type)) {
-    list.push(new EditableSprite(hit.id).receiver());
+    list.push(EDIT.spriteHandlerFactory.handler(new EDIT.SpriteEnt(hit.id)));
   }
   return list;
 }
 
-class MovingHandle {
-  private startPoint = GLM.vec3.create();
-  private currentPoint = GLM.vec3.create();
-  private dzoff = 0;
-  private active = false;
-  private parallel = false;
-  private elevate = false;
-
-  public start(x: number, y: number, z: number) {
-    GLM.vec3.set(this.startPoint, x, y, z);
-    GLM.vec3.set(this.currentPoint, x, y, z);
-    this.dzoff = 0;
-    this.active = true;
-  }
-
-  public update(s: GLM.Vec3Array, v: GLM.Vec3Array, elevate: boolean, parallel: boolean) {
-    this.parallel = parallel;
-    this.elevate = elevate;
-    if (elevate) {
-      let dx = this.currentPoint[0] - s[0];
-      let dy = this.currentPoint[2] - s[2];
-      let t = MU.len2d(dx, dy) / MU.len2d(v[0], v[2]);
-      this.dzoff = v[1] * t + s[1] - this.currentPoint[1];
-    } else {
-      this.dzoff = 0;
-      let dz = this.startPoint[1] - s[1];
-      let t = dz / v[1];
-      GLM.vec3.set(this.currentPoint, v[0], v[1], v[2]);
-      GLM.vec3.scale(this.currentPoint, this.currentPoint, t);
-      GLM.vec3.add(this.currentPoint, this.currentPoint, s);
-    }
-  }
-
-  public isActive() {
-    return this.active;
-  }
-
-  public stop() {
-    this.active = false;
-  }
-
-  public dx() {
-    let dx = this.currentPoint[0] - this.startPoint[0];
-    if (this.parallel) {
-      let dy = this.currentPoint[2] - this.startPoint[2];
-      return Math.abs(dx) > Math.abs(dy) ? dx : 0;
-    }
-    return dx;
-  }
-
-  public dy() {
-    let dy = this.currentPoint[2] - this.startPoint[2];
-    if (this.parallel) {
-      let dx = this.currentPoint[0] - this.startPoint[0];
-      return Math.abs(dy) > Math.abs(dx) ? dy : 0;
-    }
-    return dy;
-  }
-
-  public dz() {
-    return this.elevate ? this.currentPoint[1] - this.startPoint[1] + this.dzoff : 0;
-  }
-}
-
 let gridSize = 128;
-let selection = new List<MessageReceiver>();
-let handle = new MovingHandle();
+let selection = new List<MessageHandler>();
 
 function print(board: Board, id: number, type: U.HitType) {
   if (INPUT.mouseClicks[0]) {
@@ -283,40 +140,29 @@ function hitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr:
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
 }
 
-function getClosestWall(board: Board): number {
-  if (U.isWall(hit.type)) {
-    return BU.closestWallInSector(board, U.sectorOfWall(board, hit.id), hit.x, hit.y, 64);
-  } else if (U.isSector(hit.type)) {
-    return BU.closestWallInSector(board, hit.id, hit.x, hit.y, 64);
-  }
-  return -1;
-}
-
 function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
   if (selection.isEmpty())
     return;
 
-  if (!handle.isActive() && INPUT.mouseButtons[0]) {
-    handle.start(hit.x, hit.z / -16, hit.y);
-    sendMessage(createStartMoveMsg(board), selection);
+  if (!EDIT.MOVE.isActive() && INPUT.mouseButtons[0]) {
+    EDIT.MOVE.start(hit.x, hit.z / -16, hit.y);
+    sendMessage(EDIT.START_MOVE, context, selection);
   } else if (!INPUT.mouseButtons[0]) {
-    handle.stop();
-    sendMessage(createEndMoveMsd(board), selection);
+    EDIT.MOVE.stop();
+    sendMessage(EDIT.END_MOVE, context, selection);
     return;
   }
 
   let fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
   let pos = ctr.getCamera().getPosition();
-  handle.update(pos, fwd, INPUT.keys['ALT'], INPUT.keys['SHIFT']);
-  sendMessage(createMoveMsg(board, handle), selection);
+  EDIT.MOVE.update(pos, fwd, INPUT.keys['ALT'], INPUT.keys['SHIFT'], hit, board);
+  sendMessage(EDIT.MOVE, context, selection);
 }
 
 function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
 }
 
-let snappedX: number;
-let snappedY: number;
 function snap(board: Board) {
   if (hit.t != -1) {
     let x = hit.x; let y = hit.y;
@@ -337,13 +183,14 @@ function snap(board: Board) {
       x = MU.int(wall.x + (t * dx));
       y = MU.int(wall.y + (t * dy));
     }
-    snappedX = x; snappedY = y;
+    EDIT.SPLIT_WALL.x = x;
+    EDIT.SPLIT_WALL.y = y;
     BGL.setCursorPosiotion(x, hit.z / -16, y);
   }
 }
 
 function select(board: Board) {
-  if (handle.isActive())
+  if (EDIT.MOVE.isActive())
     return;
 
   selection.clear();
@@ -353,20 +200,21 @@ function select(board: Board) {
   }
 }
 
+function updateContext(gl: WebGLRenderingContext, board: Board) {
+  context.board = board;
+  context.gl = gl;
+}
+
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
+  updateContext(gl, board);
   hitscan(gl, board, ms, ctr);
   move(gl, board, ctr);
   select(board)
   snap(board);
 
-  // if (U.isWall(selectType) && INPUT.keys['M']) {
-  //   board.walls[selectId].picnum = BLOOD.MIRROR_PIC;
-  //   cache.invalidateWalls([selectId]);
-  // }
-  // if (U.isWall(selectType) && INPUT.keys['INSERT']) {
-  //   BU.splitWall(board, hit.id, snappedX, snappedY, artProvider, []);
-  //   cache.invalidateAll();
-  // }
+  if (INPUT.keys['INSERT']) {
+    sendMessage(EDIT.SPLIT_WALL, context, selection);
+  }
 
   BGL.newFrame(gl);
   drawImpl(gl, board, ms, ctr);
@@ -375,33 +223,8 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
-  sendMessage(createHighlightMsg(gl, board), selection);
+  sendMessage(EDIT.HIGHLIGHT, context, selection);
   gl.enable(gl.DEPTH_TEST);
-}
-
-function highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number) {
-  drawGrid(gl, board, sectorId, -1, U.HitType.CEILING);
-  drawGrid(gl, board, sectorId, -1, U.HitType.FLOOR);
-  drawEdges(gl, board, sectorId, -1, U.HitType.CEILING);
-  drawEdges(gl, board, sectorId, -1, U.HitType.FLOOR);
-}
-
-function highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
-  drawGrid(gl, board, wallId, sectorId, U.HitType.UPPER_WALL);
-  drawGrid(gl, board, wallId, sectorId, U.HitType.MID_WALL);
-  drawGrid(gl, board, wallId, sectorId, U.HitType.LOWER_WALL);
-  drawEdges(gl, board, wallId, sectorId, U.HitType.UPPER_WALL);
-  drawEdges(gl, board, wallId, sectorId, U.HitType.MID_WALL);
-  drawEdges(gl, board, wallId, sectorId, U.HitType.LOWER_WALL);
-}
-
-function highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number) {
-  drawEdges(gl, board, spriteId, -1, U.HitType.SPRITE);
-}
-
-function highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: U.HitType) {
-  drawGrid(gl, board, id, addId, type);
-  drawEdges(gl, board, id, addId, type);
 }
 
 let tmp = GLM.vec4.create();
