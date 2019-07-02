@@ -8,8 +8,6 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
 import { State } from '../../../stategl';
 
-const SCALE = -16;
-
 class EnsureArray<T> {
   private array: Array<T> = [];
   constructor(private factory: () => T) { }
@@ -209,7 +207,7 @@ export class Cache {
       let h = (ceiling ? sec.ceilingheinum : sec.floorheinum);
       let z = (ceiling ? sec.ceilingz : sec.floorz);
       let wall = this.board.walls[id];
-      let zz = (slope(wall.x, wall.y, h) + z) / SCALE;
+      let zz = (slope(wall.x, wall.y, h) + z) / U.ZSCALE;
       fillBufferForWallPoint(this.board, id, point.value.buff, d, zz);
       point.valid = true;
     }
@@ -239,7 +237,7 @@ function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, b
     let wall = board.walls[wid];
     let vx = wall.x;
     let vy = wall.y;
-    let vz = (slope(vx, vy, heinum) + z) / SCALE;
+    let vz = (slope(vx, vy, heinum) + z) / U.ZSCALE;
     buff.writePos(w, vx, vz, vy);
     if (fw != wid) {
       off = buff.writeLine(off, w - 1, w);
@@ -362,7 +360,7 @@ function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, w
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
 
-  let x = spr.x; let y = spr.y; let z = spr.z / SCALE;
+  let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
   let info = art.getInfo(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
@@ -432,7 +430,7 @@ function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, bu
   for (let i = 0; i < vtxs.length; i++) {
     let vx = vtxs[i][0];
     let vy = vtxs[i][1];
-    let vz = (slope(vx, vy, heinum) + z) / SCALE;
+    let vz = (slope(vx, vy, heinum) + z) / U.ZSCALE;
     buff.writePos(i, vx, vz, vy);
     buff.writeNormal(i, normal[0], normal[1], normal[2]);
   }
@@ -475,10 +473,10 @@ function prepareSector(board: Board, art: ArtProvider, secId: number, renderable
 
 function getWallCoords(x1: number, y1: number, x2: number, y2: number,
   slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean): number[] {
-  let z1 = (slope(x1, y1, heinum) + z) / SCALE;
-  let z2 = (slope(x2, y2, heinum) + z) / SCALE;
-  let z3 = (nextslope(x2, y2, nextheinum) + nextz) / SCALE;
-  let z4 = (nextslope(x1, y1, nextheinum) + nextz) / SCALE;
+  let z1 = (slope(x1, y1, heinum) + z) / U.ZSCALE;
+  let z2 = (slope(x2, y2, heinum) + z) / U.ZSCALE;
+  let z3 = (nextslope(x2, y2, nextheinum) + nextz) / U.ZSCALE;
+  let z4 = (nextslope(x1, y1, nextheinum) + nextz) / U.ZSCALE;
   if (check && (z4 >= z1 && z3 >= z2))
     return null;
   return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
@@ -487,14 +485,14 @@ function getWallCoords(x1: number, y1: number, x2: number, y2: number,
 function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slope: any, nextslope: any,
   ceilheinum: number, ceilnextheinum: number, ceilz: number, ceilnextz: number,
   floorheinum: number, floornextheinum: number, floorz: number, floornextz: number): number[] {
-  let currz1 = (slope(x1, y1, ceilheinum) + ceilz) / SCALE;
-  let currz2 = (slope(x2, y2, ceilheinum) + ceilz) / SCALE;
-  let currz3 = (slope(x2, y2, floorheinum) + floorz) / SCALE;
-  let currz4 = (slope(x1, y1, floorheinum) + floorz) / SCALE;
-  let nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / SCALE;
-  let nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / SCALE;
-  let nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / SCALE;
-  let nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / SCALE;
+  let currz1 = (slope(x1, y1, ceilheinum) + ceilz) / U.ZSCALE;
+  let currz2 = (slope(x2, y2, ceilheinum) + ceilz) / U.ZSCALE;
+  let currz3 = (slope(x2, y2, floorheinum) + floorz) / U.ZSCALE;
+  let currz4 = (slope(x1, y1, floorheinum) + floorz) / U.ZSCALE;
+  let nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / U.ZSCALE;
+  let nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / U.ZSCALE;
+  let nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / U.ZSCALE;
+  let nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / U.ZSCALE;
   let z1 = Math.min(currz1, nextz1);
   let z2 = Math.min(currz2, nextz2);
   let z3 = Math.max(currz3, nextz3);
@@ -540,7 +538,7 @@ function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base:
   GLM.mat4.translate(texMat, texMat, [tcxoff, tcyoff, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
-  GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / SCALE, -wall1.y, 0]);
+  GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / U.ZSCALE, -wall1.y, 0]);
 }
 
 let wallNormal = GLM.vec3.create();
@@ -700,7 +698,7 @@ function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
 
-  let x = spr.x; let y = spr.y; let z = spr.z / SCALE;
+  let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
   let info = art.getInfo(spr.picnum);
   let tex = art.get(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;

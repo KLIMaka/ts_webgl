@@ -1,4 +1,5 @@
 import { loadImage } from '../../../../libs/imgutils';
+import { List } from '../../../../libs/list';
 import * as MU from '../../../../libs/mathutils';
 import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
@@ -7,19 +8,19 @@ import * as PROFILE from '../../../../modules/profiler';
 import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
-import { NumberVector, ObjectVector } from '../../../vector';
+import { ObjectVector } from '../../../vector';
 import * as BLOOD from '../bloodutils';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
-import { Board, Sector } from '../structs';
+import * as EDIT from "../buildedit";
+import { MessageHandler, sendMessage } from '../messages';
+import { Board } from '../structs';
 import * as U from '../utils';
 import * as BUFF from './buffers';
 import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
-import { Renderable, Solid, Type, wrapInGrid } from './renderable';
-import { List } from '../../../../libs/list';
-import { MessageHandler, sendMessage, MessageHandlerFactory, Message } from '../messages';
-import * as EDIT from "../buildedit";
+import { Context } from './context';
+import { Renderable } from './renderable';
 
 export interface PalProvider extends ArtProvider {
   getPalTexture(): Texture;
@@ -32,42 +33,7 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
   });
 }
 
-class Context implements EDIT.BuildContext {
-  art: ArtProvider = null;
-  board: Board = null;
-  gl: WebGLRenderingContext = null;
-
-
-  snap = (x: number) => snapGrid(x, gridSize);
-  invalidateAll = () => cache.invalidateAll();
-
-  highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number) {
-    drawGrid(gl, board, sectorId, -1, U.HitType.CEILING);
-    drawGrid(gl, board, sectorId, -1, U.HitType.FLOOR);
-    drawEdges(gl, board, sectorId, -1, U.HitType.CEILING);
-    drawEdges(gl, board, sectorId, -1, U.HitType.FLOOR);
-  };
-
-  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
-    drawGrid(gl, board, wallId, sectorId, U.HitType.UPPER_WALL);
-    drawGrid(gl, board, wallId, sectorId, U.HitType.MID_WALL);
-    drawGrid(gl, board, wallId, sectorId, U.HitType.LOWER_WALL);
-    drawEdges(gl, board, wallId, sectorId, U.HitType.UPPER_WALL);
-    drawEdges(gl, board, wallId, sectorId, U.HitType.MID_WALL);
-    drawEdges(gl, board, wallId, sectorId, U.HitType.LOWER_WALL);
-  };
-
-  highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number) {
-    drawEdges(gl, board, spriteId, -1, U.HitType.SPRITE);
-  };
-
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: U.HitType) {
-    drawGrid(gl, board, id, addId, type);
-    drawEdges(gl, board, id, addId, type);
-  };
-}
-let context = new Context();
-
+let context:Context;
 let artProvider: PalProvider;
 let cache: Cache;
 let rorLinks: BLOOD.RorLinks;
@@ -79,8 +45,9 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   gl.enable(gl.BLEND);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
+  context = new Context();
   artProvider = context.art = art;
-  cache = new Cache(board, art);
+  cache = context.cache = new Cache(board, art);
   rorLinks = BLOOD.loadRorLinks(board);
   loadGridTexture(gl, (gridTex: Texture) => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), gridTex, cb));
 }
@@ -112,7 +79,6 @@ function getUnderCursor(board: Board): ObjectVector<MessageHandler> {
   return list;
 }
 
-let gridSize = 128;
 let selection = new List<MessageHandler>();
 
 function print(board: Board, id: number, type: U.HitType) {
@@ -145,7 +111,7 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
     return;
 
   if (!EDIT.MOVE.isActive() && INPUT.mouseButtons[0]) {
-    EDIT.MOVE.start(hit.x, hit.z / -16, hit.y);
+    EDIT.MOVE.start(hit.x, hit.z / U.ZSCALE, hit.y);
     sendMessage(EDIT.START_MOVE, context, selection);
   } else if (!INPUT.mouseButtons[0]) {
     EDIT.MOVE.stop();
@@ -159,33 +125,28 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
   sendMessage(EDIT.MOVE, context, selection);
 }
 
-function snapGrid(coord: number, gridSize: number): number {
-  return Math.round(coord / gridSize) * gridSize;
-}
-
 function snap(board: Board) {
   if (hit.t != -1) {
     let x = hit.x; let y = hit.y;
     if (U.isSector(hit.type)) {
-      x = snapGrid(x, gridSize);
-      y = snapGrid(y, gridSize);
+      x = context.snap(x);
+      y = context.snap(y);
     } else if (U.isWall(hit.type)) {
       let w = hit.id;
       let wall = board.walls[w];
       let w1 = BU.nextwall(board, w); let wall1 = board.walls[w1];
       let dx = wall1.x - wall.x;
       let dy = wall1.y - wall.y;
-      let repeat = 128 * wall.xrepeat;
-      let dt = gridSize / repeat;
+      let repeat = BU.DEFAULT_REPEAT_RATE * wall.xrepeat;
       let dxt = x - wall.x; let dyt = y - wall.y;
       let t = MU.len2d(dxt, dyt) / MU.len2d(dx, dy);
-      t = (1 - t) < dt / 2.0 ? 1 : snapGrid(t, dt);
+      t = context.snap(t * repeat) / repeat;
       x = MU.int(wall.x + (t * dx));
       y = MU.int(wall.y + (t * dy));
     }
     EDIT.SPLIT_WALL.x = x;
     EDIT.SPLIT_WALL.y = y;
-    BGL.setCursorPosiotion(x, hit.z / -16, y);
+    BGL.setCursorPosiotion(x, hit.z / U.ZSCALE, y);
   }
 }
 
@@ -225,52 +186,6 @@ function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
   sendMessage(EDIT.HIGHLIGHT, context, selection);
   gl.enable(gl.DEPTH_TEST);
-}
-
-let tmp = GLM.vec4.create();
-let texMat = GLM.mat4.create();
-function gridMatrix(board: Board, id: number, type: U.HitType): GLM.Mat4Array {
-  GLM.mat4.identity(texMat);
-  if (U.isSector(type)) {
-    GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
-    GLM.mat4.scale(texMat, texMat, tmp);
-    GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
-  } else if (U.isWall(type)) {
-    let wall1 = board.walls[id];
-    let wall2 = board.walls[wall1.point2];
-    let dx = wall2.x - wall1.x;
-    let dy = wall2.y - wall1.y;
-    let d = 128 / (BU.walllen(board, id) / wall1.xrepeat);
-    GLM.vec4.set(tmp, d / 512, 1 / 512, 1, 1);
-    GLM.mat4.scale(texMat, texMat, tmp);
-    GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
-    GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
-    GLM.mat4.translate(texMat, texMat, tmp);
-  }
-  return texMat;
-}
-
-function drawGrid(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: U.HitType) {
-  let r = <Solid>cache.getByIdType(id, addId, type);
-  BGL.draw(gl, wrapInGrid(r, gridMatrix(board, id, type)));
-}
-
-function drawEdges(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: U.HitType) {
-  BGL.draw(gl, cache.getByIdType(id, addId, type, true));
-  if (U.isSector(type)) {
-    let sec = board.sectors[id];
-    let start = sec.wallptr;
-    let end = sec.wallptr + sec.wallnum;
-    for (let w = start; w < end; w++) {
-      BGL.draw(gl, cache.getWallPoint(w, 32, type == U.HitType.CEILING));
-    }
-  } else if (U.isWall(type)) {
-    let wall = board.walls[id];
-    BGL.draw(gl, cache.getWallPoint(id, 32, false));
-    BGL.draw(gl, cache.getWallPoint(id, 32, true));
-    BGL.draw(gl, cache.getWallPoint(wall.point2, 32, false));
-    BGL.draw(gl, cache.getWallPoint(wall.point2, 32, true));
-  }
 }
 
 function writeStencilOnly(gl: WebGLRenderingContext, value: number) {
@@ -338,8 +253,8 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, l
 
   let src = board.sprites[link.srcSpriteId];
   let dst = board.sprites[link.dstSpriteId];
-  GLM.vec3.set(srcPos, src.x, src.z / -16, src.y);
-  GLM.vec3.set(dstPos, dst.x, dst.z / -16, dst.y);
+  GLM.vec3.set(srcPos, src.x, src.z / U.ZSCALE, src.y);
+  GLM.vec3.set(dstPos, dst.x, dst.z / U.ZSCALE, dst.y);
   GLM.vec3.sub(diff, srcPos, dstPos);
   GLM.mat4.copy(stackTransform, ctr.getCamera().getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
@@ -434,43 +349,50 @@ let surfaces = new ObjectVector<Renderable>();
 let surfacesTrans = new ObjectVector<Renderable>();
 let sprites = new ObjectVector<Renderable>();
 let spritesTrans = new ObjectVector<Renderable>();
-function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) {
-  PROFILE.startProfile('processing');
+
+function clearDrawLists() {
   surfaces.clear();
   surfacesTrans.clear();
   sprites.clear();
   spritesTrans.clear();
+}
 
-  result.forSector((board: Board, sectorId: number) => {
-    let sector = cache.getSector(sectorId);
-    if (rorLinks.floorLinks[sectorId] == undefined)
-      surfaces.push(sector.floor);
-    if (rorLinks.ceilLinks[sectorId] == undefined)
-      surfaces.push(sector.ceiling);
-    PROFILE.incCount('sectors');
-  });
-  result.forWall((board: Board, wallId: number, sectorId: number) => {
-    if (board.walls[wallId].picnum == BLOOD.MIRROR_PIC)
-      return;
-    let wall = cache.getWall(wallId, sectorId);
-    if (wall.mid.trans != 1) {
-      surfacesTrans.push(wall.mid);
-      surfaces.push(wall.bot);
-      surfaces.push(wall.top);
-    } else {
-      surfaces.push(wall);
-    }
-    PROFILE.incCount('walls');
-  });
-  result.forSprite((board: Board, spriteId: number) => {
-    let sprite = cache.getSprite(spriteId);
-    let trans = sprite.trans != 1;
-    (sprite.type == Type.FACE
-      ? (trans ? spritesTrans : sprites)
-      : (trans ? spritesTrans : sprites))
-      .push(sprite);
-    PROFILE.incCount('sprites');
-  });
+function sectorVisitor(board: Board, sectorId: number) {
+  let sector = cache.getSector(sectorId);
+  if (rorLinks.floorLinks[sectorId] == undefined)
+    surfaces.push(sector.floor);
+  if (rorLinks.ceilLinks[sectorId] == undefined)
+    surfaces.push(sector.ceiling);
+  PROFILE.incCount('sectors');
+}
+
+function wallVisitor(board: Board, wallId: number, sectorId: number) {
+  if (board.walls[wallId].picnum == BLOOD.MIRROR_PIC)
+    return;
+  let wall = cache.getWall(wallId, sectorId);
+  if (wall.mid.trans != 1) {
+    surfacesTrans.push(wall.mid);
+    surfaces.push(wall.bot);
+    surfaces.push(wall.top);
+  } else {
+    surfaces.push(wall);
+  }
+  PROFILE.incCount('walls');
+}
+
+function spriteVisitor(board: Board, spriteId: number) {
+  let sprite = cache.getSprite(spriteId);
+  let trans = sprite.trans != 1;
+  (trans ? spritesTrans : sprites).push(sprite);
+  PROFILE.incCount('sprites');
+}
+
+function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) {
+  PROFILE.startProfile('processing');
+  clearDrawLists();
+  result.forSector(sectorVisitor);
+  result.forWall(wallVisitor);
+  result.forSprite(spriteVisitor);
   PROFILE.set('buffer', BUFF.getFreeSpace());
   PROFILE.endProfile();
 

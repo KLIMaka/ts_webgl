@@ -4,6 +4,8 @@ import * as GLM from '../../../libs_js/glmatrix';
 import { Board, Sprite, Sector, Wall, FACE, WALL, FLOOR } from './structs';
 import { ArtInfoProvider } from './art';
 
+export const ZSCALE = -16;
+
 export function getPlayerStart(board: Board): Sprite {
   for (let i = 0; i < board.sprites.length; i++) {
     let sprite = board.sprites[i];
@@ -138,7 +140,6 @@ export function groupSprites(sprites: Sprite[]): { [index: number]: number[] } {
 }
 
 let ANGSCALE = (1 / 4096);
-let ZSCALE = 16;
 
 export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
   let wall1 = walls[sector.wallptr];
@@ -152,7 +153,7 @@ export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
     let dx1 = x - wall1.x;
     let dy1 = y - wall1.y;
     let k = MU.cross2d(dx, dy, dx1, dy1);
-    return MU.int((heinum * ANGSCALE) * k * ZSCALE);
+    return MU.int((heinum * ANGSCALE) * k * -ZSCALE);
   };
 }
 
@@ -187,7 +188,7 @@ export function lineIntersect(
   let t = topt / bot;
   let x = x1 + MU.int(x21 * t);
   let y = y1 + MU.int(y21 * t);
-  let z = z1 + MU.int((z2 - z1) * t) * ZSCALE;
+  let z = z1 + MU.int((z2 - z1) * t) * -ZSCALE;
 
   return [x, y, z, t];
 }
@@ -220,7 +221,7 @@ export function rayIntersect(
   let t = topt / bot;
   let x = x1 + MU.int(vx * t);
   let y = y1 + MU.int(vy * t);
-  let z = z1 + MU.int(vz * t) * ZSCALE;
+  let z = z1 + MU.int(vz * t) * -ZSCALE;
 
   return [x, y, z, t];
 }
@@ -278,7 +279,7 @@ export class Hitscan {
 function hitSector(board: Board, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, t: number, hit: Hitscan, type: HitType) {
   let x = xs + MU.int(vx * t);
   let y = ys + MU.int(vy * t);
-  let z = zs + MU.int(vz * t) * ZSCALE;
+  let z = zs + MU.int(vz * t) * -ZSCALE;
   if (inSector(board, x, y, secId))
     hit.hit(x, y, z, t, secId, type);
 }
@@ -304,7 +305,7 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
   let dk = ceilk - vz;
   if (dk > 0) {
     let ceilz = slope(xs, ys, sec.ceilingheinum) + sec.ceilingz;
-    let ceildz = (zs - ceilz) / ZSCALE;
+    let ceildz = (zs - ceilz) / -ZSCALE;
     let t = ceildz / dk;
     hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, HitType.CEILING);
   }
@@ -313,7 +314,7 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
   let dk1 = vz - floork;
   if (dk1 > 0) {
     let floorz = slope(xs, ys, sec.floorheinum) + sec.floorz;
-    let floordz = (floorz - zs) / ZSCALE;
+    let floordz = (floorz - zs) / -ZSCALE;
     let t = floordz / dk1;
     hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, HitType.FLOOR);
   }
@@ -363,7 +364,7 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, spr: Sprite, sp
     if (vl == 0) return;
     let t = MU.dot2d(vx, vy, dx, dy) / vl;
     if (t <= 0) return;
-    let intz = zs + MU.int(vz * t) * ZSCALE;
+    let intz = zs + MU.int(vz * t) * -ZSCALE;
     let h = info.h * spr.yrepeat << 2;
     if (spr.cstat.realCenter)
       z += (h >> 1);

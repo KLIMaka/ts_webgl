@@ -5,7 +5,7 @@ import * as U from './utils';
 import { NumberVector } from '../../vector';
 
 const DELTA_DIST = Math.SQRT2;
-const DEFAULT_REPEAT_RATE = 128;
+export const DEFAULT_REPEAT_RATE = 128;
 
 function pointOnWall(board: Board, wallId: number, x: number, y: number): number {
   let wall = board.walls[wallId];

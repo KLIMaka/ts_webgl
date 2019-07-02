@@ -4,7 +4,7 @@ import * as GLM from "../../../libs_js/glmatrix";
 import * as BU from "./boardutils";
 import { NumberVector } from "../../vector";
 import { len2d } from "../../../libs/mathutils";
-import { HitType, sectorOfWall, Hitscan, isSector, sectorZ } from "./utils";
+import { HitType, sectorOfWall, Hitscan, isSector, sectorZ, ZSCALE } from "./utils";
 import { ArtProvider } from "./gl/cache";
 
 class MovingHandle {
@@ -125,12 +125,12 @@ export let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
 export let spriteHandlerFactory = new MessageHandlerFactory<SpriteEnt>()
   .register(StartMove, (obj: SpriteEnt, msg: StartMove, ctx: BuildContext) => {
     let spr = ctx.board.sprites[this.spriteId];
-    GLM.vec3.set(obj.origin, spr.x, spr.z / -16, spr.y);
+    GLM.vec3.set(obj.origin, spr.x, spr.z / ZSCALE, spr.y);
   })
   .register(Move, (obj: SpriteEnt, msg: Move, ctx: BuildContext) => {
     let x = ctx.snap(obj.origin[0] + msg.dx());
     let y = ctx.snap(obj.origin[2] + msg.dy());
-    let z = ctx.snap(obj.origin[1] + msg.dz()) * -16;
+    let z = ctx.snap(obj.origin[1] + msg.dz()) * ZSCALE;
     if (BU.moveSprite(ctx.board, obj.spriteId, x, y, z)) {
       ctx.invalidateAll();
     }
@@ -150,11 +150,11 @@ function setSectorZ(board: Board, sectorId: number, type: HitType, z: number): b
 
 export let sectorHandlerFactory = new MessageHandlerFactory<SectorEnt>()
   .register(StartMove, (obj: SectorEnt, msg: StartMove, ctx: BuildContext) => {
-    obj.originz = sectorZ(ctx.board, obj.sectorId, obj.type) / -16;
+    obj.originz = sectorZ(ctx.board, obj.sectorId, obj.type) / ZSCALE;
   })
   .register(Move, (obj: SectorEnt, msg: Move, ctx: BuildContext) => {
     let useSectorElevation = msg.snappedSector != obj.sectorId && msg.snappedSector != -1;
-    let z = (useSectorElevation ? msg.snappedSectorZ : ctx.snap(obj.originz + msg.dz())) * -16;
+    let z = (useSectorElevation ? msg.snappedSectorZ : ctx.snap(obj.originz + msg.dz())) * ZSCALE;
     if (setSectorZ(ctx.board, obj.sectorId, obj.type, z)) {
       ctx.invalidateAll();
     }
