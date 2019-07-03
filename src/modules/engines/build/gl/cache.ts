@@ -447,7 +447,7 @@ function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, bu
 function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderable: SectorSolid, normal: GLM.Vec3Array) {
   let [vtxs, vidxs] = cacheTriangulate(board, sec);
   let d = ceil ? renderable.ceiling : renderable.floor;
-  d.buff.allocate(vtxs.length + sec.wallnum, vidxs.length);
+  d.buff.allocate(vtxs.length, vidxs.length);
   fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal);
 }
 

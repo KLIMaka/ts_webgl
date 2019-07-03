@@ -131,14 +131,13 @@ function wallBehind(board: Board, wallId: number, fwd: GLM.Vec3Array, ms: U.Move
   // return dot2d(dx1, dy1, fwd[0], fwd[2]) < 0 && dot2d(dx2, dy2, fwd[0], fwd[2]) < 0;
 }
 
-let dummyEntryWalls = new Deck<number>();
 export class PvsBoardVisitorResult implements Result {
   private sectors = new Deck<number>();
   private walls = new Deck<number>();
   private sprites = new Deck<number>();
   private prepvs = new IndexedDeck<number>();
   private pvs = new IndexedDeck<number>();
-  private entryWalls = new Deck<Deck<number>>();
+  private entryWalls = new Map<number, Deck<number>>();
   private board: Board;
   private angCache = new Map<number, number>();
   private cachedX = 0;
@@ -154,9 +153,16 @@ export class PvsBoardVisitorResult implements Result {
     this.prepvs.push(sectorId);
     this.pvs.clear();
     this.pvs.push(sectorId);
-    if (this.entryWalls.length() == 0)
-      this.entryWalls.push(dummyEntryWalls);
     this.angCache.clear();
+  }
+
+  private ensureEntryWalls(idx:number) {
+    let ewalls = this.entryWalls.get(idx);
+    if (ewalls == undefined) {
+      ewalls = new Deck<number>();
+      this.entryWalls.set(idx, ewalls);
+    }
+    return ewalls;
   }
 
   private fillPVS(ms: U.MoveStruct, forward: GLM.Vec3Array) {
@@ -176,15 +182,11 @@ export class PvsBoardVisitorResult implements Result {
         if (pvsIdx == -1) {
           this.prepvs.push(nextsector);
           pvsIdx = this.prepvs.length() - 1;
-          let ewalls = this.entryWalls.get(pvsIdx);
-          if (ewalls == undefined) {
-            ewalls = new Deck<number>();
-            this.entryWalls.push(ewalls);
-          }
+          let ewalls = this.ensureEntryWalls(pvsIdx);
           ewalls.clear();
           ewalls.push(nextwall);
         } else {
-          let ewalls = this.entryWalls.get(pvsIdx);
+          let ewalls = this.ensureEntryWalls(pvsIdx);
           ewalls.push(nextwall);
         }
       }
@@ -242,7 +244,7 @@ export class PvsBoardVisitorResult implements Result {
     for (let i = 0; i < this.pvs.length(); i++) {
       let s = this.pvs.get(i);
       let entryWallsIdx = this.prepvs.indexOf(s);
-      let entryWalls = this.entryWalls.get(entryWallsIdx);
+      let entryWalls = this.ensureEntryWalls(entryWallsIdx);
       let sec = sectors[s];
       if (sec == undefined) continue;
 
