@@ -249,17 +249,17 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
   var info = {
     'X:':0,
     'Y:':0,
-    'Batches:':0,
     'Sector:':0,
     'Processing:':'',
-    'Frame Time:':'',
+    'Hitscan:':'',
     'Rendering:':'',
+    'Frame Time:':'',
     'Sectors:':0,
     'Walls:':0,
     'Sprites:':0,
     'Buffer:':''
   }
-  var props = UI.props(['X:', 'Y:', 'Batches:', 'Sector:', 'Processing:', 'Rendering:', 'Sectors:', 'Walls:', 'Sprites:', 'Frame Time:', 'Buffer:']);
+  var props = UI.props(['X:', 'Y:', 'Sector:', 'Processing:', 'Hitscan:', 'Rendering:', 'Frame Time:', 'Sectors:', 'Walls:', 'Sprites:', 'Buffer:']);
 
   var panel = UI.panel('Info');
   panel.append(props);
@@ -290,12 +290,13 @@ function render(cfg:any, map:ArrayBuffer, artFiles:ART.ArtFiles, pal:Uint8Array,
     
     info['Rendering:'] = PROFILE.get('draw').time.toFixed(2)+'ms';
     info['Processing:'] = PROFILE.get('processing').time.toFixed(2)+'ms';
+    info['Frame Time:'] = (1000 / PROFILE.get(null).time).toFixed(0)+'fps';
+    info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2)+'ms';
     info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
     info['Walls:'] = PROFILE.get('processing').counts['walls'];
     info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
     info['Sector:'] = ms.sec;
     info['X:'] = ms.x;
-    info['Frame Time:'] = PROFILE.get(null).time.toFixed(2)+'ms';
     info['Y:'] = ms.y;
     info['Buffer:'] = (100 * PROFILE.get('processing').counts['buffer']).toFixed(2)+'%';
     props.refresh(info);

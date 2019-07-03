@@ -2,7 +2,7 @@ import * as MU from '../../../libs/mathutils';
 import { ArtInfoProvider } from './art';
 import { Board, Wall } from './structs';
 import * as U from './utils';
-import { NumberVector } from '../../vector';
+import { IndexedVector, Vector } from '../../vector';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -217,7 +217,7 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
   fixxrepeat(board, prevwall(board, w));
 }
 
-export function connectedWalls(board: Board, wallId: number, result: NumberVector): NumberVector {
+export function connectedWalls(board: Board, wallId: number, result: Vector<number>): Vector<number> {
   let walls = board.walls;
   result.push(wallId);
   let w = wallId;
@@ -242,7 +242,7 @@ export function connectedWalls(board: Board, wallId: number, result: NumberVecto
   return result;
 }
 
-let wallsToMove = new NumberVector();
+let wallsToMove = new Vector<number>();
 export function moveWall(board: Board, wallId: number, x: number, y: number): boolean {
   let walls = board.walls;
   let wall = walls[wallId];

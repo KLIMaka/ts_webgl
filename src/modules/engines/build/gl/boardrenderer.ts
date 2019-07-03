@@ -8,7 +8,7 @@ import * as PROFILE from '../../../../modules/profiler';
 import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
-import { ObjectVector } from '../../../vector';
+import { Vector } from '../../../vector';
 import * as BLOOD from '../bloodutils';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
@@ -75,8 +75,10 @@ function print(board: Board, id: number, type: U.HitType) {
 
 let hit = new U.Hitscan();
 function hitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
+  PROFILE.startProfile('hitscan');
   let [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
   U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+  PROFILE.endProfile();
 }
 
 function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
@@ -157,7 +159,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
-  // sendMessage(EDIT.HIGHLIGHT, context, selection);
+  sendMessage(EDIT.HIGHLIGHT, context, selection);
   gl.enable(gl.DEPTH_TEST);
 }
 
@@ -312,16 +314,16 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
   writeAll(gl);
 }
 
-function drawArray(gl: WebGLRenderingContext, arr: ObjectVector<Renderable>) {
+function drawArray(gl: WebGLRenderingContext, arr: Vector<Renderable>) {
   for (let i = 0; i < arr.length(); i++) {
     BGL.draw(gl, arr.get(i));
   }
 }
 
-let surfaces = new ObjectVector<Renderable>();
-let surfacesTrans = new ObjectVector<Renderable>();
-let sprites = new ObjectVector<Renderable>();
-let spritesTrans = new ObjectVector<Renderable>();
+let surfaces = new Vector<Renderable>();
+let surfacesTrans = new Vector<Renderable>();
+let sprites = new Vector<Renderable>();
+let spritesTrans = new Vector<Renderable>();
 
 function clearDrawLists() {
   surfaces.clear();

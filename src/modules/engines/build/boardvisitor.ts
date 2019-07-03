@@ -1,9 +1,9 @@
+import { arcsIntersects, dot2d, monoatan2 } from '../../../libs/mathutils';
+import * as GLM from '../../../libs_js/glmatrix';
+import { IndexedVector, Vector } from '../../vector';
 import { Board } from './structs';
 import * as U from './utils';
-import { NumberVector, ObjectVector } from '../../vector';
-import * as GLM from '../../../libs_js/glmatrix';
-import { dot2d, cross2d } from '../../../libs/mathutils';
-import { init } from './gl/boardrenderer';
+import { nextwall } from './boardutils';
 
 export function packWallSectorId(wallId: number, sectorId: number) {
   return wallId | (sectorId << 16)
@@ -33,7 +33,7 @@ export type SpritePredicate = (board: Board, spriteId: number) => boolean;
 
 export class SectorCollector {
   private visitor: SectorVisitor;
-  public sectors = new NumberVector();
+  public sectors = new Vector<number>();
 
   constructor(pred: SectorPredicate) {
     this.visitor = (board: Board, sectorId: number) => {
@@ -54,7 +54,7 @@ export function createSectorCollector(pred: SectorPredicate) {
 
 export class WallCollector {
   private visitor: WallVisitor;
-  public walls = new NumberVector();
+  public walls = new Vector<number>();
 
   constructor(pred: WallPredicate) {
     this.visitor = (board: Board, wallId: number, sectorId: number) => {
@@ -75,7 +75,7 @@ export function createWallCollector(pred: WallPredicate) {
 
 export class SpriteCollector {
   private visitor: SpriteVisitor;
-  public sprites = new NumberVector();
+  public sprites = new Vector<number>();
 
   constructor(pred: SpritePredicate) {
     this.visitor = (board: Board, spriteId: number) => {
@@ -131,78 +131,115 @@ function wallBehind(board: Board, wallId: number, fwd: GLM.Vec3Array, ms: U.Move
   return dot2d(dx1, dy1, fwd[0], fwd[2]) < 0 && dot2d(dx2, dy2, fwd[0], fwd[2]) < 0;
 }
 
-function visibleFromEntryWalls(board: Board, wallId: number, entryWalls: NumberVector, ms:U.MoveStruct) {
-  if (entryWalls.length() == 0)
-    return true;
-  for (let i = 0; i < entryWalls.length(); i++) {
-    let ew = entryWalls.get(i);
-    let wall1 = board.walls[wallId]; let wall2 = board.walls[wall1.point2];
-    let ewall1 = board.walls[ew]; let ewall2 = board.walls[ewall1.point2];
-    let v1x = ewall1.x - ms.x; let v1y = ewall1.x - ms.y;
-    let v2x = ewall2.x - ms.x; let v2y = ewall2.x - ms.y;
-  }
-  return false;
-}
-
-let dummyEntryWalls = new NumberVector();
+let dummyEntryWalls = new Vector<number>();
 export class PvsBoardVisitorResult implements Result {
-  private sectors = new NumberVector();
-  private walls = new NumberVector();
-  private sprites = new NumberVector();
-  private pvs = new NumberVector();
-  private entryWalls = new ObjectVector<NumberVector>();
+  private sectors = new Vector<number>();
+  private walls = new Vector<number>();
+  private sprites = new Vector<number>();
+  private prepvs = new IndexedVector<number>();
+  private pvs = new IndexedVector<number>();
+  private entryWalls = new Vector<Vector<number>>();
   private board: Board;
+  private angCache = new Map<number, number>();
 
   private init(board: Board, sectorId: number) {
     this.board = board;
     this.sectors.clear();
     this.walls.clear();
     this.sprites.clear();
+    this.prepvs.clear();
+    this.prepvs.push(sectorId);
     this.pvs.clear();
     this.pvs.push(sectorId);
     if (this.entryWalls.length() == 0)
       this.entryWalls.push(dummyEntryWalls);
+    this.angCache.clear();
+  }
+
+  private fillPVS(board: Board, ms: U.MoveStruct, forward: GLM.Vec3Array) {
+    for (let i = 0; i < this.prepvs.length(); i++) {
+      let s = this.prepvs.get(i);
+      let sec = board.sectors[s];
+      if (sec == undefined) continue;
+      let endwall = sec.wallptr + sec.wallnum;
+      for (let w = sec.wallptr; w < endwall; w++) {
+        if (!U.wallVisible(board, w, ms) || wallBehind(board, w, forward, ms)) continue;
+
+        let wall = board.walls[w];
+        let nextsector = wall.nextsector;
+        if (nextsector == -1) continue;
+        let nextwall = wall.nextwall;
+        let pvsIdx = this.prepvs.indexOf(nextsector);
+        if (pvsIdx == -1) {
+          this.prepvs.push(nextsector);
+          pvsIdx = this.prepvs.length() - 1;
+          let ewalls = this.entryWalls.get(pvsIdx);
+          if (ewalls == undefined) {
+            ewalls = new Vector<number>();
+            this.entryWalls.push(ewalls);
+          }
+          ewalls.clear();
+          ewalls.push(nextwall);
+        } else {
+          let ewalls = this.entryWalls.get(pvsIdx);
+          ewalls.push(nextwall);
+        }
+      }
+    }
+  }
+
+  private getAngForWall(wallId:number, ms: U.MoveStruct) {
+    let ang = this.angCache.get(wallId);
+    if (ang == undefined) {
+      let wall = this.board.walls[wallId];
+      let dx = wall.x - ms.x;
+      let dy = wall.y - ms.y;
+      ang = monoatan2(dy, dx);
+      this.angCache.set(wallId, ang);
+    }
+    return ang;
+  }
+
+  private visibleFromEntryWalls(wallId: number, entryWalls: Vector<number>, ms: U.MoveStruct) {
+    if (entryWalls.length() == 0)
+      return true;
+    for (let i = 0; i < entryWalls.length(); i++) {
+      let ew = entryWalls.get(i);
+      let a1s = this.getAngForWall(nextwall(this.board, ew), ms);
+      let a1e = this.getAngForWall(ew, ms);
+      let a2s = this.getAngForWall(wallId, ms);
+      let a2e = this.getAngForWall(nextwall(this.board, wallId), ms);
+      if (arcsIntersects(a1s, a1e, a2s, a2e))
+        return true;
+    }
+    return false;
   }
 
   public visit(board: Board, ms: U.MoveStruct, forward: GLM.Vec3Array): Result {
     this.init(board, ms.sec);
+    this.fillPVS(board, ms, forward);
     let sectors = board.sectors;
-    let walls = board.walls;
     let sec2spr = U.groupSprites(board.sprites);
     for (let i = 0; i < this.pvs.length(); i++) {
       let s = this.pvs.get(i);
-      let entryWalls = this.entryWalls.get(i);
+      let entryWallsIdx = this.prepvs.indexOf(s);
+      let entryWalls = this.entryWalls.get(entryWallsIdx);
       let sec = sectors[s];
-      if (sec == undefined)
-        continue;
+      if (sec == undefined) continue;
 
       this.sectors.push(s);
       let endwall = sec.wallptr + sec.wallnum;
       for (let w = sec.wallptr; w < endwall; w++) {
-        if (U.wallVisible(board, w, ms)
-          && !wallBehind(board, w, forward, ms)
-          && visibleFromEntryWalls(board, w, entryWalls, ms)) {
+        if (!U.wallVisible(board, w, ms) || wallBehind(board, w, forward, ms) || !this.visibleFromEntryWalls(w, entryWalls, ms))
+          continue;
 
-          this.walls.push(packWallSectorId(w, s));
-          let wall = walls[w];
-          let nextsector = wall.nextsector;
-          if (nextsector == -1) continue;
-          let nextwall = wall.nextwall;
-          let pvsIdx = this.pvs.indexOf(nextsector);
-          if (pvsIdx == -1) {
-            this.pvs.push(nextsector);
-            pvsIdx = this.pvs.length() - 1;
-            let ewalls = this.entryWalls.get(pvsIdx);
-            if (ewalls == undefined) {
-              ewalls = new NumberVector();
-              this.entryWalls.push(ewalls);
-            }
-            ewalls.clear();
-            ewalls.push(nextwall);
-          } else if (pvsIdx > i) {
-            let ewalls = this.entryWalls.get(pvsIdx);
-            ewalls.push(nextwall);
-          }
+        this.walls.push(packWallSectorId(w, s));
+
+        let wall = board.walls[w];
+        let nextsector = wall.nextsector;
+        if (nextsector == -1) continue;
+        if (this.pvs.indexOf(nextsector) == -1) {
+          this.pvs.push(nextsector);
         }
       }
 

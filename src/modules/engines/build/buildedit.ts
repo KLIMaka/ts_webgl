@@ -2,7 +2,7 @@ import { Message, MessageHandlerFactory, MessageHandler } from "./messages";
 import { Board } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import * as BU from "./boardutils";
-import { NumberVector, ObjectVector } from "../../vector";
+import { IndexedVector, Vector } from "../../vector";
 import { len2d } from "../../../libs/mathutils";
 import { HitType, sectorOfWall, Hitscan, isSector, sectorZ, ZSCALE, isWall, isSprite } from "./utils";
 import { ArtProvider } from "./gl/cache";
@@ -85,7 +85,7 @@ class WallEnt { constructor(public wallId: number, public origin = GLM.vec2.crea
 class SpriteEnt { constructor(public spriteId: number, public origin = GLM.vec3.create()) { } }
 class SectorEnt { constructor(public sectorId: number, public type: HitType, public originz = 0) { } }
 
-let connectedWalls = new NumberVector();
+let connectedWalls = new Vector<number>();
 let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
   .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => {
     let wall = ctx.board.walls[obj.wallId];
@@ -174,8 +174,8 @@ function getClosestWall(board: Board, hit: Hitscan): number {
   return -1;
 }
 
-let list = new ObjectVector<MessageHandler>();
-export function getFromHitscan(board: Board, hit: Hitscan): ObjectVector<MessageHandler> {
+let list = new Vector<MessageHandler>();
+export function getFromHitscan(board: Board, hit: Hitscan): Vector<MessageHandler> {
   list.clear();
   let w = getClosestWall(board, hit);
   if (w != -1) {

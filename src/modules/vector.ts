@@ -1,27 +1,21 @@
 
-export class NumberVector {
+export class IndexedVector<T> {
   private pointer = 0;
-  private array: Uint32Array;
-
-  constructor(size: number = 10) {
-    this.array = new Uint32Array(size);
-  }
+  private array: T[] = [];
+  private index = new Map<T, number>();
 
   public get(i: number) {
     return this.array[i];
   }
 
-  public push(value: number) {
-    if (this.array.length <= this.pointer) {
-      let narray = new Uint32Array(this.array.length * 2);
-      narray.set(this.array);
-      this.array = narray;
-    }
+  public push(value: T) {
+    this.index.set(value, this.pointer);
     this.array[this.pointer++] = value;
   }
 
-  public clear(): NumberVector {
+  public clear(): IndexedVector<T> {
     this.pointer = 0;
+    this.index.clear();
     return this;
   }
 
@@ -29,15 +23,13 @@ export class NumberVector {
     return this.pointer;
   }
 
-  public indexOf(value: number) {
-    for (let i = 0; i < this.pointer; i++)
-      if (this.array[i] == value)
-        return i;
-    return -1;
+  public indexOf(value: T) {
+    let idx = this.index.get(value);
+    return idx == undefined ? -1 : idx;
   }
 }
 
-export class ObjectVector<T> {
+export class Vector<T> {
   private pointer = 0;
   private array: T[];
 
@@ -53,8 +45,9 @@ export class ObjectVector<T> {
     this.array[this.pointer++] = value;
   }
 
-  public clear() {
+  public clear(): Vector<T> {
     this.pointer = 0;
+    return this;
   }
 
   public length() {

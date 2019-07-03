@@ -42,7 +42,6 @@ export function bind() {
 
 function updateState(e: KeyboardEvent, state: boolean) {
   keys['ALT'] = e.altKey;
-  console.log('alt ' + keys['ALT']);
   keys['SHIFT'] = e.shiftKey;
   keys['CTRL'] = e.ctrlKey;
   var key = mapKeyCode(e.keyCode);
