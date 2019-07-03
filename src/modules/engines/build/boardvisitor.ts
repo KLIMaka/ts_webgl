@@ -18,79 +18,78 @@ export function unpackSectorId(wallSectorId: number) {
 }
 
 export interface Result {
-  forSector(secv: SectorVisitor): void;
-  forWall(wallv: WallVisitor): void;
-  forSprite(sprv: SpriteVisitor): void;
+  forSector<T>(ctx: T, secv: SectorVisitor<T>): void;
+  forWall<T>(ctx: T, wallv: WallVisitor<T>): void;
+  forSprite<T>(ctx: T, sprv: SpriteVisitor<T>): void;
 }
 
-export type BoardVisitor = (board: Board, secv: SectorVisitor, wallv: WallVisitor, sprv: SpriteVisitor) => void;
-export type SectorVisitor = (board: Board, sectorId: number) => void;
-export type SectorPredicate = (board: Board, sectorId: number) => boolean;
-export type WallVisitor = (board: Board, wallId: number, sectorId: number) => void;
-export type WallPredicate = (board: Board, wallId: number, sectorId: number) => boolean;
-export type SpriteVisitor = (board: Board, spriteId: number) => void;
-export type SpritePredicate = (board: Board, spriteId: number) => boolean;
+export type SectorVisitor<T> = (ctx: T, sectorId: number) => void;
+export type SectorPredicate<T> = (ctx: T, sectorId: number) => boolean;
+export type WallVisitor<T> = (ctx: T, wallId: number, sectorId: number) => void;
+export type WallPredicate<T> = (ctx: T, wallId: number, sectorId: number) => boolean;
+export type SpriteVisitor<T> = (ctx: T, spriteId: number) => void;
+export type SpritePredicate<T> = (ctx: T, spriteId: number) => boolean;
 
-export class SectorCollector {
-  private visitor: SectorVisitor;
+export class SectorCollector<T> {
+  private visitor: SectorVisitor<T>;
   public sectors = new Deck<number>();
 
-  constructor(pred: SectorPredicate) {
-    this.visitor = (board: Board, sectorId: number) => {
-      if (pred(board, sectorId))
+  constructor(pred: SectorPredicate<T>) {
+    this.visitor = (ctx: T, sectorId: number) => {
+      if (pred(ctx, sectorId))
         this.sectors.push(sectorId);
     }
   }
 
-  public visit(): SectorVisitor {
+  public visit(): SectorVisitor<T> {
     this.sectors.clear();
     return this.visitor;
   }
 }
 
-export function createSectorCollector(pred: SectorPredicate) {
+export function createSectorCollector<T>(pred: SectorPredicate<T>) {
   return new SectorCollector(pred);
 }
 
-export class WallCollector {
-  private visitor: WallVisitor;
+export class WallCollector<T> {
+  private visitor: WallVisitor<T>;
   public walls = new Deck<number>();
 
-  constructor(pred: WallPredicate) {
-    this.visitor = (board: Board, wallId: number, sectorId: number) => {
-      if (pred(board, wallId, sectorId))
+  constructor(pred: WallPredicate<T>) {
+    this.visitor = (ctx: T, wallId: number, sectorId: number) => {
+      if (pred(ctx, wallId, sectorId))
         this.walls.push(packWallSectorId(wallId, sectorId));
     }
   }
 
-  public visit(): WallVisitor {
+  public visit(): WallVisitor<T> {
     this.walls.clear();
     return this.visitor;
   }
 }
 
-export function createWallCollector(pred: WallPredicate) {
+export function createWallCollector<T>(pred: WallPredicate<T>) {
   return new WallCollector(pred);
 }
 
-export class SpriteCollector {
-  private visitor: SpriteVisitor;
+export class SpriteCollector<T> {
+  private visitor: SpriteVisitor<T>;
   public sprites = new Deck<number>();
 
-  constructor(pred: SpritePredicate) {
-    this.visitor = (board: Board, spriteId: number) => {
-      if (pred(board, spriteId))
+  constructor(pred: SpritePredicate<T>) {
+    this.visitor = (ctx: T, spriteId: number) => {
+      if (pred(ctx, spriteId))
         this.sprites.push(spriteId);
     }
   }
 
-  public visit(): SectorVisitor {
+  public visit(): SectorVisitor<T> {
     this.sprites.clear();
     return this.visitor;
   }
 }
 
-export function createSpriteCollector(pred: SpritePredicate) {
+export function createSpriteCollector<T>(pred: SpritePredicate<T>) {
   return new SpriteCollector(pred);
 }
 
@@ -103,23 +102,23 @@ export class AllBoardVisitorResult implements Result {
     return this;
   }
 
-  public forSector(secv: SectorVisitor) {
+  public forSector<T>(ctx: T, secv: SectorVisitor<T>) {
     for (let s = 0; s < this.board.sectors.length; s++)
-      secv(this.board, s);
+      secv(ctx, s);
   }
 
-  public forWall(wallv: WallVisitor) {
+  public forWall<T>(ctx: T, wallv: WallVisitor<T>) {
     for (let s = 0; s < this.board.sectors.length; s++) {
       let sec = this.board.sectors[s];
       let endwall = sec.wallptr + sec.wallnum;
       for (let w = sec.wallptr; w < endwall; w++)
-        wallv(this.board, w, s);
+        wallv(ctx, w, s);
     }
   }
 
-  public forSprite(sprv: SpriteVisitor) {
+  public forSprite<T>(ctx: T, sprv: SpriteVisitor<T>) {
     for (let s = 0; s < this.board.sprites.length; s++)
-      sprv(this.board, s);
+      sprv(ctx, s);
   }
 }
 
@@ -219,7 +218,7 @@ export class PvsBoardVisitorResult implements Result {
     return false;
   }
 
-  private cached(board: Board, ms:U.MoveStruct) {
+  private cached(board: Board, ms: U.MoveStruct) {
     if (!this.needToUpdate && ms.x == this.cachedX && ms.y == this.cachedY)
       return true;
     this.init(board, ms.sec);
@@ -272,20 +271,20 @@ export class PvsBoardVisitorResult implements Result {
     return this;
   }
 
-  public forSector(secv: SectorVisitor) {
+  public forSector<T>(ctx: T, secv: SectorVisitor<T>) {
     for (let i = 0; i < this.sectors.length(); i++)
-      secv(this.board, this.sectors.get(i));
+      secv(ctx, this.sectors.get(i));
   }
 
-  public forWall(wallv: WallVisitor) {
+  public forWall<T>(ctx: T, wallv: WallVisitor<T>) {
     for (let i = 0; i < this.walls.length(); i++) {
       let id = this.walls.get(i);
-      wallv(this.board, unpackWallId(id), unpackSectorId(id));
+      wallv(ctx, unpackWallId(id), unpackSectorId(id));
     }
   }
 
-  public forSprite(sprv: SpriteVisitor) {
+  public forSprite<T>(ctx: T, sprv: SpriteVisitor<T>) {
     for (let i = 0; i < this.sprites.length(); i++)
-      sprv(this.board, this.sprites.get(i));
+      sprv(ctx, this.sprites.get(i));
   }
 }

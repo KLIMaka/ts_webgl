@@ -260,7 +260,7 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, l
 let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => rorLinks.hasRor(sectorId));
 
 function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
-  result.forSector(rorSectorCollector.visit());
+  result.forSector(board, rorSectorCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
@@ -280,7 +280,7 @@ let mirroredTransform = GLM.mat4.create();
 let mpos = GLM.vec3.create();
 
 function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
-  result.forWall(mirrorWallsCollector.visit());
+  result.forWall(board, mirrorWallsCollector.visit());
 
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
@@ -375,9 +375,9 @@ function spriteVisitor(board: Board, spriteId: number) {
 function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) {
   PROFILE.startProfile('processing');
   clearDrawLists();
-  result.forSector(sectorVisitor);
-  result.forWall(wallVisitor);
-  result.forSprite(spriteVisitor);
+  result.forSector(board, sectorVisitor);
+  result.forWall(board, wallVisitor);
+  result.forSprite(board, spriteVisitor);
   PROFILE.set('buffer', BUFF.getFreeSpace());
   PROFILE.endProfile();
 
