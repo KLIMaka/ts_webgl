@@ -7,6 +7,7 @@ import { ArtProvider } from './cache';
 import { walllen } from '../boardutils';
 import { BuildContext } from '../buildedit';
 import { Cache } from './cache';
+import { PvsBoardVisitorResult } from '../boardvisitor';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
@@ -63,6 +64,7 @@ export class Context implements BuildContext {
   board: Board = null;
   gl: WebGLRenderingContext = null;
   cache: Cache = null;
+  pvs: PvsBoardVisitorResult = null;
   gridSize = 128;
 
   snap(x: number) {
@@ -71,6 +73,7 @@ export class Context implements BuildContext {
 
   invalidateAll() {
     this.cache.invalidateAll();
+    this.pvs.reset();
   }
 
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number) {

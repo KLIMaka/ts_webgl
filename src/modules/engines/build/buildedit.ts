@@ -1,11 +1,11 @@
-import { Message, MessageHandlerFactory, MessageHandler } from "./messages";
-import { Board } from "./structs";
-import * as GLM from "../../../libs_js/glmatrix";
-import * as BU from "./boardutils";
-import { IndexedVector, Vector } from "../../vector";
 import { len2d } from "../../../libs/mathutils";
-import { HitType, sectorOfWall, Hitscan, isSector, sectorZ, ZSCALE, isWall, isSprite } from "./utils";
+import * as GLM from "../../../libs_js/glmatrix";
+import { Deck } from "../../deck";
+import * as BU from "./boardutils";
 import { ArtProvider } from "./gl/cache";
+import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
+import { Board } from "./structs";
+import { Hitscan, HitType, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE } from "./utils";
 
 class MovingHandle {
   private startPoint = GLM.vec3.create();
@@ -73,7 +73,7 @@ class StartMove implements Message { }
 class Move extends MovingHandle implements Message { }
 class EndMove implements Message { }
 class Highlight implements Message { }
-class SplitWall implements Message { x: number; y: number }
+class SplitWall implements Message { x: number; y: number; wallId: number; }
 
 export let START_MOVE = new StartMove();
 export let MOVE = new Move();
@@ -85,7 +85,7 @@ class WallEnt { constructor(public wallId: number, public origin = GLM.vec2.crea
 class SpriteEnt { constructor(public spriteId: number, public origin = GLM.vec3.create()) { } }
 class SectorEnt { constructor(public sectorId: number, public type: HitType, public originz = 0) { } }
 
-let connectedWalls = new Vector<number>();
+let connectedWalls = new Deck<number>();
 let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
   .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => {
     let wall = ctx.board.walls[obj.wallId];
@@ -118,6 +118,8 @@ let wallHandlerFactory = new MessageHandlerFactory<WallEnt>()
     }
   })
   .register(SplitWall, (obj: WallEnt, msg: SplitWall, ctx: BuildContext) => {
+    if (obj.wallId != msg.wallId)
+      return;
     BU.splitWall(ctx.board, obj.wallId, msg.x, msg.y, ctx.art, []);
     ctx.invalidateAll();
   });
@@ -174,14 +176,14 @@ function getClosestWall(board: Board, hit: Hitscan): number {
   return -1;
 }
 
-let list = new Vector<MessageHandler>();
-export function getFromHitscan(board: Board, hit: Hitscan): Vector<MessageHandler> {
+let list = new Deck<MessageHandler>();
+export function getFromHitscan(board: Board, hit: Hitscan): Deck<MessageHandler> {
   list.clear();
   let w = getClosestWall(board, hit);
   if (w != -1) {
     list.push(wallHandlerFactory.handler(new WallEnt(w)));
   } else if (isWall(hit.type)) {
-    let w1 = board.walls[hit.id].point2;
+    let w1 = BU.nextwall(board, hit.id);
     list.push(wallHandlerFactory.handler(new WallEnt(hit.id)));
     list.push(wallHandlerFactory.handler(new WallEnt(w1)));
   } else if (isSector(hit.type)) {

@@ -2,12 +2,12 @@ import * as MU from '../../../libs/mathutils';
 import { ArtInfoProvider } from './art';
 import { Board, Wall } from './structs';
 import * as U from './utils';
-import { IndexedVector, Vector } from '../../vector';
+import { IndexedDeck, Deck } from '../../deck';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
 
-function pointOnWall(board: Board, wallId: number, x: number, y: number): number {
+export function pointOnWall(board: Board, wallId: number, x: number, y: number): number {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let wx = wall2.x - wall.x;
@@ -217,7 +217,7 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
   fixxrepeat(board, prevwall(board, w));
 }
 
-export function connectedWalls(board: Board, wallId: number, result: Vector<number>): Vector<number> {
+export function connectedWalls(board: Board, wallId: number, result: Deck<number>): Deck<number> {
   let walls = board.walls;
   result.push(wallId);
   let w = wallId;
@@ -242,7 +242,7 @@ export function connectedWalls(board: Board, wallId: number, result: Vector<numb
   return result;
 }
 
-let wallsToMove = new Vector<number>();
+let wallsToMove = new Deck<number>();
 export function moveWall(board: Board, wallId: number, x: number, y: number): boolean {
   let walls = board.walls;
   let wall = walls[wallId];

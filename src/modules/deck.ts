@@ -1,5 +1,5 @@
 
-export class IndexedVector<T> {
+export class IndexedDeck<T> {
   private pointer = 0;
   private array: T[] = [];
   private index = new Map<T, number>();
@@ -13,7 +13,7 @@ export class IndexedVector<T> {
     this.array[this.pointer++] = value;
   }
 
-  public clear(): IndexedVector<T> {
+  public clear(): IndexedDeck<T> {
     this.pointer = 0;
     this.index.clear();
     return this;
@@ -29,7 +29,7 @@ export class IndexedVector<T> {
   }
 }
 
-export class Vector<T> {
+export class Deck<T> {
   private pointer = 0;
   private array: T[];
 
@@ -45,7 +45,7 @@ export class Vector<T> {
     this.array[this.pointer++] = value;
   }
 
-  public clear(): Vector<T> {
+  public clear(): Deck<T> {
     this.pointer = 0;
     return this;
   }
