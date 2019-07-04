@@ -1,7 +1,7 @@
 import { Buffer, BufferBuilder, Pointer } from '../../../buffergl';
 import * as MB from '../../../meshbuilder';
 
-var buffer:Buffer;
+let buffer:Buffer;
 
 export function init(gl:WebGLRenderingContext, vCount:number) {
   buffer = new Buffer(gl, new BufferBuilder(vCount)

@@ -155,6 +155,15 @@ export class Cache {
     return this.spriteWireframe;
   }
 
+  public getWallPoint(id: number, d: number, ceiling: boolean): Wireframe {
+    let point = (ceiling ? this.wallCeilPoints : this.wallFloorPoints).get(id);
+    if (!point.valid) {
+      prepareWallPoint(this.board, ceiling, id, d, point.value);
+      point.valid = true;
+    }
+    return point.value;
+  }
+
   public invalidateSectors(ids: number[]) {
     ids.map((id) => this.sectors.get(id).valid = false);
   }
@@ -196,23 +205,6 @@ export class Cache {
     }
     return null;
   }
-
-  public getWallPoint(id: number, d: number, ceiling: boolean): Wireframe {
-    let point = (ceiling ? this.wallCeilPoints : this.wallFloorPoints).get(id);
-    if (!point.valid) {
-      point.value.mode = WebGLRenderingContext.TRIANGLES;
-      let s = U.sectorOfWall(this.board, id);
-      let sec = this.board.sectors[s];
-      let slope = U.createSlopeCalculator(sec, this.board.walls);
-      let h = (ceiling ? sec.ceilingheinum : sec.floorheinum);
-      let z = (ceiling ? sec.ceilingz : sec.floorz);
-      let wall = this.board.walls[id];
-      let zz = (slope(wall.x, wall.y, h) + z) / U.ZSCALE;
-      fillBufferForWallPoint(this.board, id, point.value.buff, d, zz);
-      point.valid = true;
-    }
-    return point.value;
-  }
 }
 
 function fillBufferForWallPoint(board: Board, wallId: number, buff: Buffer, d: number, z: number) {
@@ -224,6 +216,18 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: Buffer, d: n
   buff.writePos(3, wall.x - d, z, wall.y + d);
   buff.writeQuad(0, 0, 1, 2, 3);
   buff.writeQuad(6, 3, 2, 1, 0);
+}
+
+function prepareWallPoint(board: Board, ceiling: boolean, wallId: number, d: number, point: Wireframe) {
+  point.mode = WebGLRenderingContext.TRIANGLES;
+  let s = U.sectorOfWall(board, wallId);
+  let sec = board.sectors[s];
+  let slope = U.createSlopeCalculator(sec, board.walls);
+  let h = (ceiling ? sec.ceilingheinum : sec.floorheinum);
+  let z = (ceiling ? sec.ceilingz : sec.floorz);
+  let wall = board.walls[wallId];
+  let zz = (slope(wall.x, wall.y, h) + z) / U.ZSCALE;
+  fillBufferForWallPoint(board, wallId, point.buff, d, zz);
 }
 
 function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, board: Board, buff: Buffer) {

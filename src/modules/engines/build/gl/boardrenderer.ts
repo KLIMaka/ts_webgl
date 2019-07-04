@@ -12,7 +12,7 @@ import * as TEX from '../../../textures';
 import * as BLOOD from '../bloodutils';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
-import * as EDIT from "../buildedit";
+import * as EDIT from "../boardedit";
 import { MessageHandler, sendMessage, Message } from '../messages';
 import { Board } from '../structs';
 import * as U from '../utils';
@@ -296,8 +296,7 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
     BGL.draw(gl, r);
 
     // draw reflections in stenciled area
-    let w1 = board.walls[w];
-    let w2 = board.walls[w1.point2];
+    let w1 = board.walls[w]; let w2 = board.walls[w1.point2];
     GLM.vec2.set(wallNormal, w2.x - w1.x, w2.y - w1.y);
     VEC.normal2d(wallNormal, wallNormal);
     GLM.vec3.set(mirrorNormal, wallNormal[0], 0, wallNormal[1]);
@@ -382,7 +381,6 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-
   drawArray(gl, surfaces);
 
   gl.polygonOffset(-1, -8);
@@ -394,6 +392,5 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
   gl.polygonOffset(-1, -8);
   drawArray(gl, spritesTrans);
   gl.polygonOffset(0, 0);
-
   PROFILE.endProfile();
 }

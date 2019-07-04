@@ -5,7 +5,7 @@ import { HitType, isSector, isWall } from '../utils';
 import { Solid, wrapInGrid } from './renderable';
 import { ArtProvider } from './cache';
 import { walllen } from '../boardutils';
-import { BuildContext } from '../buildedit';
+import { BuildContext } from '../boardedit';
 import { Cache } from './cache';
 import { PvsBoardVisitorResult } from '../boardvisitor';
 
@@ -63,6 +63,7 @@ export class Context implements BuildContext {
   art: ArtProvider = null;
   board: Board = null;
   gl: WebGLRenderingContext = null;
+  
   cache: Cache = null;
   pvs: PvsBoardVisitorResult = null;
   gridSize = 128;
