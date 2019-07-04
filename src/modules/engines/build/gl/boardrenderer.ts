@@ -91,18 +91,18 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
   if (selection.isEmpty())
     return;
 
-  if (!EDIT.MOVE.isActive() && INPUT.mouseButtons[0]) {
-    EDIT.MOVE.start(hit.x, hit.z / U.ZSCALE, hit.y);
+  if (!EDIT.MOVE.handle.isActive() && INPUT.mouseButtons[0]) {
+    EDIT.MOVE.handle.start(hit);
     sendToSelected(EDIT.START_MOVE);
   } else if (!INPUT.mouseButtons[0]) {
-    EDIT.MOVE.stop();
+    EDIT.MOVE.handle.stop();
     sendToSelected(EDIT.END_MOVE);
     return;
   }
 
   let fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
   let pos = ctr.getCamera().getPosition();
-  EDIT.MOVE.update(pos, fwd, INPUT.keys['ALT'], INPUT.keys['SHIFT'], hit, board);
+  EDIT.MOVE.handle.update(pos, fwd, INPUT.keys['ALT'], INPUT.keys['SHIFT'], hit, board);
   sendToSelected(EDIT.MOVE);
 }
 
@@ -133,7 +133,7 @@ function snap(board: Board) {
 }
 
 function select(board: Board) {
-  if (EDIT.MOVE.isActive())
+  if (EDIT.MOVE.handle.isActive())
     return;
 
   selection.clear();

@@ -4,8 +4,8 @@ import { Deck } from "../../deck";
 import * as BU from "./boardutils";
 import { ArtProvider } from "./gl/cache";
 import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
-import { Board, Wall } from "./structs";
-import { Hitscan, HitType, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE } from "./utils";
+import { Board } from "./structs";
+import { Hitscan, HitType, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE, createSlopeCalculator } from "./utils";
 
 class MovingHandle {
   private startPoint = GLM.vec3.create();
@@ -14,12 +14,12 @@ class MovingHandle {
   private active = false;
   private parallel = false;
   public elevate = false;
-  public snappedSector = -1;
-  public snappedSectorZ = 0;
+  public hit: Hitscan;
 
-  public start(x: number, y: number, z: number) {
-    GLM.vec3.set(this.startPoint, x, y, z);
-    GLM.vec3.set(this.currentPoint, x, y, z);
+  public start(hit: Hitscan) {
+    this.hit = hit;
+    GLM.vec3.set(this.startPoint, hit.x, hit.z / ZSCALE, hit.y);
+    GLM.vec3.copy(this.currentPoint, this.startPoint);
     this.dzoff = 0;
     this.active = true;
   }
@@ -27,13 +27,8 @@ class MovingHandle {
   public update(s: GLM.Vec3Array, v: GLM.Vec3Array, elevate: boolean, parallel: boolean, hit: Hitscan, board: Board) {
     this.parallel = parallel;
     this.elevate = elevate;
+    this.hit = hit;
     if (elevate) {
-      if (isSector(hit.type)) {
-        this.snappedSector = hit.id;
-        this.snappedSectorZ = sectorZ(board, hit.id, hit.type) / ZSCALE;
-      } else {
-        this.snappedSector = -1;
-      }
       let dx = this.currentPoint[0] - s[0];
       let dy = this.currentPoint[2] - s[2];
       let t = len2d(dx, dy) / len2d(v[0], v[2]);
@@ -70,17 +65,46 @@ export interface BuildContext {
   highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: HitType): void;
 }
 
-class StartMove implements Message { }
-class Move extends MovingHandle implements Message { }
-class EndMove implements Message { }
+class StartMove implements Message { constructor(public handle: MovingHandle) { } }
+class Move implements Message { constructor(public handle: MovingHandle) { } }
+class EndMove implements Message { constructor(public handle: MovingHandle) { } }
 class Highlight implements Message { }
 class SplitWall implements Message { x: number; y: number; wallId: number; }
 
-export let START_MOVE = new StartMove();
-export let MOVE = new Move();
-export let END_MOVE = new EndMove();
+class DrawWall implements Message {
+  private wallId = -1;
+  private fromFloor = true;
+  private points = new Deck<number[]>();
+
+  public start(board: Board, hit: Hitscan) {
+    this.points.clear();
+    this.wallId = hit.id;
+    let s = sectorOfWall(board, this.wallId);
+    let sec = board.sectors[s];
+    let slope = createSlopeCalculator(sec, board.walls);
+    let floorz = slope(hit.x, hit.y, sec.floorheinum) + sec.floorz;
+    let ceilz = slope(hit.x, hit.y, sec.ceilingheinum) + sec.ceilingz;
+    this.fromFloor = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz);
+    this.points.push([hit.x, hit.y, this.fromFloor ? floorz : ceilz]);
+  }
+}
+
+function setSectorZ(board: Board, sectorId: number, type: HitType, z: number): boolean {
+  let pz = sectorZ(board, sectorId, type);
+  if (pz == z)
+    return false;
+  let sec = board.sectors[sectorId];
+  if (type == HitType.CEILING) sec.ceilingz = z; else sec.floorz = z;
+  return true;
+}
+
+let handle = new MovingHandle();
+export let MOVE = new Move(handle);
+export let START_MOVE = new StartMove(handle);
+export let END_MOVE = new EndMove(handle);
 export let HIGHLIGHT = new Highlight();
 export let SPLIT_WALL = new SplitWall();
+export let DRAW_WALL = new DrawWall();
 
 class WallEnt {
   private static connectedWalls = new Deck<number>();
@@ -89,7 +113,7 @@ class WallEnt {
     .register(Move, (obj: WallEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(EndMove, (obj: WallEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
     .register(Highlight, (obj: WallEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx))
-    .register(SplitWall, (obj: WallEnt, msg: SplitWall, ctx: BuildContext) => obj.splitWall(msg, ctx));
+    .register(SplitWall, (obj: WallEnt, msg: SplitWall, ctx: BuildContext) => obj.split(msg, ctx));
 
   public static create(id: number) {
     return WallEnt.factory.handler(new WallEnt(id));
@@ -98,19 +122,37 @@ class WallEnt {
   constructor(
     public wallId: number,
     public origin = GLM.vec2.create(),
+    public originZ = 0,
+    public zMotionSector = -1,
+    public zMotionType: HitType = HitType.CEILING,
     public active = false) { }
-
-  public move(msg: Move, ctx: BuildContext) {
-    let x = ctx.snap(this.origin[0] + msg.dx());
-    let y = ctx.snap(this.origin[1] + msg.dy());
-    if (BU.moveWall(ctx.board, this.wallId, x, y))
-      ctx.invalidateAll();
-  }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     GLM.vec2.set(this.origin, wall.x, wall.y);
+
+    let hit = msg.handle.hit;
+    this.zMotionSector = wall.nextsector == -1 ? sectorOfWall(ctx.board, this.wallId) : wall.nextsector;
+    let sec = ctx.board.sectors[this.zMotionSector];
+    let slope = createSlopeCalculator(sec, ctx.board.walls);
+    let floorz = slope(hit.x, hit.y, sec.floorheinum) + sec.floorz;
+    let ceilz = slope(hit.x, hit.y, sec.ceilingheinum) + sec.ceilingz;
+    this.zMotionType = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz) ? HitType.FLOOR : HitType.CEILING;
+    this.originZ = sectorZ(ctx.board, this.zMotionSector, this.zMotionType) / ZSCALE;
     this.active = true;
+  }
+
+  public move(msg: Move, ctx: BuildContext) {
+    if (msg.handle.elevate) {
+      let z = ctx.snap(this.originZ + msg.handle.dz()) * ZSCALE;
+      if (setSectorZ(ctx.board, this.zMotionSector, this.zMotionType, z))
+        ctx.invalidateAll();
+    } else {
+      let x = ctx.snap(this.origin[0] + msg.handle.dx());
+      let y = ctx.snap(this.origin[1] + msg.handle.dy());
+      if (BU.moveWall(ctx.board, this.wallId, x, y))
+        ctx.invalidateAll();
+    }
   }
 
   public endMove(msg: EndMove, ctx: BuildContext) {
@@ -135,7 +177,7 @@ class WallEnt {
     }
   }
 
-  public splitWall(msg: SplitWall, ctx: BuildContext) {
+  public split(msg: SplitWall, ctx: BuildContext) {
     if (this.wallId != msg.wallId)
       return;
     BU.splitWall(ctx.board, this.wallId, msg.x, msg.y, ctx.art, []);
@@ -164,9 +206,9 @@ class SpriteEnt {
   }
 
   public move(msg: Move, ctx: BuildContext) {
-    let x = ctx.snap(this.origin[0] + msg.dx());
-    let y = ctx.snap(this.origin[2] + msg.dy());
-    let z = ctx.snap(this.origin[1] + msg.dz()) * ZSCALE;
+    let x = ctx.snap(this.origin[0] + msg.handle.dx());
+    let y = ctx.snap(this.origin[2] + msg.handle.dy());
+    let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
     if (BU.moveSprite(ctx.board, this.spriteId, x, y, z)) {
       ctx.invalidateAll();
     }
@@ -193,25 +235,18 @@ class SectorEnt {
     public type: HitType,
     public originz = 0) { }
 
-  private setSectorZ(board: Board, sectorId: number, type: HitType, z: number): boolean {
-    let pz = sectorZ(board, sectorId, type);
-    if (pz == z)
-      return false;
-    let sec = board.sectors[sectorId];
-    if (type == HitType.CEILING) sec.ceilingz = z; else sec.floorz = z;
-    return true;
-  }
-
   public startMove(msg: StartMove, ctx: BuildContext) {
     this.originz = sectorZ(ctx.board, this.sectorId, this.type) / ZSCALE;
   };
 
   public move(msg: Move, ctx: BuildContext) {
-    if (!msg.elevate)
+    if (!msg.handle.elevate)
       return;
-    let useSectorElevation = msg.snappedSector != this.sectorId && msg.snappedSector != -1;
-    let z = (useSectorElevation ? msg.snappedSectorZ : ctx.snap(this.originz + msg.dz())) * ZSCALE;
-    if (this.setSectorZ(ctx.board, this.sectorId, this.type, z)) {
+
+    let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
+      ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
+      : ctx.snap(this.originz + msg.handle.dz())
+    if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE)) {
       ctx.invalidateAll();
     }
   }
