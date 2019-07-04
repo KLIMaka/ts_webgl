@@ -83,6 +83,11 @@ export function sectorZ(board:Board, sectorId:number, type:HitType) {
   return (type == HitType.CEILING ? sec.ceilingz : sec.floorz);
 }
 
+export function sectorHeinum(board:Board, sectorId:number, type:HitType) {
+  let sec = board.sectors[sectorId];
+  return (type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum);
+}
+
 export function findSector(board: Board, x: number, y: number, secnum: number = -1): number {
   if (secnum == -1)
     return findSectorAll(board, x, y);
@@ -153,8 +158,22 @@ export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
     let dx1 = x - wall1.x;
     let dy1 = y - wall1.y;
     let k = MU.cross2d(dx, dy, dx1, dy1);
-    return MU.int((heinum * ANGSCALE) * k * -ZSCALE);
+    return MU.int(heinum * ANGSCALE * k * -ZSCALE);
   };
+}
+
+export function heinumCalc(board:Board, sectorId: number, x:number, y:number, z:number) {
+  let sec = board.sectors[sectorId];
+  let wall1 = board.walls[sec.wallptr];
+  let wall2 = board.walls[wall1.point2];
+  let dx = wall2.x - wall1.x;
+  let dy = wall2.y - wall1.y;
+  let ln = MU.len2d(dx, dy);
+  dx /= ln; dy /= ln;
+  let dx1 = x - wall1.x;
+  let dy1 = y - wall1.y;
+  let k = MU.cross2d(dx, dy, dx1, dy1);
+  return Math.round(z / (ANGSCALE * k * -ZSCALE));
 }
 
 export function lineIntersect(

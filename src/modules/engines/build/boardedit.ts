@@ -5,14 +5,14 @@ import * as BU from "./boardutils";
 import { ArtProvider } from "./gl/cache";
 import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
 import { Board } from "./structs";
-import { Hitscan, HitType, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE, createSlopeCalculator } from "./utils";
+import { Hitscan, HitType, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE, createSlopeCalculator, heinumCalc, sectorHeinum } from "./utils";
 
 class MovingHandle {
   private startPoint = GLM.vec3.create();
   private currentPoint = GLM.vec3.create();
   private dzoff = 0;
   private active = false;
-  private parallel = false;
+  public parallel = false;
   public elevate = false;
   public hit: Hitscan;
 
@@ -58,6 +58,7 @@ export interface BuildContext {
   gl: WebGLRenderingContext;
   board: Board;
   snap(x: number): number;
+  scaledSnap(x: number, scale: number): number;
   invalidateAll(): void;
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
   highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
@@ -95,6 +96,15 @@ function setSectorZ(board: Board, sectorId: number, type: HitType, z: number): b
     return false;
   let sec = board.sectors[sectorId];
   if (type == HitType.CEILING) sec.ceilingz = z; else sec.floorz = z;
+  return true;
+}
+
+function setSectorHeinum(board: Board, sectorId: number, type: HitType, h: number): boolean {
+  let ph = sectorHeinum(board, sectorId, type);
+  if (ph == h)
+    return false;
+  let sec = board.sectors[sectorId];
+  if (type == HitType.CEILING) sec.ceilingheinum = h; else sec.floorheinum = h;
   return true;
 }
 
@@ -144,9 +154,19 @@ class WallEnt {
 
   public move(msg: Move, ctx: BuildContext) {
     if (msg.handle.elevate) {
-      let z = ctx.snap(this.originZ + msg.handle.dz()) * ZSCALE;
-      if (setSectorZ(ctx.board, this.zMotionSector, this.zMotionType, z))
-        ctx.invalidateAll();
+      if (msg.handle.parallel) {
+        let x = this.origin[0];
+        let y = this.origin[1];
+        let z = ctx.snap(this.originZ + msg.handle.dz()) * ZSCALE;
+        let h = heinumCalc(ctx.board, this.zMotionSector, x, y, z);
+        if (setSectorHeinum(ctx.board, this.zMotionSector, this.zMotionType, h)) {
+          ctx.invalidateAll();
+        }
+      } else {
+        let z = ctx.snap(this.originZ + msg.handle.dz()) * ZSCALE;
+        if (setSectorZ(ctx.board, this.zMotionSector, this.zMotionType, z))
+          ctx.invalidateAll();
+      }
     } else {
       let x = ctx.snap(this.origin[0] + msg.handle.dx());
       let y = ctx.snap(this.origin[1] + msg.handle.dy());
@@ -233,21 +253,38 @@ class SectorEnt {
   constructor(
     public sectorId: number,
     public type: HitType,
-    public originz = 0) { }
+    public originz = 0,
+    public origin = GLM.vec2.create()) { }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
+    let x = msg.handle.hit.x;
+    let y = msg.handle.hit.y;
+    // let sec = ctx.board.sectors[this.sectorId];
+    // let slope = createSlopeCalculator(sec, ctx.board.walls);
+    // this.originz = slope(x, y, this.type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum) + sectorZ(ctx.board, this.sectorId, this.type)) / ZSCALE;
     this.originz = sectorZ(ctx.board, this.sectorId, this.type) / ZSCALE;
+    GLM.vec2.set(this.origin, x, y);
   };
 
   public move(msg: Move, ctx: BuildContext) {
     if (!msg.handle.elevate)
       return;
 
-    let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
-      ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
-      : ctx.snap(this.originz + msg.handle.dz())
-    if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE)) {
-      ctx.invalidateAll();
+    if (msg.handle.parallel) {
+      let x = this.origin[0];
+      let y = this.origin[1];
+      let z = ctx.scaledSnap(this.originz + msg.handle.dz() * ZSCALE, 1);
+      let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
+      if (setSectorHeinum(ctx.board, this.sectorId, this.type, h)) {
+        ctx.invalidateAll();
+      }
+    } else {
+      let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
+        ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
+        : ctx.snap(this.originz + msg.handle.dz())
+      if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE)) {
+        ctx.invalidateAll();
+      }
     }
   }
 
