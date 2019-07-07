@@ -21,7 +21,7 @@ class EnsureArray<T> {
     return ent;
   }
 
-  public map(f) {
+  public map(f: (arg: T) => void) {
     this.array.map(f);
   }
 }
@@ -80,6 +80,9 @@ let sectorRenerableFactory = () => new Entry<SectorSolid>(new SectorSolid());
 let wallRenerableFactory = () => new Entry<WallSolid>(new WallSolid());
 let spriteRenerableFactory = () => new Entry<SpriteSolid>(new SpriteSolid());
 let wireframeFactory = () => new Entry<Wireframe>(new Wireframe());
+let sectorWireframeFactory = () => new Entry<SectorWireframe>(new SectorWireframe());
+let wallWireframeFactory = () => new Entry<WallWireframe>(new WallWireframe());
+let spriteWireframeFactory = () => new Entry<SpriteWireframe>(new SpriteWireframe());
 
 export class Cache {
   public sectors: EnsureArray<Entry<SectorSolid>> = createArray(sectorRenerableFactory);
@@ -87,21 +90,17 @@ export class Cache {
   public sprites: EnsureArray<Entry<SpriteSolid>> = createArray(spriteRenerableFactory);
   public wallCeilPoints: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
   public wallFloorPoints: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-
-  private sectorWireframe = new SectorWireframe();
-  private sectorWireframeId: number = -1;
-  private wallWireframe = new WallWireframe();
-  private wallWireframeId: number = -1;
-  private spriteWireframe = new SpriteWireframe();
-  private spriteWireframeId: number = -1;
+  public sectorsWireframe: EnsureArray<Entry<SectorWireframe>> = createArray(sectorWireframeFactory);
+  public wallsWireframe: EnsureArray<Entry<WallWireframe>> = createArray(wallWireframeFactory);
+  public spritesWireframe: EnsureArray<Entry<SpriteWireframe>> = createArray(spriteWireframeFactory);
 
   constructor(private board: Board, private art: ArtProvider) {
   }
 
-  public getSector(id: number): SectorSolid {
-    let sector = this.sectors.get(id);
+  public getSector(secId: number): SectorSolid {
+    let sector = this.sectors.get(secId);
     if (!sector.valid) {
-      prepareSector(this.board, this.art, id, sector.value);
+      prepareSector(this.board, this.art, secId, sector.value);
       sector.valid = true;
     }
     return sector.value;
@@ -126,33 +125,30 @@ export class Cache {
   }
 
   public getSectorWireframe(secId: number): SectorWireframe {
-    if (secId != this.sectorWireframeId) {
-      this.sectorWireframe.ceiling.buff.deallocate();
-      this.sectorWireframe.floor.buff.deallocate();
-      prepareSectorWireframe(this.board, secId, this.sectorWireframe);
-      this.sectorWireframeId = secId;
+    let sectorWireframe = this.sectorsWireframe.get(secId);
+    if (!sectorWireframe.valid) {
+      prepareSectorWireframe(this.board, secId, sectorWireframe.value);
+      sectorWireframe.valid = true;
     }
-    return this.sectorWireframe;
+    return sectorWireframe.value;
   }
 
   public getWallWireframe(wallId: number, secId: number): WallWireframe {
-    if (wallId != this.wallWireframeId) {
-      this.wallWireframe.bot.buff.deallocate();
-      this.wallWireframe.top.buff.deallocate();
-      this.wallWireframe.mid.buff.deallocate();
-      prepareWallWireframe(this.board, wallId, secId, this.wallWireframe);
-      this.wallWireframeId = wallId;
+    let wallWireframe = this.wallsWireframe.get(wallId);
+    if (!wallWireframe.valid) {
+      prepareWallWireframe(this.board, wallId, secId, wallWireframe.value);
+      wallWireframe.valid = true;
     }
-    return this.wallWireframe;
+    return wallWireframe.value;
   }
 
   public getSpriteWireframe(sprId: number): SpriteWireframe {
-    if (sprId != this.spriteWireframeId) {
-      this.spriteWireframe.buff.deallocate();
-      prepareSpriteWireframe(this.board, sprId, this.art, this.spriteWireframe);
-      this.spriteWireframeId = sprId;
+    let spriteWireframe = this.spritesWireframe.get(sprId);
+    if (!spriteWireframe.valid) {
+      prepareSpriteWireframe(this.board, sprId, this.art, spriteWireframe.value);
+      spriteWireframe.valid = true;
     }
-    return this.spriteWireframe;
+    return spriteWireframe.value;
   }
 
   public getWallPoint(id: number, d: number, ceiling: boolean): Wireframe {
@@ -164,16 +160,35 @@ export class Cache {
     return point.value;
   }
 
-  public invalidateSectors(ids: number[]) {
-    ids.map((id) => this.sectors.get(id).valid = false);
+  public invalidateSector(id: number) {
+    let sec = this.sectors.get(id);
+    sec.valid = false;
+    sec.value.ceiling.reset();
+    sec.value.floor.reset();
+    let secw = this.sectorsWireframe.get(id);
+    secw.valid = false;
+    secw.value.ceiling.buff.deallocate();
+    secw.value.floor.buff.deallocate();
   }
 
-  public invalidateWalls(ids: number[]) {
-    ids.map((id) => this.walls.get(id).valid = false);
+  public invalidateWall(id: number) {
+    let wall = this.walls.get(id);
+    wall.valid = false;
+    wall.value.bot.reset();
+    wall.value.mid.reset();
+    wall.value.top.reset();
+    let wallw = this.wallsWireframe.get(id);
+    wallw.valid = false;
+    wallw.value.bot.buff.deallocate();
+    wallw.value.mid.buff.deallocate();
+    wallw.value.top.buff.deallocate();
+    this.wallCeilPoints.get(id).valid = false;
+    this.wallFloorPoints.get(id).valid = false;
   }
 
-  public invalidateSprites(ids: number[]) {
-    ids.map((id) => this.sprites.get(id).valid = false);
+  public invalidateSprite(id: number) {
+    this.sprites.get(id).valid = false;
+    this.spritesWireframe.get(id).valid = false;
   }
 
   public invalidateAll() {
@@ -182,10 +197,6 @@ export class Cache {
     this.sprites.map(s => { if (s != undefined) { s.valid = false; s.value.reset(); } });
     this.wallCeilPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
     this.wallFloorPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
-
-    this.sectorWireframeId = -1;
-    this.wallWireframeId = -1;
-    this.spriteWireframeId = -1;
   }
 
   public getByIdType(id: number, addId: number, type: U.HitType, wireframe: boolean = false): Renderable {

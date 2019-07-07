@@ -103,8 +103,15 @@ export class Buffer {
 
   private mergeRegions(regions: number[][], i: number): [number, number[]] {
     let region = regions[i];
-    while (i + 1 < regions.length && regions[i + 1][0] == region[0] + region[1]) {
-      region[1] += regions[++i][1];
+    for (; ;) {
+      if (i + 1 >= regions.length)
+        break;
+      let currentend = region[0] + region[1];
+      let nextstart = regions[i + 1][0];
+      let diff = nextstart - currentend;
+      if (diff < 0 || diff > 10 * 1024)
+        break;
+      region[1] += regions[++i][1] + diff;
     }
     return [i, region];
   }
@@ -114,6 +121,7 @@ export class Buffer {
       let [ii, region] = this.mergeRegions(regions, i);
       i = ii;
       PROFILE.get(null).inc('traffic', region[1]);
+      PROFILE.get(null).inc('updates');
       buffer.updateRegion(gl, region[0], region[1]);
     }
     return true;

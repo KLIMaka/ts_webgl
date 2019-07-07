@@ -246,21 +246,25 @@ function createBoard() {
 function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[]) {
   let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
 
-  let info = {
-    'X:': 0,
-    'Y:': 0,
-    'Sector:': 0,
-    'Processing:': '',
-    'Hitscan:': '',
-    'Rendering:': '',
-    'Frame Time:': '',
-    'Buffer Traffic:': '',
-    'Buffer Usage:': '',
-    'Sectors:': 0,
-    'Walls:': 0,
-    'Sprites:': 0,
-  }
-  let props = UI.props(['X:', 'Y:', 'Sector:', 'Processing:', 'Hitscan:', 'Rendering:', 'Frame Time:', 'Buffer Traffic:', 'Buffer Usage:', 'Sectors:', 'Walls:', 'Sprites:']);
+  let info = {}
+  let props = UI.props([
+    'X:',
+    'Y:',
+    'Sector:',
+    'Processing:',
+    'Hitscan:',
+    'Rendering:',
+    'Frame Time:',
+    'Buffer Traffic:',
+    'Buffer Updates:',
+    'Buffer Usage:',
+    'PVS:',
+    'RORs:',
+    'Mirrors:',
+    'Sectors:',
+    'Walls:',
+    'Sprites:'
+  ]);
 
   let panel = UI.panel('Info');
   panel.append(props);
@@ -284,6 +288,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
 
       let pos = control.getCamera().getPosition();
       ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1]) * -16);
+      control.getCamera().setPosition([ms.x, ms.z / -16, ms.y]);
 
       PROFILE.start();
       RENDERER.draw(gl, board, ms, control);
@@ -296,7 +301,11 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
       info['Walls:'] = PROFILE.get('processing').counts['walls'];
       info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
-      info['Buffer Traffic:'] = (PROFILE.get(null).counts['traffic'] / 1024).toFixed(2) + 'k';
+      info['PVS:'] = PROFILE.get(null).counts['pvs'];
+      info['RORs:'] = PROFILE.get(null).counts['rors'];
+      info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
+      info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
+      info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
       info['Buffer Usage:'] = (100 * PROFILE.get('processing').counts['buffer']).toFixed(2) + '%';
       info['Sector:'] = ms.sec;
       info['X:'] = ms.x;

@@ -8,6 +8,7 @@ import { walllen } from '../boardutils';
 import { BuildContext } from '../boardedit';
 import { Cache } from './cache';
 import { PvsBoardVisitorResult } from '../boardvisitor';
+import { Deck } from '../../../deck';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
@@ -37,22 +38,26 @@ function drawGrid(gl: WebGLRenderingContext, cache: Cache, board: Board, id: num
   BGL.draw(gl, wrapInGrid(r, gridMatrix(board, id, type)));
 }
 
+let points = new Deck<any>();
 function drawEdges(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: HitType) {
-  BGL.draw(gl, cache.getByIdType(id, addId, type, true));
+  points.clear();
   if (isSector(type)) {
     let sec = board.sectors[id];
     let start = sec.wallptr;
     let end = sec.wallptr + sec.wallnum;
     for (let w = start; w < end; w++) {
-      BGL.draw(gl, cache.getWallPoint(w, 32, type == HitType.CEILING));
+      points.push(cache.getWallPoint(w, 32, type == HitType.CEILING));
     }
   } else if (isWall(type)) {
     let wall = board.walls[id];
-    BGL.draw(gl, cache.getWallPoint(id, 32, false));
-    BGL.draw(gl, cache.getWallPoint(id, 32, true));
-    BGL.draw(gl, cache.getWallPoint(wall.point2, 32, false));
-    BGL.draw(gl, cache.getWallPoint(wall.point2, 32, true));
+    points.push(cache.getWallPoint(id, 32, false));
+    points.push(cache.getWallPoint(id, 32, true));
+    points.push(cache.getWallPoint(wall.point2, 32, false));
+    points.push(cache.getWallPoint(wall.point2, 32, true));
   }
+  BGL.draw(gl, cache.getByIdType(id, addId, type, true));
+  for (let i = 0; i < points.length(); i++)
+    BGL.draw(gl, points.get(i));
 }
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -63,7 +68,7 @@ export class Context implements BuildContext {
   art: ArtProvider = null;
   board: Board = null;
   gl: WebGLRenderingContext = null;
-  
+
   cache: Cache = null;
   pvs: PvsBoardVisitorResult = null;
   gridSize = 128;
@@ -72,12 +77,27 @@ export class Context implements BuildContext {
     return snapGrid(x, this.gridSize);
   }
 
-  scaledSnap(x:number, scale:number) {
+  scaledSnap(x: number, scale: number) {
     return snapGrid(x, this.gridSize * scale);
   }
 
   invalidateAll() {
     this.cache.invalidateAll();
+    this.pvs.reset();
+  }
+
+  invalidateSector(id: number) {
+    this.cache.invalidateSector(id);
+    this.pvs.reset();
+  }
+
+  invalidateWall(id: number) {
+    this.cache.invalidateWall(id);
+    this.pvs.reset();
+  }
+
+  invalidateSprite(id: number) {
+    this.cache.invalidateSprite(id);
     this.pvs.reset();
   }
 

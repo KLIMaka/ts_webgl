@@ -47,6 +47,14 @@ export class Buffer {
   public writeLine(off: number, a: number, b: number) {
     return BUFF.writeLine(this.ptr, off, a, b);
   }
+
+  public getData() {
+    if (this.ptr == null)
+      return null;
+
+    let buff = (<Float32Array>BUFF.getPosBuffer().getData());
+    return buff.subarray(this.ptr.vtx.offset * BUFF.getPosBuffer().getSpacing(), this.ptr.vtx.size * BUFF.getPosBuffer().getSpacing());
+  }
 }
 
 export enum Type {
@@ -92,11 +100,11 @@ export class Solid implements Renderable {
 
 class Grid implements Renderable {
   public solid: Solid;
-  public gridTexMat:GLM.Mat4Array;
-  
+  public gridTexMat: GLM.Mat4Array;
+
   public draw(gl: WebGLRenderingContext, state: State) {
     if (this.solid.buff.get() == null)
-    return;
+      return;
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());

@@ -1,6 +1,6 @@
 import { len2d } from "../../../libs/mathutils";
 import * as GLM from "../../../libs_js/glmatrix";
-import { Deck } from "../../deck";
+import { Deck, IndexedDeck } from "../../deck";
 import * as BU from "./boardutils";
 import { ArtProvider } from "./gl/cache";
 import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
@@ -60,6 +60,9 @@ export interface BuildContext {
   snap(x: number): number;
   scaledSnap(x: number, scale: number): number;
   invalidateAll(): void;
+  invalidateSector(id: number): void;
+  invalidateWall(id: number): void;
+  invalidateSprite(id: number): void;
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
   highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
   highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number): void;
@@ -108,6 +111,16 @@ function setSectorHeinum(board: Board, sectorId: number, type: HitType, h: numbe
   return true;
 }
 
+function invalidateSector(sectorId: number, ctx: BuildContext) {
+  ctx.invalidateSector(sectorId);
+  let sec = ctx.board.sectors[sectorId];
+  let end = sec.wallnum + sec.wallptr;
+  for (let w = sec.wallptr; w < end; w++) {
+    ctx.invalidateWall(w);
+    ctx.invalidateWall(ctx.board.walls[w].nextwall);
+  }
+}
+
 let handle = new MovingHandle();
 export let MOVE = new Move(handle);
 export let START_MOVE = new StartMove(handle);
@@ -118,6 +131,7 @@ export let DRAW_WALL = new DrawWall();
 
 class WallEnt {
   private static connectedWalls = new Deck<number>();
+  private static invalidatedSectors = new IndexedDeck<number>();
   private static factory = new MessageHandlerFactory()
     .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: WallEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
@@ -152,6 +166,19 @@ class WallEnt {
     this.active = true;
   }
 
+  private invalidate(ctx: BuildContext) {
+    WallEnt.invalidatedSectors.clear();
+    BU.connectedWalls(ctx.board, this.wallId, WallEnt.connectedWalls.clear());
+    for (let i = 0; i < WallEnt.connectedWalls.length(); i++) {
+      let w = WallEnt.connectedWalls.get(i);
+      let s = sectorOfWall(ctx.board, w);
+      if (WallEnt.invalidatedSectors.indexOf(s) == -1) {
+        invalidateSector(s, ctx);
+        WallEnt.invalidatedSectors.push(s);
+      }
+    }
+  }
+
   public move(msg: Move, ctx: BuildContext) {
     if (msg.handle.elevate) {
       if (msg.handle.parallel) {
@@ -159,19 +186,19 @@ class WallEnt {
         let y = this.origin[1];
         let z = ctx.snap(this.originZ + msg.handle.dz()) * ZSCALE;
         let h = heinumCalc(ctx.board, this.zMotionSector, x, y, z);
-        if (setSectorHeinum(ctx.board, this.zMotionSector, this.zMotionType, h)) {
-          ctx.invalidateAll();
-        }
+        if (setSectorHeinum(ctx.board, this.zMotionSector, this.zMotionType, h))
+          this.invalidate(ctx);
       } else {
         let z = ctx.snap(this.originZ + msg.handle.dz()) * ZSCALE;
         if (setSectorZ(ctx.board, this.zMotionSector, this.zMotionType, z))
-          ctx.invalidateAll();
+          this.invalidate(ctx);
       }
     } else {
       let x = ctx.snap(this.origin[0] + msg.handle.dx());
       let y = ctx.snap(this.origin[1] + msg.handle.dy());
-      if (BU.moveWall(ctx.board, this.wallId, x, y))
-        ctx.invalidateAll();
+      if (BU.moveWall(ctx.board, this.wallId, x, y)) {
+        this.invalidate(ctx);
+      }
     }
   }
 
@@ -190,8 +217,7 @@ class WallEnt {
         ctx.highlightWall(ctx.gl, ctx.board, p, s);
         ctx.highlightSector(ctx.gl, ctx.board, s);
       }
-    }
-    else {
+    } else {
       let s = sectorOfWall(ctx.board, this.wallId);
       ctx.highlightWall(ctx.gl, ctx.board, this.wallId, s);
     }
@@ -230,7 +256,7 @@ class SpriteEnt {
     let y = ctx.snap(this.origin[2] + msg.handle.dy());
     let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
     if (BU.moveSprite(ctx.board, this.spriteId, x, y, z)) {
-      ctx.invalidateAll();
+      ctx.invalidateSprite(this.spriteId);
     }
   }
 
@@ -276,14 +302,14 @@ class SectorEnt {
       let z = ctx.scaledSnap(this.originz + msg.handle.dz() * ZSCALE, 1);
       let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
       if (setSectorHeinum(ctx.board, this.sectorId, this.type, h)) {
-        ctx.invalidateAll();
+        invalidateSector(this.sectorId, ctx);
       }
     } else {
       let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
         ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
         : ctx.snap(this.originz + msg.handle.dz())
       if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE)) {
-        ctx.invalidateAll();
+        invalidateSector(this.sectorId, ctx);
       }
     }
   }

@@ -1,9 +1,10 @@
-import { arcsIntersects, monoatan2 } from '../../../libs/mathutils';
+import { arcsIntersects, monoatan2, dot2d } from '../../../libs/mathutils';
 import * as GLM from '../../../libs_js/glmatrix';
 import { IndexedDeck, Deck } from '../../deck';
 import { nextwall } from './boardutils';
 import { Board } from './structs';
 import * as U from './utils';
+import * as PROFILE from '../../profiler';
 
 export function packWallSectorId(wallId: number, sectorId: number) {
   return wallId | (sectorId << 16)
@@ -156,11 +157,11 @@ export class PvsBoardVisitorResult implements Result {
     this.angCache.clear();
   }
 
-  private ensureEntryWalls(idx:number) {
-    let ewalls = this.entryWalls.get(idx);
+  private ensureEntryWalls(sectorId: number) {
+    let ewalls = this.entryWalls.get(sectorId);
     if (ewalls == undefined) {
       ewalls = new Deck<number>();
-      this.entryWalls.set(idx, ewalls);
+      this.entryWalls.set(sectorId, ewalls);
     }
     return ewalls;
   }
@@ -178,15 +179,13 @@ export class PvsBoardVisitorResult implements Result {
         let nextsector = wall.nextsector;
         if (nextsector == -1) continue;
         let nextwall = wall.nextwall;
-        let pvsIdx = this.prepvs.indexOf(nextsector);
-        if (pvsIdx == -1) {
+        if (this.prepvs.indexOf(nextsector) == -1) {
           this.prepvs.push(nextsector);
-          pvsIdx = this.prepvs.length() - 1;
-          let ewalls = this.ensureEntryWalls(pvsIdx);
+          let ewalls = this.ensureEntryWalls(nextsector);
           ewalls.clear();
           ewalls.push(nextwall);
         } else {
-          let ewalls = this.ensureEntryWalls(pvsIdx);
+          let ewalls = this.ensureEntryWalls(nextsector);
           ewalls.push(nextwall);
         }
       }
@@ -223,7 +222,6 @@ export class PvsBoardVisitorResult implements Result {
   private cached(board: Board, ms: U.MoveStruct) {
     if (!this.needToUpdate && ms.x == this.cachedX && ms.y == this.cachedY)
       return true;
-    this.init(board, ms.sec);
     this.cachedX = ms.x;
     this.cachedY = ms.y;
     this.needToUpdate = false;
@@ -237,14 +235,14 @@ export class PvsBoardVisitorResult implements Result {
   public visit(board: Board, ms: U.MoveStruct, forward: GLM.Vec3Array): Result {
     if (this.cached(board, ms))
       return this;
-
+    this.init(board, ms.sec);
     this.fillPVS(ms, forward);
+    PROFILE.get(null).inc('pvs', this.prepvs.length());
     let sectors = board.sectors;
     let sec2spr = U.groupSprites(board.sprites);
     for (let i = 0; i < this.pvs.length(); i++) {
       let s = this.pvs.get(i);
-      let entryWallsIdx = this.prepvs.indexOf(s);
-      let entryWalls = this.ensureEntryWalls(entryWallsIdx);
+      let entryWalls = this.ensureEntryWalls(s);
       let sec = sectors[s];
       if (sec == undefined) continue;
 
@@ -270,6 +268,7 @@ export class PvsBoardVisitorResult implements Result {
           this.sprites.push(sprs[i]);
       }
     }
+    PROFILE.get(null).inc('pvs', this.pvs.length());
     return this;
   }
 

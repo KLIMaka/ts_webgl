@@ -219,7 +219,16 @@ function drawGeometry(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct,
   drawRooms(gl, board, result);
 }
 
-let additionVisible = new VIS.PvsBoardVisitorResult();
+let rorViss = new Map<BLOOD.RorLink, VIS.PvsBoardVisitorResult>();
+function getLinkVis(link: BLOOD.RorLink) {
+  let vis = rorViss.get(link);
+  if (vis == undefined) {
+    vis = new VIS.PvsBoardVisitorResult();
+    rorViss.set(link, vis);
+  }
+  return vis;
+}
+
 let diff = GLM.vec3.create();
 let stackTransform = GLM.mat4.create();
 let mstmp = new U.MoveStruct();
@@ -245,11 +254,11 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, l
   GLM.mat4.translate(stackTransform, stackTransform, diff);
   GLM.vec3.sub(npos, ctr.getCamera().getPosition(), diff);
 
-  mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1];
+  mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1] * U.ZSCALE;
   BGL.setViewMatrix(stackTransform);
   BGL.setPosition(npos);
   writeStenciledOnly(gl, stencilValue);
-  drawRooms(gl, board, additionVisible.visit(board, mstmp, ctr.getCamera().forward()));
+  drawRooms(gl, board, getLinkVis(link).visit(board, mstmp, ctr.getCamera().forward()));
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
@@ -261,6 +270,7 @@ let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: numb
 
 function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forSector(board, rorSectorCollector.visit());
+  PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
@@ -274,6 +284,7 @@ function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms
 }
 
 let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => board.walls[wallId].picnum == BLOOD.MIRROR_PIC);
+let mirrorVis = new VIS.PvsBoardVisitorResult();
 let wallNormal = GLM.vec2.create();
 let mirrorNormal = GLM.vec3.create();
 let mirroredTransform = GLM.mat4.create();
@@ -281,7 +292,7 @@ let mpos = GLM.vec3.create();
 
 function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forWall(board, mirrorWallsCollector.visit());
-
+  PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
     let w = VIS.unpackWallId(mirrorWallsCollector.walls.get(i));
@@ -310,7 +321,7 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
     VEC.reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     mstmp.sec = ms.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
     writeStenciledOnly(gl, i + 127);
-    drawRooms(gl, board, additionVisible.visit(board, mstmp, ctr.getCamera().forward()));
+    drawRooms(gl, board, mirrorVis.visit(board, mstmp, ctr.getCamera().forward()));
     gl.cullFace(gl.BACK);
 
     // seal reflections by writing depth of mirror surface
