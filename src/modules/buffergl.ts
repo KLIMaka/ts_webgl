@@ -128,6 +128,7 @@ export class Buffer {
   }
 
   public update(gl: WebGLRenderingContext) {
+    PROFILE.get(null).set('buffer', this.getVertexFreeSpace());
     for (let v in this.vtxRegions) {
       if (this.vtxRegions[v].length == 0)
         continue;

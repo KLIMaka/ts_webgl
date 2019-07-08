@@ -6,6 +6,7 @@ module.exports = function (grunt) {
   var modules = [
     'raven',
     'build',
+    'duke',
     'anvil',
     'wl',
     'sound',

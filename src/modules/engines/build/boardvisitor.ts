@@ -181,12 +181,12 @@ export class PvsBoardVisitorResult implements Result {
         let nextwall = wall.nextwall;
         if (this.prepvs.indexOf(nextsector) == -1) {
           this.prepvs.push(nextsector);
-          let ewalls = this.ensureEntryWalls(nextsector);
-          ewalls.clear();
-          ewalls.push(nextwall);
+          this.ensureEntryWalls(nextsector)
+            .clear()
+            .push(nextwall);
         } else {
-          let ewalls = this.ensureEntryWalls(nextsector);
-          ewalls.push(nextwall);
+          this.ensureEntryWalls(nextsector)
+            .push(nextwall);
         }
       }
     }

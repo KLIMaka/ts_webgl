@@ -25,7 +25,7 @@ export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture
     state.registerShader('parallax', res['parallax']);
     state.registerShader('grid', res['grid']);
 
-    BUFF.init(gl, 1024 * 64);
+    BUFF.init(gl, 1024 * 128);
     state.setIndexBuffer(BUFF.getIdxBuffer());
     state.setVertexBuffer('aPos', BUFF.getPosBuffer());
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
@@ -52,7 +52,7 @@ export function setPosition(pos: GLM.Vec3Array) {
 }
 
 let pos = GLM.vec3.create();
-export function setCursorPosiotion(x: number, y:number, z:number) {
+export function setCursorPosiotion(x: number, y: number, z: number) {
   GLM.vec3.set(pos, x, y, z);
   state.setUniform('curpos', pos);
 }

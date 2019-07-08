@@ -10,13 +10,12 @@ import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
 import * as BLOOD from '../bloodutils';
+import * as EDIT from "../boardedit";
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
-import * as EDIT from "../boardedit";
-import { MessageHandler, sendMessage, Message } from '../messages';
+import { Message, MessageHandler, sendMessage } from '../messages';
 import { Board } from '../structs';
 import * as U from '../utils';
-import * as BUFF from './buffers';
 import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
 import { Context } from './context';
@@ -36,7 +35,7 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
 let context: Context;
 let artProvider: ArtProvider;
 let cache: Cache;
-let rorLinks: BLOOD.RorLinks;
+// let rorLinks: BLOOD.RorLinks;
 let visible = new VIS.PvsBoardVisitorResult();
 let selection = new List<MessageHandler>();
 let hit = new U.Hitscan();
@@ -53,7 +52,7 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   artProvider = context.art = art;
   cache = context.cache = new Cache(board, art);
   context.pvs = visible;
-  rorLinks = BLOOD.loadRorLinks(board);
+  // rorLinks = BLOOD.loadRorLinks(board);
   loadGridTexture(gl, (gridTex: Texture) => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), gridTex, cb));
 }
 
@@ -153,11 +152,11 @@ function updateContext(gl: WebGLRenderingContext, board: Board) {
 }
 
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
-  updateContext(gl, board);
+  // updateContext(gl, board);
   hitscan(gl, board, ms, ctr);
-  move(gl, board, ctr);
-  select(board)
-  snap(board);
+  // move(gl, board, ctr);
+  // select(board)
+  // snap(board);
 
   if (INPUT.keys['INSERT']) {
     sendToSelected(EDIT.SPLIT_WALL);
@@ -165,7 +164,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
   BGL.newFrame(gl);
   drawGeometry(gl, board, ms, ctr);
-  drawHelpers(gl, board);
+  // drawHelpers(gl, board);
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
@@ -211,8 +210,8 @@ function drawGeometry(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct,
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(ctr.getProjectionMatrix(gl));
-  drawMirrors(gl, board, result, ms, ctr);
-  drawRor(gl, board, result, ms, ctr);
+  // drawMirrors(gl, board, result, ms, ctr);
+  // drawRor(gl, board, result, ms, ctr);
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
@@ -266,22 +265,22 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, l
   BGL.draw(gl, surface);
 }
 
-let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => rorLinks.hasRor(sectorId));
+// let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => rorLinks.hasRor(sectorId));
 
-function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
-  result.forSector(board, rorSectorCollector.visit());
-  PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
+// function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
+//   result.forSector(board, rorSectorCollector.visit());
+//   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
-  gl.enable(gl.STENCIL_TEST);
-  for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
-    let s = rorSectorCollector.sectors.get(i);
-    let r = cache.getSector(s);
-    drawStack(gl, board, ctr, rorLinks.ceilLinks[s], r.ceiling, i + 1);
-    drawStack(gl, board, ctr, rorLinks.floorLinks[s], r.floor, i + 1);
-  }
-  gl.disable(gl.STENCIL_TEST);
-  writeAll(gl);
-}
+//   gl.enable(gl.STENCIL_TEST);
+//   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
+//     let s = rorSectorCollector.sectors.get(i);
+//     let r = cache.getSector(s);
+//     drawStack(gl, board, ctr, rorLinks.ceilLinks[s], r.ceiling, i + 1);
+//     drawStack(gl, board, ctr, rorLinks.floorLinks[s], r.floor, i + 1);
+//   }
+//   gl.disable(gl.STENCIL_TEST);
+//   writeAll(gl);
+// }
 
 let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => board.walls[wallId].picnum == BLOOD.MIRROR_PIC);
 let mirrorVis = new VIS.PvsBoardVisitorResult();
@@ -354,10 +353,11 @@ function clearDrawLists() {
 
 function sectorVisitor(board: Board, sectorId: number) {
   let sector = cache.getSector(sectorId);
-  if (rorLinks.floorLinks[sectorId] == undefined)
-    surfaces.push(sector.floor);
-  if (rorLinks.ceilLinks[sectorId] == undefined)
-    surfaces.push(sector.ceiling);
+  // if (rorLinks.floorLinks[sectorId] == undefined)
+  //   surfaces.push(sector.floor);
+  // if (rorLinks.ceilLinks[sectorId] == undefined)
+  //   surfaces.push(sector.ceiling);
+  surfaces.push(sector);
   PROFILE.incCount('sectors');
 }
 
@@ -388,7 +388,6 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
   result.forSector(board, sectorVisitor);
   result.forWall(board, wallVisitor);
   result.forSprite(board, spriteVisitor);
-  PROFILE.set('buffer', BUFF.getFreeSpace());
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');

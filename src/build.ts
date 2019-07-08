@@ -301,12 +301,12 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
       info['Walls:'] = PROFILE.get('processing').counts['walls'];
       info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
-      info['PVS:'] = PROFILE.get(null).counts['pvs'];
+      info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
       info['RORs:'] = PROFILE.get(null).counts['rors'];
       info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
       info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
       info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
-      info['Buffer Usage:'] = (100 * PROFILE.get('processing').counts['buffer']).toFixed(2) + '%';
+      info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
       info['Sector:'] = ms.sec;
       info['X:'] = ms.x;
       info['Y:'] = ms.y;
