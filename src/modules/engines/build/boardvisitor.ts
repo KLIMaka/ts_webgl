@@ -155,6 +155,7 @@ export class PvsBoardVisitorResult implements Result {
     this.pvs.clear();
     this.pvs.push(sectorId);
     this.angCache.clear();
+    this.ensureEntryWalls(sectorId).clear();
   }
 
   private ensureEntryWalls(sectorId: number) {

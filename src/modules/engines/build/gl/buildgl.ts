@@ -8,17 +8,17 @@ import { Renderable } from './renderable';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state: State;
-export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture, palswaps: number, shadowLevels: number, grid: DS.Texture, cb: () => void) {
+export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture, palswaps: number, shadowsteps: number, grid: DS.Texture, cb: () => void) {
   let palswapsDef = 'PALSWAPS (' + palswaps + '.0)';
-  let shadowLevelsDef = 'SHADOW_LEVELS (' + shadowLevels + '.0)';
+  let shadowstepsDef = 'SHADOWSTEPS (' + shadowsteps + '.0)';
 
   var ab = AB.create();
-  SHADER.createShader(gl, SHADER_NAME, ['PAL_LIGHTING', palswapsDef, shadowLevelsDef], ab.callback('baseShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'PAL_LIGHTING', palswapsDef, shadowLevelsDef], ab.callback('spriteShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['FLAT', palswapsDef, shadowLevelsDef], ab.callback('baseFlatShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT', palswapsDef, shadowLevelsDef], ab.callback('spriteFlatShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['PARALLAX', palswapsDef, shadowLevelsDef], ab.callback('parallax'));
-  SHADER.createShader(gl, SHADER_NAME, ['GRID', palswapsDef, shadowLevelsDef], ab.callback('grid'));
+  SHADER.createShader(gl, SHADER_NAME, ['PAL_LIGHTING', palswapsDef, shadowstepsDef], ab.callback('baseShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'PAL_LIGHTING', palswapsDef, shadowstepsDef], ab.callback('spriteShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['FLAT', palswapsDef, shadowstepsDef], ab.callback('baseFlatShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT', palswapsDef, shadowstepsDef], ab.callback('spriteFlatShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['PARALLAX', palswapsDef, shadowstepsDef], ab.callback('parallax'));
+  SHADER.createShader(gl, SHADER_NAME, ['GRID', palswapsDef, shadowstepsDef], ab.callback('grid'));
   ab.wait((res) => {
     state = new State(gl);
     state.registerShader('baseShader', res['baseShader']);
