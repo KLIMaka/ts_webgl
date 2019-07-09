@@ -78,12 +78,12 @@ export function sectorOfWall(board: Board, wallId: number): number {
   }
 }
 
-export function sectorZ(board:Board, sectorId:number, type:HitType) {
+export function sectorZ(board: Board, sectorId: number, type: HitType) {
   let sec = board.sectors[sectorId];
   return (type == HitType.CEILING ? sec.ceilingz : sec.floorz);
 }
 
-export function sectorHeinum(board:Board, sectorId:number, type:HitType) {
+export function sectorHeinum(board: Board, sectorId: number, type: HitType) {
   let sec = board.sectors[sectorId];
   return (type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum);
 }
@@ -162,7 +162,7 @@ export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
   };
 }
 
-export function heinumCalc(board:Board, sectorId: number, x:number, y:number, z:number) {
+export function heinumCalc(board: Board, sectorId: number, x: number, y: number, z: number) {
   let sec = board.sectors[sectorId];
   let wall1 = board.walls[sec.wallptr];
   let wall2 = board.walls[wall1.point2];
@@ -392,7 +392,7 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, spr: Sprite, sp
     let intx = xs + MU.int(vx * t);
     let inty = ys + MU.int(vy * t);
     let w = (info.w * spr.xrepeat) / 4;
-    if (MU.len2d(x-intx, y-inty) > w >> 1) return;
+    if (MU.len2d(x - intx, y - inty) > w >> 1) return;
     hit.hit(intx, inty, intz, t, sprId, HitType.SPRITE);
   } else if (spr.cstat.type == WALL) {
     let xoff = info.attrs.xoff + spr.xoffset;
@@ -453,7 +453,7 @@ export function getFirstWallAngle(sector: Sector, walls: Wall[]): number {
   return Math.atan2(-dy, dx);
 }
 
-export function wallVisible(board:Board, wallId:number,  ms: MoveStruct) {
+export function wallVisible(board: Board, wallId: number, ms: MoveStruct) {
   let wall1 = board.walls[wallId];
   let wall2 = board.walls[wall1.point2];
   let dx1 = wall2.x - wall1.x;

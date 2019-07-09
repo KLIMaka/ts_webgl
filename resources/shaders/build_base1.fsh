@@ -19,7 +19,6 @@ varying vec3 wpos;
 varying vec3 wnormal;
 
 const float trans = float(255.0/256.0);
-const float totalPLUs = 15.0;
 const float PI = 3.1415926538;
 
 float lightOffset() {
@@ -33,7 +32,7 @@ float diffuse() {
   float dist = distance(wpos, curpos);
   float ldot = dot(wnormal, toLight);
   if (dist < 4096.0 && ldot >= -0.001) {
-    return -ldot * pow(1.0 - (dist / 4096.0), 1.0) * 64.0;
+    return -ldot * pow(1.0 - (dist / 4096.0), 1.0) * SHADOW_LEVELS;
   }
 #else
   return 0.0;
@@ -45,7 +44,7 @@ float specular() {
   vec3 toLight = normalize(curpos - wpos);
   vec3 r = reflect(-toLight, wnormal);
   float specular = pow(dot(r, normalize(eyepos - wpos)), 100.0);
-  return -specular * 64.0;
+  return -specular * SHADOW_LEVELS;
 #else
   return 0.0;
 #endif
@@ -60,9 +59,9 @@ float highlight() {
 
 float palLightOffset(float lightLevel) {
 #ifdef PAL_LIGHTING
-  return (float(pluN) + lightLevel) / totalPLUs;
+  return (float(pluN) + lightLevel) / PALSWAPS;
 #else
-  return (float(pluN) + 0.5 / 64.0) / totalPLUs ;
+  return (float(pluN) + 0.5 / SHADOW_LEVELS) / PALSWAPS ;
 #endif
 }
 
@@ -85,7 +84,7 @@ vec3 palLookup(vec2 tc) {
   float palIdx = texture2D(base, fract(tc)).r;
   if (palIdx >= trans)
     discard;
-  float lightLevel = clamp(lightOffset() + diffuse() + specular(), 0.5, 63.5) / 64.0;
+  float lightLevel = clamp(lightOffset() + diffuse() + specular(), 0.5, SHADOW_LEVELS - 0.5) / SHADOW_LEVELS;
   float overbright = highlight();
   return sampleColor(palIdx, lightLevel, overbright);
 }

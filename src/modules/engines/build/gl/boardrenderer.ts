@@ -9,7 +9,6 @@ import { Deck } from '../../../deck';
 import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
-import * as BLOOD from '../bloodutils';
 import * as EDIT from "../boardedit";
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
@@ -24,6 +23,26 @@ import { Renderable } from './renderable';
 export interface PalProvider extends ArtProvider {
   getPalTexture(): Texture;
   getPluTexture(): Texture;
+  getPalswaps(): number;
+  getShadowSteps(): number;
+}
+
+export class RorLink {
+  constructor(public srcSpriteId: number, public dstSpriteId: number) { }
+}
+
+export class RorLinks {
+  public ceilLinks: { [index: number]: RorLink } = {};
+  public floorLinks: { [index: number]: RorLink } = {};
+
+  public hasRor(sectorId: number) {
+    return this.ceilLinks[sectorId] != undefined || this.floorLinks[sectorId] != undefined;
+  }
+}
+
+export interface Implementation {
+  rorLinks(): RorLinks;
+  isMirrorPic(picnum: number): boolean;
 }
 
 function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => void): void {
@@ -35,12 +54,12 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
 let context: Context;
 let artProvider: ArtProvider;
 let cache: Cache;
-// let rorLinks: BLOOD.RorLinks;
 let visible = new VIS.PvsBoardVisitorResult();
 let selection = new List<MessageHandler>();
 let hit = new U.Hitscan();
+let implementation: Implementation;
 
-export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, cb: () => void) {
+export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implementation, board: Board, cb: () => void) {
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
@@ -52,8 +71,9 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, board: Board, 
   artProvider = context.art = art;
   cache = context.cache = new Cache(board, art);
   context.pvs = visible;
-  // rorLinks = BLOOD.loadRorLinks(board);
-  loadGridTexture(gl, (gridTex: Texture) => BGL.init(gl, art.getPalTexture(), art.getPluTexture(), gridTex, cb));
+  implementation = impl;
+  loadGridTexture(gl, (gridTex: Texture) =>
+    BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTex, cb));
 }
 
 function sendToSelected(msg: Message) {
@@ -152,11 +172,11 @@ function updateContext(gl: WebGLRenderingContext, board: Board) {
 }
 
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
-  // updateContext(gl, board);
+  updateContext(gl, board);
   hitscan(gl, board, ms, ctr);
-  // move(gl, board, ctr);
-  // select(board)
-  // snap(board);
+  move(gl, board, ctr);
+  select(board)
+  snap(board);
 
   if (INPUT.keys['INSERT']) {
     sendToSelected(EDIT.SPLIT_WALL);
@@ -164,7 +184,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
   BGL.newFrame(gl);
   drawGeometry(gl, board, ms, ctr);
-  // drawHelpers(gl, board);
+  drawHelpers(gl, board);
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
@@ -210,16 +230,16 @@ function drawGeometry(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct,
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(ctr.getProjectionMatrix(gl));
-  // drawMirrors(gl, board, result, ms, ctr);
-  // drawRor(gl, board, result, ms, ctr);
+  drawMirrors(gl, board, result, ms, ctr);
+  drawRor(gl, board, result, ms, ctr);
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
   drawRooms(gl, board, result);
 }
 
-let rorViss = new Map<BLOOD.RorLink, VIS.PvsBoardVisitorResult>();
-function getLinkVis(link: BLOOD.RorLink) {
+let rorViss = new Map<RorLink, VIS.PvsBoardVisitorResult>();
+function getLinkVis(link: RorLink) {
   let vis = rorViss.get(link);
   if (vis == undefined) {
     vis = new VIS.PvsBoardVisitorResult();
@@ -235,7 +255,7 @@ let srcPos = GLM.vec3.create();
 let dstPos = GLM.vec3.create();
 let npos = GLM.vec3.create();
 
-function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, link: BLOOD.RorLink, surface: Renderable, stencilValue: number) {
+function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link)
     return;
 
@@ -265,24 +285,24 @@ function drawStack(gl: WebGLRenderingContext, board: Board, ctr: Controller3D, l
   BGL.draw(gl, surface);
 }
 
-// let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => rorLinks.hasRor(sectorId));
+let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 
-// function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
-//   result.forSector(board, rorSectorCollector.visit());
-//   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
+function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
+  result.forSector(board, rorSectorCollector.visit());
+  PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
-//   gl.enable(gl.STENCIL_TEST);
-//   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
-//     let s = rorSectorCollector.sectors.get(i);
-//     let r = cache.getSector(s);
-//     drawStack(gl, board, ctr, rorLinks.ceilLinks[s], r.ceiling, i + 1);
-//     drawStack(gl, board, ctr, rorLinks.floorLinks[s], r.floor, i + 1);
-//   }
-//   gl.disable(gl.STENCIL_TEST);
-//   writeAll(gl);
-// }
+  gl.enable(gl.STENCIL_TEST);
+  for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
+    let s = rorSectorCollector.sectors.get(i);
+    let r = cache.getSector(s);
+    drawStack(gl, board, ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
+    drawStack(gl, board, ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
+  }
+  gl.disable(gl.STENCIL_TEST);
+  writeAll(gl);
+}
 
-let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => board.walls[wallId].picnum == BLOOD.MIRROR_PIC);
+let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => implementation.isMirrorPic(board.walls[wallId].picnum));
 let mirrorVis = new VIS.PvsBoardVisitorResult();
 let wallNormal = GLM.vec2.create();
 let mirrorNormal = GLM.vec3.create();
@@ -353,16 +373,16 @@ function clearDrawLists() {
 
 function sectorVisitor(board: Board, sectorId: number) {
   let sector = cache.getSector(sectorId);
-  // if (rorLinks.floorLinks[sectorId] == undefined)
-  //   surfaces.push(sector.floor);
-  // if (rorLinks.ceilLinks[sectorId] == undefined)
-  //   surfaces.push(sector.ceiling);
+  if (implementation.rorLinks().floorLinks[sectorId] == undefined)
+    surfaces.push(sector.floor);
+  if (implementation.rorLinks().ceilLinks[sectorId] == undefined)
+    surfaces.push(sector.ceiling);
   surfaces.push(sector);
   PROFILE.incCount('sectors');
 }
 
 function wallVisitor(board: Board, wallId: number, sectorId: number) {
-  if (board.walls[wallId].picnum == BLOOD.MIRROR_PIC)
+  if (implementation.isMirrorPic(board.walls[wallId].picnum))
     return;
   let wall = cache.getWall(wallId, sectorId);
   if (wall.mid.trans != 1) {

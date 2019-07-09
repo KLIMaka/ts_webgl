@@ -17,6 +17,7 @@ import * as IU from './libs/imgutils';
 import * as browser from './libs/browser';
 import * as RENDERER from './modules/engines/build/gl/boardrenderer';
 import * as PROFILE from './modules/profiler';
+import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -129,6 +130,9 @@ class BuildArtProvider implements RENDERER.PalProvider {
     }
     return this.pluTexture;
   }
+
+  public getPalswaps() { return this.PLUs.length }
+  public getShadowSteps() { return 64 }
 }
 
 function drawCompass(canvas: HTMLCanvasElement, eye: number[]) {
@@ -282,7 +286,13 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   control.setFov(75);
   let ms = createMoveStruct(board, control);
 
-  RENDERER.init(gl, art, board, () => {
+  let rorLinks = loadRorLinks(board);
+  let impl: RENDERER.Implementation = {
+    isMirrorPic(picnum: number) { return picnum == MIRROR_PIC },
+    rorLinks() { return rorLinks }
+  }
+
+  RENDERER.init(gl, art, impl, board, () => {
 
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
 

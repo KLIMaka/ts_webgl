@@ -116,14 +116,17 @@ class BuildArtProvider implements RENDERER.PalProvider {
 
   public getPluTexture(): DS.Texture {
     if (this.pluTexture == null) {
-      let tex = new Uint8Array(256 * 64 * this.PLUs.length);
+      let tex = new Uint8Array(256 * this.getShadowSteps() * this.PLUs.length);
       for (let i = 0; i < this.PLUs.length; i++) {
-        tex.set(this.PLUs[i], 256 * 64 * i);
+        tex.set(this.PLUs[i], 256 * this.getShadowSteps() * i);
       }
-      this.pluTexture = TEX.createTexture(256, 64 * this.PLUs.length, this.gl, { filter: this.gl.NEAREST }, tex, this.gl.LUMINANCE);
+      this.pluTexture = TEX.createTexture(256, this.getShadowSteps() * this.PLUs.length, this.gl, { filter: this.gl.NEAREST }, tex, this.gl.LUMINANCE);
     }
     return this.pluTexture;
   }
+
+  public getPalswaps() { return 1; }
+  public getShadowSteps() { return 32; }
 }
 
 
@@ -194,7 +197,13 @@ function render(map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs:
   control.setFov(75);
   let ms = createMoveStruct(board, control);
 
-  RENDERER.init(gl, art, board, () => {
+  let rorLins = new RENDERER.RorLinks();
+  let impl: RENDERER.Implementation = {
+    isMirrorPic(picnum: number) { return false },
+    rorLinks() { return rorLins }
+  }
+
+  RENDERER.init(gl, art, impl, board, () => {
 
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
 
@@ -236,10 +245,9 @@ function render(map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs:
 function loadPLUs(grp: GRP.GrpFile): Uint8Array[] {
   let paldat = grp.get('PALETTE.DAT');
   paldat.skip(768);
-  let shadows = paldat.readUShort();
-  console.log(shadows);
-  let pal = new Uint8Array(768);
-  return [];
+  let shadowsteps = paldat.readUShort();
+  let plu = data.atomic_array(data.ubyte, shadowsteps * 256).read(paldat);
+  return [plu];
 }
 
 let grpFile = "resources/engines/duke/DUKE3D.GRP";

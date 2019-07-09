@@ -1,5 +1,6 @@
 import { Sprite, Board } from "./structs";
 import { BloodSprite } from "./bloodstructs";
+import { RorLinks, RorLink } from "./gl/boardrenderer";
 
 export const MIRROR_PIC = 504;
 
@@ -9,19 +10,6 @@ function isUpperLink(spr: Sprite) {
 
 function isLowerLink(spr: Sprite) {
   return spr.lotag == 12 || spr.lotag == 6 || spr.lotag == 10 || spr.lotag == 14;
-}
-
-export class RorLink {
-  constructor(public srcSpriteId: number, public dstSpriteId: number) { }
-}
-
-export class RorLinks {
-  public ceilLinks: { [index: number]: RorLink } = {};
-  public floorLinks: { [index: number]: RorLink } = {};
-
-  public hasRor(sectorId:number) {
-    return this.ceilLinks[sectorId] != undefined || this.floorLinks[sectorId] != undefined;
-  }
 }
 
 export function loadRorLinks(board: Board): RorLinks {
