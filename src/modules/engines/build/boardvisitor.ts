@@ -139,8 +139,8 @@ export class PvsBoardVisitorResult implements Result {
   private prepvs = new IndexedDeck<number>();
   private pvs = new IndexedDeck<number>();
   private entryWalls = new Map<number, Deck<number>>();
-  private board: Board;
   private angCache = new Map<number, number>();
+  private board: Board;
   private cachedX = 0;
   private cachedY = 0;
   private needToUpdate = true;
@@ -155,7 +155,6 @@ export class PvsBoardVisitorResult implements Result {
     this.pvs.clear();
     this.pvs.push(sectorId);
     this.angCache.clear();
-    this.ensureEntryWalls(sectorId).clear();
   }
 
   private ensureEntryWalls(sectorId: number) {
@@ -250,7 +249,9 @@ export class PvsBoardVisitorResult implements Result {
       this.sectors.push(s);
       let endwall = sec.wallptr + sec.wallnum;
       for (let w = sec.wallptr; w < endwall; w++) {
-        if (!U.wallVisible(board, w, ms) || wallBehind(board, w, forward, ms) || !this.visibleFromEntryWalls(w, entryWalls, ms))
+        if (!U.wallVisible(board, w, ms)
+          || wallBehind(board, w, forward, ms)
+          || !this.visibleFromEntryWalls(w, entryWalls, ms))
           continue;
 
         this.walls.push(packWallSectorId(w, s));

@@ -1,7 +1,7 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as BGL from './buildgl';
 import { Board } from '../structs';
-import { HitType, isSector, isWall } from '../utils';
+import { Type, isSector, isWall } from '../utils';
 import { Solid, wrapInGrid } from './renderable';
 import { ArtProvider } from './cache';
 import { walllen } from '../boardutils';
@@ -12,7 +12,7 @@ import { Deck } from '../../../deck';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
-function gridMatrix(board: Board, id: number, type: HitType): GLM.Mat4Array {
+function gridMatrix(board: Board, id: number, type: Type): GLM.Mat4Array {
   GLM.mat4.identity(texMat);
   if (isSector(type)) {
     GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
@@ -33,20 +33,20 @@ function gridMatrix(board: Board, id: number, type: HitType): GLM.Mat4Array {
   return texMat;
 }
 
-function drawGrid(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: HitType) {
+function drawGrid(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: Type) {
   let r = <Solid>cache.getByIdType(id, addId, type);
   BGL.draw(gl, wrapInGrid(r, gridMatrix(board, id, type)));
 }
 
 let points = new Deck<any>();
-function drawEdges(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: HitType) {
+function drawEdges(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: Type) {
   points.clear();
   if (isSector(type)) {
     let sec = board.sectors[id];
     let start = sec.wallptr;
     let end = sec.wallptr + sec.wallnum;
     for (let w = start; w < end; w++) {
-      points.push(cache.getWallPoint(w, 32, type == HitType.CEILING));
+      points.push(cache.getWallPoint(w, 32, type == Type.CEILING));
     }
   } else if (isWall(type)) {
     let wall = board.walls[id];
@@ -102,26 +102,26 @@ export class Context implements BuildContext {
   }
 
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number) {
-    drawGrid(gl, this.cache, board, sectorId, -1, HitType.CEILING);
-    drawGrid(gl, this.cache, board, sectorId, -1, HitType.FLOOR);
-    drawEdges(gl, this.cache, board, sectorId, -1, HitType.CEILING);
-    drawEdges(gl, this.cache, board, sectorId, -1, HitType.FLOOR);
+    drawGrid(gl, this.cache, board, sectorId, -1, Type.CEILING);
+    drawGrid(gl, this.cache, board, sectorId, -1, Type.FLOOR);
+    drawEdges(gl, this.cache, board, sectorId, -1, Type.CEILING);
+    drawEdges(gl, this.cache, board, sectorId, -1, Type.FLOOR);
   }
 
   highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
-    drawGrid(gl, this.cache, board, wallId, sectorId, HitType.UPPER_WALL);
-    drawGrid(gl, this.cache, board, wallId, sectorId, HitType.MID_WALL);
-    drawGrid(gl, this.cache, board, wallId, sectorId, HitType.LOWER_WALL);
-    drawEdges(gl, this.cache, board, wallId, sectorId, HitType.UPPER_WALL);
-    drawEdges(gl, this.cache, board, wallId, sectorId, HitType.MID_WALL);
-    drawEdges(gl, this.cache, board, wallId, sectorId, HitType.LOWER_WALL);
+    drawGrid(gl, this.cache, board, wallId, sectorId, Type.UPPER_WALL);
+    drawGrid(gl, this.cache, board, wallId, sectorId, Type.MID_WALL);
+    drawGrid(gl, this.cache, board, wallId, sectorId, Type.LOWER_WALL);
+    drawEdges(gl, this.cache, board, wallId, sectorId, Type.UPPER_WALL);
+    drawEdges(gl, this.cache, board, wallId, sectorId, Type.MID_WALL);
+    drawEdges(gl, this.cache, board, wallId, sectorId, Type.LOWER_WALL);
   }
 
   highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number) {
-    drawEdges(gl, this.cache, board, spriteId, -1, HitType.SPRITE);
+    drawEdges(gl, this.cache, board, spriteId, -1, Type.SPRITE);
   }
 
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: HitType) {
+  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: Type) {
     drawGrid(gl, this.cache, board, id, addId, type);
     drawEdges(gl, this.cache, board, id, addId, type);
   }

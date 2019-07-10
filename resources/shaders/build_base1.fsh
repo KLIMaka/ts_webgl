@@ -53,7 +53,7 @@ float specular() {
 float highlight() {
   float dist = distance(wpos.xz, curpos.xz);
   if (dist < 16.0)
-    return 2.0 + (sin(time/ 100.0) + 1.0);
+    return 2.0 + (sin(time / 100.0) + 1.0);
   return 1.0;
 }
 

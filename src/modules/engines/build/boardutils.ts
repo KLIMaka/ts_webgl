@@ -221,7 +221,6 @@ export function connectedWalls(board: Board, wallId: number, result: Deck<number
   let walls = board.walls;
   result.push(wallId);
   let w = wallId;
-  result.push(w);
   do {
     if (walls[w].nextwall != -1) {
       w = walls[walls[w].nextwall].point2;
@@ -246,8 +245,7 @@ let wallsToMove = new Deck<number>();
 export function moveWall(board: Board, wallId: number, x: number, y: number): boolean {
   let walls = board.walls;
   let wall = walls[wallId];
-  if (wall.x == x && wall.y == y)
-    return false;
+  if (wall.x == x && wall.y == y) return false;
   connectedWalls(board, wallId, wallsToMove.clear());
   for (let i = 0; i < wallsToMove.length(); i++) {
     doMoveWall(board, wallsToMove.get(i), x, y);
@@ -255,10 +253,9 @@ export function moveWall(board: Board, wallId: number, x: number, y: number): bo
   return true;
 }
 
-export function moveSprite(board: Board, sprId: number, x: number, y: number, z:number): boolean {
+export function moveSprite(board: Board, sprId: number, x: number, y: number, z: number): boolean {
   var spr = board.sprites[sprId];
-  if (spr.x == x && spr.y == y && spr.z == z)
-    return false;
+  if (spr.x == x && spr.y == y && spr.z == z) return false;
   spr.x = x;
   spr.y = y;
   spr.z = z;

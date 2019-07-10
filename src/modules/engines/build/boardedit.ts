@@ -5,7 +5,7 @@ import * as BU from "./boardutils";
 import { ArtProvider } from "./gl/cache";
 import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
 import { Board } from "./structs";
-import { Hitscan, HitType, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE, createSlopeCalculator, heinumCalc, sectorHeinum } from "./utils";
+import { Hitscan, Type, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE, createSlopeCalculator, heinumCalc, sectorHeinum, setSectorHeinum, setSectorZ } from "./utils";
 
 class MovingHandle {
   private startPoint = GLM.vec3.create();
@@ -37,7 +37,7 @@ class MovingHandle {
       this.dzoff = 0;
       let dz = this.startPoint[1] - s[1];
       let t = dz / v[1];
-      GLM.vec3.set(this.currentPoint, v[0], v[1], v[2]);
+      GLM.vec3.copy(this.currentPoint, v);
       GLM.vec3.scale(this.currentPoint, this.currentPoint, t);
       GLM.vec3.add(this.currentPoint, this.currentPoint, s);
     }
@@ -66,7 +66,7 @@ export interface BuildContext {
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
   highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
   highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number): void;
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: HitType): void;
+  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: Type): void;
 }
 
 class StartMove implements Message { constructor(public handle: MovingHandle) { } }
@@ -91,24 +91,6 @@ class DrawWall implements Message {
     this.fromFloor = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz);
     this.points.push([hit.x, hit.y, this.fromFloor ? floorz : ceilz]);
   }
-}
-
-function setSectorZ(board: Board, sectorId: number, type: HitType, z: number): boolean {
-  let pz = sectorZ(board, sectorId, type);
-  if (pz == z)
-    return false;
-  let sec = board.sectors[sectorId];
-  if (type == HitType.CEILING) sec.ceilingz = z; else sec.floorz = z;
-  return true;
-}
-
-function setSectorHeinum(board: Board, sectorId: number, type: HitType, h: number): boolean {
-  let ph = sectorHeinum(board, sectorId, type);
-  if (ph == h)
-    return false;
-  let sec = board.sectors[sectorId];
-  if (type == HitType.CEILING) sec.ceilingheinum = h; else sec.floorheinum = h;
-  return true;
 }
 
 function invalidateSector(sectorId: number, ctx: BuildContext) {
@@ -148,7 +130,7 @@ class WallEnt {
     public origin = GLM.vec2.create(),
     public originZ = 0,
     public zMotionSector = -1,
-    public zMotionType: HitType = HitType.CEILING,
+    public zMotionType: Type = Type.CEILING,
     public active = false) { }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
@@ -161,7 +143,7 @@ class WallEnt {
     let slope = createSlopeCalculator(sec, ctx.board.walls);
     let floorz = slope(hit.x, hit.y, sec.floorheinum) + sec.floorz;
     let ceilz = slope(hit.x, hit.y, sec.ceilingheinum) + sec.ceilingz;
-    this.zMotionType = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz) ? HitType.FLOOR : HitType.CEILING;
+    this.zMotionType = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz) ? Type.FLOOR : Type.CEILING;
     this.originZ = sectorZ(ctx.board, this.zMotionSector, this.zMotionType) / ZSCALE;
     this.active = true;
   }
@@ -224,10 +206,10 @@ class WallEnt {
   }
 
   public split(msg: SplitWall, ctx: BuildContext) {
-    if (this.wallId != msg.wallId)
-      return;
+    if (this.wallId != msg.wallId) return;
     BU.splitWall(ctx.board, this.wallId, msg.x, msg.y, ctx.art, []);
-    ctx.invalidateAll();
+    let s = sectorOfWall(ctx.board, this.wallId);
+    invalidateSector(s, ctx);
   }
 }
 
@@ -272,13 +254,13 @@ class SectorEnt {
     .register(Move, (obj: SectorEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(Highlight, (obj: SectorEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
-  public static create(id: number, type: HitType) {
+  public static create(id: number, type: Type) {
     return SectorEnt.factory.handler(new SectorEnt(id, type));
   }
 
   constructor(
     public sectorId: number,
-    public type: HitType,
+    public type: Type,
     public originz = 0,
     public origin = GLM.vec2.create()) { }
 

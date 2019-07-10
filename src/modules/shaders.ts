@@ -120,7 +120,7 @@ function compileProgram(gl: WebGLRenderingContext, vsh: string, fsh: string): We
   gl.attachShader(program, compileSource(gl, gl.FRAGMENT_SHADER, fsh));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw 'link error: ' + gl.getProgramInfoLog(program);
+    throw new Error('link error: ' + gl.getProgramInfoLog(program));
   }
   return program;
 }
@@ -130,7 +130,7 @@ function compileSource(gl: WebGLRenderingContext, type: number, source: string):
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw 'compile error: ' + gl.getShaderInfoLog(shader) + '\nin source:\n' + source;
+    throw new Error('compile error: ' + gl.getShaderInfoLog(shader) + '\nin source:\n' + source);
   }
   return shader;
 }
@@ -224,11 +224,9 @@ let setters = {
 
 export function setUniform(gl: WebGLRenderingContext, shader: DS.Shader, name: string, value) {
   let uniform = shader.getUniforms()[name];
-  if (uniform == undefined)
-    return;
+  if (uniform == undefined) return;
   let loc = shader.getUniformLocation(name, gl);
   let setter = setters[uniform.getType()];
-  if (setter == undefined)
-    throw new Error('Invalid type: ' + uniform.getType());
+  if (setter == undefined) throw new Error('Invalid type: ' + uniform.getType());
   setter(gl, loc, value);
 }

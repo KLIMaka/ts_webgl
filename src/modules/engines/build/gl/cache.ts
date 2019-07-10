@@ -199,19 +199,19 @@ export class Cache {
     this.wallFloorPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
   }
 
-  public getByIdType(id: number, addId: number, type: U.HitType, wireframe: boolean = false): Renderable {
+  public getByIdType(id: number, addId: number, type: U.Type, wireframe: boolean = false): Renderable {
     switch (type) {
-      case U.HitType.CEILING:
+      case U.Type.CEILING:
         return wireframe ? this.getSectorWireframe(id).ceiling : this.getSector(id).ceiling;
-      case U.HitType.FLOOR:
+      case U.Type.FLOOR:
         return wireframe ? this.getSectorWireframe(id).floor : this.getSector(id).floor;
-      case U.HitType.LOWER_WALL:
+      case U.Type.LOWER_WALL:
         return wireframe ? this.getWallWireframe(id, addId).bot : this.getWall(id, addId).bot;
-      case U.HitType.MID_WALL:
+      case U.Type.MID_WALL:
         return wireframe ? this.getWallWireframe(id, addId).mid : this.getWall(id, addId).mid;
-      case U.HitType.UPPER_WALL:
+      case U.Type.UPPER_WALL:
         return wireframe ? this.getWallWireframe(id, addId).top : this.getWall(id, addId).top;
-      case U.HitType.SPRITE:
+      case U.Type.SPRITE:
         return wireframe ? this.getSpriteWireframe(id) : this.getSprite(id);
     }
     return null;

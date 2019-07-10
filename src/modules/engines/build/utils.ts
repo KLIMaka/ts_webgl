@@ -3,6 +3,7 @@ import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
 import { Board, Sprite, Sector, Wall, FACE, WALL, FLOOR } from './structs';
 import { ArtInfoProvider } from './art';
+import { IndexedDeck } from '../../deck';
 
 export const ZSCALE = -16;
 
@@ -78,14 +79,30 @@ export function sectorOfWall(board: Board, wallId: number): number {
   }
 }
 
-export function sectorZ(board: Board, sectorId: number, type: HitType) {
+export function sectorZ(board: Board, sectorId: number, type: Type) {
   let sec = board.sectors[sectorId];
-  return (type == HitType.CEILING ? sec.ceilingz : sec.floorz);
+  return (type == Type.CEILING ? sec.ceilingz : sec.floorz);
 }
 
-export function sectorHeinum(board: Board, sectorId: number, type: HitType) {
+export function sectorHeinum(board: Board, sectorId: number, type: Type) {
   let sec = board.sectors[sectorId];
-  return (type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum);
+  return (type == Type.CEILING ? sec.ceilingheinum : sec.floorheinum);
+}
+
+export function setSectorZ(board: Board, sectorId: number, type: Type, z: number): boolean {
+  let pz = sectorZ(board, sectorId, type);
+  if (pz == z) return false;
+  let sec = board.sectors[sectorId];
+  if (type == Type.CEILING) sec.ceilingz = z; else sec.floorz = z;
+  return true;
+}
+
+export function setSectorHeinum(board: Board, sectorId: number, type: Type, h: number): boolean {
+  let ph = sectorHeinum(board, sectorId, type);
+  if (ph == h) return false;
+  let sec = board.sectors[sectorId];
+  if (type == Type.CEILING) sec.ceilingheinum = h; else sec.floorheinum = h;
+  return true;
 }
 
 export function findSector(board: Board, x: number, y: number, secnum: number = -1): number {
@@ -246,20 +263,20 @@ export function rayIntersect(
 }
 
 
-export enum HitType {
+export enum Type {
   FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE
 }
 
-export function isSector(type: HitType) {
-  return type == HitType.FLOOR || type == HitType.CEILING;
+export function isSector(type: Type) {
+  return type == Type.FLOOR || type == Type.CEILING;
 }
 
-export function isWall(type: HitType) {
-  return type == HitType.LOWER_WALL || type == HitType.MID_WALL || type == HitType.UPPER_WALL;
+export function isWall(type: Type) {
+  return type == Type.LOWER_WALL || type == Type.MID_WALL || type == Type.UPPER_WALL;
 }
 
-export function isSprite(type: HitType) {
-  return type == HitType.SPRITE;
+export function isSprite(type: Type) {
+  return type == Type.SPRITE;
 }
 
 export class Hitscan {
@@ -269,7 +286,7 @@ export class Hitscan {
     public z: number = -1,
     public t: number = -1,
     public id: number = -1,
-    public type: HitType = null
+    public type: Type = null
   ) { }
 
   public reset() {
@@ -286,7 +303,7 @@ export class Hitscan {
     return false;
   }
 
-  public hit(x: number, y: number, z: number, t: number, id: number, type: HitType) {
+  public hit(x: number, y: number, z: number, t: number, id: number, type: Type) {
     if (this.testHit(x, y, z, t)) {
       this.id = id;
       this.type = type;
@@ -295,7 +312,7 @@ export class Hitscan {
 }
 
 
-function hitSector(board: Board, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, t: number, hit: Hitscan, type: HitType) {
+function hitSector(board: Board, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, t: number, hit: Hitscan, type: Type) {
   let x = xs + MU.int(vx * t);
   let y = ys + MU.int(vy * t);
   let z = zs + MU.int(vz * t) * -ZSCALE;
@@ -326,7 +343,7 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
     let ceilz = slope(xs, ys, sec.ceilingheinum) + sec.ceilingz;
     let ceildz = (zs - ceilz) / -ZSCALE;
     let t = ceildz / dk;
-    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, HitType.CEILING);
+    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, Type.CEILING);
   }
 
   let floork = sec.floorheinum * ANGSCALE * angk;
@@ -335,11 +352,13 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
     let floorz = slope(xs, ys, sec.floorheinum) + sec.floorz;
     let floordz = (floorz - zs) / -ZSCALE;
     let t = floordz / dk1;
-    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, HitType.FLOOR);
+    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, Type.FLOOR);
   }
 }
 
-function intersectWall(board: Board, sec: Sector, wall: Wall, wall2: Wall, wallId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan): number {
+function intersectWall(board: Board, sec: Sector, wallId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan): number {
+  let wall = board.walls[wallId];
+  let wall2 = board.walls[wall.point2];
   let x1 = wall.x, y1 = wall.y;
   let x2 = wall2.x, y2 = wall2.y;
 
@@ -353,7 +372,7 @@ function intersectWall(board: Board, sec: Sector, wall: Wall, wall2: Wall, wallI
 
   let nextsecId = wall.nextsector;
   if (nextsecId == -1 || wall.cstat.masking) {
-    hit.hit(ix, iy, iz, it, wallId, HitType.MID_WALL);
+    hit.hit(ix, iy, iz, it, wallId, Type.MID_WALL);
     return -1;
   }
 
@@ -362,17 +381,18 @@ function intersectWall(board: Board, sec: Sector, wall: Wall, wall2: Wall, wallI
   let floorz = nextslope(ix, iy, nextsec.floorheinum) + nextsec.floorz;
   let ceilz = nextslope(ix, iy, nextsec.ceilingheinum) + nextsec.ceilingz;
   if (iz <= ceilz) {
-    hit.hit(ix, iy, iz, it, wallId, HitType.UPPER_WALL);
+    hit.hit(ix, iy, iz, it, wallId, Type.UPPER_WALL);
     return -1;
   } else if (iz >= floorz) {
-    hit.hit(ix, iy, iz, it, wallId, HitType.LOWER_WALL);
+    hit.hit(ix, iy, iz, it, wallId, Type.LOWER_WALL);
     return -1;
   }
 
   return nextsecId;
 }
 
-function intersectSprite(board: Board, artInfo: ArtInfoProvider, spr: Sprite, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+  let spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invicible)
     return;
   let x = spr.x, y = spr.y, z = spr.z;
@@ -393,7 +413,7 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, spr: Sprite, sp
     let inty = ys + MU.int(vy * t);
     let w = (info.w * spr.xrepeat) / 4;
     if (MU.len2d(x - intx, y - inty) > w >> 1) return;
-    hit.hit(intx, inty, intz, t, sprId, HitType.SPRITE);
+    hit.hit(intx, inty, intz, t, sprId, Type.SPRITE);
   } else if (spr.cstat.type == WALL) {
     let xoff = info.attrs.xoff + spr.xoffset;
     if (spr.cstat.xflip) xoff = -xoff;
@@ -405,31 +425,30 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, spr: Sprite, sp
   }
 }
 
-function fillStack(board: Board): number[] {
-  let arr = new Array<number>(board.sectors.length);
+function resetStack(board: Board, sectorId: number, stack: IndexedDeck<number>): void {
+  stack.clear();
+  if (sectorId == -1) {
+    stack.push(sectorId);
+    return;
+  }
   for (let i = 0; i < board.sectors.length; i++)
-    arr[i] = i;
-  return arr;
+    stack.push(i);
 }
 
+let stack = new IndexedDeck<number>();
 export function hitscan(board: Board, artInfo: ArtInfoProvider, xs: number, ys: number, zs: number, secId: number, vx: number, vy: number, vz: number, hit: Hitscan, cliptype: number) {
   hit.reset();
 
-  let stack = (secId < 0) ? fillStack(board) : [secId];
+  resetStack(board, secId, stack);
   let sprites = groupSprites(board.sprites);
-  for (let i = 0; i < stack.length; i++) {
-    let s = stack[i];
+  for (let i = 0; i < stack.length(); i++) {
+    let s = stack.get(i);
     let sec = board.sectors[s];
-    if (sec == undefined) break;
     intersectSectorPlanes(board, sec, s, xs, ys, zs, vx, vy, vz, hit);
 
     let endwall = sec.wallptr + sec.wallnum;
     for (let w = sec.wallptr; w < endwall; w++) {
-      let wall = board.walls[w];
-      let wall2 = board.walls[wall.point2];
-      if (wall == undefined || wall2 == undefined)
-        continue;
-      let nextsec = intersectWall(board, sec, wall, wall2, w, xs, ys, zs, vx, vy, vz, hit);
+      let nextsec = intersectWall(board, sec, w, xs, ys, zs, vx, vy, vz, hit);
       if (nextsec != -1 && stack.indexOf(nextsec) == -1) {
         stack.push(nextsec);
       }
@@ -438,9 +457,7 @@ export function hitscan(board: Board, artInfo: ArtInfoProvider, xs: number, ys: 
     let sprs = sprites[s];
     if (sprs == undefined) continue;
     for (let j = 0; j < sprs.length; j++) {
-      let sprId = sprs[j];
-      let spr = board.sprites[sprId];
-      intersectSprite(board, artInfo, spr, sprId, xs, ys, zs, vx, vy, vz, hit);
+      intersectSprite(board, artInfo, sprs[j], xs, ys, zs, vx, vy, vz, hit);
     }
   }
 }

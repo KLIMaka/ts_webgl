@@ -4,7 +4,6 @@ import * as DS from '../../../drawstruct';
 import { State } from '../../../stategl';
 import * as BUFF from './buffers';
 
-
 export class Buffer {
   private ptr: Pointer;
 
@@ -14,8 +13,7 @@ export class Buffer {
 
   public allocate(vtxCount: number, triIndexCount: number) {
     if (this.ptr != null) {
-      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount)
-        return;
+      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount) return;
       BUFF.remove(this.ptr);
     }
     this.ptr = BUFF.allocate(vtxCount, triIndexCount);
@@ -47,14 +45,6 @@ export class Buffer {
   public writeLine(off: number, a: number, b: number) {
     return BUFF.writeLine(this.ptr, off, a, b);
   }
-
-  public getData() {
-    if (this.ptr == null)
-      return null;
-
-    let buff = (<Float32Array>BUFF.getPosBuffer().getData());
-    return buff.subarray(this.ptr.vtx.offset * BUFF.getPosBuffer().getSpacing(), this.ptr.vtx.size * BUFF.getPosBuffer().getSpacing());
-  }
 }
 
 export enum Type {
@@ -78,8 +68,7 @@ export class Solid implements Renderable {
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.buff.get() == null)
-      return;
+    if (this.buff.get() == null) return;
     state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     state.setTexture('base', this.tex);
     state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, this.trans));
@@ -103,8 +92,7 @@ class Grid implements Renderable {
   public gridTexMat: GLM.Mat4Array;
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.solid.buff.get() == null)
-      return;
+    if (this.solid.buff.get() == null) return;
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
@@ -125,8 +113,7 @@ export class Wireframe implements Renderable {
   public mode: number = WebGLRenderingContext.LINES;
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.buff.get() == null)
-      return;
+    if (this.buff.get() == null) return;
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, 1));
     state.setDrawElements(this.buff.get());

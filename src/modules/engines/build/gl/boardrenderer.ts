@@ -60,12 +60,11 @@ let hit = new U.Hitscan();
 let implementation: Implementation;
 
 export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implementation, board: Board, cb: () => void) {
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.enable(gl.BLEND);
-  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
   context = new Context();
   artProvider = context.art = art;
@@ -80,19 +79,19 @@ function sendToSelected(msg: Message) {
   sendMessage(msg, context, selection);
 }
 
-function print(board: Board, id: number, type: U.HitType) {
+function print(board: Board, id: number, type: U.Type) {
   if (INPUT.mouseClicks[0]) {
     switch (type) {
-      case U.HitType.CEILING:
-      case U.HitType.FLOOR:
+      case U.Type.CEILING:
+      case U.Type.FLOOR:
         console.log(id, board.sectors[id]);
         break;
-      case U.HitType.UPPER_WALL:
-      case U.HitType.MID_WALL:
-      case U.HitType.LOWER_WALL:
+      case U.Type.UPPER_WALL:
+      case U.Type.MID_WALL:
+      case U.Type.LOWER_WALL:
         console.log(id, board.walls[id]);
         break;
-      case U.HitType.SPRITE:
+      case U.Type.SPRITE:
         console.log(id, board.sprites[id]);
         break;
     }
@@ -161,9 +160,7 @@ function select(board: Board) {
     selection.push(list.get(i));
   }
 
-  if (INPUT.mouseClicks[0]) {
-    print(board, hit.id, hit.type);
-  }
+  print(board, hit.id, hit.type);
 }
 
 function updateContext(gl: WebGLRenderingContext, board: Board) {
@@ -189,7 +186,9 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
   sendToSelected(EDIT.HIGHLIGHT);
+  gl.disable(gl.BLEND);
   gl.enable(gl.DEPTH_TEST);
 }
 
@@ -382,8 +381,7 @@ function sectorVisitor(board: Board, sectorId: number) {
 }
 
 function wallVisitor(board: Board, wallId: number, sectorId: number) {
-  if (implementation.isMirrorPic(board.walls[wallId].picnum))
-    return;
+  if (implementation.isMirrorPic(board.walls[wallId].picnum)) return;
   let wall = cache.getWall(wallId, sectorId);
   if (wall.mid.trans != 1) {
     surfacesTrans.push(wall.mid);
@@ -417,10 +415,12 @@ function drawRooms(gl: WebGLRenderingContext, board: Board, result: VIS.Result) 
   drawArray(gl, sprites);
   gl.polygonOffset(0, 0);
 
+  gl.enable(gl.BLEND);
   drawArray(gl, surfacesTrans);
 
   gl.polygonOffset(-1, -8);
   drawArray(gl, spritesTrans);
   gl.polygonOffset(0, 0);
+  gl.disable(gl.BLEND);
   PROFILE.endProfile();
 }

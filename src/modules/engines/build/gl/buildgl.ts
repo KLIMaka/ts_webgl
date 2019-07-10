@@ -20,7 +20,7 @@ export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture
   SHADER.createShader(gl, SHADER_NAME, ['PARALLAX', palswapsDef, shadowstepsDef], ab.callback('parallax'));
   SHADER.createShader(gl, SHADER_NAME, ['GRID', palswapsDef, shadowstepsDef], ab.callback('grid'));
   ab.wait((res) => {
-    state = new State(gl);
+    state = new State();
     state.registerShader('baseShader', res['baseShader']);
     state.registerShader('spriteShader', res['spriteShader']);
     state.registerShader('baseFlatShader', res['baseFlatShader']);
@@ -67,13 +67,12 @@ export function setClipPlane(x: number, y: number, z: number, w: number) {
 }
 
 export function draw(gl: WebGLRenderingContext, renderable: Renderable) {
-  if (renderable == null)
-    return;
+  if (renderable == null) return;
   renderable.draw(gl, state);
 }
 
 export function newFrame(gl: WebGLRenderingContext) {
-  gl.clearColor(0.1, 0.3, 0.1, 1.0);
+  gl.clearColor(0.2, 0.2, 0.2, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   state.setUniform('time', performance.now());
