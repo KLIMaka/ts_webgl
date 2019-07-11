@@ -179,6 +179,11 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
     sendToSelected(EDIT.SPLIT_WALL);
   }
 
+  if (INPUT.mouseClicks[1]) {
+    BU.joinSectors(board, 0, 1);
+    cache.invalidateAll();
+  }
+
   BGL.newFrame(gl);
   drawGeometry(gl, board, ms, ctr);
   drawHelpers(gl, board);
@@ -313,12 +318,12 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
-    let w = VIS.unpackWallId(mirrorWallsCollector.walls.get(i));
+    let w = BU.unpackWallId(mirrorWallsCollector.walls.get(i));
     if (!U.wallVisible(board, w, ms))
       continue;
 
     // draw mirror surface into stencil
-    let r = cache.getWall(w, VIS.unpackSectorId(mirrorWallsCollector.walls.get(i)));
+    let r = cache.getWall(w, BU.unpackSectorId(mirrorWallsCollector.walls.get(i)));
     BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
     BGL.setPosition(ctr.getCamera().getPosition());
     writeStencilOnly(gl, i + 127);

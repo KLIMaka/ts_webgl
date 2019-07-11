@@ -65,7 +65,7 @@ export function sectorOfWall(board: Board, wallId: number): number {
   if (wall.nextwall != -1)
     return board.walls[wall.nextwall].nextsector;
   let start = 0;
-  let end = board.sectors.length - 1;
+  let end = board.numsectors - 1;
   while (end - start >= 0) {
     let pivot = MU.int(start + (end - start) / 2);
     let sec = board.sectors[pivot];
@@ -129,7 +129,7 @@ export function findSector(board: Board, x: number, y: number, secnum: number = 
 }
 
 function findSectorAll(board: Board, x: number, y: number) {
-  for (let s = 0; s < board.sectors.length; s++) {
+  for (let s = 0; s < board.numsectors; s++) {
     let sec = board.sectors[s];
     if (inSector(board, x, y, s))
       return s;
@@ -431,7 +431,7 @@ function resetStack(board: Board, sectorId: number, stack: IndexedDeck<number>):
     stack.push(sectorId);
     return;
   }
-  for (let i = 0; i < board.sectors.length; i++)
+  for (let i = 0; i < board.numsectors; i++)
     stack.push(i);
 }
 

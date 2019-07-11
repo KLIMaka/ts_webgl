@@ -1,22 +1,10 @@
-import { arcsIntersects, monoatan2, dot2d } from '../../../libs/mathutils';
+import { arcsIntersects, monoatan2 } from '../../../libs/mathutils';
 import * as GLM from '../../../libs_js/glmatrix';
-import { IndexedDeck, Deck } from '../../deck';
-import { nextwall } from './boardutils';
+import { Deck, IndexedDeck } from '../../deck';
+import * as PROFILE from '../../profiler';
+import { nextwall, packWallSectorId, unpackSectorId, unpackWallId } from './boardutils';
 import { Board } from './structs';
 import * as U from './utils';
-import * as PROFILE from '../../profiler';
-
-export function packWallSectorId(wallId: number, sectorId: number) {
-  return wallId | (sectorId << 16)
-}
-
-export function unpackWallId(wallSectorId: number) {
-  return wallSectorId & 0xffff;
-}
-
-export function unpackSectorId(wallSectorId: number) {
-  return (wallSectorId >> 16) & 0xffff;
-}
 
 export interface Result {
   forSector<T>(ctx: T, secv: SectorVisitor<T>): void;
@@ -104,12 +92,12 @@ export class AllBoardVisitorResult implements Result {
   }
 
   public forSector<T>(ctx: T, secv: SectorVisitor<T>) {
-    for (let s = 0; s < this.board.sectors.length; s++)
+    for (let s = 0; s < this.board.numsectors; s++)
       secv(ctx, s);
   }
 
   public forWall<T>(ctx: T, wallv: WallVisitor<T>) {
-    for (let s = 0; s < this.board.sectors.length; s++) {
+    for (let s = 0; s < this.board.numsectors; s++) {
       let sec = this.board.sectors[s];
       let endwall = sec.wallptr + sec.wallnum;
       for (let w = sec.wallptr; w < endwall; w++)
