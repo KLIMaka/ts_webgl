@@ -95,23 +95,21 @@ export function closestWall(board: Board, x: number, y: number, secId: number): 
   }
 }
 
-function deleteWallImpl(board: Board, wallId: number) {
-  let s = U.sectorOfWall(board, wallId);
-  moveWalls(board, s, wallId, -1, []);
-}
-
 function deleteSectorImpl(board: Board, sectorId: number) {
+  if (board.sectors[sectorId].wallnum != 0)
+    throw new Error('Error while deleting sector #' + sectorId + '. wallnum != 0');
+
   for (let w = 0; w < board.numwalls; w++) {
     let wall = board.walls[w];
     if (wall.nextsector == sectorId)
-      throw new Error('Wall ' + w + ' referensing sector ' + sectorId);
+      throw new Error('Error while deleting sector #' + sectorId + '. Wall #' + w + ' referensing sector');
     if (wall.nextsector > sectorId)
       wall.nextsector--;
   }
   for (let s = 0; s < board.numsprites; s++) {
     let spr = board.sprites[s];
     if (spr.sectnum == sectorId)
-      throw new Error('Sprite ' + s + ' referensing sector ' + sectorId);
+      throw new Error('Error while deleting sector #' + sectorId + '. Sprite #' + s + ' referensing sector');
     if (spr.sectnum > sectorId)
       spr.sectnum--;
   }
@@ -357,7 +355,6 @@ export function isJoinedSectors(board: Board, s1: number, s2: number) {
   return -1;
 }
 
-let wallset = new Set<number>();
 function fillSectorWalls(board: Board, s: number, set: Set<number>) {
   let sec = board.sectors[s];
   let end = sec.wallptr + sec.wallnum;
@@ -365,21 +362,29 @@ function fillSectorWalls(board: Board, s: number, set: Set<number>) {
     set.add(w);
 }
 
+let wallset = new Set<number>();
 function fillWallSet(board: Board, s1: number, s2: number) {
   wallset.clear();
   fillSectorWalls(board, s1, wallset);
   fillSectorWalls(board, s2, wallset);
+  return wallset;
+}
+
+function moveSpritesToSector(board: Board, fromSector: number, toSector: number) {
+  let sprites = U.groupSprites(board)[fromSector];
+  if (sprites == undefined)
+    return
+  for (let i = 0; i < sprites.length; i++) {
+    board.sprites[sprites[i]].sectnum = toSector;
+  }
 }
 
 let newsectorwalls = new Deck<Wall>();
-let wallsToDelete = new Deck<number>();
-export function joinSectors(board: Board, s1: number, s2: number) {
-  if (isJoinedSectors(board, s1, s2) == -1)
-    return -1;
-  fillWallSet(board, s1, s2);
-
-  wallsToDelete.clear();
+let loopPoints = new Deck<number>();
+function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Deck<Wall>, Deck<number>] {
   newsectorwalls.clear();
+  loopPoints.clear();
+  let wallset = fillWallSet(board, s1, s2);
   let values = wallset.values();
   for (let it = values.next(); !it.done; it = values.next()) {
     let w = it.value;
@@ -388,28 +393,56 @@ export function joinSectors(board: Board, s1: number, s2: number) {
       let wall = board.walls[w];
       wallset.delete(w);
       if (wall.nextsector == s1 || wall.nextsector == s2) {
-        wallsToDelete.push(w);
-        wallsToDelete.push(wall.nextwall);
         wallset.delete(wall.nextwall);
         w = board.walls[wall.nextwall].point2;
       } else {
         newsectorwalls.push(wall);
         w = wall.point2;
       }
-      if (w == loopstart)
+      if (w == loopstart) {
+        let ll = loopPoints.length();
+        let nl = newsectorwalls.length();
+        if (ll == 0 && nl != 0 || ll != 0 && loopPoints.get(ll - 1) != nl)
+          loopPoints.push(nl);
         break;
+      }
     }
   }
+  return [newsectorwalls, loopPoints];
+}
 
-  let sec1 = board.sectors[s1];
-  moveWalls(board, s1, sec1.wallptr, newsectorwalls.length() - sec1.wallnum, []);
-  for (let i = 0; i < newsectorwalls.length(); i++) {
-    let w = sec1.wallptr + i;
-    let wall = newsectorwalls.get(i);
+function insertWallsToSector(board: Board, sectorId: number, nwalls: Deck<Wall>, looppoints: Deck<number>) {
+  let sec = board.sectors[sectorId];
+  let loopptr = 0;
+  let loopidx = looppoints.get(loopptr++);
+  for (let i = 0; i < nwalls.length(); i++) {
+    let w = sec.wallptr + i;
+    let wall = nwalls.get(i);
     board.walls[w] = wall;
+    if (loopidx == i + 1) {
+      wall.point2 = w + 1 - loopidx;
+      loopidx = looppoints.get(loopptr++);
+    } else {
+      wall.point2 = w + 1;
+    }
     if (wall.nextwall != -1) {
-      board.walls[wall.nextwall].nextsector = s1;
+      board.walls[wall.nextwall].nextsector = sectorId;
     }
   }
 }
 
+export function joinSectors(board: Board, s1: number, s2: number) {
+  if (isJoinedSectors(board, s1, s2) == -1) return -1;
+  let [nwalls, looppoints] = getJoinedWallsLoops(board, s1, s2);
+  let sec2 = board.sectors[s2], sec1 = board.sectors[s1];
+  moveWalls(board, s2, sec2.wallptr, -sec2.wallnum, []);
+  moveWalls(board, s1, sec1.wallptr, nwalls.length() - sec1.wallnum, []);
+  insertWallsToSector(board, s1, nwalls, looppoints);
+  moveSpritesToSector(board, s2, s1);
+  deleteSectorImpl(board, s2);
+  return 0;
+}
+
+export function deleteSector(board: Board, sectorId: number) {
+
+}

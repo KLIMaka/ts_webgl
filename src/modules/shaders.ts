@@ -68,13 +68,7 @@ export class Shader implements DS.Shader {
   }
 }
 
-let cache: { [index: string]: Shader } = {};
-
 export function createShader(gl: WebGLRenderingContext, name: string, defines: string[] = [], initCallback: (Shader) => void = null): Shader {
-  // let shader = cache[name];
-  // if (shader != undefined)
-  //   return shader;
-
   if (defaultProgram == null) {
     defaultProgram = compileProgram(gl, defaultVSH, defaultFSH);
   }
@@ -85,7 +79,6 @@ export function createShader(gl: WebGLRenderingContext, name: string, defines: s
   getter.preloadString(name + '.vsh', barrier.callback('vsh'));
   getter.preloadString(name + '.fsh', barrier.callback('fsh'));
   barrier.wait((res) => { initShader(gl, shader, deftext + res.vsh, deftext + res.fsh) });
-  cache[name] = shader;
   return shader;
 }
 
@@ -212,17 +205,17 @@ function preprocess(shader: string, cb: (sh: string) => void): void {
 }
 
 let setters = {
-  mat4: (gl: WebGLRenderingContext, loc, val) => gl.uniformMatrix4fv(loc, false, val),
-  ivec2: (gl: WebGLRenderingContext, loc, val) => gl.uniform2iv(loc, val),
-  vec2: (gl: WebGLRenderingContext, loc, val) => gl.uniform2fv(loc, val),
-  vec3: (gl: WebGLRenderingContext, loc, val) => gl.uniform3fv(loc, val),
-  vec4: (gl: WebGLRenderingContext, loc, val) => gl.uniform4fv(loc, val),
-  int: (gl: WebGLRenderingContext, loc, val) => gl.uniform1i(loc, val),
-  float: (gl: WebGLRenderingContext, loc, val) => gl.uniform1f(loc, val),
-  sampler2D: (gl: WebGLRenderingContext, loc, val) => gl.uniform1i(loc, val),
+  mat4: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Float32List) => gl.uniformMatrix4fv(loc, false, val),
+  ivec2: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Int32List) => gl.uniform2iv(loc, val),
+  vec2: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Float32List) => gl.uniform2fv(loc, val),
+  vec3: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Float32List) => gl.uniform3fv(loc, val),
+  vec4: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Float32List) => gl.uniform4fv(loc, val),
+  int: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: number) => gl.uniform1i(loc, val),
+  float: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: number) => gl.uniform1f(loc, val),
+  sampler2D: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: number) => gl.uniform1i(loc, val),
 }
 
-export function setUniform(gl: WebGLRenderingContext, shader: DS.Shader, name: string, value) {
+export function setUniform(gl: WebGLRenderingContext, shader: DS.Shader, name: string, value: any) {
   let uniform = shader.getUniforms()[name];
   if (uniform == undefined) return;
   let loc = shader.getUniformLocation(name, gl);

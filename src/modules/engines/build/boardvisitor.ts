@@ -106,7 +106,7 @@ export class AllBoardVisitorResult implements Result {
   }
 
   public forSprite<T>(ctx: T, sprv: SpriteVisitor<T>) {
-    for (let s = 0; s < this.board.sprites.length; s++)
+    for (let s = 0; s < this.board.numsprites; s++)
       sprv(ctx, s);
   }
 }
@@ -143,6 +143,7 @@ export class PvsBoardVisitorResult implements Result {
     this.pvs.clear();
     this.pvs.push(sectorId);
     this.angCache.clear();
+    this.ensureEntryWalls(sectorId).clear();
   }
 
   private ensureEntryWalls(sectorId: number) {
@@ -227,7 +228,7 @@ export class PvsBoardVisitorResult implements Result {
     this.fillPVS(ms, forward);
     PROFILE.get(null).inc('pvs', this.prepvs.length());
     let sectors = board.sectors;
-    let sec2spr = U.groupSprites(board.sprites);
+    let sec2spr = U.groupSprites(board);
     for (let i = 0; i < this.pvs.length(); i++) {
       let s = this.pvs.get(i);
       let entryWalls = this.ensureEntryWalls(s);

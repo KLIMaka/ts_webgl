@@ -168,25 +168,48 @@ function updateContext(gl: WebGLRenderingContext, board: Board) {
   context.gl = gl;
 }
 
+let joinSector1 = -1;
+let joinSector2 = -1;
+function joinSectors(board: Board) {
+  if (U.isSector(hit.type) && INPUT.mouseClicks[1]) {
+    if (joinSector1 == -1) {
+      joinSector1 = hit.id;
+    } else if (joinSector2 == -1) {
+      joinSector2 = hit.id;
+    }
+
+    if (joinSector1 != -1 && joinSector2 != -1) {
+      console.log('joining ' + joinSector1 + ' and ' + joinSector2);
+      let result = BU.joinSectors(board, joinSector1, joinSector2);
+      if (result == 0) {
+        cache.invalidateAll();
+        visible.reset();
+      }
+      joinSector1 = -1;
+      joinSector2 = -1;
+    }
+  }
+}
+
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
+  if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
+    ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
+  }
+
   updateContext(gl, board);
   hitscan(gl, board, ms, ctr);
   move(gl, board, ctr);
   select(board)
   snap(board);
 
-  if (INPUT.keys['INSERT']) {
-    sendToSelected(EDIT.SPLIT_WALL);
-  }
-
-  if (INPUT.mouseClicks[1]) {
-    BU.joinSectors(board, 0, 1);
-    cache.invalidateAll();
-  }
-
   BGL.newFrame(gl);
   drawGeometry(gl, board, ms, ctr);
   drawHelpers(gl, board);
+
+  if (INPUT.keys['INSERT']) {
+    sendToSelected(EDIT.SPLIT_WALL);
+  }
+  joinSectors(board);
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {
@@ -223,10 +246,6 @@ function writeAll(gl: WebGLRenderingContext) {
 
 let all = new VIS.AllBoardVisitorResult();
 function drawGeometry(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
-  if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
-    ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
-  }
-
   PROFILE.startProfile('processing');
   let result = ms.sec == -1
     ? all.visit(board)

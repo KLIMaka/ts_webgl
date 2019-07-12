@@ -14,7 +14,7 @@ function isLowerLink(spr: Sprite) {
 
 export function loadRorLinks(board: Board): RorLinks {
   let linkRegistry = {};
-  for (let s = 0; s < board.sprites.length; s++) {
+  for (let s = 0; s < board.numsprites; s++) {
     let spr = board.sprites[s];
     if (isUpperLink(spr) || isLowerLink(spr)) {
       let id = (<BloodSprite>spr).extraData.data1;

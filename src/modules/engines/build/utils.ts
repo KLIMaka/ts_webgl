@@ -8,7 +8,7 @@ import { IndexedDeck } from '../../deck';
 export const ZSCALE = -16;
 
 export function getPlayerStart(board: Board): Sprite {
-  for (let i = 0; i < board.sprites.length; i++) {
+  for (let i = 0; i < board.numsprites; i++) {
     let sprite = board.sprites[i];
     if (sprite.lotag == 1)
       return sprite;
@@ -36,8 +36,7 @@ export function inSector(board: Board, x: number, y: number, secnum: number): bo
   x = MU.int(x);
   y = MU.int(y);
   let sec = board.sectors[secnum];
-  if (sec == undefined)
-    return false;
+  if (!sec) return false;
   let inter = 0;
   for (let w = 0; w < sec.wallnum; w++) {
     let wallidx = w + sec.wallptr;
@@ -59,7 +58,7 @@ export function inSector(board: Board, x: number, y: number, secnum: number): bo
 }
 
 export function sectorOfWall(board: Board, wallId: number): number {
-  if (wallId < 0 || wallId >= board.walls.length)
+  if (wallId < 0 || wallId >= board.numwalls)
     return -1;
   let wall = board.walls[wallId];
   if (wall.nextwall != -1)
@@ -147,10 +146,10 @@ export function getSprites(board: Board, secnum: number): number[] {
   return ret;
 }
 
-export function groupSprites(sprites: Sprite[]): { [index: number]: number[] } {
+export function groupSprites(board: Board): { [index: number]: number[] } {
   let sec2spr: { [index: number]: number[] } = {};
-  for (let s = 0; s < sprites.length; s++) {
-    let spr = sprites[s];
+  for (let s = 0; s < board.numsprites; s++) {
+    let spr = board.sprites[s];
     let sprs = sec2spr[spr.sectnum];
     if (sprs == undefined) {
       sprs = [];
@@ -427,7 +426,7 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, 
 
 function resetStack(board: Board, sectorId: number, stack: IndexedDeck<number>): void {
   stack.clear();
-  if (sectorId == -1) {
+  if (sectorId != -1) {
     stack.push(sectorId);
     return;
   }
@@ -440,7 +439,7 @@ export function hitscan(board: Board, artInfo: ArtInfoProvider, xs: number, ys: 
   hit.reset();
 
   resetStack(board, secId, stack);
-  let sprites = groupSprites(board.sprites);
+  let sprites = groupSprites(board);
   for (let i = 0; i < stack.length(); i++) {
     let s = stack.get(i);
     let sec = board.sectors[s];
