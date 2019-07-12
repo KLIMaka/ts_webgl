@@ -142,8 +142,8 @@ function moveWalls(board: Board, secId: number, afterWallId: number, size: numbe
     }
   } else {
     let end = board.numwalls + size;
-    for (let i = afterWallId; i > end; i++) {
-      board.walls[i] = board.walls[i + size];
+    for (let i = afterWallId; i < end; i++) {
+      board.walls[i] = board.walls[i - size];
     }
     for (let i = 0; i < -size; i++) {
       board.walls[end + i] = null;
@@ -426,7 +426,9 @@ function insertWallsToSector(board: Board, sectorId: number, nwalls: Deck<Wall>,
       wall.point2 = w + 1;
     }
     if (wall.nextwall != -1) {
-      board.walls[wall.nextwall].nextsector = sectorId;
+      let nextwall = board.walls[wall.nextwall];
+      nextwall.nextsector = sectorId;
+      nextwall.nextwall = w;
     }
   }
 }
