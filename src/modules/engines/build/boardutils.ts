@@ -1,6 +1,6 @@
 import * as MU from '../../../libs/mathutils';
 import { ArtInfoProvider } from './art';
-import { Board, Wall } from './structs';
+import { Board, Wall, Sector, SectorStats, WallStats } from './structs';
 import * as U from './utils';
 import { IndexedDeck, Deck } from '../../deck';
 
@@ -121,6 +121,7 @@ function deleteSectorImpl(board: Board, sectorId: number) {
 }
 
 function moveWalls(board: Board, secId: number, afterWallId: number, size: number, wallptrs: number[]) {
+  if (size == 0) return;
   for (let w = 0; w < board.numwalls; w++) {
     let wall = board.walls[w];
     if (wall.point2 > afterWallId)
@@ -177,7 +178,7 @@ function fixpoint2xpan(board: Board, wallId: number, art: ArtInfoProvider) {
   wall2.xpanning = ((wall.xpanning + (wall.xrepeat << 3)) % art.getInfo(wall.picnum).w) & 0xff;
 }
 
-function insertPoint(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]) {
+function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]) {
   let secId = U.sectorOfWall(board, wallId);
   let wall = board.walls[wallId];
   let lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
@@ -190,6 +191,25 @@ function insertPoint(board: Board, wallId: number, x: number, y: number, art: Ar
   fixxrepeat(board, wallId + 1, lenperrep);
 }
 
+function insertSector(board: Board, sector: Sector) {
+  board.sectors[board.numsectors++] = sector;
+}
+
+function copyWallStats(stat: WallStats): WallStats {
+  let nstat = new WallStats();
+  nstat.alignBottom = stat.alignBottom;
+  nstat.blocking = stat.blocking;
+  nstat.blocking2 = stat.blocking2;
+  nstat.masking = stat.masking;
+  nstat.oneWay = stat.oneWay;
+  nstat.swapBottoms = stat.swapBottoms;
+  nstat.translucent = stat.translucent;
+  nstat.translucentReversed = stat.translucentReversed;
+  nstat.xflip = stat.xflip;
+  nstat.yflip = stat.yflip;
+  return nstat;
+}
+
 function copyWall(wall: Wall, x: number, y: number): Wall {
   let nwall = new Wall();
   nwall.x = x;
@@ -197,7 +217,7 @@ function copyWall(wall: Wall, x: number, y: number): Wall {
   nwall.point2 = wall.point2;
   nwall.nextwall = wall.nextwall;
   nwall.nextsector = wall.nextsector;
-  nwall.cstat = wall.cstat;
+  nwall.cstat = copyWallStats(wall.cstat);
   nwall.picnum = wall.picnum;
   nwall.overpicnum = wall.overpicnum;
   nwall.shade = wall.shade;
@@ -212,6 +232,45 @@ function copyWall(wall: Wall, x: number, y: number): Wall {
   return nwall;
 }
 
+function copySectorStat(stat: SectorStats): SectorStats {
+  let nstat = new SectorStats();
+  nstat.alignToFirstWall = stat.alignToFirstWall;
+  nstat.doubleSmooshiness = stat.doubleSmooshiness;
+  nstat.parallaxing = stat.parallaxing;
+  nstat.slopped = stat.slopped;
+  nstat.swapXY = stat.swapXY;
+  nstat.xflip = stat.xflip;
+  nstat.yflip = stat.yflip;
+  return nstat;
+}
+
+function copySector(sector: Sector): Sector {
+  let nsector = new Sector();
+  nsector.ceilingheinum = sector.ceilingheinum;
+  nsector.ceilingpal = sector.ceilingpal;
+  nsector.ceilingpicnum = sector.ceilingpicnum;
+  nsector.ceilingshade = sector.ceilingshade;
+  nsector.ceilingstat = copySectorStat(sector.ceilingstat);
+  nsector.ceilingxpanning = sector.ceilingxpanning;
+  nsector.ceilingypanning = sector.ceilingypanning;
+  nsector.ceilingz = sector.ceilingz;
+  nsector.extra = sector.extra;
+  nsector.floorheinum = sector.floorheinum;
+  nsector.floorpal = sector.floorpal;
+  nsector.floorpicnum = sector.floorpicnum;
+  nsector.floorshade = sector.floorshade;
+  nsector.floorstat = copySectorStat(sector.floorstat);
+  nsector.floorxpanning = sector.floorxpanning;
+  nsector.floorypanning = sector.floorypanning;
+  nsector.floorz = sector.floorz;
+  nsector.hitag = sector.hitag;
+  nsector.lotag = sector.lotag;
+  nsector.visibility = sector.visibility;
+  nsector.wallnum = 0;
+  nsector.wallptr = 0;
+  return nsector;
+}
+
 export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
   let wall = board.walls[wallId];
   if (MU.len2d(wall.x - x, wall.y - y) < DELTA_DIST)
@@ -219,10 +278,10 @@ export function splitWall(board: Board, wallId: number, x: number, y: number, ar
   let wall2 = board.walls[wall.point2];
   if (MU.len2d(wall2.x - x, wall2.y - y) < DELTA_DIST)
     return wallId;
-  insertPoint(board, wallId, x, y, art, wallptrs);
+  insertWall(board, wallId, x, y, art, wallptrs);
   if (wall.nextwall != -1) {
     let nextwallId = wall.nextwall;
-    insertPoint(board, nextwallId, x, y, art, wallptrs);
+    insertWall(board, nextwallId, x, y, art, wallptrs);
     let wallId = board.walls[nextwallId].nextwall;
     board.walls[wallId].nextwall = nextwallId + 1;
     board.walls[wallId + 1].nextwall = nextwallId;
@@ -292,45 +351,44 @@ export function moveWall(board: Board, wallId: number, x: number, y: number): bo
 export function moveSprite(board: Board, sprId: number, x: number, y: number, z: number): boolean {
   var spr = board.sprites[sprId];
   if (spr.x == x && spr.y == y && spr.z == z) return false;
-  spr.x = x;
-  spr.y = y;
-  spr.z = z;
+  spr.x = x; spr.y = y; spr.z = z;
   spr.sectnum = U.findSector(board, x, y, spr.sectnum);
   return true;
 }
 
 
-// export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: number[]) {
-//   let w1 = wallId; let wall1 = board.walls[w1];
-//   let w2 = wall1.point2; let wall2 = board.walls[w2];
-//   let p1 = prevwall(board, w1); let prev1 = board.walls[p1];
-//   let n2 = wall2.point2; let next2 = board.walls[n2];
-//   let dx = wall2.x - wall1.x; let dy = wall2.y - wall1.y;
-//   let l = MU.len2d(dx, dy);
-//   dx = MU.int(dx / l * len); dy = MU.int(dy / l * len);
-//   let x1 = wall1.x - dy; let y1 = wall1.y + dx;
-//   let x2 = wall2.x - dy; let y2 = wall2.y + dx;
-//   let extent1 = MU.cross2d(x1 - prev1.x, y1 - prev1.y, wall1.x - prev1.x, wall1.y - prev1.y) == 0;
-//   let extent2 = MU.cross2d(x2 - next2.x, y2 - next2.y, wall2.x - next2.x, wall2.y - next2.y) == 0;
+export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: number[]): number {
+  if (len == 0) return wallId;
+  let w1 = wallId; let wall1 = board.walls[w1];
+  let w2 = wall1.point2; let wall2 = board.walls[w2];
+  let p1 = prevwall(board, w1); let prev1 = board.walls[p1];
+  let n2 = wall2.point2; let next2 = board.walls[n2];
+  let dx = wall2.x - wall1.x; let dy = wall2.y - wall1.y;
+  let l = MU.len2d(dx, dy) * len;
+  dx = MU.int(dx / l); dy = MU.int(dy / l);
+  let x1 = wall1.x - dy; let y1 = wall1.y + dx;
+  let x2 = wall2.x - dy; let y2 = wall2.y + dx;
+  let extent1 = MU.cross2d(x1 - prev1.x, y1 - prev1.y, wall1.x - prev1.x, wall1.y - prev1.y) == 0;
+  let extent2 = MU.cross2d(x2 - next2.x, y2 - next2.y, wall2.x - next2.x, wall2.y - next2.y) == 0;
 
-//   if (extent1 && extent2) {
-//     moveWall(board, w1, x1, y1);
-//     moveWall(board, w2, x2, y2);
-//     return w1;
-//   } else if (extent1 && !extent2) {
-//     moveWall(board, w1, x1, y1);
-//     return splitWall(board, w1, x2, y2, art, wallptrs);
-//   } else if (!extent1 && extent2) {
-//     w1 = splitWall(board, w1, x1, y1, art, wallptrs);
-//     w2 = nextwall(board, nextwall(board, w1));
-//     moveWall(board, w2, x2, y2);
-//     return nextwall(board, w1);
-//   } else if (!extent1 && !extent2) {
-//     w1 = splitWall(board, w1, x1, y1, art, wallptrs);
-//     w2 = board.walls[w1].point2;
-//     return splitWall(board, w2, x2, y2, art, wallptrs);
-//   }
-// }
+  if (extent1 && extent2) {
+    moveWall(board, w1, x1, y1);
+    moveWall(board, w2, x2, y2);
+    return w1;
+  } else if (extent1 && !extent2) {
+    moveWall(board, w1, x1, y1);
+    return splitWall(board, w1, x2, y2, art, wallptrs);
+  } else if (!extent1 && extent2) {
+    w1 = splitWall(board, w1, x1, y1, art, wallptrs);
+    w2 = nextwall(board, nextwall(board, w1));
+    moveWall(board, w2, x2, y2);
+    return nextwall(board, w1);
+  } else if (!extent1 && !extent2) {
+    w1 = splitWall(board, w1, x1, y1, art, wallptrs);
+    w2 = nextwall(board, w1);
+    return splitWall(board, w2, x2, y2, art, wallptrs);
+  }
+}
 
 export function packWallSectorId(wallId: number, sectorId: number) {
   return wallId | (sectorId << 16)
@@ -371,11 +429,10 @@ function fillWallSet(board: Board, s1: number, s2: number) {
 }
 
 function moveSpritesToSector(board: Board, fromSector: number, toSector: number) {
-  let sprites = U.groupSprites(board)[fromSector];
-  if (sprites == undefined)
-    return
-  for (let i = 0; i < sprites.length; i++) {
-    board.sprites[sprites[i]].sectnum = toSector;
+  for (let s = 0; s < board.numsprites; s++) {
+    let spr = board.sprites[s];
+    if (spr.sectnum == fromSector)
+      spr.sectnum = toSector;
   }
 }
 
@@ -415,12 +472,14 @@ function insertWallsToSector(board: Board, sectorId: number, nwalls: Deck<Wall>,
   let sec = board.sectors[sectorId];
   let loopptr = 0;
   let loopidx = looppoints.get(loopptr++);
+  let loopp = sec.wallptr;
   for (let i = 0; i < nwalls.length(); i++) {
     let w = sec.wallptr + i;
     let wall = nwalls.get(i);
     board.walls[w] = wall;
     if (loopidx == i + 1) {
-      wall.point2 = w + 1 - loopidx;
+      wall.point2 = loopp;
+      loopp = w + 1;
       loopidx = looppoints.get(loopptr++);
     } else {
       wall.point2 = w + 1;
@@ -433,16 +492,42 @@ function insertWallsToSector(board: Board, sectorId: number, nwalls: Deck<Wall>,
   }
 }
 
+let nullWall = new Wall();
+function resizeWalls(board: Board, sectorId: number, newSize: number) {
+  let sec = board.sectors[sectorId];
+  let dw = newSize - sec.wallnum;
+  if (dw > 0) {
+    moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, []);
+  } else {
+    let from = sec.wallptr + newSize;
+    let end = from - dw;
+    for (let w = from; w < end; w++)
+      board.walls[w] = nullWall;
+    moveWalls(board, sectorId, sec.wallptr + newSize, dw, [])
+  }
+}
+
 export function joinSectors(board: Board, s1: number, s2: number) {
   if (isJoinedSectors(board, s1, s2) == -1) return -1;
   let [nwalls, looppoints] = getJoinedWallsLoops(board, s1, s2);
-  let sec2 = board.sectors[s2], sec1 = board.sectors[s1];
-  moveWalls(board, s2, sec2.wallptr, -sec2.wallnum, []);
-  moveWalls(board, s1, sec1.wallptr, nwalls.length() - sec1.wallnum, []);
+  resizeWalls(board, s1, nwalls.length());
   insertWallsToSector(board, s1, nwalls, looppoints);
   moveSpritesToSector(board, s2, s1);
+  resizeWalls(board, s2, 0);
   deleteSectorImpl(board, s2);
   return 0;
+}
+
+export function pushWallToSector(board: Board, wallId: number, type: U.Type) {
+  let wall = board.walls[wallId];
+  let s = U.sectorOfWall(board, wallId);
+  let sec = board.sectors[s];
+  if (wall.nextsector == -1) {
+    let nsec = copySector(sec);
+    insertSector(board, nsec);
+    nsec.wallptr = board.numwalls;
+    resizeWalls(board, board.numsectors - 1, 4);
+  }
 }
 
 export function deleteSector(board: Board, sectorId: number) {

@@ -119,4 +119,10 @@ export class Wireframe implements Renderable {
     state.setDrawElements(this.buff.get());
     state.draw(gl, this.mode);
   }
+
+  public reset() {
+    this.buff.deallocate();
+    this.type = Type.SURFACE;
+    this.mode = WebGLRenderingContext.LINES;
+  }
 }

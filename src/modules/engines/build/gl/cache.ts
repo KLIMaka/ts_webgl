@@ -195,6 +195,9 @@ export class Cache {
     this.sectors.map(s => { if (s != undefined) { s.valid = false; s.value.ceiling.reset(); s.value.floor.reset(); } });
     this.walls.map(w => { if (w != undefined) { w.valid = false; w.value.bot.reset(); w.value.mid.reset(); w.value.top.reset(); } });
     this.sprites.map(s => { if (s != undefined) { s.valid = false; s.value.reset(); } });
+    this.sectorsWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.ceiling.reset(); s.value.floor.reset(); } });
+    this.wallsWireframe.map(w => { if (w != undefined) { w.valid = false; w.value.bot.reset(); w.value.mid.reset(); w.value.top.reset(); } });
+    this.spritesWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.reset(); } });
     this.wallCeilPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
     this.wallFloorPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
   }
@@ -466,10 +469,10 @@ function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderab
   fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal);
 }
 
-let sectorNorlam = GLM.vec3.create();
+let sectorNormal = GLM.vec3.create();
 function prepareSector(board: Board, art: ArtProvider, secId: number, renderable: SectorSolid) {
   let sec = board.sectors[secId];
-  fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(sectorNorlam, board, secId, true));
+  fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(sectorNormal, board, secId, true));
   renderable.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
   renderable.ceiling.parallax = sec.ceilingstat.parallaxing;
   renderable.ceiling.pal = sec.ceilingpal;
@@ -477,7 +480,7 @@ function prepareSector(board: Board, art: ArtProvider, secId: number, renderable
   let ceilinginfo = art.getInfo(sec.ceilingpicnum);
   applySectorTextureTransform(sec, true, board.walls, ceilinginfo, renderable.ceiling.texMat);
 
-  fillBuffersForSector(false, board, sec, renderable, U.sectorNormal(sectorNorlam, board, secId, false));
+  fillBuffersForSector(false, board, sec, renderable, U.sectorNormal(sectorNormal, board, secId, false));
   renderable.floor.tex = sec.floorstat.parallaxing ? art.getParallaxTexture(sec.floorpicnum) : art.get(sec.floorpicnum);
   renderable.floor.parallax = sec.floorstat.parallaxing;
   renderable.floor.pal = sec.floorpal;

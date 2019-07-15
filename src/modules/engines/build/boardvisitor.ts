@@ -143,7 +143,7 @@ export class PvsBoardVisitorResult implements Result {
     this.pvs.clear();
     this.pvs.push(sectorId);
     this.angCache.clear();
-    this.ensureEntryWalls(sectorId).clear();
+    // this.ensureEntryWalls(sectorId).clear();
   }
 
   private ensureEntryWalls(sectorId: number) {
@@ -194,6 +194,7 @@ export class PvsBoardVisitorResult implements Result {
   }
 
   private visibleFromEntryWalls(wallId: number, entryWalls: Deck<number>, ms: U.MoveStruct) {
+    return true;
     if (entryWalls.length() == 0)
       return true;
     for (let i = 0; i < entryWalls.length(); i++) {
