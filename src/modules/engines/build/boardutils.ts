@@ -530,6 +530,18 @@ export function pushWallToSector(board: Board, wallId: number, type: U.Type) {
   }
 }
 
+export function createSector(board: Board, sectorId: number, points: Deck<number[]>) {
+  if (points.length() < 3)
+    throw new Error('Needed at least 3 points');
+  for (let i = 0; i < points.length(); i++) {
+    let point = points.get(i);
+    if (sectorId != U.findSector(board, point[0], point[1]))
+      throw new Error('All points need to be in same sector #' + sectorId);
+  }
+
+
+}
+
 export function deleteSector(board: Board, sectorId: number) {
 
 }
