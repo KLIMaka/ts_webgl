@@ -1,5 +1,10 @@
 
-export class IndexedDeck<T> {
+export interface Collection<T> {
+  get(i: number): T;
+  length(): number;
+}
+
+export class IndexedDeck<T> implements Collection<T>{
   private pointer = 0;
   private array: T[] = [];
   private index = new Map<T, number>();
@@ -29,7 +34,7 @@ export class IndexedDeck<T> {
   }
 }
 
-export class Deck<T> {
+export class Deck<T> implements Collection<T>{
   private pointer = 0;
   private array: T[];
 

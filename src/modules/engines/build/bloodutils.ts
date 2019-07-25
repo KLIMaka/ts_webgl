@@ -1,5 +1,5 @@
 import { Sprite, Board } from "./structs";
-import { BloodSprite } from "./bloodstructs";
+import { BloodSprite, BloodBoard } from "./bloodstructs";
 import { RorLinks, RorLink } from "./gl/boardrenderer";
 
 export const MIRROR_PIC = 504;
@@ -12,7 +12,7 @@ function isLowerLink(spr: Sprite) {
   return spr.lotag == 12 || spr.lotag == 6 || spr.lotag == 10 || spr.lotag == 14;
 }
 
-export function loadRorLinks(board: Board): RorLinks {
+export function loadRorLinks(board: BloodBoard): RorLinks {
   let linkRegistry = {};
   for (let s = 0; s < board.numsprites; s++) {
     let spr = board.sprites[s];

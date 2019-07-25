@@ -1,23 +1,23 @@
-import * as GL from './modules/gl';
-import * as getter from './libs/getter';
+import * as browser from './libs/browser';
+import * as CFG from './libs/config';
 import * as data from './libs/dataviewstream';
+import * as getter from './libs/getter';
+import * as IU from './libs/imgutils';
 import * as MU from './libs/mathutils';
 import * as controller from './modules/controller3d';
-import * as INPUT from './modules/input';
-import * as bloodloader from './modules/engines/build/bloodloader';
-import * as BS from './modules/engines/build/structs';
-import * as BU from './modules/engines/build/utils';
 import * as DS from './modules/drawstruct';
 import * as ART from './modules/engines/build/art';
-import * as TEX from './modules/textures';
-import * as CFG from './libs/config';
-import * as RFF from './modules/engines/build/rff';
-import * as UI from './modules/ui/ui';
-import * as IU from './libs/imgutils';
-import * as browser from './libs/browser';
-import * as RENDERER from './modules/engines/build/gl/boardrenderer';
-import * as PROFILE from './modules/profiler';
+import * as bloodloader from './modules/engines/build/bloodloader';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
+import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import * as RFF from './modules/engines/build/rff';
+import * as BS from './modules/engines/build/structs';
+import * as BU from './modules/engines/build/utils';
+import * as GL from './modules/gl';
+import * as INPUT from './modules/input';
+import * as PROFILE from './modules/profiler';
+import * as TEX from './modules/textures';
+import * as UI from './modules/ui/ui';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -251,32 +251,36 @@ function createBoard() {
   return board;
 }
 
-function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[]) {
-  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
+let info = {}
+let compass = IU.createEmptyCanvas(50, 50);
+function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Controller3D) {
+  info['Frame Time:'] = (1000 / PROFILE.get(null).time).toFixed(0) + 'fps';
+  info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
+  info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
+  info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2) + 'ms';
+  info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
+  info['Walls:'] = PROFILE.get('processing').counts['walls'];
+  info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
+  info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
+  info['RORs:'] = PROFILE.get(null).counts['rors'];
+  info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
+  info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
+  info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
+  info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
+  info['Sector:'] = ms.sec;
+  info['X:'] = ms.x;
+  info['Y:'] = ms.y;
 
-  let info = {}
-  let props = UI.props([
-    'X:',
-    'Y:',
-    'Sector:',
-    'Processing:',
-    'Hitscan:',
-    'Rendering:',
-    'Frame Time:',
-    'Buffer Traffic:',
-    'Buffer Updates:',
-    'Buffer Usage:',
-    'PVS:',
-    'RORs:',
-    'Mirrors:',
-    'Sectors:',
-    'Walls:',
-    'Sprites:'
-  ]);
+  props.refresh(info);
+  drawCompass(compass, ctr.getCamera().forward());
+}
+
+function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[]) {
+  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: false, stencil: true });
 
   let panel = UI.panel('Info');
+  let props = UI.props();
   panel.append(props);
-  let compass = IU.createEmptyCanvas(50, 50);
   panel.append(new UI.Element(compass));
   document.body.appendChild(panel.elem());
 
@@ -308,24 +312,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       RENDERER.draw(gl, board, ms, control);
       PROFILE.endProfile()
 
-      info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
-      info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
-      info['Frame Time:'] = (1000 / PROFILE.get(null).time).toFixed(0) + 'fps';
-      info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2) + 'ms';
-      info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
-      info['Walls:'] = PROFILE.get('processing').counts['walls'];
-      info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
-      info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
-      info['RORs:'] = PROFILE.get(null).counts['rors'];
-      info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
-      info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
-      info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
-      info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
-      info['Sector:'] = ms.sec;
-      info['X:'] = ms.x;
-      info['Y:'] = ms.y;
-      props.refresh(info);
-      drawCompass(compass, control.getCamera().forward());
+      updateUi(props, ms, control);
 
       control.think(time);
       INPUT.postFrame();

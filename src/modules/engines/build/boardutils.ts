@@ -2,7 +2,7 @@ import * as MU from '../../../libs/mathutils';
 import { ArtInfoProvider } from './art';
 import { Board, Wall, Sector, SectorStats, WallStats } from './structs';
 import * as U from './utils';
-import { IndexedDeck, Deck } from '../../deck';
+import { IndexedDeck, Deck, Collection } from '../../deck';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -130,8 +130,11 @@ function moveWalls(board: Board, secId: number, afterWallId: number, size: numbe
       wall.nextwall += size;
   }
   for (let w = 0; w < wallptrs.length; w++) {
-    if (wallptrs[w] > afterWallId)
+    if (size < 0 && wallptrs[w] >= afterWallId && wallptrs[w] < afterWallId - size) {
+      wallptrs[w] = -1;
+    } else if (wallptrs[w] > 0 && wallptrs[w] > afterWallId) {
       wallptrs[w] += size;
+    }
   }
   if (size > 0) {
     let end = board.numwalls - 1;
@@ -232,7 +235,7 @@ function copyWall(wall: Wall, x: number, y: number): Wall {
   return nwall;
 }
 
-function copySectorStat(stat: SectorStats): SectorStats {
+function copySectorStats(stat: SectorStats): SectorStats {
   let nstat = new SectorStats();
   nstat.alignToFirstWall = stat.alignToFirstWall;
   nstat.doubleSmooshiness = stat.doubleSmooshiness;
@@ -250,7 +253,7 @@ function copySector(sector: Sector): Sector {
   nsector.ceilingpal = sector.ceilingpal;
   nsector.ceilingpicnum = sector.ceilingpicnum;
   nsector.ceilingshade = sector.ceilingshade;
-  nsector.ceilingstat = copySectorStat(sector.ceilingstat);
+  nsector.ceilingstat = copySectorStats(sector.ceilingstat);
   nsector.ceilingxpanning = sector.ceilingxpanning;
   nsector.ceilingypanning = sector.ceilingypanning;
   nsector.ceilingz = sector.ceilingz;
@@ -259,7 +262,7 @@ function copySector(sector: Sector): Sector {
   nsector.floorpal = sector.floorpal;
   nsector.floorpicnum = sector.floorpicnum;
   nsector.floorshade = sector.floorshade;
-  nsector.floorstat = copySectorStat(sector.floorstat);
+  nsector.floorstat = copySectorStats(sector.floorstat);
   nsector.floorxpanning = sector.floorxpanning;
   nsector.floorypanning = sector.floorypanning;
   nsector.floorz = sector.floorz;
@@ -317,15 +320,17 @@ export function connectedWalls(board: Board, wallId: number, result: Deck<number
   result.push(wallId);
   let w = wallId;
   do {
-    if (walls[w].nextwall != -1) {
-      w = walls[walls[w].nextwall].point2;
+    let wall = walls[w];
+    if (wall.nextwall != -1) {
+      w = nextwall(board, wall.nextwall);
       result.push(w);
     } else {
       w = wallId;
       do {
         let p = prevwall(board, w);
-        if (walls[p].nextwall != -1) {
-          w = walls[p].nextwall;
+        let wall = walls[p];
+        if (wall.nextwall != -1) {
+          w = wall.nextwall;
           result.push(w);
         } else {
           break;
@@ -438,9 +443,8 @@ function moveSpritesToSector(board: Board, fromSector: number, toSector: number)
 
 let newsectorwalls = new Deck<Wall>();
 let loopPoints = new Deck<number>();
-function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Deck<Wall>, Deck<number>] {
-  newsectorwalls.clear();
-  loopPoints.clear();
+function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Collection<Wall>, Collection<number>] {
+  newsectorwalls.clear(); loopPoints.clear();
   let wallset = fillWallSet(board, s1, s2);
   let values = wallset.values();
   for (let it = values.next(); !it.done; it = values.next()) {
@@ -468,7 +472,7 @@ function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Deck<Wall>,
   return [newsectorwalls, loopPoints];
 }
 
-function insertWallsToSector(board: Board, sectorId: number, nwalls: Deck<Wall>, looppoints: Deck<number>) {
+function insertWallsToSector(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>) {
   let sec = board.sectors[sectorId];
   let loopptr = 0;
   let loopidx = looppoints.get(loopptr++);
@@ -530,7 +534,7 @@ export function pushWallToSector(board: Board, wallId: number, type: U.Type) {
   }
 }
 
-export function createSector(board: Board, sectorId: number, points: Deck<number[]>) {
+export function createSector(board: Board, sectorId: number, points: Collection<number[]>) {
   if (points.length() < 3)
     throw new Error('Needed at least 3 points');
   for (let i = 0; i < points.length(); i++) {
@@ -538,6 +542,7 @@ export function createSector(board: Board, sectorId: number, points: Deck<number
     if (sectorId != U.findSector(board, point[0], point[1]))
       throw new Error('All points need to be in same sector #' + sectorId);
   }
+
 
 
 }
