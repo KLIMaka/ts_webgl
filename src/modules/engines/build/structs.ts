@@ -21,39 +21,39 @@
 //  lotag, hitag, extra - These variables used by the game programmer only
 
 export class SectorStats {
-  public parallaxing:number;
-  public slopped:number;
-  public swapXY:number;
-  public doubleSmooshiness:number;
-  public xflip:number;
-  public yflip:number;
-  public alignToFirstWall:number;
+  public parallaxing: number;
+  public slopped: number;
+  public swapXY: number;
+  public doubleSmooshiness: number;
+  public xflip: number;
+  public yflip: number;
+  public alignToFirstWall: number;
 }
 
 export class Sector {
-  public wallptr:number;
-  public wallnum:number;
-  public ceilingz:number;
-  public floorz:number;
-  public ceilingstat:SectorStats;
-  public floorstat:SectorStats;
-  public ceilingpicnum:number;
-  public ceilingheinum:number;
-  public ceilingshade:number;
-  public ceilingpal:number;
-  public ceilingxpanning:number;
-  public ceilingypanning:number;
-  public floorpicnum:number;
-  public floorheinum:number;
-  public floorshade:number;
-  public floorpal:number;
-  public floorxpanning:number;
-  public floorypanning:number;
-  public visibility:number;
-  public filler:number;
-  public lotag:number;
-  public hitag:number;
-  public extra:number;
+  public wallptr: number;
+  public wallnum: number;
+  public ceilingz: number;
+  public floorz: number;
+  public ceilingstat: SectorStats;
+  public floorstat: SectorStats;
+  public ceilingpicnum: number;
+  public ceilingheinum: number;
+  public ceilingshade: number;
+  public ceilingpal: number;
+  public ceilingxpanning: number;
+  public ceilingypanning: number;
+  public floorpicnum: number;
+  public floorheinum: number;
+  public floorshade: number;
+  public floorpal: number;
+  public floorxpanning: number;
+  public floorypanning: number;
+  public visibility: number;
+  public filler: number;
+  public lotag: number;
+  public hitag: number;
+  public extra: number;
 }
 
 //  x, y: Coordinate of left side of wall, get right side from next wall's left side
@@ -81,36 +81,36 @@ export class Sector {
 //  lotag, hitag, extra - These variables used by the game programmer only
 
 export class WallStats {
-  public blocking:number;
-  public swapBottoms:number;
-  public alignBottom:number;
-  public xflip:number;
-  public masking:number;
-  public oneWay:number;
-  public blocking2:number;
-  public translucent:number;
-  public yflip:number;
-  public translucentReversed:number;
+  public blocking: number;
+  public swapBottoms: number;
+  public alignBottom: number;
+  public xflip: number;
+  public masking: number;
+  public oneWay: number;
+  public blocking2: number;
+  public translucent: number;
+  public yflip: number;
+  public translucentReversed: number;
 }
 
 export class Wall {
-  public x:number;
-  public y:number;
-  public point2:number;
-  public nextwall:number;
-  public nextsector:number;
-  public cstat:WallStats;
-  public picnum:number;
-  public overpicnum:number;
-  public shade:number;
-  public pal:number;
-  public xrepeat:number;
-  public yrepeat:number;
-  public xpanning:number;
-  public ypanning:number;
-  public lotag:number;
-  public hitag:number;
-  public extra:number;
+  public x: number;
+  public y: number;
+  public point2: number;
+  public nextwall: number;
+  public nextsector: number;
+  public cstat: WallStats;
+  public picnum: number;
+  public overpicnum: number;
+  public shade: number;
+  public pal: number;
+  public xrepeat: number;
+  public yrepeat: number;
+  public xpanning: number;
+  public ypanning: number;
+  public lotag: number;
+  public hitag: number;
+  public extra: number;
 }
 
 //  x, y, z - position of sprite - can be defined at center bottom or center
@@ -147,69 +147,69 @@ export const WALL = 1;
 export const FLOOR = 2;
 
 export class SpriteStats {
-  public blocking:number;
-  public translucent:number;
-  public xflip:number;
-  public yflip:number;
-  public type:number; // 0 - FACE, 1 - WALL, 2 - FLOOR
-  public onesided:number;
-  public realCenter:number;
-  public blocking2:number;
-  public tranclucentReversed:number;
-  public noautoshading:number;
-  public reserved:number;
-  public invicible:number;
+  public blocking: number;
+  public translucent: number;
+  public xflip: number;
+  public yflip: number;
+  public type: number; // 0 - FACE, 1 - WALL, 2 - FLOOR
+  public onesided: number;
+  public realCenter: number;
+  public blocking2: number;
+  public tranclucentReversed: number;
+  public noautoshading: number;
+  public reserved: number;
+  public invisible: number;
 
 }
 
 export class Sprite {
-  public x:number;
-  public y:number;
-  public z:number;
-  public cstat:SpriteStats;
-  public picnum:number;
-  public shade:number;
-  public pal:number;
-  public clipdist:number;
-  public filler:number;
-  public xrepeat:number;
-  public yrepeat:number;
-  public xoffset:number;
-  public yoffset:number;
-  public sectnum:number;
-  public statnum:number;
-  public ang:number;
-  public owner:number;
-  public xvel:number;
-  public yvel:number;
-  public zvel:number;
-  public lotag:number;
-  public hitag:number;
-  public extra:number;
+  public x: number;
+  public y: number;
+  public z: number;
+  public cstat: SpriteStats;
+  public picnum: number;
+  public shade: number;
+  public pal: number;
+  public clipdist: number;
+  public filler: number;
+  public xrepeat: number;
+  public yrepeat: number;
+  public xoffset: number;
+  public yoffset: number;
+  public sectnum: number;
+  public statnum: number;
+  public ang: number;
+  public owner: number;
+  public xvel: number;
+  public yvel: number;
+  public zvel: number;
+  public lotag: number;
+  public hitag: number;
+  public extra: number;
 }
 
 export class Board {
-  public version:number;
-  public posx:number;
-  public posy:number;
-  public posz:number;
-  public ang:number;
-  public cursectnum:number;
-  public numsectors:number;
-  public sectors:Sector[];
-  public numwalls:number;
-  public walls:Wall[];
-  public numsprites:number;
-  public sprites:Sprite[];
+  public version: number;
+  public posx: number;
+  public posy: number;
+  public posz: number;
+  public ang: number;
+  public cursectnum: number;
+  public numsectors: number;
+  public sectors: Sector[];
+  public numwalls: number;
+  public walls: Wall[];
+  public numsprites: number;
+  public sprites: Sprite[];
 }
 
 
 export class Header1 {
-  public startX:number;
-  public startY:number;
-  public startZ:number;
-  public startAng:number;
-  public startSec:number;
-  public unk:number;
+  public startX: number;
+  public startY: number;
+  public startZ: number;
+  public startAng: number;
+  public startSec: number;
+  public unk: number;
 }
 

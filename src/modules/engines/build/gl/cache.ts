@@ -375,7 +375,7 @@ function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: 
 
 function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, wireframe: SpriteWireframe) {
   let spr = board.sprites[sprId];
-  if (spr.picnum == 0 || spr.cstat.invicible)
+  if (spr.picnum == 0 || spr.cstat.invisible)
     return;
 
   let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
@@ -713,7 +713,7 @@ function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, y
 
 function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable: SpriteSolid) {
   let spr = board.sprites[sprId];
-  if (spr.picnum == 0 || spr.cstat.invicible)
+  if (spr.picnum == 0 || spr.cstat.invisible)
     return;
 
   let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;

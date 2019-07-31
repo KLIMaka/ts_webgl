@@ -122,11 +122,11 @@ class BuildArtProvider implements RENDERER.PalProvider {
 
   public getPluTexture(): DS.Texture {
     if (this.pluTexture == null) {
-      let tex = new Uint8Array(256 * 64 * this.PLUs.length);
-      for (let i = 0; i < this.PLUs.length; i++) {
-        tex.set(this.PLUs[i], 256 * 64 * i);
+      let tex = new Uint8Array(256 * this.getShadowSteps() * this.getPalswaps());
+      for (let i = 0; i < this.getPalswaps(); i++) {
+        tex.set(this.PLUs[i], 256 * this.getShadowSteps() * i);
       }
-      this.pluTexture = TEX.createTexture(256, 64 * this.PLUs.length, this.gl, { filter: this.gl.NEAREST }, tex, this.gl.LUMINANCE);
+      this.pluTexture = TEX.createTexture(256, this.getShadowSteps() * this.getPalswaps(), this.gl, { filter: this.gl.NEAREST }, tex, this.gl.LUMINANCE);
     }
     return this.pluTexture;
   }
