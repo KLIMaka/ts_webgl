@@ -7,6 +7,7 @@ import * as U from '../utils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
 import { State } from '../../../stategl';
+import { SubType } from '../hitscan';
 
 class EnsureArray<T> {
   private array: Array<T> = [];
@@ -202,19 +203,19 @@ export class Cache {
     this.wallFloorPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
   }
 
-  public getByIdType(id: number, addId: number, type: U.Type, wireframe: boolean = false): Renderable {
+  public getByIdType(id: number, addId: number, type: SubType, wireframe: boolean = false): Renderable {
     switch (type) {
-      case U.Type.CEILING:
+      case SubType.CEILING:
         return wireframe ? this.getSectorWireframe(id).ceiling : this.getSector(id).ceiling;
-      case U.Type.FLOOR:
+      case SubType.FLOOR:
         return wireframe ? this.getSectorWireframe(id).floor : this.getSector(id).floor;
-      case U.Type.LOWER_WALL:
+      case SubType.LOWER_WALL:
         return wireframe ? this.getWallWireframe(id, addId).bot : this.getWall(id, addId).bot;
-      case U.Type.MID_WALL:
+      case SubType.MID_WALL:
         return wireframe ? this.getWallWireframe(id, addId).mid : this.getWall(id, addId).mid;
-      case U.Type.UPPER_WALL:
+      case SubType.UPPER_WALL:
         return wireframe ? this.getWallWireframe(id, addId).top : this.getWall(id, addId).top;
-      case U.Type.SPRITE:
+      case SubType.SPRITE:
         return wireframe ? this.getSpriteWireframe(id) : this.getSprite(id);
     }
     return null;

@@ -3,6 +3,7 @@ import { ArtInfoProvider } from './art';
 import { Board, Wall, Sector, SectorStats, WallStats } from './structs';
 import * as U from './utils';
 import { IndexedDeck, Deck, Collection } from '../../deck';
+import { SubType } from './hitscan';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -522,7 +523,7 @@ export function joinSectors(board: Board, s1: number, s2: number) {
   return 0;
 }
 
-export function pushWallToSector(board: Board, wallId: number, type: U.Type) {
+export function pushWallToSector(board: Board, wallId: number, type: SubType) {
   let wall = board.walls[wallId];
   let s = U.sectorOfWall(board, wallId);
   let sec = board.sectors[s];

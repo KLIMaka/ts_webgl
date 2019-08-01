@@ -3,9 +3,10 @@ import * as GLM from "../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../deck";
 import * as BU from "./boardutils";
 import { ArtProvider } from "./gl/cache";
+import { Hitscan, SubType, isSector, isWall, isSprite } from "./hitscan";
 import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
 import { Board } from "./structs";
-import { Hitscan, Type, isSector, isSprite, isWall, sectorOfWall, sectorZ, ZSCALE, createSlopeCalculator, heinumCalc, sectorHeinum, setSectorHeinum, setSectorZ } from "./utils";
+import { createSlopeCalculator, heinumCalc, sectorOfWall, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "./utils";
 
 class MovingHandle {
   private startPoint = GLM.vec3.create();
@@ -66,7 +67,7 @@ export interface BuildContext {
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
   highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
   highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number): void;
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: Type): void;
+  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: SubType): void;
 }
 
 class StartMove implements Message { constructor(public handle: MovingHandle) { } }
@@ -130,7 +131,7 @@ class WallEnt {
     public origin = GLM.vec2.create(),
     public originZ = 0,
     public zMotionSector = -1,
-    public zMotionType: Type = Type.CEILING,
+    public zMotionType: SubType = SubType.CEILING,
     public active = false) { }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
@@ -143,7 +144,7 @@ class WallEnt {
     let slope = createSlopeCalculator(sec, ctx.board.walls);
     let floorz = slope(hit.x, hit.y, sec.floorheinum) + sec.floorz;
     let ceilz = slope(hit.x, hit.y, sec.ceilingheinum) + sec.ceilingz;
-    this.zMotionType = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz) ? Type.FLOOR : Type.CEILING;
+    this.zMotionType = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz) ? SubType.FLOOR : SubType.CEILING;
     this.originZ = sectorZ(ctx.board, this.zMotionSector, this.zMotionType) / ZSCALE;
     this.active = true;
   }
@@ -254,13 +255,13 @@ class SectorEnt {
     .register(Move, (obj: SectorEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(Highlight, (obj: SectorEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
-  public static create(id: number, type: Type) {
+  public static create(id: number, type: SubType) {
     return SectorEnt.factory.handler(new SectorEnt(id, type));
   }
 
   constructor(
     public sectorId: number,
-    public type: Type,
+    public type: SubType,
     public originz = 0,
     public origin = GLM.vec2.create()) { }
 

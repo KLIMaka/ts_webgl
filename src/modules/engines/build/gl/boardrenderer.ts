@@ -19,6 +19,7 @@ import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
 import { Context } from './context';
 import { Renderable } from './renderable';
+import { isSector, isWall, SubType, hitscan, Hitscan } from '../hitscan';
 
 export interface PalProvider extends ArtProvider {
   getPalTexture(): Texture;
@@ -56,7 +57,7 @@ let artProvider: ArtProvider;
 let cache: Cache;
 let visible = new VIS.PvsBoardVisitorResult();
 let selection = new List<MessageHandler>();
-let hit = new U.Hitscan();
+let hit = new Hitscan();
 let implementation: Implementation;
 
 export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implementation, board: Board, cb: () => void) {
@@ -79,29 +80,29 @@ function sendToSelected(msg: Message) {
   sendMessage(msg, context, selection);
 }
 
-function print(board: Board, id: number, type: U.Type) {
+function print(board: Board, id: number, type: SubType) {
   if (INPUT.mouseClicks[0]) {
     switch (type) {
-      case U.Type.CEILING:
-      case U.Type.FLOOR:
+      case SubType.CEILING:
+      case SubType.FLOOR:
         console.log(id, board.sectors[id]);
         break;
-      case U.Type.UPPER_WALL:
-      case U.Type.MID_WALL:
-      case U.Type.LOWER_WALL:
+      case SubType.UPPER_WALL:
+      case SubType.MID_WALL:
+      case SubType.LOWER_WALL:
         console.log(id, board.walls[id]);
         break;
-      case U.Type.SPRITE:
+      case SubType.SPRITE:
         console.log(id, board.sprites[id]);
         break;
     }
   }
 }
 
-function hitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
+function pointerHitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   PROFILE.startProfile('hitscan');
   let [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
-  U.hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+  hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
   PROFILE.endProfile();
 }
 
@@ -127,10 +128,10 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
 function snap(board: Board) {
   if (hit.t != -1) {
     let x = hit.x; let y = hit.y;
-    if (U.isSector(hit.type)) {
+    if (isSector(hit.type)) {
       x = context.snap(x);
       y = context.snap(y);
-    } else if (U.isWall(hit.type)) {
+    } else if (isWall(hit.type)) {
       let w = hit.id;
       let wall = board.walls[w];
       let w1 = BU.nextwall(board, w); let wall1 = board.walls[w1];
@@ -171,7 +172,7 @@ function updateContext(gl: WebGLRenderingContext, board: Board) {
 let joinSector1 = -1;
 let joinSector2 = -1;
 function joinSectors(board: Board) {
-  if (U.isSector(hit.type) && INPUT.mouseClicks[1]) {
+  if (isSector(hit.type) && INPUT.mouseClicks[1]) {
     if (joinSector1 == -1) {
       joinSector1 = hit.id;
     } else if (joinSector2 == -1) {
@@ -197,7 +198,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   }
 
   updateContext(gl, board);
-  hitscan(gl, board, ms, ctr);
+  pointerHitscan(gl, board, ms, ctr);
   move(gl, board, ctr);
   select(board)
   snap(board);
