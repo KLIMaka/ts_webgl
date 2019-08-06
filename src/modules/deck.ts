@@ -13,9 +13,10 @@ export class IndexedDeck<T> implements Collection<T>{
     return this.array[i];
   }
 
-  public push(value: T) {
+  public push(value: T): IndexedDeck<T> {
     this.index.set(value, this.pointer);
     this.array[this.pointer++] = value;
+    return this;
   }
 
   public clear(): IndexedDeck<T> {
@@ -46,8 +47,9 @@ export class Deck<T> implements Collection<T>{
     return this.array[i];
   }
 
-  public push(value: T) {
+  public push(value: T): Deck<T> {
     this.array[this.pointer++] = value;
+    return this;
   }
 
   public clear(): Deck<T> {

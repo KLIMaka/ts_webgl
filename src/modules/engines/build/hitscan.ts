@@ -1,8 +1,8 @@
 import { Board, Sector, FACE, WALL, FLOOR } from "./structs";
-import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE } from "./utils";
-import { ArtInfoProvider } from "./art";
-import { IndexedDeck } from "../../deck";
-import { int, len2d, cross2d, sqrLen2d, dot2d, PI2 } from "../../../libs/mathutils";
+import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE, inPolygon } from "./utils";
+import { ArtInfoProvider, ArtInfo } from "./art";
+import { IndexedDeck, Deck } from "../../deck";
+import { int, len2d, cross2d, sqrLen2d, dot2d, PI2, sign } from "../../../libs/mathutils";
 
 export enum SubType {
   FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE
@@ -129,86 +129,123 @@ function intersectWall(board: Board, wallId: number, xs: number, ys: number, zs:
   return nextsecId;
 }
 
+function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+  if (vx == 0 && vy == 0) return;
+  let spr = board.sprites[sprId];
+  let x = spr.x, y = spr.y, z = spr.z;
+  let dx = x - xs; let dy = y - ys;
+  let vl = sqrLen2d(vx, vy);
+  let t = dot2d(vx, vy, dx, dy) / vl;
+  if (t <= 0) return;
+  let intz = zs + int(vz * t) * -ZSCALE;
+  let h = info.h * (spr.yrepeat << 2);
+  z += spr.cstat.realCenter ? h >> 1 : 0;
+  z -= info.attrs.yoff * (spr.yrepeat << 2);
+  if ((intz > z) || (intz < z - h)) return;
+  let intx = xs + int(vx * t);
+  let inty = ys + int(vy * t);
+  let w = info.w * (spr.xrepeat >> 2);
+  if (len2d(x - intx, y - inty) > (w >> 1)) return;
+  hit.hit(intx, inty, intz, t, sprId, SubType.SPRITE);
+}
+
+function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+  if (vx == 0 && vy == 0) return;
+  let spr = board.sprites[sprId];
+  let x = spr.x, y = spr.y, z = spr.z;
+  let ang = PI2 - (spr.ang / 2048) * PI2;
+  let dx = Math.sin(ang) * (spr.xrepeat >> 2);
+  let dy = Math.cos(ang) * (spr.xrepeat >> 2);
+  let w = info.w;
+  let xoff = info.attrs.xoff + spr.xoffset;
+  if (spr.cstat.xflip) xoff = -xoff;
+  let hw = (w >> 1) + xoff;
+  let x1 = x - dx * hw; let y1 = y - dy * hw;
+  let x2 = x1 + dx * w; let y2 = y1 + dy * w;
+  if (spr.cstat.onesided && !canIntersect(xs, ys, x1, y1, x2, y2)) return;
+  let intersect = rayIntersect(xs, ys, zs, vx, vy, vz, x1, y1, x2, y2);
+  if (intersect == null) return;
+  let [ix, iy, iz, it] = intersect;
+  let h = info.h * (spr.yrepeat << 2);
+  z += spr.cstat.realCenter ? h >> 1 : 0;
+  z -= info.attrs.yoff * (spr.yrepeat << 2);
+  if ((iz > z) || (iz < z - h)) return;
+  hit.hit(ix, iy, iz, it, sprId, SubType.SPRITE);
+}
+
+let xss = new Deck<number>();
+let yss = new Deck<number>();
+function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+  if (vz == 0) return;
+  let spr = board.sprites[sprId];
+  let x = spr.x, y = spr.y, z = spr.z;
+  let dz = (z - zs) / -ZSCALE;
+  if (sign(dz) == sign(vz)) return;
+  if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs > z) return;
+  let t = dz / vz;
+  let ix = xs + int(vx * t);
+  let iy = ys + int(vy * t);
+
+  let xoff = (info.attrs.xoff + spr.xoffset) * (spr.cstat.xflip ? -1 : 1);
+  let yoff = (info.attrs.yoff + spr.yoffset) * (spr.cstat.yflip ? -1 : 1);
+  let ang = PI2 - (spr.ang / 2048) * PI2;
+  let cosang = Math.cos(ang);
+  let sinang = Math.sin(ang);
+  let dx = ((info.w >> 1) + xoff) * (spr.xrepeat >> 2);
+  let dy = ((info.h >> 1) + yoff) * (spr.yrepeat >> 2);
+  let dw = info.w * (spr.xrepeat >> 2);
+  let dh = info.h * (spr.yrepeat >> 2);
+
+  let x1 = int(x + sinang * dx + cosang * dy) - ix;
+  let y1 = int(y + sinang * dy - cosang * dx) - iy;
+  let x2 = int(x1 - sinang * dw);
+  let y2 = int(y1 + cosang * dw);
+  let x3 = int(x2 - cosang * dh);
+  let y3 = int(y2 - sinang * dh);
+  let x4 = int(x1 - cosang * dh);
+  let y4 = int(y1 - sinang * dh);
+
+  let clipyou = 0;
+  if ((y1 ^ y2) < 0) {
+    if ((x1 ^ x2) < 0)
+      clipyou ^= (x1 * y2 < x2 * y1 ? 1 : 0) ^ (y1 < y2 ? 1 : 0);
+    else if (x1 >= 0)
+      clipyou ^= 1;
+  }
+  if ((y2 ^ y3) < 0) {
+    if ((x2 ^ x3) < 0)
+      clipyou ^= (x2 * y3 < x3 * y2 ? 1 : 0) ^ (y2 < y3 ? 1 : 0);
+    else if (x2 >= 0)
+      clipyou ^= 1;
+  }
+  if ((y3 ^ y4) < 0) {
+    if ((x3 ^ x4) < 0)
+      clipyou ^= (x3 * y4 < x4 * y3 ? 1 : 0) ^ (y3 < y4 ? 1 : 0);
+    else if (x3 >= 0)
+      clipyou ^= 1;
+  }
+  if ((y4 ^ y1) < 0) {
+    if ((x4 ^ x1) < 0)
+      clipyou ^= (x4 * y1 < x1 * y4 ? 1 : 0) ^ (y4 < y1 ? 1 : 0);
+    else if (x4 >= 0)
+      clipyou ^= 1;
+  }
+
+  if (clipyou == 0) return;
+  hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
+}
+
+
 function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
   let spr = board.sprites[sprId];
-  if (spr.picnum == 0 || spr.cstat.invisible)
-    return;
-  let x = spr.x, y = spr.y, z = spr.z;
+  if (spr.picnum == 0 || spr.cstat.invisible) return;
   let info = artInfo.getInfo(spr.picnum);
   if (spr.cstat.type == FACE) {
-    let dx = x - xs; let dy = y - ys;
-    let vl = sqrLen2d(vx, vy);
-    if (vl == 0) return;
-    let t = dot2d(vx, vy, dx, dy) / vl;
-    if (t <= 0) return;
-    let intz = zs + int(vz * t) * -ZSCALE;
-    let h = info.h * (spr.yrepeat << 2);
-    z += spr.cstat.realCenter ? h >> 1 : 0;
-    z -= info.attrs.yoff * (spr.yrepeat << 2);
-    if ((intz > z) || (intz < z - h)) return;
-    let intx = xs + int(vx * t);
-    let inty = ys + int(vy * t);
-    let w = info.w * (spr.xrepeat >> 2);
-    if (len2d(x - intx, y - inty) > (w >> 1)) return;
-    hit.hit(intx, inty, intz, t, sprId, SubType.SPRITE);
+    intersectFaceSprite(board, info, sprId, xs, ys, ys, vx, vy, vz, hit);
   } else if (spr.cstat.type == WALL) {
-    let ang = PI2 - (spr.ang / 2048) * PI2;
-    let dx = Math.sin(ang) * (spr.xrepeat >> 2);
-    let dy = Math.cos(ang) * (spr.xrepeat >> 2);
-    let w = info.w;
-    let xoff = info.attrs.xoff + spr.xoffset;
-    if (spr.cstat.xflip) xoff = -xoff;
-    let hw = (w >> 1) + xoff;
-    let x1 = x - dx * hw; let y1 = y - dy * hw;
-    let x2 = x1 + dx * w; let y2 = y1 + dy * w;
-    if (spr.cstat.onesided && !canIntersect(xs, ys, x1, y1, x2, y2)) return;
-    let intersect = rayIntersect(xs, ys, zs, vx, vy, vz, x1, y1, x2, y2);
-    if (intersect == null) return;
-    let [ix, iy, iz, it] = intersect;
-    let h = info.h * (spr.yrepeat << 2);
-    z += spr.cstat.realCenter ? h >> 1 : 0;
-    z -= info.attrs.yoff * (spr.yrepeat << 2);
-    if ((iz > z) || (iz < z - h)) return;
-    hit.hit(ix, iy, iz, it, sprId, SubType.SPRITE);
+    intersectWallSprite(board, info, sprId, xs, ys, ys, vx, vy, vz, hit);
   } else if (spr.cstat.type == FLOOR) {
-    if (vz == 0) return;
-    if (((z - zs) ^ vz) < 0) return;
-    if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs > z) return;
-    let dz = z - zs;
-    let ix = xs + dz * vx / vz;
-    let iy = ys + dz * vy / vz;
-    let xoff = (info.attrs.xoff + spr.xoffset) * spr.cstat.xflip ? -1 : 1;
-    let yoff = (info.attrs.yoff + spr.yoffset) * spr.cstat.yflip ? -1 : 1;
-    let ang = PI2 - (spr.ang / 2048) * PI2;
-    let cosang = Math.cos(ang);
-    let sinang = Math.sin(ang);
-    let dx = ((info.w >> 1) + xoff) * (spr.xrepeat >> 2);
-    let dy = ((info.h >> 1) + yoff) * (spr.yrepeat << 2);
-    let dw = info.w * (spr.xrepeat >> 2); let dh = info.h * (spr.yrepeat << 2);
-    let x1 = x + sinang * dx + cosang * dy - ix; let y1 = y + sinang * dy - cosang * dx - iy;
-    let x2 = x1 - sinang * dw; let y2 = y1 - cosang * dw;
-    let x3 = x2 - cosang * dh; let y3 = y2 - sinang * dh;
-    let x4 = x1 - cosang * dh; let y4 = y1 - sinang * dh;
-
-    let clipyou = 0;
-    if ((y1 ^ y2) < 0) {
-      if ((x1 ^ x2) < 0) clipyou ^= ((x1 * y2 < x2 * y1) ? 1 : 0) ^ ((y1 < y2) ? 1 : 0);
-      else if (x1 >= 0) clipyou ^= 1;
-    }
-    if ((y2 ^ y3) < 0) {
-      if ((x2 ^ x3) < 0) clipyou ^= ((x2 * y3 < x3 * y2) ? 1 : 0) ^ ((y2 < y3) ? 1 : 0);
-      else if (x2 >= 0) clipyou ^= 1;
-    }
-    if ((y3 ^ y4) < 0) {
-      if ((x3 ^ x4) < 0) clipyou ^= ((x3 * y4 < x4 * y3) ? 1 : 0) ^ ((y3 < y4) ? 1 : 0);
-      else if (x3 >= 0) clipyou ^= 1;
-    }
-    if ((y4 ^ y1) < 0) {
-      if ((x4 ^ x1) < 0) clipyou ^= ((x4 * y1 < x1 * y4) ? 1 : 0) ^ ((y4 < y1) ? 1 : 0);
-      else if (x4 >= 0) clipyou ^= 1;
-    }
-    if (clipyou == 0) return;
-    hit.hit(ix, iy, z, dz / vz, sprId, SubType.SPRITE);
+    intersectFloorSprite(board, info, sprId, xs, ys, ys, vx, vy, vz, hit);
   }
 }
 

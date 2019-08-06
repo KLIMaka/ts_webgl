@@ -3,6 +3,7 @@ import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
 import { SubType } from './hitscan';
 import { Board, Sector, Sprite, Wall } from './structs';
+import { Collection } from '../../deck';
 
 export const ZSCALE = -16;
 
@@ -29,6 +30,27 @@ export function getSector(board: Board, ms: MoveStruct): number {
   if (inSector(board, ms.x, ms.y, ms.sec))
     return ms.sec;
   return -1;
+}
+
+export function inPolygon(x: number, y: number, xs: Collection<number>, ys: Collection<number>) {
+  let inter = 0;
+  for (let i = 0; i < xs.length(); i++) {
+    let x1 = xs.get(i);
+    let y1 = ys.get(i);
+    let x2 = xs.get(MU.cyclic(i + 1, xs.length()));
+    let y2 = ys.get(MU.cyclic(i + 1, ys.length()));
+    let dy1 = y1 - y;
+    let dy2 = y2 - y;
+    if ((dy1 ^ dy2) < 0) {
+      let dx1 = x1 - x;
+      let dx2 = x2 - x;
+      if ((dx1 ^ dx2) >= 0)
+        inter ^= dx1;
+      else
+        inter ^= MU.cross2d(dx1, dy1, dx2, dy2) ^ dy2;
+    }
+  }
+  return (inter >>> 31) == 1;
 }
 
 export function inSector(board: Board, x: number, y: number, secnum: number): boolean {
