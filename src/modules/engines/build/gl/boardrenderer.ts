@@ -101,8 +101,12 @@ function print(board: Board, id: number, type: SubType) {
 
 function pointerHitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   PROFILE.startProfile('hitscan');
+  if (INPUT.mouseClicks[0]) {
+    debugger;
+  }
   let [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
   hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
+  console.log(hit.t);
   PROFILE.endProfile();
 }
 

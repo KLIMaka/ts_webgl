@@ -179,8 +179,8 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   if (vz == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
-  let dz = (z - zs) / -ZSCALE;
-  if (sign(dz) == sign(vz)) return;
+  let dz = (zs - z) / -ZSCALE;
+  if (sign(dz) != sign(vz)) return;
   if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs > z) return;
   let t = dz / vz;
   let ix = xs + int(vx * t);
@@ -196,43 +196,57 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   let dw = info.w * (spr.xrepeat >> 2);
   let dh = info.h * (spr.yrepeat >> 2);
 
-  let x1 = int(x + sinang * dx + cosang * dy) - ix;
-  let y1 = int(y + sinang * dy - cosang * dx) - iy;
+  let x1 = int(x + sinang * dx + cosang * dy);
+  let y1 = int(y + sinang * dy - cosang * dx);
   let x2 = int(x1 - sinang * dw);
   let y2 = int(y1 + cosang * dw);
   let x3 = int(x2 - cosang * dh);
   let y3 = int(y2 - sinang * dh);
   let x4 = int(x1 - cosang * dh);
   let y4 = int(y1 - sinang * dh);
+  xss.clear().push(x1).push(x2).push(x3).push(x4);
+  yss.clear().push(y1).push(y2).push(y3).push(y4);
 
-  let clipyou = 0;
-  if ((y1 ^ y2) < 0) {
-    if ((x1 ^ x2) < 0)
-      clipyou ^= (x1 * y2 < x2 * y1 ? 1 : 0) ^ (y1 < y2 ? 1 : 0);
-    else if (x1 >= 0)
-      clipyou ^= 1;
-  }
-  if ((y2 ^ y3) < 0) {
-    if ((x2 ^ x3) < 0)
-      clipyou ^= (x2 * y3 < x3 * y2 ? 1 : 0) ^ (y2 < y3 ? 1 : 0);
-    else if (x2 >= 0)
-      clipyou ^= 1;
-  }
-  if ((y3 ^ y4) < 0) {
-    if ((x3 ^ x4) < 0)
-      clipyou ^= (x3 * y4 < x4 * y3 ? 1 : 0) ^ (y3 < y4 ? 1 : 0);
-    else if (x3 >= 0)
-      clipyou ^= 1;
-  }
-  if ((y4 ^ y1) < 0) {
-    if ((x4 ^ x1) < 0)
-      clipyou ^= (x4 * y1 < x1 * y4 ? 1 : 0) ^ (y4 < y1 ? 1 : 0);
-    else if (x4 >= 0)
-      clipyou ^= 1;
-  }
-
-  if (clipyou == 0) return;
+  if (!inPolygon(ix, iy, xss, yss)) return;
   hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
+
+  // let x1 = int(x + sinang * dx + cosang * dy) - ix;
+  // let y1 = int(y + sinang * dy - cosang * dx) - iy;
+  // let x2 = int(x1 - sinang * dw);
+  // let y2 = int(y1 + cosang * dw);
+  // let x3 = int(x2 - cosang * dh);
+  // let y3 = int(y2 - sinang * dh);
+  // let x4 = int(x1 - cosang * dh);
+  // let y4 = int(y1 - sinang * dh);
+
+  // let clipyou = 0;
+  // if ((y1 ^ y2) < 0) {
+  //   if ((x1 ^ x2) < 0)
+  //     clipyou ^= (x1 * y2 < x2 * y1 ? 1 : 0) ^ (y1 < y2 ? 1 : 0);
+  //   else if (x1 >= 0)
+  //     clipyou ^= 1;
+  // }
+  // if ((y2 ^ y3) < 0) {
+  //   if ((x2 ^ x3) < 0)
+  //     clipyou ^= (x2 * y3 < x3 * y2 ? 1 : 0) ^ (y2 < y3 ? 1 : 0);
+  //   else if (x2 >= 0)
+  //     clipyou ^= 1;
+  // }
+  // if ((y3 ^ y4) < 0) {
+  //   if ((x3 ^ x4) < 0)
+  //     clipyou ^= (x3 * y4 < x4 * y3 ? 1 : 0) ^ (y3 < y4 ? 1 : 0);
+  //   else if (x3 >= 0)
+  //     clipyou ^= 1;
+  // }
+  // if ((y4 ^ y1) < 0) {
+  //   if ((x4 ^ x1) < 0)
+  //     clipyou ^= (x4 * y1 < x1 * y4 ? 1 : 0) ^ (y4 < y1 ? 1 : 0);
+  //   else if (x4 >= 0)
+  //     clipyou ^= 1;
+  // }
+
+  // if (clipyou == 0) return;
+  // hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
 }
 
 
