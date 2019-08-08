@@ -1,5 +1,5 @@
 import { Board, Sector, FACE, WALL, FLOOR } from "./structs";
-import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE, inPolygon } from "./utils";
+import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE, inPolygon, spriteAngle } from "./utils";
 import { ArtInfoProvider, ArtInfo } from "./art";
 import { IndexedDeck, Deck } from "../../deck";
 import { int, len2d, cross2d, sqrLen2d, dot2d, PI2, sign } from "../../../libs/mathutils";
@@ -92,17 +92,14 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
   }
 }
 
-function canIntersect(xs: number, ys: number, x1: number, y1: number, x2: number, y2: number) {
-  return (x1 - xs) * (y2 - ys) >= (x2 - xs) * (y1 - ys);
-}
-
 function intersectWall(board: Board, wallId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan): number {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let x1 = wall.x, y1 = wall.y;
   let x2 = wall2.x, y2 = wall2.y;
 
-  if (!canIntersect(xs, ys, x1, y1, x2, y2)) return -1;
+
+  if (cross2d(x1 - xs, y1 - ys, x2 - xs, y2 - ys) <= 0) return -1;
 
   let intersect = rayIntersect(xs, ys, zs, vx, vy, vz, x1, y1, x2, y2);
   if (intersect == null) return -1;
@@ -155,7 +152,7 @@ function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, xs: num
   if (vx == 0 && vy == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
-  let ang = PI2 - (spr.ang / 2048) * PI2;
+  let ang = spriteAngle(spr.ang);
   let dx = Math.sin(ang) * (spr.xrepeat >> 2);
   let dy = Math.cos(ang) * (spr.xrepeat >> 2);
   let w = info.w;
@@ -164,7 +161,7 @@ function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, xs: num
   let hw = (w >> 1) + xoff;
   let x1 = x - dx * hw; let y1 = y - dy * hw;
   let x2 = x1 + dx * w; let y2 = y1 + dy * w;
-  if (spr.cstat.onesided && canIntersect(xs, ys, x1, y1, x2, y2)) return;
+  if (spr.cstat.onesided && cross2d(x1 - xs, y1 - ys, x2 - xs, y2 - ys) > 0) return;
   let intersect = rayIntersect(xs, ys, zs, vx, vy, vz, x1, y1, x2, y2);
   if (intersect == null) return;
   let [ix, iy, iz, it] = intersect;
@@ -190,7 +187,7 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
 
   let xoff = 0;//(info.attrs.xoff + spr.xoffset) * (spr.cstat.xflip ? -1 : 1);
   let yoff = 0;//(info.attrs.yoff + spr.yoffset) * (spr.cstat.yflip ? -1 : 1);
-  let ang = PI2 - (spr.ang / 2048) * PI2;
+  let ang = spriteAngle(spr.ang);
   let cosang = Math.cos(ang);
   let sinang = Math.sin(ang);
   let dx = ((info.w >> 1) + xoff) * (spr.xrepeat >> 2);

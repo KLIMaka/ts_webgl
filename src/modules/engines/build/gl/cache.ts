@@ -400,7 +400,7 @@ function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, w
   let info = art.getInfo(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
-  let ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
+  let ang = U.spriteAngle(spr.ang);
   let xo = (info.attrs.xoff * spr.xrepeat) / 4;
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
 
@@ -739,7 +739,7 @@ function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable
   let tex = art.get(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
-  let ang = MU.PI2 - (spr.ang / 2048) * MU.PI2;
+  let ang = U.spriteAngle(spr.ang);
   let xo = (info.attrs.xoff * spr.xrepeat) / 4;
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
   let xf = spr.cstat.xflip; let yf = spr.cstat.yflip;

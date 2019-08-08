@@ -341,3 +341,7 @@ export function ang2vec(ang: number): GLM.Vec3Array {
   ang += Math.PI / 2;
   return GLM.vec3.fromValues(Math.sin(ang), 0, Math.cos(ang))
 }
+
+export function spriteAngle(ang: number): number {
+  return MU.PI2 - (ang * ANGSCALE * 2) * MU.PI2;
+}
