@@ -164,7 +164,7 @@ function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, xs: num
   let hw = (w >> 1) + xoff;
   let x1 = x - dx * hw; let y1 = y - dy * hw;
   let x2 = x1 + dx * w; let y2 = y1 + dy * w;
-  if (spr.cstat.onesided && !canIntersect(xs, ys, x1, y1, x2, y2)) return;
+  if (spr.cstat.onesided && canIntersect(xs, ys, x1, y1, x2, y2)) return;
   let intersect = rayIntersect(xs, ys, zs, vx, vy, vz, x1, y1, x2, y2);
   if (intersect == null) return;
   let [ix, iy, iz, it] = intersect;
@@ -183,13 +183,13 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   let x = spr.x, y = spr.y, z = spr.z;
   let dz = (z - zs) / -ZSCALE;
   if (sign(dz) != sign(vz)) return;
-  if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs > z) return;
+  if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs < z) return;
   let t = dz / vz;
   let ix = xs + int(vx * t);
   let iy = ys + int(vy * t);
 
-  let xoff = (info.attrs.xoff + spr.xoffset) * (spr.cstat.xflip ? -1 : 1);
-  let yoff = (info.attrs.yoff + spr.yoffset) * (spr.cstat.yflip ? -1 : 1);
+  let xoff = 0;//(info.attrs.xoff + spr.xoffset) * (spr.cstat.xflip ? -1 : 1);
+  let yoff = 0;//(info.attrs.yoff + spr.yoffset) * (spr.cstat.yflip ? -1 : 1);
   let ang = PI2 - (spr.ang / 2048) * PI2;
   let cosang = Math.cos(ang);
   let sinang = Math.sin(ang);

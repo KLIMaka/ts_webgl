@@ -106,7 +106,6 @@ function pointerHitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruc
   }
   let [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
   hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, -vz, hit, 0);
-  console.log(hit.t);
   PROFILE.endProfile();
 }
 
