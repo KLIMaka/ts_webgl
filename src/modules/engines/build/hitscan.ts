@@ -132,7 +132,7 @@ function intersectWall(board: Board, wallId: number, xs: number, ys: number, zs:
 function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
   if (vx == 0 && vy == 0) return;
   let spr = board.sprites[sprId];
-  let x = spr.x, y = spr.y, z = spr.z;
+  let x = spr.x, y = spr.y, z = -spr.z;
   let dx = x - xs; let dy = y - ys;
   let vl = sqrLen2d(vx, vy);
   let t = dot2d(vx, vy, dx, dy) / vl;

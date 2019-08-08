@@ -228,17 +228,17 @@ export function heinumCalc(board: Board, sectorId: number, x: number, y: number,
 }
 
 export function lineIntersect(
-  x1: number, y1: number, z1: number,
+  sx: number, sy: number, sz: number,
   x2: number, y2: number, z2: number,
-  x3: number, y3: number, x4: number, y4: number): number[] {
+  x3: number, y3: number, x4: number, y4: number): [number, number, number, number] {
 
-  let x21 = x2 - x1, x34 = x3 - x4;
-  let y21 = y2 - y1, y34 = y3 - y4;
+  let x21 = x2 - sx, x34 = x3 - x4;
+  let y21 = y2 - sy, y34 = y3 - y4;
   let bot = MU.cross2d(x21, y21, x34, y34);
 
   if (bot == 0) return null;
 
-  let x31 = x3 - x1, y31 = y3 - y1;
+  let x31 = x3 - sx, y31 = y3 - sy;
   let topt = MU.cross2d(x31, y31, x34, y34);
 
   if (bot > 0) {
@@ -256,24 +256,24 @@ export function lineIntersect(
   }
 
   let t = topt / bot;
-  let x = x1 + MU.int(x21 * t);
-  let y = y1 + MU.int(y21 * t);
-  let z = z1 + MU.int((z2 - z1) * t) * -ZSCALE;
+  let x = sx + MU.int(x21 * t);
+  let y = sy + MU.int(y21 * t);
+  let z = sz + MU.int((z2 - sz) * t) * -ZSCALE;
 
   return [x, y, z, t];
 }
 
 export function rayIntersect(
-  x1: number, y1: number, z1: number,
+  xs: number, ys: number, zs: number,
   vx: number, vy: number, vz: number,
-  x3: number, y3: number, x4: number, y4: number): number[] {
+  x3: number, y3: number, x4: number, y4: number): [number, number, number, number] {
 
   let x34 = x3 - x4;
   let y34 = y3 - y4;
   let bot = MU.cross2d(vx, vy, x34, y34);
   if (bot == 0) return null;
-  let x31 = x3 - x1;
-  let y31 = y3 - y1;
+  let x31 = x3 - xs;
+  let y31 = y3 - ys;
   let topt = MU.cross2d(x31, y31, x34, y34);
 
   if (bot > 0) {
@@ -289,9 +289,9 @@ export function rayIntersect(
   }
 
   let t = topt / bot;
-  let x = x1 + MU.int(vx * t);
-  let y = y1 + MU.int(vy * t);
-  let z = z1 + MU.int(vz * t) * -ZSCALE;
+  let x = xs + MU.int(vx * t);
+  let y = ys + MU.int(vy * t);
+  let z = zs + MU.int(vz * t) * -ZSCALE;
 
   return [x, y, z, t];
 }
