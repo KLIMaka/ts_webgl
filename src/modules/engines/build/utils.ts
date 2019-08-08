@@ -185,7 +185,7 @@ export let ANGSCALE = (1 / 4096);
 
 export function slope(board: Board, sectorId: number, x: number, y: number, heinum: number) {
   let sec = board.sectors[sectorId];
-  let wall1 = board.walls[sec.wallnum];
+  let wall1 = board.walls[sec.wallptr];
   let wall2 = board.walls[wall1.point2];
   let dx = wall2.x - wall1.x;
   let dy = wall2.y - wall1.y;

@@ -41,6 +41,8 @@ export class Hitscan {
   }
 
   public hit(x: number, y: number, z: number, t: number, id: number, type: SubType) {
+    if (Math.abs(t - this.t) < 100)
+      console.log(id, type);
     if (this.testHit(x, y, z, t)) {
       this.id = id;
       this.type = type;
@@ -132,7 +134,7 @@ function intersectWall(board: Board, wallId: number, xs: number, ys: number, zs:
 function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
   if (vx == 0 && vy == 0) return;
   let spr = board.sprites[sprId];
-  let x = spr.x, y = spr.y, z = -spr.z;
+  let x = spr.x, y = spr.y, z = spr.z;
   let dx = x - xs; let dy = y - ys;
   let vl = sqrLen2d(vx, vy);
   let t = dot2d(vx, vy, dx, dy) / vl;
@@ -179,7 +181,7 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   if (vz == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
-  let dz = (zs - z) / -ZSCALE;
+  let dz = (z - zs) / -ZSCALE;
   if (sign(dz) != sign(vz)) return;
   if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs > z) return;
   let t = dz / vz;
@@ -209,44 +211,6 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
 
   if (!inPolygon(ix, iy, xss, yss)) return;
   hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
-
-  // let x1 = int(x + sinang * dx + cosang * dy) - ix;
-  // let y1 = int(y + sinang * dy - cosang * dx) - iy;
-  // let x2 = int(x1 - sinang * dw);
-  // let y2 = int(y1 + cosang * dw);
-  // let x3 = int(x2 - cosang * dh);
-  // let y3 = int(y2 - sinang * dh);
-  // let x4 = int(x1 - cosang * dh);
-  // let y4 = int(y1 - sinang * dh);
-
-  // let clipyou = 0;
-  // if ((y1 ^ y2) < 0) {
-  //   if ((x1 ^ x2) < 0)
-  //     clipyou ^= (x1 * y2 < x2 * y1 ? 1 : 0) ^ (y1 < y2 ? 1 : 0);
-  //   else if (x1 >= 0)
-  //     clipyou ^= 1;
-  // }
-  // if ((y2 ^ y3) < 0) {
-  //   if ((x2 ^ x3) < 0)
-  //     clipyou ^= (x2 * y3 < x3 * y2 ? 1 : 0) ^ (y2 < y3 ? 1 : 0);
-  //   else if (x2 >= 0)
-  //     clipyou ^= 1;
-  // }
-  // if ((y3 ^ y4) < 0) {
-  //   if ((x3 ^ x4) < 0)
-  //     clipyou ^= (x3 * y4 < x4 * y3 ? 1 : 0) ^ (y3 < y4 ? 1 : 0);
-  //   else if (x3 >= 0)
-  //     clipyou ^= 1;
-  // }
-  // if ((y4 ^ y1) < 0) {
-  //   if ((x4 ^ x1) < 0)
-  //     clipyou ^= (x4 * y1 < x1 * y4 ? 1 : 0) ^ (y4 < y1 ? 1 : 0);
-  //   else if (x4 >= 0)
-  //     clipyou ^= 1;
-  // }
-
-  // if (clipyou == 0) return;
-  // hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
 }
 
 
@@ -255,11 +219,11 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, 
   if (spr.picnum == 0 || spr.cstat.invisible) return;
   let info = artInfo.getInfo(spr.picnum);
   if (spr.cstat.type == FACE) {
-    intersectFaceSprite(board, info, sprId, xs, ys, ys, vx, vy, vz, hit);
+    intersectFaceSprite(board, info, sprId, xs, ys, zs, vx, vy, vz, hit);
   } else if (spr.cstat.type == WALL) {
-    intersectWallSprite(board, info, sprId, xs, ys, ys, vx, vy, vz, hit);
+    intersectWallSprite(board, info, sprId, xs, ys, zs, vx, vy, vz, hit);
   } else if (spr.cstat.type == FLOOR) {
-    intersectFloorSprite(board, info, sprId, xs, ys, ys, vx, vy, vz, hit);
+    intersectFloorSprite(board, info, sprId, xs, ys, zs, vx, vy, vz, hit);
   }
 }
 

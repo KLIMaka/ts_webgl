@@ -1,4 +1,4 @@
-import { len2d } from "../../../libs/mathutils";
+import { len2d, int } from "../../../libs/mathutils";
 import * as GLM from "../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../deck";
 import * as BU from "./boardutils";
@@ -227,19 +227,27 @@ class SpriteEnt {
 
   constructor(
     public spriteId: number,
-    public origin = GLM.vec3.create()) { }
+    public origin = GLM.vec3.create(),
+    public origAng = 0) { }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
     GLM.vec3.set(this.origin, spr.x, spr.z / ZSCALE, spr.y);
+    this.origAng = spr.ang;
   }
 
   public move(msg: Move, ctx: BuildContext) {
-    let x = ctx.snap(this.origin[0] + msg.handle.dx());
-    let y = ctx.snap(this.origin[2] + msg.handle.dy());
-    let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
-    if (BU.moveSprite(ctx.board, this.spriteId, x, y, z)) {
+    if (msg.handle.parallel) {
+      let spr = ctx.board.sprites[this.spriteId];
+      spr.ang = ctx.snap(this.origAng + msg.handle.dz());
       ctx.invalidateSprite(this.spriteId);
+    } else {
+      let x = ctx.snap(this.origin[0] + msg.handle.dx());
+      let y = ctx.snap(this.origin[2] + msg.handle.dy());
+      let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
+      if (BU.moveSprite(ctx.board, this.spriteId, x, y, z)) {
+        ctx.invalidateSprite(this.spriteId);
+      }
     }
   }
 

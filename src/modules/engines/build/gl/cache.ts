@@ -8,6 +8,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
 import { State } from '../../../stategl';
 import { SubType } from '../hitscan';
+import { pointOnWall } from '../boardutils';
 
 class EnsureArray<T> {
   private array: Array<T> = [];
@@ -94,6 +95,7 @@ export class Cache {
   public sectorsWireframe: EnsureArray<Entry<SectorWireframe>> = createArray(sectorWireframeFactory);
   public wallsWireframe: EnsureArray<Entry<WallWireframe>> = createArray(wallWireframeFactory);
   public spritesWireframe: EnsureArray<Entry<SpriteWireframe>> = createArray(spriteWireframeFactory);
+  public spritesAngWireframe: EnsureArray<Entry<SpriteWireframe>> = createArray(spriteWireframeFactory);
 
   constructor(private board: Board, private art: ArtProvider) {
   }
@@ -159,6 +161,21 @@ export class Cache {
       point.valid = true;
     }
     return point.value;
+  }
+
+  public getSpriteAng(id: number): Wireframe {
+    let spriteAng = this.spritesAngWireframe.get(id);
+    if (!spriteAng.valid) {
+      let spr = this.board.sprites[id];
+      let ang = spr.ang;
+      let buff = spriteAng.value.buff;
+      buff.allocate(3, 6);
+      let x = spr.x, y = spr.y, z = spr.z / U.ZSCALE;
+
+      buff.writePos(0, 0, 0, 0);
+      spriteAng.valid = true;
+    }
+    return spriteAng.value;
   }
 
   public invalidateSector(id: number) {
