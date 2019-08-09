@@ -8,7 +8,7 @@ import { BuildContext } from '../boardedit';
 import { Cache } from './cache';
 import { PvsBoardVisitorResult } from '../boardvisitor';
 import { Deck } from '../../../deck';
-import { isSector, SubType, isWall } from '../hitscan';
+import { isSector, SubType, isWall, isSprite } from '../hitscan';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
@@ -48,12 +48,15 @@ function drawEdges(gl: WebGLRenderingContext, cache: Cache, board: Board, id: nu
     for (let w = start; w < end; w++) {
       points.push(cache.getWallPoint(w, 32, type == SubType.CEILING));
     }
+    points.push(cache.getSectorHinge(id, type == SubType.CEILING));
   } else if (isWall(type)) {
     let wall = board.walls[id];
     points.push(cache.getWallPoint(id, 32, false));
     points.push(cache.getWallPoint(id, 32, true));
     points.push(cache.getWallPoint(wall.point2, 32, false));
     points.push(cache.getWallPoint(wall.point2, 32, true));
+  } else if (isSprite(type)) {
+    points.push(cache.getSpriteAng(id));
   }
   BGL.draw(gl, cache.getByIdType(id, addId, type, true));
   for (let i = 0; i < points.length(); i++)

@@ -41,8 +41,6 @@ export class Hitscan {
   }
 
   public hit(x: number, y: number, z: number, t: number, id: number, type: SubType) {
-    if (Math.abs(t - this.t) < 100)
-      console.log(id, type);
     if (this.testHit(x, y, z, t)) {
       this.id = id;
       this.type = type;

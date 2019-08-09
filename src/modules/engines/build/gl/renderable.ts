@@ -111,11 +111,12 @@ export class Wireframe implements Renderable {
   public type: Type = Type.SURFACE;
   public buff: Buffer = new Buffer();
   public mode: number = WebGLRenderingContext.LINES;
+  public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
   public draw(gl: WebGLRenderingContext, state: State) {
     if (this.buff.get() == null) return;
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
-    state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, 1));
+    state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
     state.draw(gl, this.mode);
   }
