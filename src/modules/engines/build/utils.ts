@@ -181,7 +181,7 @@ export function groupSprites(board: Board): { [index: number]: number[] } {
   return sec2spr;
 }
 
-export let ANGSCALE = (1 / 4096);
+export const ANGSCALE = (1 / 4096);
 
 export function slope(board: Board, sectorId: number, x: number, y: number, heinum: number) {
   let sec = board.sectors[sectorId];
@@ -193,8 +193,8 @@ export function slope(board: Board, sectorId: number, x: number, y: number, hein
   dx /= ln; dy /= ln;
   let dx1 = x - wall1.x;
   let dy1 = y - wall1.y;
-  let k = MU.cross2d(dx, dy, dx1, dy1);
-  return MU.int(heinum * ANGSCALE * k * -ZSCALE);
+  let k = -MU.cross2d(dx, dy, dx1, dy1);
+  return MU.int(heinum * ANGSCALE * k * ZSCALE);
 }
 
 export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
@@ -208,8 +208,8 @@ export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
   return function (x: number, y: number, heinum: number): number {
     let dx1 = x - wall1.x;
     let dy1 = y - wall1.y;
-    let k = MU.cross2d(dx, dy, dx1, dy1);
-    return MU.int(heinum * ANGSCALE * k * -ZSCALE);
+    let k = -MU.cross2d(dx, dy, dx1, dy1);
+    return MU.int(heinum * ANGSCALE * k * ZSCALE);
   };
 }
 
@@ -224,7 +224,7 @@ export function heinumCalc(board: Board, sectorId: number, x: number, y: number,
   let dx1 = x - wall1.x;
   let dy1 = y - wall1.y;
   let k = MU.cross2d(dx, dy, dx1, dy1);
-  return Math.round(z / (ANGSCALE * k * -ZSCALE));
+  return Math.round(z / (ANGSCALE * k * ZSCALE));
 }
 
 export function lineIntersect(
@@ -258,7 +258,7 @@ export function lineIntersect(
   let t = topt / bot;
   let x = sx + MU.int(x21 * t);
   let y = sy + MU.int(y21 * t);
-  let z = sz + MU.int((z2 - sz) * t) * -ZSCALE;
+  let z = sz + MU.int((z2 - sz) * t) * ZSCALE;
 
   return [x, y, z, t];
 }
@@ -291,7 +291,7 @@ export function rayIntersect(
   let t = topt / bot;
   let x = xs + MU.int(vx * t);
   let y = ys + MU.int(vy * t);
-  let z = zs + MU.int(vz * t) * -ZSCALE;
+  let z = zs + MU.int(vz * t) * ZSCALE;
 
   return [x, y, z, t];
 }

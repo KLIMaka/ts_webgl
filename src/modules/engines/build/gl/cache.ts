@@ -425,10 +425,10 @@ function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: 
 }
 
 function fillbuffersForFloorSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, renderable: Wireframe) {
-  let dwx = Math.sin(-ang) * hw;
-  let dwy = Math.cos(-ang) * hw;
-  let dhx = Math.sin(-ang + Math.PI / 2) * hh;
-  let dhy = Math.cos(-ang + Math.PI / 2) * hh;
+  let dwx = Math.sin(ang) * hw;
+  let dwy = Math.cos(ang) * hw;
+  let dhx = Math.sin(ang + Math.PI / 2) * hh;
+  let dhy = Math.cos(ang + Math.PI / 2) * hh;
   genQuadWireframe([
     x - dwx - dhx, y - dwy - dhy, z,
     x + dwx - dhx, y + dwy - dhy, z,
@@ -747,10 +747,10 @@ function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, y
 }
 
 function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SpriteSolid) {
-  let dwx = Math.sin(-ang) * hw;
-  let dwy = Math.cos(-ang) * hw;
-  let dhx = Math.sin(-ang + Math.PI / 2) * hh;
-  let dhy = Math.cos(-ang + Math.PI / 2) * hh;
+  let dwx = Math.sin(ang) * hw;
+  let dwy = Math.cos(ang) * hw;
+  let dhx = Math.sin(ang + Math.PI / 2) * hh;
+  let dhy = Math.cos(ang + Math.PI / 2) * hh;
   let s = !(xf || yf) ? 1 : -1;
   genQuad([
     x - dwx - dhx, y - dwy - dhy, z,

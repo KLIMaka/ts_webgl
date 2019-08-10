@@ -276,7 +276,7 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Contr
 }
 
 function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[]) {
-  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: false, stencil: true });
+  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
 
   let panel = UI.panel('Info');
   let props = UI.props();

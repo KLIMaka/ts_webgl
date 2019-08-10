@@ -51,7 +51,7 @@ export class Hitscan {
 function hitSector(board: Board, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, t: number, hit: Hitscan, type: SubType) {
   let x = xs + int(vx * t);
   let y = ys + int(vy * t);
-  let z = zs + int(vz * t) * -ZSCALE;
+  let z = zs + int(vz * t) * ZSCALE;
   if (inSector(board, x, y, secId))
     hit.hit(x, y, z, t, secId, type);
 }
@@ -69,22 +69,22 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
   if (dl == 0) return;
   let ndx = dx / dl;
   let ndy = dy / dl;
-  let angk = cross2d(ndx, ndy, nvx, nvy);
+  let angk = -cross2d(ndx, ndy, nvx, nvy);
 
   let ceilk = sec.ceilingheinum * ANGSCALE * angk;
-  let dk = ceilk - vz;
+  let dk = vz - ceilk;
   if (dk > 0) {
     let ceilz = slope(board, secId, xs, ys, sec.ceilingheinum) + sec.ceilingz;
-    let ceildz = (zs - ceilz) / -ZSCALE;
+    let ceildz = (ceilz - zs) / ZSCALE;
     let t = ceildz / dk;
     hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, SubType.CEILING);
   }
 
   let floork = sec.floorheinum * ANGSCALE * angk;
-  let dk1 = vz - floork;
+  let dk1 = floork - vz;
   if (dk1 > 0) {
     let floorz = slope(board, secId, xs, ys, sec.floorheinum) + sec.floorz;
-    let floordz = (floorz - zs) / -ZSCALE;
+    let floordz = (zs - floorz) / ZSCALE;
     let t = floordz / dk1;
     hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, SubType.FLOOR);
   }
@@ -134,7 +134,7 @@ function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, xs: num
   let vl = sqrLen2d(vx, vy);
   let t = dot2d(vx, vy, dx, dy) / vl;
   if (t <= 0) return;
-  let intz = zs + int(vz * t) * -ZSCALE;
+  let intz = zs + int(vz * t) * ZSCALE;
   let h = info.h * (spr.yrepeat << 2);
   z += spr.cstat.realCenter ? h >> 1 : 0;
   z -= info.attrs.yoff * (spr.yrepeat << 2);
@@ -176,7 +176,7 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   if (vz == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
-  let dz = (z - zs) / -ZSCALE;
+  let dz = (z - zs) / ZSCALE;
   if (sign(dz) != sign(vz)) return;
   if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs < z) return;
   let t = dz / vz;
