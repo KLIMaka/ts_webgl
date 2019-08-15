@@ -57,10 +57,6 @@ function hitSector(board: Board, secId: number, xs: number, ys: number, zs: numb
 }
 
 function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
-  let vl = len2d(vx, vy);
-  let nvx = vx / vl;
-  let nvy = vy / vl;
-
   let wall1 = board.walls[sec.wallptr]
   let wall2 = board.walls[wall1.point2];
   let dx = wall2.x - wall1.x;
@@ -69,7 +65,7 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
   if (dl == 0) return;
   let ndx = dx / dl;
   let ndy = dy / dl;
-  let angk = -cross2d(ndx, ndy, nvx, nvy);
+  let angk = -cross2d(ndx, ndy, vx, vy);
 
   let ceilk = sec.ceilingheinum * ANGSCALE * angk;
   let dk = vz - ceilk;

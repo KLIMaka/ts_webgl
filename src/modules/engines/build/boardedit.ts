@@ -323,7 +323,7 @@ function getClosestWall(board: Board, hit: Hitscan): number {
 let list = new Deck<MessageHandler>();
 export function getFromHitscan(board: Board, hit: Hitscan): Deck<MessageHandler> {
   list.clear();
-  let w = -1;//getClosestWall(board, hit);
+  let w = getClosestWall(board, hit);
   if (w != -1) {
     list.push(WallEnt.create(w, SubType.LOWER_WALL));
   } else if (isWall(hit.type)) {
