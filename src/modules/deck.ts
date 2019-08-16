@@ -34,13 +34,9 @@ export class Deck<T> implements Collection<T>{
 export class IndexedDeck<T> extends Deck<T>{
   private index = new Map<T, number>();
 
-  public get(i: number) {
-    return this.array[i];
-  }
-
   public push(value: T): IndexedDeck<T> {
     super.push(value);
-    this.array[this.pointer] = value;
+    this.index.set(value, this.pointer);
     return this;
   }
 

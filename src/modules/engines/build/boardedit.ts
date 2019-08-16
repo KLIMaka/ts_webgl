@@ -201,15 +201,14 @@ class WallSegmentsEnt {
     let wall = ctx.board.walls[this.refwall];
     GLM.vec2.set(this.origin, wall.x, wall.y);
     this.active = true;
-    WallSegmentsEnt.highlightedWalls(ctx.board, this.wallIds, this.highlighted);
-
   }
 
   public move(msg: Move, ctx: BuildContext) {
     let x = ctx.snap(this.origin[0] + msg.handle.dx());
     let y = ctx.snap(this.origin[1] + msg.handle.dy());
+    let wall = ctx.board.walls[this.refwall];
     let dx = x - this.origin[0];
-    let dy = x - this.origin[1];
+    let dy = y - this.origin[1];
     if (moveWall(ctx.board, this.refwall, x, y)) {
       for (let i = 0; i < this.wallIds.length(); i++) {
         let w = this.wallIds.get(i);
@@ -478,7 +477,7 @@ export function getFromHitscan(board: Board, hit: Hitscan): Deck<MessageHandler>
     list.push(WallEnt.create(w));
   } else if (isWall(hit.type)) {
     let w1 = nextwall(board, hit.id);
-    // list.push(WallSegmentsEnt.create(segment.clear().push(hit.id).push(w1)));
+    list.push(WallSegmentsEnt.create(segment.clear().push(hit.id).push(w1)));
   } else if (isSector(hit.type)) {
     list.push(SectorEnt.create(hit.id, hit.type));
   } else if (isSprite(hit.type)) {
