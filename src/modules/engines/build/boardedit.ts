@@ -1,12 +1,13 @@
 import { len2d } from "../../../libs/mathutils";
 import * as GLM from "../../../libs_js/glmatrix";
-import { Deck, IndexedDeck } from "../../deck";
+import { Deck, IndexedDeck, Collection } from "../../deck";
 import { closestWallInSector, connectedWalls, moveSprite, moveWall, nextwall, prevwall, splitWall } from "./boardutils";
 import { ArtProvider } from "./gl/cache";
 import { Hitscan, isSector, isSprite, isWall, SubType } from "./hitscan";
 import { Message, MessageHandler, MessageHandlerFactory } from "./messages";
 import { Board } from "./structs";
 import { createSlopeCalculator, heinumCalc, sectorOfWall, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "./utils";
+import { List } from "../../../libs/list";
 
 class MovingHandle {
   private startPoint = GLM.vec3.create();
@@ -112,6 +113,146 @@ export let HIGHLIGHT = new Highlight();
 export let SPLIT_WALL = new SplitWall();
 export let DRAW_WALL = new DrawWall();
 
+class WallSegmentsEnt {
+  private static invalidatedSectors = new IndexedDeck<number>();
+
+  private static factory = new MessageHandlerFactory()
+    .register(StartMove, (obj: WallSegmentsEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
+    .register(Move, (obj: WallSegmentsEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
+    .register(EndMove, (obj: WallSegmentsEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
+    .register(Highlight, (obj: WallSegmentsEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx))
+    .register(SplitWall, (obj: WallSegmentsEnt, msg: SplitWall, ctx: BuildContext) => obj.split(msg, ctx));
+
+  public static create(ids: Collection<number>) {
+    return WallSegmentsEnt.factory.handler(new WallSegmentsEnt(ids));
+  }
+
+  constructor(
+    public wallIds: Collection<number>,
+    public origin = GLM.vec2.create(),
+    public refwall = -1,
+    public active = false,
+    public highlighted = new Deck<number>(),
+    public connectedWalls = new IndexedDeck<number>()
+  ) { }
+
+  private invalidate(ctx: BuildContext) {
+    let invalidatedSectors = WallSegmentsEnt.invalidatedSectors.clear();
+    let cwalls = WallSegmentsEnt.connectedWalls(ctx.board, this.wallIds, this.connectedWalls);
+    for (let i = 0; i < this.wallIds.length(); i++) {
+      let w = this.wallIds.get(i);
+      connectedWalls(ctx.board, w, cwalls);
+    }
+
+    for (let i = 0; i < cwalls.length(); i++) {
+      let w = cwalls.get(i);
+      let s = sectorOfWall(ctx.board, w);
+      if (invalidatedSectors.indexOf(s) == -1) {
+        invalidateSector(s, ctx);
+        invalidatedSectors.push(s);
+      }
+    }
+  }
+
+  private static highlightedWalls(board: Board, walls: Collection<number>, result: Deck<number>): Collection<number> {
+    if (result.length() != 0) return result;
+    let chains = new Deck<List<number>>();
+    for (let i = 1; i < walls.length(); i++) {
+      let w = walls.get(i);
+      let partOfOldChain = false;
+      for (let c = 0; c < chains.length(); c++) {
+        let chain = chains.get(c);
+        if (nextwall(board, w) == chain.first().obj) {
+          chain.insertBefore(w);
+          partOfOldChain = true;
+          break;
+        } else if (prevwall(board, w) == chain.last().obj) {
+          chain.insertAfter(w);
+          partOfOldChain = true;
+          break;
+        }
+      }
+      if (!partOfOldChain) {
+        let l = new List<number>();
+        l.push(w);
+      }
+    }
+    for (let c = 0; c < chains.length(); c++) {
+      let chain = chains.get(c);
+      chain.pop();
+      for (let node = chain.first(); node != chain.terminator(); node = node.next) {
+        result.push(node.obj);
+      }
+    }
+    return result;
+  }
+
+  private static connectedWalls(board: Board, walls: Collection<number>, result: IndexedDeck<number>) {
+    if (result.length() != 0) return result;
+    for (let i = 0; i < walls.length(); i++) {
+      let w = walls.get(i);
+      connectedWalls(board, w, result);
+    }
+    return result;
+  }
+
+  public startMove(msg: StartMove, ctx: BuildContext) {
+    this.refwall = getClosestWallByIds(ctx.board, msg.handle.hit, this.wallIds);
+    let wall = ctx.board.walls[this.refwall];
+    GLM.vec2.set(this.origin, wall.x, wall.y);
+    this.active = true;
+    WallSegmentsEnt.highlightedWalls(ctx.board, this.wallIds, this.highlighted);
+
+  }
+
+  public move(msg: Move, ctx: BuildContext) {
+    let x = ctx.snap(this.origin[0] + msg.handle.dx());
+    let y = ctx.snap(this.origin[1] + msg.handle.dy());
+    let dx = x - this.origin[0];
+    let dy = x - this.origin[1];
+    if (moveWall(ctx.board, this.refwall, x, y)) {
+      for (let i = 0; i < this.wallIds.length(); i++) {
+        let w = this.wallIds.get(i);
+        let wall = ctx.board.walls[w];
+        moveWall(ctx.board, w, wall.x + dx, wall.y + dy);
+      }
+      this.invalidate(ctx);
+    }
+  }
+
+  public endMove(msg: EndMove, ctx: BuildContext) {
+    this.active = false;
+  }
+
+  public highlight(msg: Highlight, ctx: BuildContext) {
+    if (this.active) {
+      let cwalls = WallSegmentsEnt.connectedWalls(ctx.board, this.wallIds, this.connectedWalls);
+      for (let i = 0; i < cwalls.length(); i++) {
+        let w = cwalls.get(i);
+        let s = sectorOfWall(ctx.board, w);
+        ctx.highlightWall(ctx.gl, ctx.board, w, s);
+        let p = prevwall(ctx.board, w);
+        ctx.highlightWall(ctx.gl, ctx.board, p, s);
+        ctx.highlightSector(ctx.gl, ctx.board, s);
+      }
+    } else {
+      let hwalls = WallSegmentsEnt.highlightedWalls(ctx.board, this.wallIds, this.highlighted);
+      for (let i = 0; i < hwalls.length(); i++) {
+        let w = hwalls.get(i);
+        let s = sectorOfWall(ctx.board, w);
+        ctx.highlightWall(ctx.gl, ctx.board, w, s);
+      }
+    }
+  }
+
+  public split(msg: SplitWall, ctx: BuildContext) {
+    //   if (this.wallId != msg.wallId) return;
+    //   splitWall(ctx.board, this.wallId, msg.x, msg.y, ctx.art, []);
+    //   let s = sectorOfWall(ctx.board, this.wallId);
+    //   invalidateSector(s, ctx);
+  }
+}
+
 class WallEnt {
   private static connectedWalls = new Deck<number>();
   private static invalidatedSectors = new IndexedDeck<number>();
@@ -119,16 +260,14 @@ class WallEnt {
     .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: WallEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(EndMove, (obj: WallEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
-    .register(Highlight, (obj: WallEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx))
-    .register(SplitWall, (obj: WallEnt, msg: SplitWall, ctx: BuildContext) => obj.split(msg, ctx));
+    .register(Highlight, (obj: WallEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
-  public static create(id: number, type: SubType) {
-    return WallEnt.factory.handler(new WallEnt(id, type));
+  public static create(id: number) {
+    return WallEnt.factory.handler(new WallEnt(id));
   }
 
   constructor(
     public wallId: number,
-    public type: SubType,
     public origin = GLM.vec2.create(),
     public originZ = 0,
     public zMotionSector = -1,
@@ -203,15 +342,8 @@ class WallEnt {
       }
     } else {
       let s = sectorOfWall(ctx.board, this.wallId);
-      ctx.highlight(ctx.gl, ctx.board, this.wallId, s, this.type);
+      ctx.highlightWall(ctx.gl, ctx.board, this.wallId, s);
     }
-  }
-
-  public split(msg: SplitWall, ctx: BuildContext) {
-    if (this.wallId != msg.wallId) return;
-    splitWall(ctx.board, this.wallId, msg.x, msg.y, ctx.art, []);
-    let s = sectorOfWall(ctx.board, this.wallId);
-    invalidateSector(s, ctx);
   }
 }
 
@@ -311,6 +443,23 @@ class SectorEnt {
   }
 }
 
+function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
+  if (ids.length() == 1)
+    return ids.get(0);
+  let id = -1;
+  let mindist = Number.MAX_VALUE;
+  for (let i = 0; i < ids.length(); i++) {
+    let w = ids.get(i);
+    let wall = board.walls[w];
+    let dist = len2d(wall.x - hit.x, wall.y - hit.y);
+    if (dist < mindist) {
+      id = w;
+      mindist = dist;
+    }
+  }
+  return id;
+}
+
 function getClosestWall(board: Board, hit: Hitscan): number {
   if (isWall(hit.type)) {
     return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, 64);
@@ -321,15 +470,15 @@ function getClosestWall(board: Board, hit: Hitscan): number {
 }
 
 let list = new Deck<MessageHandler>();
+let segment = new Deck<number>();
 export function getFromHitscan(board: Board, hit: Hitscan): Deck<MessageHandler> {
   list.clear();
   let w = getClosestWall(board, hit);
   if (w != -1) {
-    list.push(WallEnt.create(w, SubType.LOWER_WALL));
+    list.push(WallEnt.create(w));
   } else if (isWall(hit.type)) {
     let w1 = nextwall(board, hit.id);
-    list.push(WallEnt.create(hit.id, hit.type));
-    list.push(WallEnt.create(w1, hit.type));
+    // list.push(WallSegmentsEnt.create(segment.clear().push(hit.id).push(w1)));
   } else if (isSector(hit.type)) {
     list.push(SectorEnt.create(hit.id, hit.type));
   } else if (isSprite(hit.type)) {

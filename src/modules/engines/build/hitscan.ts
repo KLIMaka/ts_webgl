@@ -175,9 +175,6 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   let dz = (z - zs) / ZSCALE;
   if (sign(dz) != sign(vz)) return;
   if (spr.cstat.onesided && (spr.cstat.yflip == 1) == zs < z) return;
-  let t = dz / vz;
-  let ix = xs + int(vx * t);
-  let iy = ys + int(vy * t);
 
   let xoff = 0;//(info.attrs.xoff + spr.xoffset) * (spr.cstat.xflip ? -1 : 1);
   let yoff = 0;//(info.attrs.yoff + spr.yoffset) * (spr.cstat.yflip ? -1 : 1);
@@ -200,6 +197,9 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
   xss.clear().push(x1).push(x2).push(x3).push(x4);
   yss.clear().push(y1).push(y2).push(y3).push(y4);
 
+  let t = dz / vz;
+  let ix = xs + int(vx * t);
+  let iy = ys + int(vy * t);
   if (!inPolygon(ix, iy, xss, yss)) return;
   hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
 }

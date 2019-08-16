@@ -4,40 +4,9 @@ export interface Collection<T> {
   length(): number;
 }
 
-export class IndexedDeck<T> implements Collection<T>{
-  private pointer = 0;
-  private array: T[] = [];
-  private index = new Map<T, number>();
-
-  public get(i: number) {
-    return this.array[i];
-  }
-
-  public push(value: T): IndexedDeck<T> {
-    this.index.set(value, this.pointer);
-    this.array[this.pointer++] = value;
-    return this;
-  }
-
-  public clear(): IndexedDeck<T> {
-    this.pointer = 0;
-    this.index.clear();
-    return this;
-  }
-
-  public length() {
-    return this.pointer;
-  }
-
-  public indexOf(value: T) {
-    let idx = this.index.get(value);
-    return idx == undefined ? -1 : idx;
-  }
-}
-
 export class Deck<T> implements Collection<T>{
-  private pointer = 0;
-  private array: T[];
+  protected pointer = 0;
+  protected array: T[];
 
   constructor(size: number = 10) {
     this.array = new Array<T>(size);
@@ -59,5 +28,30 @@ export class Deck<T> implements Collection<T>{
 
   public length() {
     return this.pointer;
+  }
+}
+
+export class IndexedDeck<T> extends Deck<T>{
+  private index = new Map<T, number>();
+
+  public get(i: number) {
+    return this.array[i];
+  }
+
+  public push(value: T): IndexedDeck<T> {
+    super.push(value);
+    this.array[this.pointer] = value;
+    return this;
+  }
+
+  public clear(): IndexedDeck<T> {
+    super.clear();
+    this.index.clear();
+    return this;
+  }
+
+  public indexOf(value: T) {
+    let idx = this.index.get(value);
+    return idx == undefined ? -1 : idx;
   }
 }
