@@ -5,7 +5,7 @@ export class SectorExtra {
 }
 
 export class BloodSector extends Sector {
-  public extraData:SectorExtra;
+  public extraData: SectorExtra;
 }
 
 export class WallExtra {
@@ -13,18 +13,21 @@ export class WallExtra {
 }
 
 export class BloodWall extends Wall {
-  public extraData:WallExtra;
+  public extraData: WallExtra;
 }
 
 export class SpriteExtra {
-  public data1:number;
-  public data2:number;
-  public data3:number;
+  public data1: number;
+  public data2: number;
+  public data3: number;
 }
 
 export class BloodSprite extends Sprite {
-public extraData:SpriteExtra;
+  public extraData: SpriteExtra;
 }
 
 export class BloodBoard extends Board {
+  public sectors: BloodSector[];
+  public walls: BloodWall[];
+  public sprites: BloodSprite[];
 }

@@ -1,6 +1,6 @@
-import { Sprite, Board } from "./structs";
-import { BloodSprite, BloodBoard } from "./bloodstructs";
-import { RorLinks, RorLink } from "./gl/boardrenderer";
+import { BloodBoard } from "./bloodstructs";
+import { RorLink, RorLinks } from "./gl/boardrenderer";
+import { Sprite } from "./structs";
 
 export const MIRROR_PIC = 504;
 
@@ -17,7 +17,7 @@ export function loadRorLinks(board: BloodBoard): RorLinks {
   for (let s = 0; s < board.numsprites; s++) {
     let spr = board.sprites[s];
     if (isUpperLink(spr) || isLowerLink(spr)) {
-      let id = (<BloodSprite>spr).extraData.data1;
+      let id = spr.extraData.data1;
       let links = linkRegistry[id];
       if (links == undefined) {
         links = [];

@@ -1,20 +1,18 @@
-import { BitReader } from "../modules/bitreader";
-
 export class DataViewStream {
   private view: DataView;
   private offset: number;
   private littleEndian: boolean;
-  private bitReader: BitReader;
+  private currentBit = 7;
+  private currentByte = 0;
 
   constructor(buf: ArrayBuffer, isLE: boolean) {
     this.view = new DataView(buf);
     this.offset = 0;
     this.littleEndian = isLE;
-    this.bitReader = new BitReader(this);
   }
 
   private checkBitAlignment() {
-    if (!this.bitReader.isAligned())
+    if (this.currentBit != 7)
       throw new Error('Unaligned read');
   }
 
@@ -114,26 +112,50 @@ export class DataViewStream {
     return slice;
   }
 
-  public readBits(bits: number, reverse: boolean): number {
-    return this.bitReader.readBits(bits, reverse);
+  public readBit(reverse: boolean = true): number {
+    if (this.currentBit > 6) {
+      this.currentByte = this.readUByte();
+      this.currentBit = 0;
+    } else {
+      this.currentBit++;
+    }
+
+    if (reverse) {
+      return ((this.currentByte >> (this.currentBit)) & 1);
+    } else {
+      return ((this.currentByte >> (7 - this.currentBit)) & 1);
+    }
+  }
+
+  public readBits(bits: number, reverse: boolean = true): number {
+    let value = 0;
+    let signed = bits < 0;
+    bits = signed ? -bits : bits;
+    for (let i = 0; i < bits; i++) {
+      let b = this.readBit(reverse);
+      value = reverse ? value | (b << i) : (value << 1) | b;
+    }
+    return signed ? toSigned(value, bits) : value;
   }
 }
 
+function toSigned(value: number, bits: number) {
+  return value & (1 << (bits - 1))
+    ? -(~value & ((1 << bits) - 1)) - 1
+    : value
+}
+
+type ScalarReader<T> = (s: DataViewStream) => T;
+type AtomicArrayConstructor<T> = { new(buffer: ArrayBuffer, byteOffset: number, length: number): T };
+
 export interface Reader<T, AT> {
-  read(s: DataViewStream): T;
-  sizeof(): number;
-  arrType(): { new(buffer: ArrayBuffer, byteOffset: number, length: number): AT };
+  readonly read: ScalarReader<T>;
+  readonly size: number;
+  readonly atomicArrayFactory: AtomicArrayConstructor<AT>;
 }
 
-export class BasicReader<T, AT> implements Reader<T, AT> {
-  constructor(private f: (s: DataViewStream) => T, private size: number, private arr: { new(T): AT }) { }
-  read(s: DataViewStream): T { return this.f(s) }
-  sizeof(): number { return this.size }
-  arrType(): { new(buffer: ArrayBuffer, byteOffset: number, length: number): AT } { return this.arr }
-}
-
-export function reader<T, AT>(rf: (s: DataViewStream) => T, size: number, arr: { new(T): AT } = null) {
-  return new BasicReader<T, AT>(rf, size, arr);
+export function reader<T, AT>(read: ScalarReader<T>, size: number, atomicArrayFactory: AtomicArrayConstructor<AT> = null) {
+  return { read, size, atomicArrayFactory };
 }
 
 export const byte = reader(s => s.readByte(), 1, Int8Array);
@@ -143,44 +165,35 @@ export const ushort = reader(s => s.readUShort(), 2, Uint16Array);
 export const int = reader(s => s.readInt(), 4, Int32Array);
 export const uint = reader(s => s.readUInt(), 4, Uint32Array);
 export const float = reader(s => s.readFloat(), 4, Float32Array);
-export const string = (len: number) => { return reader(s => s.readByteString(len), len) };
-export const bits = (len: number, reverse: boolean = true) => { return reader(s => s.readBits(len, reverse), len / 8) };
+export const string = (len: number) => reader(s => s.readByteString(len), len);
+export const bits = (len: number) => reader(s => s.readBits(len), len / 8);
+export const array = <T>(type: Reader<T, any>, len: number) => reader(s => readArray(s, type, len), type.size * len);
+export const atomic_array = <T>(type: Reader<any, T>, len: number) => reader(s => readAtomicArray(s, type, len), type.size * len);
+export const struct = <T>(type: Constructor<T>, fields: Field[]) => reader(s => readStruct(s, fields, type), fields.reduce((l, r) => l + r[1].size, 0));
 
-let array_ = <T, AT>(s: DataViewStream, type: Reader<T, AT>, len: number): Array<T> => {
+let readArray = <T>(s: DataViewStream, type: Reader<T, any>, len: number): Array<T> => {
   let arr = new Array<T>();
   for (let i = 0; i < len; i++)
     arr[i] = type.read(s);
   return arr;
 }
-export const array = <T, AT>(type: Reader<T, AT>, len: number) => { return reader((s: DataViewStream) => array_(s, type, len), type.sizeof() * len) };
 
-let atomic_array_ = <T, AT>(s: DataViewStream, type: Reader<T, AT>, len: number): AT => {
-  let arrayType = type.arrType();
-  if (arrayType == null)
+let readAtomicArray = <T>(s: DataViewStream, type: Reader<any, T>, len: number): T => {
+  let factory = type.atomicArrayFactory;
+  if (factory == null)
     throw new Error('type is not atomic');
-  let array = s.array(len * type.sizeof());
-  return new arrayType(array, 0, len * type.sizeof());
+  let array = s.array(len * type.size);
+  return new factory(array, 0, len * type.size);
 }
-export const atomic_array = <T, AT>(type: Reader<T, AT>, len: number) => { return reader((s: DataViewStream) => atomic_array_(s, type, len), type.sizeof() * len) };
-
-let struct_ = <T>(s: DataViewStream, fields: Field[], type: Constructor<T>): T => {
-  let struct = new type();
-  for (let i = 0; i < fields.length; i++) {
-    let [name, reader] = fields[i];
-    let parts = name.split(',');
-    if (parts.length == 1) {
-      struct[name] = reader.read(s);
-    } else {
-      let values = reader.read(s);
-      for (let r = 0; r < parts.length; r++) {
-        let pname = parts[r];
-        struct[pname] = values[r];
-      }
-    }
-  }
-  return struct;
-};
 
 type Constructor<T> = { new(): T };
 type Field = [string, Reader<any, any>];
-export const struct = <T>(type: Constructor<T>, fields: Field[]) => { return reader((s: DataViewStream) => struct_(s, fields, type), fields.reduce((l, r) => l + r[1].sizeof(), 0)) };
+let readStruct = <T>(s: DataViewStream, fields: Field[], type: Constructor<T>): T => {
+  let struct = new type();
+  for (let i = 0; i < fields.length; i++) {
+    let [name, reader] = fields[i];
+    struct[name] = reader.read(s);
+  };
+  return struct;
+}
+
