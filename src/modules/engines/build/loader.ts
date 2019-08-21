@@ -1,10 +1,16 @@
 import * as data from '../../../libs/dataviewstream';
 import * as build from './structs';
 
-let sectorStats = data.struct(build.SectorStats, [[
-  'parallaxing,slopped,swapXY,doubleSmooshiness,xflip,yflip,alignToFirstWall,_',
-  data.bit_field([1, 1, 1, 1, 1, 1, 1, 9], true)]]
-);
+let sectorStats = data.struct(build.SectorStats, [
+  ['parallaxing', data.bits(1)],
+  ['slopped', data.bits(1)],
+  ['swapXY', data.bits(1)],
+  ['doubleSmooshiness', data.bits(1)],
+  ['xflip', data.bits(1)],
+  ['yflip', data.bits(1)],
+  ['alignToFirstWall', data.bits(1)],
+  ['_', data.bits(9)],
+]);
 
 export let sectorStruct = data.struct(build.Sector, [
   ['wallptr', data.ushort],
@@ -32,10 +38,19 @@ export let sectorStruct = data.struct(build.Sector, [
   ['extra', data.ushort]
 ]);
 
-let wallStats = data.struct(build.WallStats, [[
-  'blocking,swapBottoms,alignBottom,xflip,masking,oneWay,blocking2,translucent,yflip,translucentReversed,_',
-  data.bit_field([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 6], true)]]
-);
+let wallStats = data.struct(build.WallStats, [
+  ['blocking', data.bits(1)],
+  ['swapBottoms', data.bits(1)],
+  ['alignBottom', data.bits(1)],
+  ['xflip', data.bits(1)],
+  ['masking', data.bits(1)],
+  ['oneWay', data.bits(1)],
+  ['blocking2', data.bits(1)],
+  ['translucent', data.bits(1)],
+  ['yflip', data.bits(1)],
+  ['translucentReversed', data.bits(1)],
+  ['_', data.bits(6)],
+]);
 
 export let wallStruct = data.struct(build.Wall, [
   ['x', data.int],
@@ -57,10 +72,20 @@ export let wallStruct = data.struct(build.Wall, [
   ['extra', data.ushort]
 ]);
 
-let spriteStats = data.struct(build.SpriteStats, [[
-  'blocking,translucent,xflip,yflip,type,onesided,realCenter,blocking2,tranclucentReversed,noautoshading,_,invisible',
-  data.bit_field([1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 4, 1], true)]]
-);
+let spriteStats = data.struct(build.SpriteStats, [
+  ['blocking', data.bits(1)],
+  ['translucent', data.bits(1)],
+  ['xflip', data.bits(1)],
+  ['yflip', data.bits(1)],
+  ['type', data.bits(2)],
+  ['onesided', data.bits(1)],
+  ['realCenter', data.bits(1)],
+  ['blocking2', data.bits(1)],
+  ['tranclucentReversed', data.bits(1)],
+  ['noautoshading', data.bits(1)],
+  ['_', data.bits(4)],
+  ['invisible', data.bits(1)],
+]);
 
 export let spriteStruct = data.struct(build.Sprite, [
   ['x', data.int],

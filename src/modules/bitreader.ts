@@ -1,21 +1,25 @@
-import * as data from '../libs/dataviewstream';
+import { DataViewStream } from "../libs/dataviewstream";
 
-function toSigned(value:number, bits:number) {
-  return value & (1 << (bits-1)) 
+function toSigned(value: number, bits: number) {
+  return value & (1 << (bits - 1))
     ? -(~value & ((1 << bits) - 1)) - 1
     : value
 }
 
 export class BitReader {
-  
+
   private currentBit = 7;
   private currentByte = 0;
 
-  constructor(private data:data.DataViewStream) {
+  constructor(private data: DataViewStream) {
     this.data = data;
   }
 
-  public readBit(reverse:boolean=false):number {
+  public isAligned() {
+    return this.currentBit == 7;
+  }
+
+  public readBit(reverse: boolean = false): number {
     if (this.currentBit > 6) {
       this.currentByte = this.read();
       this.currentBit = 0;
@@ -30,16 +34,16 @@ export class BitReader {
     }
   }
 
-  public read():number {
+  public read(): number {
     return this.data.readUByte();
   }
 
-  public readBits(bits:number, reverse:boolean=false):number {
-    var value = 0;
-    var signed = bits < 0;
+  public readBits(bits: number, reverse: boolean = false): number {
+    let value = 0;
+    let signed = bits < 0;
     bits = signed ? -bits : bits;
-    for (var i = 0; i < bits; i++) {
-      var b = this.readBit(reverse);
+    for (let i = 0; i < bits; i++) {
+      let b = this.readBit(reverse);
       if (reverse) {
         value = value | (b << i);
       } else {

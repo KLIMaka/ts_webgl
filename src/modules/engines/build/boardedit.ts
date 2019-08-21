@@ -157,7 +157,7 @@ class WallSegmentsEnt {
   private static highlightedWalls(board: Board, walls: Collection<number>, result: Deck<number>): Collection<number> {
     if (result.length() != 0) return result;
     let chains = new Deck<List<number>>();
-    for (let i = 1; i < walls.length(); i++) {
+    for (let i = 0; i < walls.length(); i++) {
       let w = walls.get(i);
       let partOfOldChain = false;
       for (let c = 0; c < chains.length(); c++) {
@@ -175,11 +175,13 @@ class WallSegmentsEnt {
       if (!partOfOldChain) {
         let l = new List<number>();
         l.push(w);
+        chains.push(l);
       }
     }
     for (let c = 0; c < chains.length(); c++) {
       let chain = chains.get(c);
-      chain.pop();
+      if (chain.first().next != chain.terminator())
+        chain.pop();
       for (let node = chain.first(); node != chain.terminator(); node = node.next) {
         result.push(node.obj);
       }
