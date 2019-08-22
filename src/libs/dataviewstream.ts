@@ -154,7 +154,7 @@ export interface Reader<T, AT> {
   readonly atomicArrayFactory: AtomicArrayConstructor<AT>;
 }
 
-export function reader<T, AT>(read: ScalarReader<T>, size: number, atomicArrayFactory: AtomicArrayConstructor<AT> = null) {
+function reader<T, AT>(read: ScalarReader<T>, size: number, atomicArrayFactory: AtomicArrayConstructor<AT> = null) {
   return { read, size, atomicArrayFactory };
 }
 

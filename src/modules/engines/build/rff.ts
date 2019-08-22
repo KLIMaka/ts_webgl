@@ -1,43 +1,43 @@
-import * as data from '../../../libs/dataviewstream';
+import { struct, string, uint, array, byte, ubyte, DataViewStream, atomic_array } from "../../../libs/dataviewstream";
 
-let headerStruct = data.struct(Object, [
-  ['sign', data.string(4)],
-  ['version', data.uint],
-  ['offFat', data.uint],
-  ['numFiles', data.uint]
+let headerStruct = struct(Object, [
+  ['sign', string(4)],
+  ['version', uint],
+  ['offFat', uint],
+  ['numFiles', uint]
 ]);
-let fatRecord = data.struct(Object, [
-  ['_', data.array(data.byte, 16)],
-  ['offset', data.uint],
-  ['size', data.uint],
-  ['_', data.uint],
-  ['time', data.uint],
-  ['flags', data.ubyte],
-  ['filename', data.string(11)],
-  ['_', data.uint]
+let fatRecord = struct(Object, [
+  ['_', array(byte, 16)],
+  ['offset', uint],
+  ['size', uint],
+  ['_', uint],
+  ['time', uint],
+  ['flags', ubyte],
+  ['filename', string(11)],
+  ['_', uint]
 ]);
 
 export class RffFile {
 
-  private data: data.DataViewStream;
+  private data: DataViewStream;
   private header: any;
   public fat: any;
   private namesTable = {};
 
   constructor(buf: ArrayBuffer) {
-    this.data = new data.DataViewStream(buf, true);
+    this.data = new DataViewStream(buf, true);
     this.header = headerStruct.read(this.data);
     this.data.setOffset(this.header.offFat);
     let len = this.header.numFiles * 48;
-    let fat = data.atomic_array(data.ubyte, len).read(this.data);
+    let fat = atomic_array(ubyte, len).read(this.data);
     this.decodeFat(fat, this.header);
-    let fatBuffer = new data.DataViewStream(fat.buffer, true);
+    let fatBuffer = new DataViewStream(fat.buffer, true);
     fatBuffer.setOffset(fat.byteOffset);
     this.loadFat(fatBuffer, this.header.numFiles);
   }
 
-  private loadFat(stream: data.DataViewStream, numFiles: number): void {
-    this.fat = data.array(fatRecord, numFiles).read(stream);
+  private loadFat(stream: DataViewStream, numFiles: number): void {
+    this.fat = array(fatRecord, numFiles).read(stream);
     for (let i in this.fat) {
       let r = this.fat[i];
       r.filename = this.convertFname(r.filename);
@@ -63,7 +63,7 @@ export class RffFile {
   public get(fname: string): Uint8Array {
     let record = this.fat[this.namesTable[fname]];
     this.data.setOffset(record.offset);
-    let arr = data.atomic_array(data.ubyte, record.size).read(this.data);
+    let arr = atomic_array(ubyte, record.size).read(this.data);
     if (record.flags & 0x10)
       for (let i = 0; i < 256; i++)
         arr[i] ^= (i >> 1);

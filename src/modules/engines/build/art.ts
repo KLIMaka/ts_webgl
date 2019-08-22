@@ -1,4 +1,4 @@
-import * as data from '../../../libs/dataviewstream';
+import { struct, bits, DataViewStream, array, ushort, atomic_array, ubyte } from "../../../libs/dataviewstream";
 
 export class ArtInfo {
   constructor(public w: number, public h: number, public attrs: Attributes, public img: Uint8Array) { }
@@ -17,13 +17,13 @@ export class Attributes {
   public speed: number;
 }
 
-var anumStruct = data.struct(Attributes, [
-  ['frames', data.bits(6)],
-  ['type', data.bits(2)],
-  ['xoff', data.bits(-8)],
-  ['yoff', data.bits(-8)],
-  ['speed', data.bits(4)],
-  ['_', data.bits(4)]
+var anumStruct = struct(Attributes, [
+  ['frames', bits(6)],
+  ['type', bits(2)],
+  ['xoff', bits(-8)],
+  ['yoff', bits(-8)],
+  ['speed', bits(4)],
+  ['_', bits(4)]
 ]);
 
 export class ArtFile {
@@ -37,15 +37,15 @@ export class ArtFile {
   public size: number;
 
 
-  constructor(private stream: data.DataViewStream) {
+  constructor(private stream: DataViewStream) {
     var version = stream.readUInt();
     var numtiles = stream.readUInt();
     var start = stream.readUInt();
     var end = stream.readUInt();
     var size = end - start + 1;
-    var hs = data.array(data.ushort, size).read(stream);
-    var ws = data.array(data.ushort, size).read(stream);
-    var anums = data.array(anumStruct, size).read(stream);
+    var hs = array(ushort, size).read(stream);
+    var ws = array(ushort, size).read(stream);
+    var anums = array(anumStruct, size).read(stream);
     var offsets = new Array<number>(size);
     var offset = stream.mark();
     for (var i = 0; i < size; i++) {
@@ -68,7 +68,7 @@ export class ArtFile {
     var w = this.ws[id];
     var h = this.hs[id];
     var anum = this.anums[id];
-    var pixels = data.atomic_array(data.ubyte, w * h).read(this.stream);
+    var pixels = atomic_array(ubyte, w * h).read(this.stream);
     return new ArtInfo(h, w, anum, pixels);
   }
 
@@ -107,7 +107,7 @@ export class ArtFiles implements ArtInfoProvider {
 
 
 
-export function create(stream: data.DataViewStream): ArtFile {
+export function create(stream: DataViewStream): ArtFile {
   return new ArtFile(stream);
 }
 
