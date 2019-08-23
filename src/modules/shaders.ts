@@ -1,21 +1,22 @@
-import * as Set from '../libs/set';
-import * as DS from './drawstruct';
-import * as getter from '../libs/getter';
-import * as AB from '../libs/asyncbarrier';
+import { Definition, Shader } from "./drawstruct";
+import { AsyncBarrier } from "../libs/asyncbarrier";
+import { preloadString } from "../libs/getter";
 
 let defaultFSH = 'void main(){gl_FragColor = vec4(0.0);}';
 let defaultVSH = 'void main(){gl_Position = vec4(0.0);}';
 let defaultProgram: WebGLProgram = null;
 
-export class Shader implements DS.Shader {
+export class ShaderImpl implements Shader {
 
   private program: WebGLProgram;
-  private uniforms = {};
-  private attribs = {};
+  private uniforms: WebGLUniformLocation[] = [];
+  private attribs: number[] = [];
   private definitions: Definitions = new Definitions();
-  private initCallback: (Shader) => void
+  private initCallback: (shader: Shader) => void;
+  private uniformIndex: { [index: string]: number } = {};
+  private attributeIndex: { [index: string]: number } = {};
 
-  constructor(prog: WebGLProgram, initCallback: (Shader) => void = null) {
+  constructor(prog: WebGLProgram, initCallback: (shader: Shader) => void = null) {
     this.program = prog;
     this.initCallback = initCallback;
   }
@@ -30,66 +31,77 @@ export class Shader implements DS.Shader {
   }
 
   private initUniformLocations(gl: WebGLRenderingContext): void {
-    for (let i in this.definitions.uniforms) {
+    for (let i = 0; i < this.definitions.uniforms.length; i++) {
       let uniform = this.definitions.uniforms[i];
-      this.uniforms[uniform.getName()] = gl.getUniformLocation(this.program, uniform.getName());
+      this.uniformIndex[uniform.getName()] = i;
+      this.uniforms[i] = gl.getUniformLocation(this.program, uniform.getName());
     }
   }
 
   private initAttributeLocations(gl: WebGLRenderingContext): void {
-    for (let i in this.definitions.attributes) {
+    for (let i = 0; i < this.definitions.attributes.length; i++) {
       let attrib = this.definitions.attributes[i];
-      this.attribs[attrib.getName()] = gl.getAttribLocation(this.program, attrib.getName());
+      this.attributeIndex[attrib.getName()] = i;
+      this.attribs[i] = gl.getAttribLocation(this.program, attrib.getName());
     }
   }
 
   public getUniformLocation(name: string, gl: WebGLRenderingContext): WebGLUniformLocation {
-    return this.uniforms[name];
+    return this.uniforms[this.uniformIndex[name]];
   }
 
   public getAttributeLocation(name: string, gl: WebGLRenderingContext): number {
-    return this.attribs[name];
+    return this.attribs[this.attributeIndex[name]];
   }
 
   public getProgram(): WebGLProgram {
     return this.program;
   }
 
-  public getUniforms(): { [index: string]: DS.Definition } {
+  public getUniforms(): Definition[] {
     return this.definitions.uniforms;
   }
 
-  public getAttributes(): { [index: string]: DS.Definition } {
+  public getUniform(name: string): Definition {
+    return this.definitions.uniforms[this.uniformIndex[name]];
+  }
+
+  public getAttributes(): Definition[] {
     return this.definitions.attributes;
   }
 
-  public getSamplers(): { [index: string]: DS.Definition } {
+  public getAttribute(name: string): Definition {
+    return this.definitions.attributes[this.attributeIndex[name]];
+  }
+
+
+  public getSamplers(): Definition[] {
     return this.definitions.samplers;
   }
 }
 
-export function createShader(gl: WebGLRenderingContext, name: string, defines: string[] = [], initCallback: (Shader) => void = null): Shader {
+export function createShader(gl: WebGLRenderingContext, name: string, defines: string[] = [], initCallback: (shader: Shader) => void = null): Shader {
   if (defaultProgram == null) {
     defaultProgram = compileProgram(gl, defaultVSH, defaultFSH);
   }
 
-  let shader = new Shader(defaultProgram, initCallback);
-  let barrier = AB.create();
+  let shader = new ShaderImpl(defaultProgram, initCallback);
+  let barrier = new AsyncBarrier();
   let deftext = prepareDefines(defines);
-  getter.preloadString(name + '.vsh', barrier.callback('vsh'));
-  getter.preloadString(name + '.fsh', barrier.callback('fsh'));
+  preloadString(name + '.vsh', barrier.callback('vsh'));
+  preloadString(name + '.fsh', barrier.callback('fsh'));
   barrier.wait((res) => { initShader(gl, shader, deftext + res.vsh, deftext + res.fsh) });
   return shader;
 }
 
 export function createShaderFromSrc(gl: WebGLRenderingContext, vsh: string, fsh: string): Shader {
-  let shader = new Shader(compileProgram(gl, vsh, fsh));
+  let shader = new ShaderImpl(compileProgram(gl, vsh, fsh));
   initShader(gl, shader, vsh, fsh);
   return shader;
 }
 
-function initShader(gl: WebGLRenderingContext, shader: Shader, vsh: string, fsh: string) {
-  let barrier = AB.create();
+function initShader(gl: WebGLRenderingContext, shader: ShaderImpl, vsh: string, fsh: string) {
+  let barrier = new AsyncBarrier();
   preprocess(vsh, barrier.callback('vsh'));
   preprocess(fsh, barrier.callback('fsh'));
   barrier.wait((res) => {
@@ -128,7 +140,7 @@ function compileSource(gl: WebGLRenderingContext, type: number, source: string):
   return shader;
 }
 
-export class DefinitionImpl implements DS.Definition {
+export class DefinitionImpl implements Definition {
   constructor(
     private type: string,
     private name: string
@@ -139,9 +151,9 @@ export class DefinitionImpl implements DS.Definition {
 }
 
 export class Definitions {
-  public uniforms: { [index: string]: DefinitionImpl } = {};
-  public attributes: { [index: string]: DefinitionImpl } = {};
-  public samplers: { [index: string]: DefinitionImpl } = {};
+  public uniforms: Definition[] = [];
+  public attributes: Definition[] = [];
+  public samplers: Definition[] = [];
 }
 
 
@@ -150,15 +162,15 @@ function processShaders(gl: WebGLRenderingContext, program: WebGLProgram): any {
   let attribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
   for (let a = 0; a < attribs; a++) {
     let info = gl.getActiveAttrib(program, a);
-    defs.attributes[info.name] = convertToDefinition(info);
+    defs.attributes.push(convertToDefinition(info));
   }
   let uniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
   for (let u = 0; u < uniforms; u++) {
     let info = gl.getActiveUniform(program, u);
     let def = convertToDefinition(info);
-    defs.uniforms[info.name] = def;
+    defs.uniforms.push(def);
     if (def.getType() == 'sampler2D')
-      defs.samplers[info.name] = def;
+      defs.samplers.push(def);
   }
   return defs;
 }
@@ -186,12 +198,12 @@ function type2String(type: number): string {
 
 function preprocess(shader: string, cb: (sh: string) => void): void {
   let lines = shader.split("\n");
-  let barrier = AB.create();
+  let barrier = new AsyncBarrier();
   for (let i = 0; i < lines.length; i++) {
     let l = lines[i];
     let m = l.match(/^#include +"([^"]+)"/);
     if (m != null) {
-      getter.preloadString(m[1], barrier.callback(i + ''));
+      preloadString(m[1], barrier.callback(i + ''));
     }
   }
   barrier.wait((incs) => {
@@ -215,8 +227,8 @@ let setters = {
   sampler2D: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: number) => gl.uniform1i(loc, val),
 }
 
-export function setUniform(gl: WebGLRenderingContext, shader: DS.Shader, name: string, value: any) {
-  let uniform = shader.getUniforms()[name];
+export function setUniform(gl: WebGLRenderingContext, shader: Shader, name: string, value: any) {
+  let uniform = shader.getUniform(name);
   if (uniform == undefined) return;
   let loc = shader.getUniformLocation(name, gl);
   let setter = setters[uniform.getType()];

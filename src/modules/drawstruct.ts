@@ -14,37 +14,39 @@ export interface IndexBuffer {
 }
 
 export interface Texture {
-  get():WebGLTexture;
-  getWidth():number;
-  getHeight():number;
-  getFormat():number;
-  getType():number;
+  get(): WebGLTexture;
+  getWidth(): number;
+  getHeight(): number;
+  getFormat(): number;
+  getType(): number;
 }
 
 export interface Shader {
-  getUniformLocation(name:string, gl:WebGLRenderingContext):WebGLUniformLocation;
-  getAttributeLocation(name:string, gl:WebGLRenderingContext):number;
-  getProgram():WebGLProgram;
-  getUniforms():{[index:string]:Definition};
-  getAttributes():{[index:string]:Definition};
-  getSamplers():{[index:string]:Definition};
+  getUniformLocation(name: string, gl: WebGLRenderingContext): WebGLUniformLocation;
+  getAttributeLocation(name: string, gl: WebGLRenderingContext): number;
+  getProgram(): WebGLProgram;
+  getUniforms(): Definition[];
+  getUniform(name: string): Definition;
+  getAttributes(): Definition[];
+  getAttribute(name: string): Definition;
+  getSamplers(): Definition[];
 }
 
 export interface Definition {
-   getName():string;
-   getType():string;
+  getName(): string;
+  getType(): string;
 }
 
 export interface Material {
-  getShader():Shader;
-  getTexture(sampler:string):Texture;
+  getShader(): Shader;
+  getTexture(sampler: string): Texture;
 }
 
 
 export interface DrawStruct {
-  getMaterial():Material;
+  getMaterial(): Material;
   getMode(): number;
-  getVertexBuffer(attribute:string): VertexBuffer;
+  getVertexBuffer(attribute: string): VertexBuffer;
   getVertexBuffers(): VertexBuffer[];
   getAttributes(): string[];
   getIndexBuffer(): IndexBuffer;
