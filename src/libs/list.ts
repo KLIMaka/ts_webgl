@@ -1,6 +1,9 @@
 
 export class Node<T> {
-  constructor(public obj: T = null, public next: Node<T> = null, public prev: Node<T> = null) {
+  constructor(
+    public obj: T = null,
+    public next: Node<T> = null,
+    public prev: Node<T> = null) {
   }
 }
 
@@ -30,11 +33,11 @@ export class List<T> {
     return ret;
   }
 
-  public push(value: T): Node<T>{
+  public push(value: T): Node<T> {
     return this.insertAfter(value);
   }
 
-  public pushAll(values: T[]): Node<T>[]{
+  public pushAll(values: T[]): Node<T>[] {
     let nodes = [];
     for (let i = 0; i < values.length; i++)
       nodes.push(this.insertAfter(values[i]));

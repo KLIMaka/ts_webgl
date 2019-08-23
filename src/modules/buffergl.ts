@@ -1,47 +1,47 @@
-import * as MB from './meshbuilder';
-import * as BAG from '../libs/bag';
 import * as PROFILE from '../modules/profiler';
+import { VertexBufferDynamic, createVertexBuffer, DynamicIndexBuffer, createIndexBuffer } from './meshbuilder';
+import { Place, BagController, createController } from '../libs/bag';
 
-export class Pointer {
-  constructor(
-    public buffer: Buffer,
-    public vtx: BAG.Place,
-    public idx: BAG.Place
-  ) { }
+export interface Pointer {
+  readonly buffer: Buffer,
+  readonly vtx: Place,
+  readonly idx: Place
 }
 
 export class BufferBuilder {
-  public vtxBuffers: { [index: string]: MB.VertexBufferDynamic } = {};
+  public vtxBuffers: { [index: string]: VertexBufferDynamic } = {};
 
-  constructor(public size: number) { }
+  constructor(public size: number = 64 * 1024) { }
 
   public addVertexBuffer(gl: WebGLRenderingContext, name: string, type: number, spacing: number): BufferBuilder {
-    this.vtxBuffers[name] = MB.createVertexBuffer(gl, type, this.size, spacing);
+    this.vtxBuffers[name] = createVertexBuffer(gl, type, this.size, spacing);
     return this;
   }
 }
 
+type Region = [number, number];
+
 export class Buffer {
-  private size: number;
-  private vtxBag: BAG.BagController;
-  private idxBag: BAG.BagController;
-  private vtxBuffers: { [index: string]: MB.VertexBufferDynamic };
-  private idxBuffer: MB.DynamicIndexBuffer;
-  private vtxRegions: { [index: string]: number[][] } = {};
-  private idxRegions: number[][] = [];
+  private vtxBag: BagController;
+  private idxBag: BagController;
+  private vtxBuffers: { [index: string]: VertexBufferDynamic };
+  private idxBuffer: DynamicIndexBuffer;
+  private vtxRegions: { [index: string]: Region[] } = {};
+  private idxRegions: Region[] = [];
 
   constructor(gl: WebGLRenderingContext, builder: BufferBuilder) {
-    this.size = builder.size;
+    let vtxSize = builder.size;
+    let idxSize = vtxSize * 2;
     this.vtxBuffers = builder.vtxBuffers;
-    this.idxBuffer = MB.createIndexBuffer(gl, gl.UNSIGNED_SHORT, this.size);
+    this.idxBuffer = createIndexBuffer(gl, gl.UNSIGNED_SHORT, idxSize);
 
-    this.vtxBag = BAG.createController(this.size, (place: BAG.Place, noffset: number) => {
+    this.vtxBag = createController(vtxSize, (place: Place, noffset: number) => {
       for (let v in this.vtxBuffers) {
         let buff = <any>this.vtxBuffers[v].getData();
         let spacing = this.vtxBuffers[v].getSpacing();
         buff.set(buff.subarray(place.offset * spacing, (place.offset + place.size) * spacing), noffset * spacing);
       }
-      let ptr = <BAG.Place>place.data;
+      let ptr = <Place>place.data;
       let offdiff = noffset - place.offset;
       let idxData = <Uint16Array>this.idxBuffer.getData();
       for (let i = 0; i < ptr.size; i++) {
@@ -49,7 +49,7 @@ export class Buffer {
       }
     });
 
-    this.idxBag = BAG.createController(this.size, (place: BAG.Place, noffset: number) => {
+    this.idxBag = createController(idxSize, (place: Place, noffset: number) => {
       let idxData = <Uint16Array>this.idxBuffer.getData();
       idxData.set(idxData.subarray(place.offset, place.offset + place.size), noffset);
     });
@@ -58,19 +58,24 @@ export class Buffer {
       this.vtxRegions[v] = [];
   }
 
-  public getVertexBuffer(name: string): MB.VertexBufferDynamic {
+  public getVertexBuffer(name: string): VertexBufferDynamic {
     return this.vtxBuffers[name];
   }
 
-  public getIndexBuffer(): MB.DynamicIndexBuffer {
+  public getIndexBuffer(): DynamicIndexBuffer {
     return this.idxBuffer;
   }
 
   public allocate(vtxs: number, idxs: number): Pointer {
     let vtx = this.vtxBag.get(vtxs);
+    if (vtx == null) return null;
     let idx = this.idxBag.get(idxs);
+    if (idx == null) {
+      this.vtxBag.put(vtx);
+      return null;
+    }
     vtx.data = idx;
-    return new Pointer(this, vtx, idx);
+    return { buffer: this, vtx, idx };
   }
 
   public deallocate(ptr: Pointer): void {
@@ -101,7 +106,7 @@ export class Buffer {
     this.idxRegions.push([offset, idata.length]);
   }
 
-  private mergeRegions(regions: number[][], i: number): [number, number[]] {
+  private mergeRegions(regions: Region[], i: number): [number, Region] {
     let region = regions[i];
     for (; ;) {
       if (i + 1 >= regions.length)
@@ -116,7 +121,7 @@ export class Buffer {
     return [i, region];
   }
 
-  private updateBuffer(gl: WebGLRenderingContext, buffer: any, regions: number[][]): boolean {
+  private updateBuffer(gl: WebGLRenderingContext, buffer: any, regions: Region[]): boolean {
     for (let i = 0; i < regions.length; i++) {
       let [ii, region] = this.mergeRegions(regions, i);
       i = ii;
@@ -128,7 +133,7 @@ export class Buffer {
   }
 
   public update(gl: WebGLRenderingContext) {
-    PROFILE.get(null).set('buffer', this.getVertexFreeSpace());
+    PROFILE.get(null).set('buffer', this.vtxBag.freeSpace());
     for (let v in this.vtxRegions) {
       if (this.vtxRegions[v].length == 0)
         continue;
@@ -139,9 +144,5 @@ export class Buffer {
       this.updateBuffer(gl, this.idxBuffer, this.idxRegions);
       this.idxRegions = [];
     }
-  }
-
-  public getVertexFreeSpace() {
-    return this.vtxBag.freeSpace() / this.size;
   }
 }

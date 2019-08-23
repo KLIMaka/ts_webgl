@@ -68,7 +68,11 @@ export class Solid implements Renderable {
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.buff.get() == null) return;
+    let ptr = this.buff.get();
+    if (ptr == null) return;
+    state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
+    state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
+    state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
     state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     state.setTexture('base', this.tex);
     state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, this.trans));
@@ -92,7 +96,11 @@ class Grid implements Renderable {
   public gridTexMat: GLM.Mat4Array;
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.solid.buff.get() == null) return;
+    let ptr = this.solid.buff.get();
+    if (ptr == null) return;
+    state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
+    state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
+    state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
@@ -114,7 +122,11 @@ export class Wireframe implements Renderable {
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    if (this.buff.get() == null) return;
+    let ptr = this.buff.get();
+    if (ptr == null) return;
+    state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
+    state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
+    state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());

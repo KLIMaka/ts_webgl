@@ -1,17 +1,17 @@
-import * as L from './list';
+import { List, Node } from "./list";
 
 export class Place {
   constructor(public offset: number, public size: number, public data: any = null) { }
 }
 
 export class Bag {
-  private holes: L.List<Place>;
+  private holes: List<Place>;
 
-  constructor(private size: number) {
+  constructor(readonly size: number) {
     this.reset();
   }
 
-  private getSuitablePlace(size: number): L.Node<Place> {
+  private getSuitablePlace(size: number): Node<Place> {
     for (let hole = this.holes.first(); hole != this.holes.terminator(); hole = hole.next) {
       if (hole.obj.size >= size)
         return hole;
@@ -19,7 +19,7 @@ export class Bag {
     return null;
   }
 
-  private tryMerge(node: L.Node<Place>): void {
+  private tryMerge(node: Node<Place>): void {
     if (node != this.holes.terminator() && node.next != this.holes.terminator()) {
       if (node.obj.offset + node.obj.size == node.next.obj.offset) {
         node.obj.size += node.next.obj.size;
@@ -72,7 +72,7 @@ export class Bag {
   }
 
   public reset() {
-    this.holes = new L.List<Place>();
+    this.holes = new List<Place>();
     this.holes.insertAfter(new Place(0, this.size));
   }
 
@@ -101,8 +101,7 @@ export class BagController {
       this.optimize();
       offset = this.bag.get(size);
     }
-    if (offset == null)
-      throw new Error('No space');
+    if (offset == null) return null;
     let result = new Place(offset, size);
     this.places[offset] = result;
     return result;
@@ -133,7 +132,7 @@ export class BagController {
   }
 
   public freeSpace() {
-    return this.bag.freeSpace();
+    return this.bag.freeSpace() / this.bag.size;
   }
 }
 

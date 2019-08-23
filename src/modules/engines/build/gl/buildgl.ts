@@ -19,6 +19,7 @@ export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT', palswapsDef, shadowstepsDef], ab.callback('spriteFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['PARALLAX', palswapsDef, shadowstepsDef], ab.callback('parallax'));
   SHADER.createShader(gl, SHADER_NAME, ['GRID', palswapsDef, shadowstepsDef], ab.callback('grid'));
+
   ab.wait((res) => {
     state = new State();
     state.registerShader('baseShader', res['baseShader']);
@@ -28,10 +29,7 @@ export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture
     state.registerShader('parallax', res['parallax']);
     state.registerShader('grid', res['grid']);
 
-    BUFF.init(gl, 1024 * 128);
-    state.setIndexBuffer(BUFF.getIdxBuffer());
-    state.setVertexBuffer('aPos', BUFF.getPosBuffer());
-    state.setVertexBuffer('aNorm', BUFF.getNormBuffer());
+    BUFF.init(gl);
     state.setTexture('pal', pal);
     state.setTexture('plu', plu);
     state.setTexture('grid', grid);
