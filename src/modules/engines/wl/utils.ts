@@ -1,12 +1,12 @@
-import D = require('../../../libs/dataviewstream');
+import D = require('../../../libs/stream');
 import B = require('../../bitreader');
 
 export class RotatingXorStream {
-  private enc:number;
-  private endChecksum:number;
-  private checksum:number;
+  private enc: number;
+  private endChecksum: number;
+  private checksum: number;
 
-  constructor(private stream:D.DataViewStream) {
+  constructor(private stream: D.Stream) {
     var e1 = this.stream.readUByte();
     var e2 = this.stream.readUByte();
     this.enc = e1 ^ e2;
@@ -14,7 +14,7 @@ export class RotatingXorStream {
     this.checksum = 0;
   }
 
-  public read():number {
+  public read(): number {
     var crypted = this.stream.readUByte();
     var b = crypted ^ this.enc;
     this.checksum = (this.checksum - b) & 0xffff;
@@ -24,17 +24,17 @@ export class RotatingXorStream {
 }
 
 class VerticalXorStream {
-  private width:number;
-  private lastLine:number[];
-  private x:number = 0;
-  private y:number = 0;
+  private width: number;
+  private lastLine: number[];
+  private x: number = 0;
+  private y: number = 0;
 
-  constructor(private stream:HuffmanStream, width:number) {
+  constructor(private stream: HuffmanStream, width: number) {
     this.width = width / 2;
     this.lastLine = new Array<number>(width);
   }
 
-  public read():number {
+  public read(): number {
     var b = this.stream.read();
 
     if (this.y > 0) {
@@ -42,32 +42,32 @@ class VerticalXorStream {
     }
     this.lastLine[this.x] = b;
     if (this.x < this.width - 1) {
-        this.x++;
+      this.x++;
     } else {
-        this.y++;
-        this.x = 0;
+      this.y++;
+      this.x = 0;
     }
     return b;
   }
 }
 
 export class HuffmanNode {
-  public left:HuffmanNode;
-  public right:HuffmanNode;
-  public data:number = -1;
+  public left: HuffmanNode;
+  public right: HuffmanNode;
+  public data: number = -1;
 }
 
 export class HuffmanStream {
 
-  private tree:HuffmanNode;
-  private bitstream:B.BitReader;
+  private tree: HuffmanNode;
+  private bitstream: B.BitReader;
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     this.bitstream = new B.BitReader(r);
     this.tree = this.loadNode(this.bitstream);
   }
 
-  private loadNode(r:B.BitReader):HuffmanNode {
+  private loadNode(r: B.BitReader): HuffmanNode {
     if (r.readBit() == 0) {
       var left = this.loadNode(r);
       r.readBit();
@@ -83,10 +83,10 @@ export class HuffmanStream {
     }
   }
 
-  public read():number {
+  public read(): number {
     var node = this.tree;
     while (node.data == -1) {
-      if(!this.bitstream.readBit())
+      if (!this.bitstream.readBit())
         node = node.left;
       else
         node = node.right;
@@ -94,11 +94,11 @@ export class HuffmanStream {
     return node.data;
   }
 
-  public readWord():number {
+  public readWord(): number {
     return this.read() | (this.read() << 8);
   }
 
-  public readData(len:number):Array<number> {
+  public readData(len: number): Array<number> {
     var data = new Array<number>(len);
     for (var i = 0; i < len; i++) {
       data[i] = this.read();
@@ -107,15 +107,15 @@ export class HuffmanStream {
   }
 }
 
-export function rotatingXorStream(stream:D.DataViewStream) {
+export function rotatingXorStream(stream: D.Stream) {
   return new RotatingXorStream(stream);
 }
 
-export function verticalXorStream(stream:HuffmanStream, width:number) {
+export function verticalXorStream(stream: HuffmanStream, width: number) {
   return new VerticalXorStream(stream, width);
 }
 
-export function huffmanStream(stream:D.DataViewStream) {
+export function huffmanStream(stream: D.Stream) {
   return new HuffmanStream(stream);
 }
 

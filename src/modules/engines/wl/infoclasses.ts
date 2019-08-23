@@ -1,13 +1,13 @@
-import D = require('../../../libs/dataviewstream');
+import D = require('../../../libs/stream');
 import U = require('./utils');
 
 export class CentralDirectory {
-  public stringsOffset:number;
-  public monsterNamesOffset:number;
-  public monsterDataOffset:number;
-  public actionClassMasterTable:number[] = new Array<number>(16);
-  public nibble6Offset:number;
-  public npcOffset:number;
+  public stringsOffset: number;
+  public monsterNamesOffset: number;
+  public monsterDataOffset: number;
+  public actionClassMasterTable: number[] = new Array<number>(16);
+  public nibble6Offset: number;
+  public npcOffset: number;
 }
 
 var CentralDirectoryStruct = D.struct(CentralDirectory, [
@@ -19,7 +19,7 @@ var CentralDirectoryStruct = D.struct(CentralDirectory, [
   ['npcOffset', D.ushort]
 ]);
 
-export function readCentralDirectory(r:D.DataViewStream):CentralDirectory {
+export function readCentralDirectory(r: D.Stream): CentralDirectory {
   var result = CentralDirectoryStruct.read(r);
   if (r.readUShort() != 0) {
     throw new Error('Last offset must be 0');
@@ -28,15 +28,15 @@ export function readCentralDirectory(r:D.DataViewStream):CentralDirectory {
 }
 
 export class Info {
-  public unknown0:number;
-  public unknown1:number;
-  public encounterFrequency:number;
-  public tileset:number;
-  public lastMonster:number;
-  public maxEncounters:number;
-  public backgroundTile:number;
-  public timeFactor:number;
-  public unknown9:number;
+  public unknown0: number;
+  public unknown1: number;
+  public encounterFrequency: number;
+  public tileset: number;
+  public lastMonster: number;
+  public maxEncounters: number;
+  public backgroundTile: number;
+  public timeFactor: number;
+  public unknown9: number;
 }
 
 var InfoStruct = D.struct(Info, [
@@ -51,32 +51,32 @@ var InfoStruct = D.struct(Info, [
   ["unknown9", D.ubyte]
 ]);
 
-export function readInfo(r:D.DataViewStream):Info {
+export function readInfo(r: D.Stream): Info {
   return InfoStruct.read(r);
 }
 
 
 export class BattleSettings {
-  public strings:number[] = new Array<number>(37);
+  public strings: number[] = new Array<number>(37);
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     this.strings = D.array(D.ubyte, 37).read(r);
   }
 }
 
 export class TileMap {
 
-  public map:number[];
-  private unknown:number;
+  public map: number[];
+  private unknown: number;
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     var mapSize = Math.sqrt(r.readUInt());
     if (mapSize != 32 && mapSize != 64)
       throw new Error('Invalid Tile Map header');
 
     this.unknown = r.readUInt();
     var huffmanStream = U.huffmanStream(r);
-    this.map = new Array<number>(mapSize*mapSize);
+    this.map = new Array<number>(mapSize * mapSize);
     for (var i = 0; i < this.map.length; i++)
       this.map[i] = huffmanStream.read();
   }

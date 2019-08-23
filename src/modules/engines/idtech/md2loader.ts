@@ -1,4 +1,4 @@
-import D = require('../../../libs/dataviewstream');
+import D = require('../../../libs/stream');
 import MD2 = require('./md2structs');
 
 export var md2HeaderStruct = D.struct(MD2.Md2Header, [
@@ -42,7 +42,7 @@ export var texCoordStruct = D.struct(MD2.TexCoord, [
   ['v', D.short]
 ]);
 
-export var frameStruct = (len:number) => D.struct(MD2.Frame, [
+export var frameStruct = (len: number) => D.struct(MD2.Frame, [
   ['scale', D.array(D.float, 3)],
   ['translate', D.array(D.float, 3)],
   ['name', D.string(16)],
@@ -54,10 +54,10 @@ export var triangleStruct = D.struct(MD2.Triangle, [
   ['index_uv', D.array(D.ushort, 2)]
 ]);
 
-export function loadMd2(stream:D.DataViewStream):MD2.Md2File {
+export function loadMd2(stream: D.Stream): MD2.Md2File {
   var file = new MD2.Md2File();
   file.header = md2HeaderStruct.read(stream);
-  file.skins = D.string(file.header.num_skins*64).read(stream);
+  file.skins = D.string(file.header.num_skins * 64).read(stream);
   file.tcs = D.array(texCoordStruct, file.header.num_st).read(stream);
   file.tris = D.array(triangleStruct, file.header.num_frames * file.header.num_tris).read(stream);
   file.frames = D.array(frameStruct(file.header.num_xyz), file.header.num_frames).read(stream);

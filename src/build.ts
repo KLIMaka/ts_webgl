@@ -1,6 +1,6 @@
 import * as browser from './libs/browser';
 import * as CFG from './libs/config';
-import * as data from './libs/dataviewstream';
+import * as data from './libs/stream';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as MU from './libs/mathutils';
@@ -284,7 +284,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   panel.append(new UI.Element(compass));
   document.body.appendChild(panel.elem());
 
-  let stream = new data.DataViewStream(map, true);
+  let stream = new data.Stream(map, true);
   // let board = createBoard();
   let board = bloodloader.loadBloodMap(stream);
   console.log(board);
@@ -340,7 +340,7 @@ getter.loader
     let pal = rff.get('BLOOD.PAL');
     let arts = [];
     for (let a = 0; a < 18; a++)
-      arts.push(ART.create(new data.DataViewStream(getter.get(artNames[a]), true)));
+      arts.push(ART.create(new data.Stream(getter.get(artNames[a]), true)));
     let artFiles = ART.createArts(arts);
 
     let PLUs = [

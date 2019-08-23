@@ -1,7 +1,7 @@
 import { Sector, Wall, Sprite, Board } from "./structs";
 
 export class SectorExtra {
-
+  public unk: number;
 }
 
 export class BloodSector extends Sector {
@@ -9,7 +9,7 @@ export class BloodSector extends Sector {
 }
 
 export class WallExtra {
-
+  public unk: number;
 }
 
 export class BloodWall extends Wall {
@@ -17,6 +17,7 @@ export class BloodWall extends Wall {
 }
 
 export class SpriteExtra {
+  public unk: number;
   public data1: number;
   public data2: number;
   public data3: number;

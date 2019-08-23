@@ -1,15 +1,15 @@
-import D = require('../../../libs/dataviewstream');
+import D = require('../../../libs/stream');
 import B = require('../../bitreader');
 
 export class Strings {
 
-  public strings:string[] = [];
+  public strings: string[] = [];
 
-  constructor(r:D.DataViewStream, end:number) {
+  constructor(r: D.Stream, end: number) {
     var start = r.mark();
     var charTable = new Array<number>(60);
     for (var i = 60; i > 0; i--)
-      charTable[60-i] = r.readUByte();
+      charTable[60 - i] = r.readUByte();
     var tmp = r.readUShort();
     var quantity = tmp / 2;
     var stringOffsets = new Array<number>();
@@ -31,7 +31,7 @@ export class Strings {
     }
   }
 
-  private readStringGroup(r:D.DataViewStream, charTable:number[], end:number):void {
+  private readStringGroup(r: D.Stream, charTable: number[], end: number): void {
     var bitStream = new B.BitReader(r);
     for (var j = 0; j < 4; j++) {
       var upper = false;
@@ -42,7 +42,7 @@ export class Strings {
           return;
         var index = bitStream.readBits(5, true);
         switch (index) {
-          case 0x1f: 
+          case 0x1f:
             high = true;
             break;
           case 0x1e:

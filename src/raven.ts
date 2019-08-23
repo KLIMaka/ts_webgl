@@ -1,4 +1,4 @@
-import data = require('./libs/dataviewstream');
+import data = require('./libs/stream');
 import browser = require('./libs/browser');
 import files = require('./modules/ui/filereader');
 import Panel = require('./modules/ui/drawpanel');
@@ -12,13 +12,13 @@ var res = null;
 
 new files.DropFileReader(
   document.getElementById('palLoader'),
-  (f:File) => { return f.name == 'COLORS' },
-  (buff:ArrayBuffer) => {pal = buff; if(res != null) render(pal, res);}
+  (f: File) => { return f.name == 'COLORS' },
+  (buff: ArrayBuffer) => { pal = buff; if (res != null) render(pal, res); }
 );
 new files.DropFileReader(
   document.getElementById('resLoader'),
-  (f:File) => { return true },
-  (buff:ArrayBuffer) => {res = buff; if(pal != null) render(pal, res);}
+  (f: File) => { return true },
+  (buff: ArrayBuffer) => { res = buff; if (pal != null) render(pal, res); }
 );
 
 class AnimController {
@@ -28,11 +28,11 @@ class AnimController {
   private oy = 0;
   private destx = 0;
   private desty = 0;
-  private curanim:PP.AnimatedPixelProvider;
+  private curanim: PP.AnimatedPixelProvider;
   private curaminnum = 0;
-  private ang = 3/4;
+  private ang = 3 / 4;
 
-  constructor(private anims:PP.AnimatedPixelProvider[]) {
+  constructor(private anims: PP.AnimatedPixelProvider[]) {
     this.ox = this.anims[0].getWidth() / 2;
     this.oy = this.anims[0].getHeight();
     this.x = 0;
@@ -51,12 +51,12 @@ class AnimController {
     return this.y;
   }
 
-  public goto(x:number, y:number): void {
+  public goto(x: number, y: number): void {
     this.destx = x - this.ox;
     this.desty = y - this.oy;
   }
 
-  public animate(dt:number): PP.PixelProvider {
+  public animate(dt: number): PP.PixelProvider {
     var time = Date.now() / 1000;
     if (this.destx == this.x && this.desty == this.y) {
       this.curanim.stop();
@@ -65,7 +65,7 @@ class AnimController {
 
     var rot = this.getRotation();
     if (this.angToIdx(this.ang) != this.angToIdx(rot)) {
-      var sign = this.ang > rot 
+      var sign = this.ang > rot
         ? (this.ang - rot > 0.5 ? 1 : -1)
         : (rot - this.ang > 0.5 ? -1 : 1);
       var ang = this.ang;
@@ -90,52 +90,52 @@ class AnimController {
       this.y = this.desty;
     else
       this.y += d[1] * s;
-    return this.curanim.animate(time); 
+    return this.curanim.animate(time);
   }
 
-  private getRotation():number {
+  private getRotation(): number {
     var d = this.getDNormalized();
     var dx = d[0];
     var dy = d[1];
     var ang = Math.acos(dx);
-    ang = dy > 0 ? 2*Math.PI - ang : ang;
-    return ang / (Math.PI*2);
+    ang = dy > 0 ? 2 * Math.PI - ang : ang;
+    return ang / (Math.PI * 2);
   }
 
   private getDNormalized() {
     var dx = this.destx - this.x;
     var dy = this.desty - this.y;
-    var len = Math.sqrt(dx*dx + dy*dy);
+    var len = Math.sqrt(dx * dx + dy * dy);
     dx /= len;
     dy /= len;
     return [dx, dy];
   }
 
-  private angToIdx(ang:number) {
+  private angToIdx(ang: number) {
     var hsect = 1 / 16;
-    if (ang < hsect || ang > 15*hsect)
+    if (ang < hsect || ang > 15 * hsect)
       return 6;
-    if (ang > hsect && ang <= 3*hsect)
+    if (ang > hsect && ang <= 3 * hsect)
       return 5;
-    if (ang > 3*hsect && ang <= 5*hsect)
+    if (ang > 3 * hsect && ang <= 5 * hsect)
       return 4;
-    if (ang > 5*hsect && ang <= 7*hsect)
+    if (ang > 5 * hsect && ang <= 7 * hsect)
       return 3;
-    if (ang > 7*hsect && ang <= 9*hsect)
+    if (ang > 7 * hsect && ang <= 9 * hsect)
       return 2;
-    if (ang > 9*hsect && ang <= 11*hsect)
+    if (ang > 9 * hsect && ang <= 11 * hsect)
       return 1;
-    if (ang > 11*hsect && ang <= 13*hsect)
+    if (ang > 11 * hsect && ang <= 13 * hsect)
       return 0;
-    if (ang > 13*hsect && ang <= 15*hsect)
+    if (ang > 13 * hsect && ang <= 15 * hsect)
       return 7;
   }
 }
 
-function render(palbuf:ArrayBuffer, resbuf:ArrayBuffer) {
+function render(palbuf: ArrayBuffer, resbuf: ArrayBuffer) {
 
   var res = new Raven.RavenRes(resbuf);
- 
+
   var palres = new Raven.RavenPals(palbuf);
   var palnum = browser.getQueryVariable('pal');
   var pal = palres.get(palnum);

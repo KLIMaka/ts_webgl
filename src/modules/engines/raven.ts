@@ -1,16 +1,16 @@
-import data = require('../../libs/dataviewstream');
+import data = require('../../libs/stream');
 import pixel = require('../pixelprovider');
 
 var LZbuf = new Uint8Array(0x1000);
 
-function LZ(r:data.DataViewStream, size:number):Uint8Array {
+function LZ(r: data.Stream, size: number): Uint8Array {
   var ret = new Uint8Array(size);
   var retoff = 0;
   for (var i = 0; i < 0x0fee; i++)
     LZbuf[i] = 0xfe;
 
   var off = 0x0fee;
-  while(retoff < size) {
+  while (retoff < size) {
     var bits = r.readUByte();
     for (var i = 0; i < 8; i++) {
       var b = (bits >> i) & 1;
@@ -27,9 +27,9 @@ function LZ(r:data.DataViewStream, size:number):Uint8Array {
         var x = (xy >> 4) & 0xf;
         var y = xy & 0xf;
 
-        var xzt = (x << 8) | (z << 4) | t; 
-        for (var j = 0; j < y+3; j++) {
-          var _ = LZbuf[(xzt+j) % 0x1000];
+        var xzt = (x << 8) | (z << 4) | t;
+        for (var j = 0; j < y + 3; j++) {
+          var _ = LZbuf[(xzt + j) % 0x1000];
           ret[retoff++] = _;
           LZbuf[off] = _;
           off = (off + 1) % 0x1000;
@@ -40,7 +40,7 @@ function LZ(r:data.DataViewStream, size:number):Uint8Array {
   return ret;
 }
 
-function read(r:data.DataViewStream, size:number, mod:number):Uint8Array {
+function read(r: data.Stream, size: number, mod: number): Uint8Array {
   if (mod == 3) {
     return LZ(r, size);
   } else {
@@ -51,42 +51,42 @@ function read(r:data.DataViewStream, size:number, mod:number):Uint8Array {
   }
 }
 
-function createImage(w:number, h:number, data:Uint8Array, trans:number, pal:Uint8Array, isFlip:boolean=false):pixel.PixelProvider {
-  var provider:pixel.PixelProvider = new pixel.RGBPalPixelProvider(data, pal, w, h, 255, trans);
+function createImage(w: number, h: number, data: Uint8Array, trans: number, pal: Uint8Array, isFlip: boolean = false): pixel.PixelProvider {
+  var provider: pixel.PixelProvider = new pixel.RGBPalPixelProvider(data, pal, w, h, 255, trans);
   if (isFlip)
     provider = pixel.axisSwap(provider);
-  provider = pixel.resize(provider, provider.getWidth()*2, provider.getHeight());
+  provider = pixel.resize(provider, provider.getWidth() * 2, provider.getHeight());
   return provider;
 }
 
-function read3dSprite(d:Uint8Array, pal:Uint8Array):pixel.PixelProvider {
-  var r = new data.DataViewStream(d.buffer, true);
+function read3dSprite(d: Uint8Array, pal: Uint8Array): pixel.PixelProvider {
+  var r = new data.Stream(d.buffer, true);
   var w = r.readUShort();
   var left = r.readUShort();
   var right = r.readUShort();
   var up = r.readUShort();
   var h = r.readUShort();
-  var colOffs = new Array<number>(right-left);
+  var colOffs = new Array<number>(right - left);
   if (colOffs.length == 0)
     return null;
   for (var i = 0; i < colOffs.length; i++)
     colOffs[i] = r.readUShort();
-  var img = new Uint8Array(w*h);
+  var img = new Uint8Array(w * h);
 
   var pixels = r.mark();
-  for (var i = 0; i< colOffs.length; i++) {
+  for (var i = 0; i < colOffs.length; i++) {
     r.setOffset(colOffs[i]);
     var x = r.readUShort();
     while (x != 0) {
-      var loff = x/2;
+      var loff = x / 2;
       var roff = r.readShort();
-      var hoff = r.readUShort()/2;
+      var hoff = r.readUShort() / 2;
       var poff = hoff + roff;
       var rows = loff - hoff;
       var mark = r.mark();
       r.setOffset(poff);
       for (var j = 0; j < rows; j++) {
-        img[(j+hoff)*w+left+i] = r.readUByte();
+        img[(j + hoff) * w + left + i] = r.readUByte();
       }
       r.setOffset(mark);
 
@@ -97,13 +97,12 @@ function read3dSprite(d:Uint8Array, pal:Uint8Array):pixel.PixelProvider {
   return createImage(w, h, img, 254, pal);
 }
 
-function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
+function readFile(r: data.Stream, pal: Uint8Array): pixel.PixelProvider {
   var signature = r.readUShort();
   var type = r.readUByte();
   var headerSize = r.readUShort();
 
-  switch (type)
-  {
+  switch (type) {
     case 1: { // sprite
       var imgnum = r.readUShort();
       var h = r.readUShort();
@@ -116,9 +115,9 @@ function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
       var mod = r.readUByte();
       var unknown = r.readUByte();
 
-      var data = read(r, imgnum*w*h, mod);
+      var data = read(r, imgnum * w * h, mod);
       for (var i = 0; i < imgnum; i++)
-        return createImage(w, h, data.subarray(i*w*h, i*w*h+w*h), trans, pal);
+        return createImage(w, h, data.subarray(i * w * h, i * w * h + w * h), trans, pal);
       break;
     }
 
@@ -133,9 +132,9 @@ function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
       var mod = r.readUByte();
       var unknown = r.readUByte();
 
-      var data = read(r, imgnum*w*h, mod);
+      var data = read(r, imgnum * w * h, mod);
       for (var i = 0; i < imgnum; i++)
-        return createImage(w, h, data.subarray(i*w*h, i*w*h+w*h), trans, pal);
+        return createImage(w, h, data.subarray(i * w * h, i * w * h + w * h), trans, pal);
       break;
     }
 
@@ -143,16 +142,16 @@ function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
       var mod = r.readUByte();
       var len = r.readUInt();
       var data = read(r, len, mod);
-      var cols = data[0] + (data[1]*256);
+      var cols = data[0] + (data[1] * 256);
       return createImage(cols, 0x40, data.subarray(2, len), 254, pal, true);
     }
 
-    case 6: { 
+    case 6: {
       if (headerSize == 0) {
         //texture
         var len = r.readShort();
         var data = read(r, len, 3);
-        return createImage(len/0x40, 0x40, data, 254, pal, true);
+        return createImage(len / 0x40, 0x40, data, 254, pal, true);
       } else {
         // 3D sprite
         var mod = r.readUByte();
@@ -172,7 +171,7 @@ function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
     }
 
     default: {
-      console.log('type='+type);
+      console.log('type=' + type);
       return null;
     }
   }
@@ -180,40 +179,40 @@ function readFile(r:data.DataViewStream, pal:Uint8Array):pixel.PixelProvider {
 
 export class RavenPals {
 
-  private pal:data.DataViewStream;
-  private count:number;
+  private pal: data.Stream;
+  private count: number;
 
-  constructor(palbuf:ArrayBuffer) {
-    this.pal = new data.DataViewStream(palbuf, true);
+  constructor(palbuf: ArrayBuffer) {
+    this.pal = new data.Stream(palbuf, true);
     this.count = this.pal.readUByte();
   }
 
-  public get(i:number):Uint8Array {
-    var p = new Uint8Array(256*3);
+  public get(i: number): Uint8Array {
+    var p = new Uint8Array(256 * 3);
     this.readPal(i, p);
     return p;
   }
 
-  public readPal(i:number, p:Uint8Array):void {
+  public readPal(i: number, p: Uint8Array): void {
     if (i >= this.count)
       throw new Error('No pal ' + i);
-    this.pal.setOffset(i*768 + 1);
-    for (var i = 0; i < 255; i++){
-      p[i*3+0] = this.pal.readUByte() * 4;
-      p[i*3+1] = this.pal.readUByte() * 4;
-      p[i*3+2] = this.pal.readUByte() * 4;
+    this.pal.setOffset(i * 768 + 1);
+    for (var i = 0; i < 255; i++) {
+      p[i * 3 + 0] = this.pal.readUByte() * 4;
+      p[i * 3 + 1] = this.pal.readUByte() * 4;
+      p[i * 3 + 2] = this.pal.readUByte() * 4;
     }
   }
 }
 
 export class RavenRes {
 
-  private res:data.DataViewStream;
-  private count:number;
-  private offsets:number[];
+  private res: data.Stream;
+  private count: number;
+  private offsets: number[];
 
-  constructor (resbuf:ArrayBuffer) {
-    var res = new data.DataViewStream(resbuf, true);
+  constructor(resbuf: ArrayBuffer) {
+    var res = new data.Stream(resbuf, true);
     var count = res.readUInt();
     var offsets = new Array<number>(count);
     for (var i = 0; i < count; i++) {
@@ -225,7 +224,7 @@ export class RavenRes {
     this.offsets = offsets;
   }
 
-  public get(i:number, pal:Uint8Array):pixel.PixelProvider {
+  public get(i: number, pal: Uint8Array): pixel.PixelProvider {
     if (i >= this.count)
       throw new Error('No res ' + i);
     this.res.setOffset(this.offsets[i]);

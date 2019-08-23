@@ -1,18 +1,18 @@
-import data = require('../../../libs/dataviewstream');
+import data = require('../../../libs/stream');
 
 export class Tile {
-  public tileIndex:number;   // tile (ocean, grass, snow, swamp, lava, desert, dirt, wasteland, beach)
-  public objectName1:number; // level 1.0
-  public indexName1:number;  // index level 1.0 or 0xFF
-  public quantity1:number;   // count
-  public quantity2:number;   // count
-  public objectName2:number; // level 2.0
-  public indexName2:number;  // index level 2.0 or 0xFF
-  public shape:number;   // shape reflect % 4, 0 none, 1 vertical, 2 horizontal, 3 any
-  public generalObject:number; // zero or object
-  public indexAddon:number;  // zero or index addons_t
-  public uniqNumber1:number; // level 1.0
-  public uniqNumber2:number; // level 2.0
+  public tileIndex: number;   // tile (ocean, grass, snow, swamp, lava, desert, dirt, wasteland, beach)
+  public objectName1: number; // level 1.0
+  public indexName1: number;  // index level 1.0 or 0xFF
+  public quantity1: number;   // count
+  public quantity2: number;   // count
+  public objectName2: number; // level 2.0
+  public indexName2: number;  // index level 2.0 or 0xFF
+  public shape: number;   // shape reflect % 4, 0 none, 1 vertical, 2 horizontal, 3 any
+  public generalObject: number; // zero or object
+  public indexAddon: number;  // zero or index addons_t
+  public uniqNumber1: number; // level 1.0
+  public uniqNumber2: number; // level 2.0
 }
 
 var tileStruct = data.struct(Tile, [
@@ -31,14 +31,14 @@ var tileStruct = data.struct(Tile, [
 ]);
 
 export class Addon {
-  public indexAddon:number;  // zero or next addons_t
-  public objectNameN1:number;  // level 1.N
-  public indexNameN1:number; // level 1.N or 0xFF
-  public quantityN:number; //
-  public objectNameN2:number;  // level 2.N
-  public indexNameN2:number; // level 1.N or 0xFF
-  public uniqNumberN1:number;  // level 1.N
-  public uniqNumberN2:number;  // level 2.N 
+  public indexAddon: number;  // zero or next addons_t
+  public objectNameN1: number;  // level 1.N
+  public indexNameN1: number; // level 1.N or 0xFF
+  public quantityN: number; //
+  public objectNameN2: number;  // level 2.N
+  public indexNameN2: number; // level 1.N or 0xFF
+  public uniqNumberN1: number;  // level 1.N
+  public uniqNumberN2: number;  // level 2.N 
 }
 
 var addonStruct = data.struct(Addon, [
@@ -54,14 +54,14 @@ var addonStruct = data.struct(Addon, [
 
 export class Mp2File {
 
-  public data:data.DataViewStream;
-  public width:number;
-  public height:number;
-  public tiles:Tile[];
-  public addons:Addon[];
+  public data: data.Stream;
+  public width: number;
+  public height: number;
+  public tiles: Tile[];
+  public addons: Addon[];
 
-  constructor(buf:ArrayBuffer) {
-    this.data = new data.DataViewStream(buf, true);
+  constructor(buf: ArrayBuffer) {
+    this.data = new data.Stream(buf, true);
     var s = this.data;
 
     var sign = s.readUInt();
@@ -71,12 +71,12 @@ export class Mp2File {
     s.setOffset(420);
     this.width = s.readUInt();
     this.height = s.readUInt();
-    this.tiles = data.array(tileStruct, this.width*this.height).read(s);
+    this.tiles = data.array(tileStruct, this.width * this.height).read(s);
     var addoncount = s.readUInt();
     this.addons = data.array(addonStruct, addoncount).read(s);
   }
 }
 
-export function create(buf:ArrayBuffer):Mp2File {
+export function create(buf: ArrayBuffer): Mp2File {
   return new Mp2File(buf);
 }

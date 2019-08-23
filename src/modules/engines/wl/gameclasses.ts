@@ -1,9 +1,9 @@
-import D = require('../../../libs/dataviewstream');
+import D = require('../../../libs/stream');
 
 export class Skills {
-  public skills:number[][] = new Array<number[]>();
+  public skills: number[][] = new Array<number[]>();
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     for (var i = 0; i < 30; i++) {
       this.skills.push([r.readUByte(), r.readUByte()]);
     }
@@ -11,9 +11,9 @@ export class Skills {
 }
 
 export class Items {
-  private items:number[][] = new Array<number[]>();
+  private items: number[][] = new Array<number[]>();
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     for (var i = 0; i < 30; i++) {
       var id = r.readUByte();
       var load = r.readUByte();
@@ -24,41 +24,41 @@ export class Items {
 }
 
 export class Char {
-  public name:string;
-  public str:number;
-  public iq:number;
-  public lck:number;
-  public spd:number;
-  public agi:number;
-  public dex:number;
-  public chr:number;
-  public money:number;
-  public gender:number;
-  public natio:number;
-  public ac:number;
-  public maxCon:number;
-  public con:number;
-  public weapon:number;
-  public skillPoints:number;
-  public exp:number;
-  public level:number;
-  public armor:number;
-  public lastCon:number;
-  public afflictions:number;
-  public isNpc:number;
-  public unknown2A:number;
-  public itemRefuse:number;
-  public skillRefuse:number;
-  public attribRefuse:number;
-  public tradeRefuse:number;
-  public unknown2F:number;
-  public joinString:number;
-  public willingness:number;
-  public rank:string;
-  public skills:Skills;
-  public items:Items;
+  public name: string;
+  public str: number;
+  public iq: number;
+  public lck: number;
+  public spd: number;
+  public agi: number;
+  public dex: number;
+  public chr: number;
+  public money: number;
+  public gender: number;
+  public natio: number;
+  public ac: number;
+  public maxCon: number;
+  public con: number;
+  public weapon: number;
+  public skillPoints: number;
+  public exp: number;
+  public level: number;
+  public armor: number;
+  public lastCon: number;
+  public afflictions: number;
+  public isNpc: number;
+  public unknown2A: number;
+  public itemRefuse: number;
+  public skillRefuse: number;
+  public attribRefuse: number;
+  public tradeRefuse: number;
+  public unknown2F: number;
+  public joinString: number;
+  public willingness: number;
+  public rank: string;
+  public skills: Skills;
+  public items: Items;
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     this.name = r.readByteString(14);
     this.str = r.readUByte();
     this.iq = r.readUByte();
@@ -101,9 +101,9 @@ export class Char {
 }
 
 export class NPCS {
-  public chars:Char[] = [];
+  public chars: Char[] = [];
 
-  constructor(r:D.DataViewStream) {
+  constructor(r: D.Stream) {
     var offset = r.mark();
     if (r.readUShort() != 0)
       return;
@@ -126,19 +126,19 @@ export class NPCS {
 }
 
 export class Monster {
-  public name:string;
-  public exp:number;
-  public skill:number;
-  public randomDamage:number;
-  public maxGroupSize:number;
-  public ac:number;
-  public fixedDamage:number;
-  public weaponType:number;
-  public type:number;
-  public picture:number;
- }
+  public name: string;
+  public exp: number;
+  public skill: number;
+  public randomDamage: number;
+  public maxGroupSize: number;
+  public ac: number;
+  public fixedDamage: number;
+  public weaponType: number;
+  public type: number;
+  public picture: number;
+}
 
- var MonsterStruct = D.struct(Monster, [
+var MonsterStruct = D.struct(Monster, [
   ["exp", D.ushort],
   ["skill", D.ubyte],
   ["randomDamage", D.ubyte],
@@ -146,26 +146,26 @@ export class Monster {
   ["fixedDamage,weaponType", D.bit_field([4, 4])],
   ["type", D.ubyte],
   ["picture", D.ubyte]
- ]);
+]);
 
-function readMonster(r:D.DataViewStream, name:string):Monster {
+function readMonster(r: D.Stream, name: string): Monster {
   var mon = MonsterStruct.read(r);
   mon.name = name;
   return mon;
 }
 
 export class Monsters {
-  public monsters:Monster[] = [];
+  public monsters: Monster[] = [];
 
-  constructor(r:D.DataViewStream, quantity:number, dataOffset:number) {
-    var names:string[] = [];
+  constructor(r: D.Stream, quantity: number, dataOffset: number) {
+    var names: string[] = [];
     for (var i = 0; i < quantity; i++) {
       var name = '';
       var b = r.readUByte();
       while (b != 0) {
         name += String.fromCharCode(b);
         b = r.readUByte();
-      } 
+      }
       names.push(name);
     }
 

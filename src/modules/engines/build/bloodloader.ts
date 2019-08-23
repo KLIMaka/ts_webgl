@@ -1,4 +1,4 @@
-import { array, atomic_array, byte, DataViewStream, int, short, struct, ubyte } from '../../../libs/dataviewstream';
+import { array, atomic_array, byte, Stream, int, short, struct, ubyte } from '../../../libs/stream';
 import { BloodBoard, BloodSector, BloodSprite, BloodWall, SectorExtra, SpriteExtra, WallExtra } from './bloodstructs';
 import * as LOADER from './loader';
 import { Header1 } from './structs';
@@ -10,47 +10,47 @@ function decryptBuffer(buffer: Uint8Array, size: number, key: number) {
 }
 
 function createStream(arr: Uint8Array) {
-  return new DataViewStream(arr.buffer, true);
+  return new Stream(arr.buffer, true);
 }
 
-let header1Struct = struct(Header1, [
-  ['startX', int],
-  ['startY', int],
-  ['startZ', int],
-  ['startAng', short],
-  ['startSec', short],
-  ['unk', short],
-]);
+let header1Struct = struct(Header1)
+  .field('startX', int)
+  .field('startY', int)
+  .field('startZ', int)
+  .field('startAng', short)
+  .field('startSec', short)
+  .field('unk', short);
 
-let header2Struct = struct(Object, [
-  ['unk', array(ubyte, 9)],
-]);
+let header2Struct = array(ubyte, 9);
 
-let header3Struct = struct(Object, [
-  ['mapRevisions', int],
-  ['numSectors', short],
-  ['numWalls', short],
-  ['numSprites', short],
-]);
+class Header3 {
+  public mapRevisions: number;
+  public numSectors: number;
+  public numWalls: number;
+  public numSprites: number;
+}
 
-let sectorExtraStruct = struct(SectorExtra, [
-  ['_', atomic_array(byte, 60)]
-]);
+let header3Struct = struct(Header3)
+  .field('mapRevisions', int)
+  .field('numSectors', short)
+  .field('numWalls', short)
+  .field('numSprites', short);
 
-let wallExtraStruct = struct(WallExtra, [
-  ['_', atomic_array(byte, 24)]
-]);
+let sectorExtraStruct = struct(SectorExtra)
+  .field('unk', atomic_array(byte, 60));
 
-let spriteExtraStruct = struct(SpriteExtra, [
-  ['_', atomic_array(byte, 15)],
-  ['data1', short],
-  ['data2', short],
-  ['data3', short],
-  ['_', atomic_array(byte, 35)],
-]);
+let wallExtraStruct = struct(WallExtra)
+  .field('unk', atomic_array(byte, 24));
+
+let spriteExtraStruct = struct(SpriteExtra)
+  .field('unk', atomic_array(byte, 15))
+  .field('data1', short)
+  .field('data2', short)
+  .field('data3', short)
+  .field('unk', atomic_array(byte, 35));
 
 let sectorReader = atomic_array(ubyte, LOADER.sectorStruct.size);
-function readSectors(header3: any, stream: DataViewStream): BloodSector[] {
+function readSectors(header3: Header3, stream: Stream): BloodSector[] {
   let dec = ((header3.mapRevisions * LOADER.sectorStruct.size) & 0xFF);
   let sectors = [];
   for (let i = 0; i < header3.numSectors; i++) {
@@ -65,7 +65,7 @@ function readSectors(header3: any, stream: DataViewStream): BloodSector[] {
 }
 
 let wallReader = atomic_array(ubyte, LOADER.wallStruct.size);
-function readWalls(header3: any, stream: DataViewStream): BloodWall[] {
+function readWalls(header3: any, stream: Stream): BloodWall[] {
   let dec = (((header3.mapRevisions * LOADER.sectorStruct.size) | 0x4d) & 0xFF);
   let walls = [];
   for (let i = 0; i < header3.numWalls; i++) {
@@ -80,7 +80,7 @@ function readWalls(header3: any, stream: DataViewStream): BloodWall[] {
 }
 
 let spriteReader = atomic_array(ubyte, LOADER.spriteStruct.size);
-function readSprites(header3: any, stream: DataViewStream): BloodSprite[] {
+function readSprites(header3: any, stream: Stream): BloodSprite[] {
   let dec = (((header3.mapRevisions * LOADER.spriteStruct.size) | 0x4d) & 0xFF);
   let sprites = [];
   for (let i = 0; i < header3.numSprites; i++) {
@@ -111,7 +111,7 @@ function createBoard(version: number, header1: any, header3: any, sectors: Blood
   return brd;
 }
 
-export function loadBloodMap(stream: DataViewStream): BloodBoard {
+export function loadBloodMap(stream: Stream): BloodBoard {
   let header = int.read(stream);
   let version = short.read(stream);
   let buf = atomic_array(ubyte, header1Struct.size).read(stream);

@@ -1,4 +1,4 @@
-import { DataViewStream } from "../libs/dataviewstream";
+import { Stream } from "../libs/stream";
 
 function toSigned(value: number, bits: number) {
   return value & (1 << (bits - 1))
@@ -11,7 +11,7 @@ export class BitReader {
   private currentBit = 7;
   private currentByte = 0;
 
-  constructor(private data: DataViewStream) {
+  constructor(private data: Stream) {
     this.data = data;
   }
 

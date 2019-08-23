@@ -1,4 +1,4 @@
-import * as data from './libs/dataviewstream';
+import * as data from './libs/stream';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as MU from './libs/mathutils';
@@ -188,7 +188,7 @@ function render(map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs:
   panel.append(new UI.Element(compass));
   document.body.appendChild(panel.elem());
 
-  let stream = new data.DataViewStream(map, true);
+  let stream = new data.Stream(map, true);
   let board = BUILDLOADER.loadBuildMap(stream);
   console.log(board);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);

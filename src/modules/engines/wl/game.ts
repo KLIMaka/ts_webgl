@@ -1,25 +1,25 @@
-import D = require('../../../libs/dataviewstream');
+import D = require('../../../libs/stream');
 import GM = require('./gamemap');
 import U = require('./utils');
 
 var fa0 = [
-  {'m' : 1},
-  {'s' : 2},
-  {'q' : 3},
-  {'0' : 4},
+  { 'm': 1 },
+  { 's': 2 },
+  { 'q': 3 },
+  { '0': 4 },
 ];
 var fa1 = [
-  {'m' : 1},
-  {'s' : 2},
-  {'q' : 3},
-  {'1' : 4},
+  { 'm': 1 },
+  { 's': 2 },
+  { 'q': 3 },
+  { '1': 4 },
 ];
 
-function search(r:D.DataViewStream, disk:string):number {
+function search(r: D.Stream, disk: string): number {
   var fa = disk == '0' ? fa0 : fa1;
   var state = 0;
   var length = 0;
-  while(!r.eoi() && state != 4) {
+  while (!r.eoi() && state != 4) {
     var b = r.readByteString(1);
     var state = fa[state][b] | 0;
     length++;
@@ -28,7 +28,7 @@ function search(r:D.DataViewStream, disk:string):number {
 }
 
 
-function readMsqBlocks(r:D.DataViewStream):number[][] {
+function readMsqBlocks(r: D.Stream): number[][] {
   var sign = r.readByteString(4);
   if (sign != 'msq0' && sign != 'msq1')
     throw new Error('No msq header found in file');
@@ -37,16 +37,16 @@ function readMsqBlocks(r:D.DataViewStream):number[][] {
   var start = 0;
   var end = 4;
 
-  while(true) {
+  while (true) {
     end += search(r, disk)
     if (!r.eoi()) {
-      blocks.push([start, end-4-start]);
+      blocks.push([start, end - 4 - start]);
       start = end - 4;
     } else {
       break;
     }
   }
-  blocks.push([start, end-start]);
+  blocks.push([start, end - start]);
   return blocks;
 }
 
@@ -54,7 +54,7 @@ var TYPE_SAVEGAME = 'TYPE_SAVEGAME';
 var TYPE_SHOPLIST = 'TYPE_SHOPLIST';
 var TYPE_MAP = 'TYPE_MAP';
 
-function isSaveGame(bytes:number[]):boolean {
+function isSaveGame(bytes: number[]): boolean {
   var seen = {};
   for (var i = 0; i < 8; i++) {
     var b = bytes[i];
@@ -65,13 +65,13 @@ function isSaveGame(bytes:number[]):boolean {
   return true;
 }
 
-function isShopItems(bytes:number[]):boolean {
-  if (bytes[0] == 0x60 && bytes[1] == 0x60 && bytes[2] == 0x60) 
+function isShopItems(bytes: number[]): boolean {
+  if (bytes[0] == 0x60 && bytes[1] == 0x60 && bytes[2] == 0x60)
     return true;
   return false;
 }
 
-function getType(r:D.DataViewStream, size:number) {
+function getType(r: D.Stream, size: number) {
   var sign = r.readByteString(4);
   if (sign != 'msq0' && sign != 'msq1')
     throw new Error('No msq header found in file');
@@ -91,10 +91,10 @@ function getType(r:D.DataViewStream, size:number) {
 }
 
 export class Game {
-  public maps:GM.GameMap[] = [];
+  public maps: GM.GameMap[] = [];
 
-  constructor(file:ArrayBuffer) {
-    var r = new D.DataViewStream(file, true);
+  constructor(file: ArrayBuffer) {
+    var r = new D.Stream(file, true);
     var blocks = readMsqBlocks(r);
     for (var i = 0; i < blocks.length; i++) {
       var [start, size] = blocks[i];
@@ -115,6 +115,6 @@ export class Game {
   }
 }
 
-export function create(file:ArrayBuffer) {
+export function create(file: ArrayBuffer) {
   return new Game(file);
 }

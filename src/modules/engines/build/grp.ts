@@ -1,16 +1,16 @@
-import * as data from '../../../libs/dataviewstream';
+import * as data from '../../../libs/stream';
 
 export class GrpFile {
 
-  private data:data.DataViewStream;
-  private count:number;
-  private files:any = {};
+  private data: data.Stream;
+  private count: number;
+  private files: any = {};
 
-  constructor(buf:ArrayBuffer) {
-    this.data = new data.DataViewStream(buf, true);
+  constructor(buf: ArrayBuffer) {
+    this.data = new data.Stream(buf, true);
     this.loadFiles();
   }
- 
+
   private loadFiles() {
     var d = this.data;
     d.setOffset(12);
@@ -23,27 +23,27 @@ export class GrpFile {
       offset += size;
     }
   }
- 
-  public get(fname:string):data.DataViewStream {
+
+  public get(fname: string): data.Stream {
     var off = this.files[fname];
     if (off != undefined) {
-       this.data.setOffset(off);
+      this.data.setOffset(off);
       return this.data.subView();
     }
     return null;
   }
 }
 
-export function create(buf:ArrayBuffer):GrpFile {
+export function create(buf: ArrayBuffer): GrpFile {
   return new GrpFile(buf);
 }
 
-export function createPalette(stream:data.DataViewStream):Uint8Array {
+export function createPalette(stream: data.Stream): Uint8Array {
   var pal = new Uint8Array(768);
   for (var i = 0; i < 256; i++) {
-    pal[i*3+0] = stream.readUByte()*4;
-    pal[i*3+1] = stream.readUByte()*4;
-    pal[i*3+2] = stream.readUByte()*4;
+    pal[i * 3 + 0] = stream.readUByte() * 4;
+    pal[i * 3 + 1] = stream.readUByte() * 4;
+    pal[i * 3 + 2] = stream.readUByte() * 4;
   }
   return pal;
 }

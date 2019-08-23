@@ -28,6 +28,7 @@ export class SectorStats {
   public xflip: number;
   public yflip: number;
   public alignToFirstWall: number;
+  public unk: number;
 }
 
 export class Sector {
@@ -91,6 +92,7 @@ export class WallStats {
   public translucent: number;
   public yflip: number;
   public translucentReversed: number;
+  public unk: number;
 }
 
 export class Wall {
@@ -159,7 +161,7 @@ export class SpriteStats {
   public noautoshading: number;
   public reserved: number;
   public invisible: number;
-
+  public unk: number;
 }
 
 export class Sprite {

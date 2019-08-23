@@ -1,4 +1,4 @@
-import { struct, bits, DataViewStream, array, ushort, atomic_array, ubyte } from "../../../libs/dataviewstream";
+import { struct, bits, Stream, array, ushort, atomic_array, ubyte } from "../../../libs/stream";
 
 export class ArtInfo {
   constructor(public w: number, public h: number, public attrs: Attributes, public img: Uint8Array) { }
@@ -15,16 +15,16 @@ export class Attributes {
   public xoff: number;
   public yoff: number;
   public speed: number;
+  public unk: number;
 }
 
-var anumStruct = struct(Attributes, [
-  ['frames', bits(6)],
-  ['type', bits(2)],
-  ['xoff', bits(-8)],
-  ['yoff', bits(-8)],
-  ['speed', bits(4)],
-  ['_', bits(4)]
-]);
+var anumStruct = struct(Attributes)
+  .field('frames', bits(6))
+  .field('type', bits(2))
+  .field('xoff', bits(-8))
+  .field('yoff', bits(-8))
+  .field('speed', bits(4))
+  .field('unk', bits(4));
 
 export class ArtFile {
 
@@ -37,7 +37,7 @@ export class ArtFile {
   public size: number;
 
 
-  constructor(private stream: DataViewStream) {
+  constructor(private stream: Stream) {
     var version = stream.readUInt();
     var numtiles = stream.readUInt();
     var start = stream.readUInt();
@@ -107,7 +107,7 @@ export class ArtFiles implements ArtInfoProvider {
 
 
 
-export function create(stream: DataViewStream): ArtFile {
+export function create(stream: Stream): ArtFile {
   return new ArtFile(stream);
 }
 

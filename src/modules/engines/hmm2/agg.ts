@@ -1,9 +1,9 @@
-import data = require('../../../libs/dataviewstream');
+import data = require('../../../libs/stream');
 
 export class FileRecord {
-  public hash:number;
-  public offset:number;
-  public size:number;
+  public hash: number;
+  public offset: number;
+  public size: number;
 }
 
 var fat = data.struct(FileRecord, [
@@ -13,13 +13,13 @@ var fat = data.struct(FileRecord, [
 ]);
 
 export class AggFile {
-  private data:data.DataViewStream;
-  private num_files:number;
-  private fat:FileRecord[];
-  private nametable:{[index:string]:number} = {};
+  private data: data.Stream;
+  private num_files: number;
+  private fat: FileRecord[];
+  private nametable: { [index: string]: number } = {};
 
-  constructor(buf:ArrayBuffer) {
-    this.data = new data.DataViewStream(buf, true);
+  constructor(buf: ArrayBuffer) {
+    this.data = new data.Stream(buf, true);
     this.num_files = data.ushort.read(this.data);
     this.fat = data.array(fat, this.num_files).read(this.data);
 
@@ -35,38 +35,38 @@ export class AggFile {
     }
   }
 
-  public get(name:string):data.DataViewStream {
-    var rec:any = this.nametable[name];
+  public get(name: string): data.Stream {
+    var rec: any = this.nametable[name];
     if (rec == undefined)
       return null;
     this.data.setOffset(this.fat[rec].offset);
     return this.data.subView();
   }
 
-  public getList():string[] {
+  public getList(): string[] {
     return Object.keys(this.nametable);
   }
 }
 
-export function create(buf:ArrayBuffer):AggFile {
+export function create(buf: ArrayBuffer): AggFile {
   return new AggFile(buf);
 }
 
-export function createPalette(data:data.DataViewStream):Uint8Array {
+export function createPalette(data: data.Stream): Uint8Array {
   var pal = new Uint8Array(768);
   for (var i = 0; i < 768; i++)
     pal[i] = data.readUByte() << 2;
   return pal;
 }
 
-export function hash(str:string):number {
+export function hash(str: string): number {
   var a = 0;
   var b = 0;
-  for (var i = str.length-1; i >=0; i--) {
+  for (var i = str.length - 1; i >= 0; i--) {
     var c = str[i].toUpperCase().charCodeAt(0);
-    a = (a<<5)+(a>>25);
-    b+=c;
-    a+=b+c;
+    a = (a << 5) + (a >> 25);
+    b += c;
+    a += b + c;
   }
 
   return a;
