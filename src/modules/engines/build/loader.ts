@@ -1,7 +1,7 @@
-import * as build from './structs';
 import { struct, bits, ushort, int, short, byte, ubyte, uint, Stream, array } from '../../../libs/stream';
+import { SectorStats, Sector, WallStats, Wall, SpriteStats, Sprite, Board } from './structs';
 
-let sectorStats = struct(build.SectorStats)
+let sectorStats = struct(SectorStats)
   .field('parallaxing', bits(1))
   .field('slopped', bits(1))
   .field('swapXY', bits(1))
@@ -11,7 +11,7 @@ let sectorStats = struct(build.SectorStats)
   .field('alignToFirstWall', bits(1))
   .field('unk', bits(9));
 
-export let sectorStruct = struct(build.Sector)
+export let sectorStruct = struct(Sector)
   .field('wallptr', ushort)
   .field('wallnum', ushort)
   .field('ceilingz', int)
@@ -36,7 +36,7 @@ export let sectorStruct = struct(build.Sector)
   .field('hitag', ushort)
   .field('extra', ushort);
 
-let wallStats = struct(build.WallStats)
+let wallStats = struct(WallStats)
   .field('blocking', bits(1))
   .field('swapBottoms', bits(1))
   .field('alignBottom', bits(1))
@@ -49,7 +49,7 @@ let wallStats = struct(build.WallStats)
   .field('translucentReversed', bits(1))
   .field('unk', bits(6));
 
-export let wallStruct = struct(build.Wall)
+export let wallStruct = struct(Wall)
   .field('x', int)
   .field('y', int)
   .field('point2', ushort)
@@ -68,7 +68,7 @@ export let wallStruct = struct(build.Wall)
   .field('hitag', ushort)
   .field('extra', ushort);
 
-let spriteStats = struct(build.SpriteStats)
+let spriteStats = struct(SpriteStats)
   .field('blocking', bits(1))
   .field('translucent', bits(1))
   .field('xflip', bits(1))
@@ -82,7 +82,7 @@ let spriteStats = struct(build.SpriteStats)
   .field('unk', bits(4))
   .field('invisible', bits(1));
 
-export let spriteStruct = struct(build.Sprite)
+export let spriteStruct = struct(Sprite)
   .field('x', int)
   .field('y', int)
   .field('z', int)
@@ -107,7 +107,7 @@ export let spriteStruct = struct(build.Sprite)
   .field('hitag', ushort)
   .field('extra', ushort);
 
-export let boardStruct = struct(build.Board)
+export let boardStruct = struct(Board)
   .field('version', uint)
   .field('posx', int)
   .field('posy', int)
@@ -115,7 +115,7 @@ export let boardStruct = struct(build.Board)
   .field('ang', ushort)
   .field('cursectnum', ushort);
 
-export function loadBuildMap(stream: Stream): build.Board {
+export function loadBuildMap(stream: Stream): Board {
   let brd = boardStruct.read(stream);
   brd.numsectors = ushort.read(stream);
   brd.sectors = array(sectorStruct, brd.numsectors).read(stream);

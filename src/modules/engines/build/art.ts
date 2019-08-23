@@ -1,4 +1,4 @@
-import { struct, bits, Stream, array, ushort, atomic_array, ubyte } from "../../../libs/stream";
+import { struct, bits, Stream, array, ushort, atomic_array, ubyte, byte } from "../../../libs/stream";
 
 export class ArtInfo {
   constructor(public w: number, public h: number, public attrs: Attributes, public img: Uint8Array) { }
@@ -21,8 +21,8 @@ export class Attributes {
 var anumStruct = struct(Attributes)
   .field('frames', bits(6))
   .field('type', bits(2))
-  .field('xoff', bits(-8))
-  .field('yoff', bits(-8))
+  .field('xoff', byte)
+  .field('yoff', byte)
   .field('speed', bits(4))
   .field('unk', bits(4));
 

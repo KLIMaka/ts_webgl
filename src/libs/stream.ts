@@ -172,7 +172,7 @@ export const int = atomicReader(s => s.readInt(), 4, Int32Array);
 export const uint = atomicReader(s => s.readUInt(), 4, Uint32Array);
 export const float = atomicReader(s => s.readFloat(), 4, Float32Array);
 export const string = (len: number) => reader(s => s.readByteString(len), len);
-export const bits = (len: number) => reader(s => s.readBits(len), len / 8);
+export const bits = (len: number) => reader(s => s.readBits(len), Math.abs(len) / 8);
 export const array = <T>(type: Reader<T>, len: number) => reader(s => readArray(s, type, len), type.size * len);
 export const atomic_array = <T>(type: AtomicReader<any, T>, len: number) => reader(s => readAtomicArray(s, type, len), type.size * len);
 export const struct = <T>(type: Constructor<T>) => new StructBuilder(type);
