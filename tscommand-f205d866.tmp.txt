@@ -1,0 +1,1 @@
+src\build.ts --sourcemap --removeComments --rootDir src/ --lib es2015,dom --target ES5 --module amd --outDir distr/

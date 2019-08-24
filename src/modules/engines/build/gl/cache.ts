@@ -517,7 +517,7 @@ function cacheTriangulate(board: Board, sec: Sector): any {
   return triangulate(sec, board.walls);
 }
 
-let tc1 = GLM.vec4.create();
+let tc = GLM.vec4.create();
 function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, buff: Buffer, vtxs: number[][], vidxs: number[], normal: GLM.Vec3Array, t: GLM.Mat4Array) {
   let heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   let z = ceil ? sec.ceilingz : sec.floorz;
@@ -529,8 +529,8 @@ function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, bu
     let vz = (slope(vx, vy, heinum) + z) / U.ZSCALE;
     buff.writePos(i, vx, vz, vy);
     buff.writeNormal(i, normal[0], normal[1], normal[2]);
-    GLM.vec4.transformMat4(tc1, GLM.vec4.set(tc1, vx, vz, vy, 1), t);
-    buff.writeTc(i, tc1[0], tc1[1]);
+    GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, vx, vz, vy, 1), t);
+    buff.writeTc(i, tc[0], tc[1]);
   }
 
   for (let i = 0; i < vidxs.length; i += 3) {
@@ -609,7 +609,6 @@ function writePos(buff: Buffer, c: number[]) {
   buff.writePos(3, c[9], c[11], c[10]);
 }
 
-let tc = GLM.vec4.create();
 function writeTransformTc(buff: Buffer, t: GLM.Mat4Array, c: number[]) {
   GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[0], c[2], c[1], 1), t);
   buff.writeTc(0, tc[0], tc[1]);
@@ -647,10 +646,10 @@ function genQuad(c: number[], n: number[], t: GLM.Mat4Array, buff: Buffer, onesi
     buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-function genSpriteQuad(c: number[], n: number[], t: number[], buff: Buffer) {
+function genSpriteQuad(x: number, y: number, z: number, n: number[], t: number[], buff: Buffer) {
   buff.allocate(4, 12);
 
-  writePos(buff, c);
+  writePos(buff, [x, y, z, x, y, z, x, y, z, x, y, z]);
   writeTc(buff, t);
   writeNormal(buff, n);
 
@@ -822,20 +821,12 @@ function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, y
   GLM.mat4.scale(texMat, texMat, [1 / (hw * 2), -1 / (hh * 2), 1, 1]);
   GLM.mat4.translate(texMat, texMat, [hw - xo, -hh - yo, 0, 0]);
 
-  genSpriteQuad([
-    x, y, z,
-    x, y, z,
-    x, y, z,
-    x, y, z
-  ], [
-      -hw + xo, +hh + yo, 0,
-      +hw + xo, +hh + yo, 0,
-      +hw + xo, -hh + yo, 0,
-      -hw + xo, -hh + yo, 0
-    ], [
-      0, 0, 1, 0, 1, 1, 0, 1
-    ],
-    renderable.buff);
+  genSpriteQuad(x, y, z, [
+    -hw + xo, +hh + yo, 0,
+    +hw + xo, +hh + yo, 0,
+    +hw + xo, -hh + yo, 0,
+    -hw + xo, -hh + yo, 0
+  ], [0, 0, 1, 0, 1, 1, 0, 1], renderable.buff);
 }
 
 function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable: SpriteSolid) {

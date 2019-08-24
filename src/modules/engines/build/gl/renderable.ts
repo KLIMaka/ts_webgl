@@ -83,7 +83,6 @@ export class Solid implements Renderable {
     state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, this.trans));
     state.setUniform('pluN', this.pal);
     state.setUniform('shade', this.shade);
-    // state.setUniform('T', this.texMat);
     state.setDrawElements(this.buff.get());
     state.draw(gl);
   }
