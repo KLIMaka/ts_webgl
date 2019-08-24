@@ -34,6 +34,10 @@ export class Buffer {
     return BUFF.writeNormal(this.ptr, off, x, y, z);
   }
 
+  public writeTc(off: number, u: number, v: number): number {
+    return BUFF.writeTc(this.ptr, off, u, v);
+  }
+
   public writeTriangle(off: number, a: number, b: number, c: number): number {
     return BUFF.writeTriangle(this.ptr, off, a, b, c);
   }
@@ -73,12 +77,13 @@ export class Solid implements Renderable {
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
+    state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
     state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     state.setTexture('base', this.tex);
     state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, this.trans));
     state.setUniform('pluN', this.pal);
     state.setUniform('shade', this.shade);
-    state.setUniform('T', this.texMat);
+    // state.setUniform('T', this.texMat);
     state.setDrawElements(this.buff.get());
     state.draw(gl);
   }
@@ -101,6 +106,7 @@ class Grid implements Renderable {
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
+    state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
@@ -127,6 +133,7 @@ export class Wireframe implements Renderable {
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
+    state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());

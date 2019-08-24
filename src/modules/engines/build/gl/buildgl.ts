@@ -5,6 +5,7 @@ import * as SHADER from '../../../shaders';
 import { State } from '../../../stategl';
 import * as BUFF from './buffers';
 import { Renderable } from './renderable';
+import * as PROFILE from '../../../profiler';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state: State;
@@ -66,6 +67,7 @@ export function setClipPlane(x: number, y: number, z: number, w: number) {
 
 export function draw(gl: WebGLRenderingContext, renderable: Renderable) {
   if (renderable == null) return;
+  PROFILE.get(null).inc('draws');
   renderable.draw(gl, state);
 }
 

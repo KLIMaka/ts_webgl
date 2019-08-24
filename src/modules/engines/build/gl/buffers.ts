@@ -7,7 +7,8 @@ let ctx: WebGLRenderingContext;
 function createNewBuffer() {
   let buffer = new Buffer(ctx, new BufferBuilder()
     .addVertexBuffer(ctx, 'aPos', ctx.FLOAT, 3)
-    .addVertexBuffer(ctx, 'aNorm', ctx.FLOAT, 3));
+    .addVertexBuffer(ctx, 'aNorm', ctx.FLOAT, 3)
+    .addVertexBuffer(ctx, 'aTc', ctx.FLOAT, 2));
   buffers.push(buffer);
   return buffer;
 }
@@ -23,6 +24,10 @@ export function getPosBuffer(ptr: Pointer): VertexBuffer {
 
 export function getNormBuffer(ptr: Pointer): VertexBuffer {
   return ptr.buffer.getVertexBuffer('aNorm');
+}
+
+export function getTexCoordBuffer(ptr: Pointer): VertexBuffer {
+  return ptr.buffer.getVertexBuffer('aTc');
 }
 
 export function getIdxBuffer(ptr: Pointer): IndexBuffer {
@@ -48,6 +53,11 @@ export function writePos(ptr: Pointer, off: number, x: number, y: number, z: num
 
 export function writeNormal(ptr: Pointer, off: number, x: number, y: number, z: number): number {
   ptr.buffer.writeVertex(ptr, 'aNorm', off, [x, y, z]);
+  return off + 1;
+}
+
+export function writeTc(ptr: Pointer, off: number, u: number, v: number): number {
+  ptr.buffer.writeVertex(ptr, 'aTc', off, [u, v]);
   return off + 1;
 }
 

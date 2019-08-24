@@ -8,8 +8,6 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as MU from '../../../../libs/mathutils';
 import { State } from '../../../stategl';
 import { SubType } from '../hitscan';
-import { pointOnWall } from '../boardutils';
-import { normal2d } from '../../../../libs/vecmath';
 
 class EnsureArray<T> {
   private array: Array<T> = [];
@@ -519,7 +517,8 @@ function cacheTriangulate(board: Board, sec: Sector): any {
   return triangulate(sec, board.walls);
 }
 
-function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, buff: Buffer, vtxs: number[][], vidxs: number[], normal: GLM.Vec3Array) {
+let tc1 = GLM.vec4.create();
+function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, buff: Buffer, vtxs: number[][], vidxs: number[], normal: GLM.Vec3Array, t: GLM.Mat4Array) {
   let heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   let z = ceil ? sec.ceilingz : sec.floorz;
   let slope = U.createSlopeCalculator(sec, board.walls);
@@ -530,6 +529,8 @@ function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, bu
     let vz = (slope(vx, vy, heinum) + z) / U.ZSCALE;
     buff.writePos(i, vx, vz, vy);
     buff.writeNormal(i, normal[0], normal[1], normal[2]);
+    GLM.vec4.transformMat4(tc1, GLM.vec4.set(tc1, vx, vz, vy, 1), t);
+    buff.writeTc(i, tc1[0], tc1[1]);
   }
 
   for (let i = 0; i < vidxs.length; i += 3) {
@@ -541,31 +542,31 @@ function fillBuffersForSectorNormal(ceil: boolean, board: Board, sec: Sector, bu
   }
 }
 
-function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderable: SectorSolid, normal: GLM.Vec3Array) {
+function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderable: SectorSolid, normal: GLM.Vec3Array, t: GLM.Mat4Array) {
   let [vtxs, vidxs] = cacheTriangulate(board, sec);
   let d = ceil ? renderable.ceiling : renderable.floor;
   d.buff.allocate(vtxs.length, vidxs.length);
-  fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal);
+  fillBuffersForSectorNormal(ceil, board, sec, d.buff, vtxs, vidxs, normal, t);
 }
 
 let sectorNormal = GLM.vec3.create();
 function prepareSector(board: Board, art: ArtProvider, secId: number, renderable: SectorSolid) {
   let sec = board.sectors[secId];
-  fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(sectorNormal, board, secId, true));
+  let ceilinginfo = art.getInfo(sec.ceilingpicnum);
+  applySectorTextureTransform(sec, true, board.walls, ceilinginfo, renderable.ceiling.texMat);
+  fillBuffersForSector(true, board, sec, renderable, U.sectorNormal(sectorNormal, board, secId, true), renderable.ceiling.texMat);
   renderable.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
   renderable.ceiling.parallax = sec.ceilingstat.parallaxing;
   renderable.ceiling.pal = sec.ceilingpal;
   renderable.ceiling.shade = sec.ceilingshade;
-  let ceilinginfo = art.getInfo(sec.ceilingpicnum);
-  applySectorTextureTransform(sec, true, board.walls, ceilinginfo, renderable.ceiling.texMat);
 
-  fillBuffersForSector(false, board, sec, renderable, U.sectorNormal(sectorNormal, board, secId, false));
+  let floorinfo = art.getInfo(sec.floorpicnum);
+  applySectorTextureTransform(sec, false, board.walls, floorinfo, renderable.floor.texMat);
+  fillBuffersForSector(false, board, sec, renderable, U.sectorNormal(sectorNormal, board, secId, false), renderable.floor.texMat);
   renderable.floor.tex = sec.floorstat.parallaxing ? art.getParallaxTexture(sec.floorpicnum) : art.get(sec.floorpicnum);
   renderable.floor.parallax = sec.floorstat.parallaxing;
   renderable.floor.pal = sec.floorpal;
   renderable.floor.shade = sec.floorshade;
-  let floorinfo = art.getInfo(sec.floorpicnum);
-  applySectorTextureTransform(sec, false, board.walls, floorinfo, renderable.floor.texMat);
 }
 
 function getWallCoords(x1: number, y1: number, x2: number, y2: number,
@@ -601,20 +602,60 @@ function normals(n: GLM.Vec3Array) {
   return [n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2]];
 }
 
-function genQuad(coords: number[], n: number[], buff: Buffer, onesided: number = 1) {
-  buff.allocate(4, onesided ? 6 : 12);
-  let [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4] = coords;
-  buff.writePos(0, x1, z1, y1);
-  buff.writePos(1, x2, z2, y2);
-  buff.writePos(2, x3, z3, y3);
-  buff.writePos(3, x4, z4, y4);
+function writePos(buff: Buffer, c: number[]) {
+  buff.writePos(0, c[0], c[2], c[1]);
+  buff.writePos(1, c[3], c[5], c[4]);
+  buff.writePos(2, c[6], c[8], c[7]);
+  buff.writePos(3, c[9], c[11], c[10]);
+}
+
+let tc = GLM.vec4.create();
+function writeTransformTc(buff: Buffer, t: GLM.Mat4Array, c: number[]) {
+  GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[0], c[2], c[1], 1), t);
+  buff.writeTc(0, tc[0], tc[1]);
+  GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[3], c[5], c[4], 1), t);
+  buff.writeTc(1, tc[0], tc[1]);
+  GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[6], c[8], c[7], 1), t);
+  buff.writeTc(2, tc[0], tc[1]);
+  GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[9], c[11], c[10], 1), t);
+  buff.writeTc(3, tc[0], tc[1]);
+}
+
+function writeTc(buff: Buffer, t: number[]) {
+  buff.writeTc(0, t[0], t[1]);
+  buff.writeTc(1, t[2], t[3]);
+  buff.writeTc(2, t[4], t[5]);
+  buff.writeTc(3, t[6], t[7]);
+}
+
+function writeNormal(buff: Buffer, n: number[]) {
   buff.writeNormal(0, n[0], n[1], n[2]);
   buff.writeNormal(1, n[3], n[4], n[5]);
   buff.writeNormal(2, n[6], n[7], n[8]);
   buff.writeNormal(3, n[9], n[10], n[11]);
+}
+
+function genQuad(c: number[], n: number[], t: GLM.Mat4Array, buff: Buffer, onesided: number = 1) {
+  buff.allocate(4, onesided ? 6 : 12);
+
+  writePos(buff, c);
+  writeTransformTc(buff, t, c);
+  writeNormal(buff, n);
+
   buff.writeQuad(0, 0, 1, 2, 3);
   if (!onesided)
     buff.writeQuad(6, 3, 2, 1, 0);
+}
+
+function genSpriteQuad(c: number[], n: number[], t: number[], buff: Buffer) {
+  buff.allocate(4, 12);
+
+  writePos(buff, c);
+  writeTc(buff, t);
+  writeNormal(buff, n);
+
+  buff.writeQuad(0, 0, 1, 2, 3);
+  buff.writeQuad(6, 3, 2, 1, 0);
 }
 
 function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base: number, originalWall: Wall = wall, texMat: GLM.Mat4Array) {
@@ -657,9 +698,9 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     let coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
-    genQuad(coords, normal, renderable.mid.buff);
     let base = wall.cstat.alignBottom ? floorz : ceilingz;
     applyWallTextureTransform(wall, wall2, info, base, wall, renderable.mid.texMat);
+    genQuad(coords, normal, renderable.mid.texMat, renderable.mid.buff);
     renderable.mid.tex = tex;
     renderable.mid.shade = wall.shade;
     renderable.mid.pal = wall.pal;
@@ -672,7 +713,6 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
     let nextfloorheinum = nextsector.floorheinum;
     let floorcoords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
     if (floorcoords != null) {
-      genQuad(floorcoords, normal, renderable.bot.buff);
       if (sector.floorstat.parallaxing && nextsector.floorstat.parallaxing && sector.floorpicnum == nextsector.floorpicnum) {
         renderable.bot.tex = art.getParallaxTexture(sector.floorpicnum);
         renderable.bot.shade = sector.floorshade;
@@ -689,12 +729,12 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
         renderable.bot.shade = wall_.shade;
         renderable.bot.pal = wall_.pal;
       }
+      genQuad(floorcoords, normal, renderable.bot.texMat, renderable.bot.buff);
     }
 
     let nextceilingheinum = nextsector.ceilingheinum;
     let ceilcoords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
     if (ceilcoords != null) {
-      genQuad(ceilcoords, normal, renderable.top.buff);
       if (sector.ceilingstat.parallaxing && nextsector.ceilingstat.parallaxing && sector.ceilingpicnum == nextsector.ceilingpicnum) {
         renderable.top.tex = art.getParallaxTexture(sector.ceilingpicnum);
         renderable.top.shade = sector.ceilingshade;
@@ -707,6 +747,7 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
         renderable.top.shade = wall.shade;
         renderable.top.pal = wall.pal;
       }
+      genQuad(ceilcoords, normal, renderable.top.texMat, renderable.top.buff);
     }
 
     if (wall.cstat.masking) {
@@ -715,9 +756,9 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
       let coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope,
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
         floorheinum, nextfloorheinum, floorz, nextfloorz);
-      genQuad(coords, normal, renderable.mid.buff);
       let base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
       applyWallTextureTransform(wall, wall2, info1, base, wall, renderable.mid.texMat);
+      genQuad(coords, normal, renderable.mid.texMat, renderable.mid.buff);
       renderable.mid.tex = tex1;
       renderable.mid.shade = wall.shade;
       renderable.mid.pal = wall.pal;
@@ -729,13 +770,6 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
 function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SpriteSolid) {
   let dx = Math.sin(ang) * hw;
   let dy = Math.cos(ang) * hw;
-  genQuad([
-    x - dx, y - dy, z - hh + yo,
-    x + dx, y + dy, z - hh + yo,
-    x + dx, y + dy, z + hh + yo,
-    x - dx, y - dy, z + hh + yo],
-    normals(U.ang2vec(ang)),
-    renderable.buff, onesided);
 
   let xs = xf ? -1.0 : 1.0;
   let ys = yf ? -1.0 : 1.0;
@@ -744,6 +778,15 @@ function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, y
   GLM.mat4.scale(texMat, texMat, [xs / (hw * 2), -ys / (hh * 2), 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -ang - Math.PI / 2);
   GLM.mat4.translate(texMat, texMat, [-x - xs * dx, -z - ys * hh - yo, -y - xs * dy, 0]);
+
+  genQuad([
+    x - dx, y - dy, z - hh + yo,
+    x + dx, y + dy, z - hh + yo,
+    x + dx, y + dy, z + hh + yo,
+    x - dx, y - dy, z + hh + yo],
+    normals(U.ang2vec(ang)), texMat,
+    renderable.buff, onesided);
+
 }
 
 function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SpriteSolid) {
@@ -752,13 +795,6 @@ function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, 
   let dhx = Math.sin(ang + Math.PI / 2) * hh;
   let dhy = Math.cos(ang + Math.PI / 2) * hh;
   let s = !(xf || yf) ? 1 : -1;
-  genQuad([
-    x - dwx - dhx, y - dwy - dhy, z,
-    x + s * (-dwx + dhx), y + s * (-dwy + dhy), z,
-    x + dwx + dhx, y + dwy + dhy, z,
-    x + s * (dwx - dhx), y + s * (dwy - dhy), z],
-    normals([0, s, 0]),
-    renderable.buff, onesided);
 
   let xs = xf ? -1.0 : 1.0;
   let ys = yf ? -1.0 : 1.0;
@@ -769,10 +805,24 @@ function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, 
   GLM.mat4.rotateZ(texMat, texMat, ang - Math.PI / 2);
   GLM.mat4.translate(texMat, texMat, [-x, -y, 0, 0]);
   GLM.mat4.rotateX(texMat, texMat, -Math.PI / 2);
+
+  genQuad([
+    x - dwx - dhx, y - dwy - dhy, z,
+    x + s * (-dwx + dhx), y + s * (-dwy + dhy), z,
+    x + dwx + dhx, y + dwy + dhy, z,
+    x + s * (dwx - dhx), y + s * (dwy - dhy), z],
+    normals([0, s, 0]), texMat,
+    renderable.buff, onesided);
+
 }
 
 function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, xf: number, yf: number, renderable: SpriteSolid) {
-  genQuad([
+  let texMat = renderable.texMat;
+  GLM.mat4.identity(texMat);
+  GLM.mat4.scale(texMat, texMat, [1 / (hw * 2), -1 / (hh * 2), 1, 1]);
+  GLM.mat4.translate(texMat, texMat, [hw - xo, -hh - yo, 0, 0]);
+
+  genSpriteQuad([
     x, y, z,
     x, y, z,
     x, y, z,
@@ -782,12 +832,10 @@ function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, y
       +hw + xo, +hh + yo, 0,
       +hw + xo, -hh + yo, 0,
       -hw + xo, -hh + yo, 0
-    ], renderable.buff, 0);
-
-  let texMat = renderable.texMat;
-  GLM.mat4.identity(texMat);
-  GLM.mat4.scale(texMat, texMat, [1 / (hw * 2), -1 / (hh * 2), 1, 1]);
-  GLM.mat4.translate(texMat, texMat, [hw - xo, -hh - yo, 0, 0]);
+    ], [
+      0, 0, 1, 0, 1, 1, 0, 1
+    ],
+    renderable.buff);
 }
 
 function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable: SpriteSolid) {
