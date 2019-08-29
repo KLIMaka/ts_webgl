@@ -3,7 +3,7 @@ import * as GLM from '../libs_js/glmatrix';
 import { Pointer } from './buffergl';
 import { Shader, VertexBuffer, IndexBuffer, Texture } from './drawstruct';
 
-function eqCmp<T>(lh: T, rh: T) { return lh == rh }
+function eqCmp<T>(lh: T, rh: T) { return lh === rh }
 function assign<T>(dst: T, src: T) { return src }
 
 class StateValue<T> {

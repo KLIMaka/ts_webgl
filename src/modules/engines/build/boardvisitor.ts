@@ -1,4 +1,4 @@
-import { arcsIntersects, monoatan2 } from '../../../libs/mathutils';
+import { arcsIntersects, monoatan2, dot2d } from '../../../libs/mathutils';
 import * as GLM from '../../../libs_js/glmatrix';
 import { Deck, IndexedDeck } from '../../deck';
 import * as PROFILE from '../../profiler';
@@ -112,12 +112,12 @@ export class AllBoardVisitorResult implements Result {
 }
 
 function wallBehind(board: Board, wallId: number, fwd: GLM.Vec3Array, ms: U.MoveStruct) {
-  return false;
-  // let wall1 = board.walls[wallId];
-  // let wall2 = board.walls[wall1.point2];
-  // let dx1 = wall1.x - ms.x; let dy1 = wall1.y - ms.y;
-  // let dx2 = wall2.x - ms.x; let dy2 = wall2.y - ms.y;
-  // return dot2d(dx1, dy1, fwd[0], fwd[2]) < 0 && dot2d(dx2, dy2, fwd[0], fwd[2]) < 0;
+  // return false;
+  let wall1 = board.walls[wallId];
+  let wall2 = board.walls[wall1.point2];
+  let dx1 = wall1.x - ms.x; let dy1 = wall1.y - ms.y;
+  let dx2 = wall2.x - ms.x; let dy2 = wall2.y - ms.y;
+  return dot2d(dx1, dy1, fwd[0], fwd[2]) < 0 && dot2d(dx2, dy2, fwd[0], fwd[2]) < 0;
 }
 
 export class PvsBoardVisitorResult implements Result {
@@ -194,7 +194,7 @@ export class PvsBoardVisitorResult implements Result {
   }
 
   private visibleFromEntryWalls(wallId: number, entryWalls: Deck<number>, ms: U.MoveStruct) {
-    return true;
+    // return true;
     if (entryWalls.length() == 0)
       return true;
     for (let i = 0; i < entryWalls.length(); i++) {
@@ -210,11 +210,11 @@ export class PvsBoardVisitorResult implements Result {
   }
 
   private cached(board: Board, ms: U.MoveStruct) {
-    if (!this.needToUpdate && ms.x == this.cachedX && ms.y == this.cachedY)
-      return true;
-    this.cachedX = ms.x;
-    this.cachedY = ms.y;
-    this.needToUpdate = false;
+    // if (!this.needToUpdate && ms.x == this.cachedX && ms.y == this.cachedY)
+    //   return true;
+    // this.cachedX = ms.x;
+    // this.cachedY = ms.y;
+    // this.needToUpdate = false;
     return false;
   }
 
