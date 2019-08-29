@@ -267,6 +267,7 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Contr
   info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
   info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
   info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
+  info['Draw Calls:'] = PROFILE.get(null).counts['draws'];
   info['Sector:'] = ms.sec;
   info['X:'] = ms.x;
   info['Y:'] = ms.y;

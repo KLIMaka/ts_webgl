@@ -3,7 +3,7 @@ import * as GLM from '../libs_js/glmatrix';
 import { Pointer } from './buffergl';
 import { Shader, VertexBuffer, IndexBuffer, Texture } from './drawstruct';
 
-function eqCmp<T>(lh: T, rh: T) { return lh == rh }
+function eqCmp<T>(lh: T, rh: T) { return lh === rh }
 function assign<T>(dst: T, src: T) { return src }
 
 class StateValue<T> {
@@ -32,15 +32,22 @@ function createStateValue(type: string): StateValue<any> {
 
 export class State {
   private shader: StateValue<Shader> = new StateValue<Shader>(null);
-  private vertexBuffers: { [index: string]: StateValue<VertexBuffer> } = {};
   private indexBuffer: StateValue<IndexBuffer> = new StateValue<IndexBuffer>(null);
   private drawElements: StateValue<Pointer> = new StateValue<Pointer>(null);
+  private shaders: { [index: string]: Shader } = {};
+
+  private vertexBuffers: StateValue<VertexBuffer>[] = [];
+  private vertexBufferNames: string[] = [];
+  private vertexBufferIndex: { [index: string]: number } = {};
 
   private uniforms: StateValue<any>[] = [];
   private uniformsNames: string[] = [];
   private uniformsIndex: { [index: string]: number } = {};
-  private shaders: { [index: string]: Shader } = {};
-  private textures: { [index: string]: StateValue<Texture> } = {};
+
+  private textures: StateValue<Texture>[] = [];
+  private texturesNames: string[] = [];
+  private texturesIndex: { [index: string]: number } = {};
+
 
   public registerShader(name: string, shader: Shader) {
     this.shaders[name] = shader;
@@ -55,15 +62,18 @@ export class State {
     let samplers = shader.getSamplers();
     for (let s = 0; s < samplers.length; s++) {
       let sampler = samplers[s];
-      this.textures[sampler.getName()] = new StateValue<Texture>(null);
+      if (this.texturesIndex[sampler.getName()] != undefined) continue;
+      let idx = this.textures.length;
+      this.textures.push(new StateValue<Texture>(null));
+      this.texturesNames.push(sampler.getName());
+      this.texturesIndex[sampler.getName()] = idx;
     }
   }
 
   public setUniform(name: string, value: any) {
     let u = this.uniformsIndex[name];
     if (u == undefined) {
-      console.warn('Invalid uniform name: ' + name);
-      return;
+      throw new Error('Invalid uniform name: ' + name);
     }
     this.uniforms[u].set(value);
   }
@@ -76,12 +86,11 @@ export class State {
   }
 
   public setTexture(name: string, tex: Texture) {
-    let t = this.textures[name];
+    let t = this.texturesIndex[name];
     if (t == undefined) {
-      console.warn('Invalid sampler name: ' + name);
-      return;
+      throw new Error('Invalid sampler name: ' + name);
     }
-    t.set(tex);
+    this.textures[t].set(tex);
   }
 
   public setIndexBuffer(b: IndexBuffer) {
@@ -89,11 +98,14 @@ export class State {
   }
 
   public setVertexBuffer(name: string, b: VertexBuffer) {
-    let state = this.vertexBuffers[name];
-    if (state == undefined) {
-      state = new StateValue<VertexBuffer>(null);
-      this.vertexBuffers[name] = state;
+    let idx = this.vertexBufferIndex[name];
+    if (idx == undefined) {
+      idx = this.vertexBuffers.length;
+      this.vertexBufferIndex[name] = idx;
+      this.vertexBufferNames[idx] = name;
+      this.vertexBuffers.push(new StateValue<VertexBuffer>(null));
     }
+    let state = this.vertexBuffers[idx];
     state.set(b);
   }
 
@@ -118,16 +130,11 @@ export class State {
 
   private rebindVertexBuffers(gl: WebGLRenderingContext, rebindAll: boolean) {
     let shader = this.shader.get();
-    let attributes = shader.getAttributes();
-    for (let a = 0; a < attributes.length; a++) {
-      let attr = attributes[a];
-      let buf = this.vertexBuffers[attr.getName()];
-      if (buf == undefined)
-        throw new Error('No buffer for shader attribute <' + attr + '>');
-      if (!rebindAll && !buf.isChanged())
-        continue;
+    for (let a = 0; a < this.vertexBuffers.length; a++) {
+      let buf = this.vertexBuffers[a];
+      if (!rebindAll && !buf.isChanged()) continue;
       let vbuf = buf.get();
-      let location = shader.getAttributeLocation(attr.getName(), gl);
+      let location = shader.getAttributeLocation(this.vertexBufferNames[a], gl);
       if (location == -1)
         continue;
       gl.bindBuffer(gl.ARRAY_BUFFER, vbuf.getBuffer());
@@ -148,7 +155,7 @@ export class State {
     let samplers = this.shader.get().getSamplers();
     for (let s = 0; s < samplers.length; s++) {
       let sampler = samplers[s];
-      let texture = this.textures[sampler.getName()];
+      let texture = this.textures[this.texturesIndex[sampler.getName()]];
       if (texture != undefined && texture.get() != null && (rebindAll || texture.isChanged())) {
         gl.activeTexture(gl.TEXTURE0 + s);
         gl.bindTexture(gl.TEXTURE_2D, texture.get().get());
