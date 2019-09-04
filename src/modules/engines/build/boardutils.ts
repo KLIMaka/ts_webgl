@@ -4,6 +4,7 @@ import { Board, Wall, Sector, SectorStats, WallStats } from './structs';
 import * as U from './utils';
 import { IndexedDeck, Deck, Collection } from '../../deck';
 import { SubType } from './hitscan';
+import { cyclic, cross2d } from '../../../libs/mathutils';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -121,6 +122,14 @@ function deleteSectorImpl(board: Board, sectorId: number) {
   board.numsectors--;
 }
 
+function addSector(board: Board, sector: Sector) {
+  let idx = board.numsectors;
+  board.sectors[idx] = sector;
+  sector.wallptr = board.numwalls;
+  board.numsectors++;
+  return idx;
+}
+
 function moveWalls(board: Board, secId: number, afterWallId: number, size: number, wallptrs: number[]) {
   if (size == 0) return;
   for (let w = 0; w < board.numwalls; w++) {
@@ -236,6 +245,43 @@ function copyWall(wall: Wall, x: number, y: number): Wall {
   return nwall;
 }
 
+function createWallStats() {
+  let stat = new WallStats();
+  stat.alignBottom = 0;
+  stat.blocking = 0;
+  stat.blocking2 = 0;
+  stat.masking = 0;
+  stat.oneWay = 0;
+  stat.swapBottoms = 0;
+  stat.translucent = 0;
+  stat.translucentReversed = 0;
+  stat.xflip = 0;
+  stat.yflip = 0;
+  return stat;
+}
+
+function createWall(x: number, y: number): Wall {
+  let wall = new Wall();
+  wall.x = x;
+  wall.y = y;
+  wall.point2 = 0;
+  wall.nextwall = 0;
+  wall.nextsector = 0;
+  wall.cstat = createWallStats();
+  wall.picnum = 0;
+  wall.overpicnum = 0;
+  wall.shade = 0;
+  wall.pal = 0;
+  wall.xrepeat = 0;
+  wall.yrepeat = 0;
+  wall.xpanning = 0;
+  wall.ypanning = 0;
+  wall.lotag = 0;
+  wall.hitag = 0
+  wall.extra = -1;
+  return wall;
+}
+
 function copySectorStats(stat: SectorStats): SectorStats {
   let nstat = new SectorStats();
   nstat.alignToFirstWall = stat.alignToFirstWall;
@@ -273,6 +319,45 @@ function copySector(sector: Sector): Sector {
   nsector.wallnum = 0;
   nsector.wallptr = 0;
   return nsector;
+}
+
+function createSectorStats() {
+  let stat = new SectorStats();
+  stat.alignToFirstWall = 0;
+  stat.doubleSmooshiness = 0;
+  stat.parallaxing = 0;
+  stat.slopped = 0;
+  stat.swapXY = 0;
+  stat.xflip = 0;
+  stat.yflip = 0;
+  return stat;
+}
+
+function newSector(): Sector {
+  let sector = new Sector();
+  sector.ceilingheinum = 0;
+  sector.ceilingpal = 0;
+  sector.ceilingpicnum = 0;
+  sector.ceilingshade = 0;
+  sector.ceilingstat = createSectorStats();
+  sector.ceilingxpanning = 0;
+  sector.ceilingypanning = 0;
+  sector.ceilingz = -(32 << 8);
+  sector.extra = -1;
+  sector.floorheinum = 0;
+  sector.floorpal = 0;
+  sector.floorpicnum = 0;
+  sector.floorshade = 0;
+  sector.floorstat = createSectorStats();
+  sector.floorxpanning = 0;
+  sector.floorypanning = 0;
+  sector.floorz = (32 << 8);
+  sector.hitag = 0;
+  sector.lotag = 0;
+  sector.visibility = 0;
+  sector.wallnum = 0;
+  sector.wallptr = 0;
+  return sector;
 }
 
 export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
@@ -535,6 +620,47 @@ export function pushWallToSector(board: Board, wallId: number, type: SubType) {
   }
 }
 
+function clockwise(walls: Collection<Wall>): boolean {
+  let minx = Number.MAX_VALUE;
+  let minwall = -1;
+  for (let w = 0; w < walls.length(); w++) {
+    let w2 = cyclic(w + 1, walls.length());
+    let wall2 = walls.get(w2);
+    if (wall2.x < minx) {
+      minx = wall2.x;
+      minwall = w;
+    }
+  }
+  let wall0 = walls.get(minwall);
+  let wall1 = walls.get(cyclic(minwall + 1, walls.length()));
+  let wall2 = walls.get(cyclic(minwall + 2, walls.length()));
+
+  if (wall2.y <= wall1.y && wall1.y <= wall0.y) return true;
+  if (wall0.y <= wall1.y && wall1.y <= wall2.y) return false;
+
+  return cross2d(wall0.x - wall1.x, wall0.y - wall1.y, wall2.x - wall1.x, wall2.y - wall1.y) < 0;
+}
+
+function createNewSector(board: Board, points: Collection<[number, number]>) {
+  let sector = newSector();
+  let sectorIdx = addSector(board, sector);
+  resizeWalls(board, sectorIdx, points.length());
+  let walls = new Deck<Wall>();
+  for (let i = 0; i < points.length(); i++) {
+    let p = points[i];
+    walls.push(createWall(p[0], p[1]));
+  }
+  if (!clockwise(walls)) {
+    let walls1 = new Deck<Wall>();
+    for (let i = walls.length() - 1; i >= 0; i--)
+      walls1.push(walls.get(i));
+    walls = walls1;
+  }
+  loopPoints.clear().push(points.length());
+  insertWallsToSector(board, sectorIdx, walls, loopPoints);
+}
+
+
 export function createSector(board: Board, sectorId: number, points: Collection<number[]>) {
   if (points.length() < 3)
     throw new Error('Needed at least 3 points');
@@ -543,9 +669,6 @@ export function createSector(board: Board, sectorId: number, points: Collection<
     if (sectorId != U.findSector(board, point[0], point[1]))
       throw new Error('All points need to be in same sector #' + sectorId);
   }
-
-
-
 }
 
 export function deleteSector(board: Board, sectorId: number) {
