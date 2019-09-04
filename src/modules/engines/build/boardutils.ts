@@ -523,7 +523,7 @@ export function joinSectors(board: Board, s1: number, s2: number) {
   return 0;
 }
 
-export function pushWallToSector(board: Board, wallId: number, type: SubType) {
+export function pushWallToSector(board: Board, wallId: number) {
   let wall = board.walls[wallId];
   let s = U.sectorOfWall(board, wallId);
   let sec = board.sectors[s];
@@ -532,10 +532,11 @@ export function pushWallToSector(board: Board, wallId: number, type: SubType) {
     insertSector(board, nsec);
     nsec.wallptr = board.numwalls;
     resizeWalls(board, board.numsectors - 1, 4);
+
   }
 }
 
-export function createSector(board: Board, sectorId: number, points: Collection<number[]>) {
+export function createSector(board: Board, sectorId: number, points: Collection<[number, number]>) {
   if (points.length() < 3)
     throw new Error('Needed at least 3 points');
   for (let i = 0; i < points.length(); i++) {
@@ -543,9 +544,11 @@ export function createSector(board: Board, sectorId: number, points: Collection<
     if (sectorId != U.findSector(board, point[0], point[1]))
       throw new Error('All points need to be in same sector #' + sectorId);
   }
-
-
-
+  let walls = new Deck<Wall>();
+  for (let i = 0; i < points.length(); i++) {
+    let p1 = points[i];
+    let p2 = points[MU.cyclic(i + 1, points.length())];
+  }
 }
 
 export function deleteSector(board: Board, sectorId: number) {

@@ -1,5 +1,5 @@
 import * as PROFILE from '../modules/profiler';
-import { VertexBufferDynamic, createVertexBuffer, DynamicIndexBuffer, createIndexBuffer } from './meshbuilder';
+import { VertexBufferDynamic, createVertexBuffer, DynamicIndexBuffer, createIndexBuffer, Updatable } from './meshbuilder';
 import { Place, BagController, createController } from '../libs/bag';
 
 export interface Pointer {
@@ -28,8 +28,9 @@ export class Buffer {
   private idxBuffer: DynamicIndexBuffer;
   private vtxRegions: { [index: string]: Region[] } = {};
   private idxRegions: Region[] = [];
+  private needUpdate = true;
 
-  constructor(gl: WebGLRenderingContext, builder: BufferBuilder) {
+  constructor(gl: WebGLRenderingContext, builder: BufferBuilder, readonly blockSize = 10 * 1024) {
     let vtxSize = builder.size;
     let idxSize = vtxSize * 2;
     this.vtxBuffers = builder.vtxBuffers;
@@ -93,6 +94,7 @@ export class Buffer {
       data[offset + i] = vdata[i];
     }
     this.vtxRegions[name].push([offset / buff.getSpacing(), Math.ceil(vdata.length / buff.getSpacing())]);
+    this.needUpdate = true;
   }
 
   public writeIndex(ptr: Pointer, off: number, idata: number[]) {
@@ -104,7 +106,9 @@ export class Buffer {
       data[offset + i] = idata[i] + vtxoff;
     }
     this.idxRegions.push([offset, idata.length]);
+    this.needUpdate = true;
   }
+
 
   private mergeRegions(regions: Region[], i: number): [number, Region] {
     let region = regions[i];
@@ -114,14 +118,14 @@ export class Buffer {
       let currentend = region[0] + region[1];
       let nextstart = regions[i + 1][0];
       let diff = nextstart - currentend;
-      if (diff < 0 || diff > 10 * 1024)
+      if (diff < 0 || diff > this.blockSize)
         break;
       region[1] += regions[++i][1] + diff;
     }
     return [i, region];
   }
 
-  private updateBuffer(gl: WebGLRenderingContext, buffer: any, regions: Region[]): boolean {
+  private updateBuffer(gl: WebGLRenderingContext, buffer: Updatable, regions: Region[]): boolean {
     for (let i = 0; i < regions.length; i++) {
       let [ii, region] = this.mergeRegions(regions, i);
       i = ii;
@@ -134,6 +138,7 @@ export class Buffer {
 
   public update(gl: WebGLRenderingContext) {
     PROFILE.get(null).set('buffer', this.vtxBag.freeSpace());
+    if (!this.needUpdate) return;
     for (let v in this.vtxRegions) {
       if (this.vtxRegions[v].length == 0)
         continue;
@@ -144,5 +149,6 @@ export class Buffer {
       this.updateBuffer(gl, this.idxBuffer, this.idxRegions);
       this.idxRegions = [];
     }
+    this.needUpdate = false;
   }
 }

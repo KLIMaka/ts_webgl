@@ -1,43 +1,40 @@
-import * as GLM from '../libs_js/glmatrix';
-import * as MU from '../libs/mathutils';
 import * as DS from './drawstruct';
-import * as BATCH from './batcher';
 
 export class DynamicIndexBufferBuilder {
-  private buffer:ArrayBuffer;
+  private buffer: ArrayBuffer;
   private lastIdx = 0;
-  private bufIdx:WebGLBuffer;
+  private bufIdx: WebGLBuffer;
 
   constructor(
-    private maxSize:number,
+    private maxSize: number,
     private arrayType,
-    private type:number
+    private type: number
   ) {
     this.buffer = new arrayType(maxSize);
   }
 
-  public push(data:number[]):void {
+  public push(data: number[]): void {
     if (this.lastIdx >= this.maxSize)
       throw new Error('MaxSize limit exceeded');
     for (var i = 0; i < data.length; i++)
       this.buffer[this.lastIdx + i] = data[i];
-    this.lastIdx+=data.length;
+    this.lastIdx += data.length;
   }
 
-  public tell():number {
+  public tell(): number {
     return this.lastIdx;
   }
 
-  public goto(off:number):void {
+  public goto(off: number): void {
     this.lastIdx = off;
   }
 
-  public refresh(gl:WebGLRenderingContext):void {
+  public refresh(gl: WebGLRenderingContext): void {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
     gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, this.buffer);
   }
 
-  public build(gl:WebGLRenderingContext):DS.IndexBuffer {
+  public build(gl: WebGLRenderingContext): DS.IndexBuffer {
     this.bufIdx = (this.bufIdx == null) ? gl.createBuffer() : this.bufIdx;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.buffer, gl.STREAM_DRAW);
@@ -47,43 +44,43 @@ export class DynamicIndexBufferBuilder {
 
 export class DynamicVertexBufferBuilder {
 
-  private buffer:ArrayBuffer;
+  private buffer: ArrayBuffer;
   private lastIdx = 0;
-  private bufIdx:WebGLBuffer;
+  private bufIdx: WebGLBuffer;
 
   constructor(
-    private maxSize:number,
+    private maxSize: number,
     private arrayType,
-    private type:number, 
-    private spacing:number, 
-    private normalized:boolean
+    private type: number,
+    private spacing: number,
+    private normalized: boolean
   ) {
-    this.buffer = new arrayType(maxSize*spacing);
+    this.buffer = new arrayType(maxSize * spacing);
   }
 
-  public push(data:number[]):void {
+  public push(data: number[]): void {
     if (this.lastIdx >= this.maxSize)
       throw new Error('MaxSize limit exceeded');
-    var off = this.lastIdx*this.spacing;
+    var off = this.lastIdx * this.spacing;
     for (var i = 0; i < this.spacing; i++)
-      this.buffer[off+i] = data[i];
+      this.buffer[off + i] = data[i];
     this.lastIdx++;
   }
 
-  public tell():number {
+  public tell(): number {
     return this.lastIdx;
   }
 
-  public goto(off:number):void {
+  public goto(off: number): void {
     this.lastIdx = off;
   }
 
-  public refresh(gl:WebGLRenderingContext):void {
+  public refresh(gl: WebGLRenderingContext): void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bufIdx);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.buffer);
   }
 
-  public build(gl:WebGLRenderingContext):DS.VertexBuffer {
+  public build(gl: WebGLRenderingContext): DS.VertexBuffer {
     this.bufIdx = (this.bufIdx == null) ? gl.createBuffer() : this.bufIdx;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bufIdx);
     gl.bufferData(gl.ARRAY_BUFFER, this.buffer, gl.STREAM_DRAW);
@@ -94,35 +91,35 @@ export class DynamicVertexBufferBuilder {
 export class VertexBufferImpl implements DS.VertexBuffer {
 
   constructor(
-    private buffer:WebGLBuffer, 
-    private type:number, 
-    private spacing:number = 3, 
-    private normalized:boolean = false, 
-    private stride:number = 0, 
-    private offset:number = 0
-  ) {}
+    private buffer: WebGLBuffer,
+    private type: number,
+    private spacing: number = 3,
+    private normalized: boolean = false,
+    private stride: number = 0,
+    private offset: number = 0
+  ) { }
 
-  getBuffer():WebGLBuffer {
+  getBuffer(): WebGLBuffer {
     return this.buffer;
   }
 
-  getType():number {
+  getType(): number {
     return this.type;
   }
 
-  getSpacing():number {
+  getSpacing(): number {
     return this.spacing;
   }
 
-  getNormalized():boolean {
+  getNormalized(): boolean {
     return this.normalized;
   }
 
-  getStride():number {
+  getStride(): number {
     return this.stride;
   }
 
-  getOffset():number {
+  getOffset(): number {
     return this.offset;
   }
 }
@@ -130,31 +127,31 @@ export class VertexBufferImpl implements DS.VertexBuffer {
 export class Mesh implements DS.DrawStruct {
 
   constructor(
-    private material:DS.Material, 
-    private vtxBuffers, 
-    private idx:DS.IndexBuffer, 
-    private mode:number, 
-    private length:number, 
-    private offset:number=0
-  ) {}
+    private material: DS.Material,
+    private vtxBuffers,
+    private idx: DS.IndexBuffer,
+    private mode: number,
+    private length: number,
+    private offset: number = 0
+  ) { }
 
-  getMaterial():DS.Material {
+  getMaterial(): DS.Material {
     return this.material;
   }
 
-  getMode():number {
+  getMode(): number {
     return this.mode;
   }
 
-  getVertexBuffer(attribute:string):DS.VertexBuffer {
+  getVertexBuffer(attribute: string): DS.VertexBuffer {
     return this.vtxBuffers[attribute];
   }
 
-  getAttributes():string[] {
+  getAttributes(): string[] {
     return Object.keys(this.vtxBuffers);
   }
 
-  getIndexBuffer():DS.IndexBuffer {
+  getIndexBuffer(): DS.IndexBuffer {
     return this.idx;
   }
 
@@ -162,11 +159,11 @@ export class Mesh implements DS.DrawStruct {
     return this.vtxBuffers;
   }
 
-  getLength():number {
+  getLength(): number {
     return this.length;
   }
 
-  getOffset():number {
+  getOffset(): number {
     return this.offset;
   }
 }
@@ -177,25 +174,25 @@ export var QUADS = 4;
 
 export class IndexBufferBuilder {
 
-  private buffer:number[] = [];
+  private buffer: number[] = [];
   private idx = 0;
   private mode = NONE;
   private vtxCounter = 0;
-  private bufIdx:WebGLBuffer;
+  private bufIdx: WebGLBuffer;
 
   constructor(
-    private arrayType:any,
-    private type:number
-  ) {}
+    private arrayType: any,
+    private type: number
+  ) { }
 
-  public setMode(mode:number):void {
+  public setMode(mode: number): void {
     if (this.vtxCounter != 0)
       throw new Error('Incomplete primitive!');
     this.mode = mode;
     this.vtxCounter = 0;
   }
 
-  public vtx():void {
+  public vtx(): void {
     this.vtxCounter++;
     if (this.mode == TRIANGLES && this.vtxCounter % TRIANGLES == 0) {
       this.pushTriangle();
@@ -207,49 +204,49 @@ export class IndexBufferBuilder {
     }
   }
 
-  private pushTriangle():void {
+  private pushTriangle(): void {
     var idx = this.idx;
     this.buffer.push(idx, idx + 2, idx + 1);
     this.idx += 3;
   }
 
-  private pushQuad():void {
+  private pushQuad(): void {
     var idx = this.idx;
     this.buffer.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
     this.idx += 4;
   }
 
-  public length():number {
+  public length(): number {
     return this.buffer.length;
   }
 
-  public buf():number[] {
+  public buf(): number[] {
     return this.buffer;
   }
 
-  public build(gl:WebGLRenderingContext):DS.IndexBuffer {
+  public build(gl: WebGLRenderingContext): DS.IndexBuffer {
     this.bufIdx = (this.bufIdx == null) ? gl.createBuffer() : this.bufIdx;
     var data = new this.arrayType(this.buffer);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer> data, gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, <ArrayBuffer>data, gl.STATIC_DRAW);
     return new IndexBufferImpl(this.bufIdx, this.type);
   }
 }
 
 class IndexBufferImpl implements DS.IndexBuffer {
 
-  private buffer:WebGLBuffer;
-  private type:number;
+  private buffer: WebGLBuffer;
+  private type: number;
 
-  getBuffer():WebGLBuffer {
+  getBuffer(): WebGLBuffer {
     return this.buffer;
   }
 
-  getType():number {
+  getType(): number {
     return this.type;
   }
 
-  constructor(buffer:WebGLBuffer, type:number) {
+  constructor(buffer: WebGLBuffer, type: number) {
     this.buffer = buffer;
     this.type = type;
   }
@@ -260,31 +257,31 @@ export class MeshBuilder {
   private attrs = {};
 
   constructor(
-    private buffers:any, 
-    private idx:IndexBufferBuilder
-  ) {}
+    private buffers: any,
+    private idx: IndexBufferBuilder
+  ) { }
 
-  public offset():number {
+  public offset(): number {
     return this.idx.length();
   }
 
-  public goto(mark:any) {
+  public goto(mark: any) {
     for (var attr in this.buffers) {
       this.buffers[attr].goto(mark[attr]);
     }
   }
 
-  public start(mode:number):MeshBuilder {
+  public start(mode: number): MeshBuilder {
     this.idx.setMode(mode);
     return this;
   }
 
-  public attr(attr:string, data:number[]):MeshBuilder {
+  public attr(attr: string, data: number[]): MeshBuilder {
     this.attrs[attr] = data;
     return this;
   }
 
-  public vtx(vtxAttr:string, data:number[]):MeshBuilder {
+  public vtx(vtxAttr: string, data: number[]): MeshBuilder {
     this.attrs[vtxAttr] = data;
     for (var attr in this.attrs) {
       //noinspection JSUnfilteredForInLoop
@@ -294,16 +291,16 @@ export class MeshBuilder {
     return this;
   }
 
-  public end():void {
+  public end(): void {
     this.idx.setMode(NONE);
     this.attrs = {};
   }
 
-  public idxbuf():IndexBufferBuilder {
+  public idxbuf(): IndexBufferBuilder {
     return this.idx;
   }
 
-  public build(gl:WebGLRenderingContext, material:DS.Material):DS.DrawStruct {
+  public build(gl: WebGLRenderingContext, material: DS.Material): DS.DrawStruct {
     var bufs = {};
     for (var bufName in this.buffers) {
       //noinspection JSUnfilteredForInLoop
@@ -317,32 +314,32 @@ export class MeshBuilder {
 export class MeshBuilderConstructor {
 
   private buffers = {};
-  private idx:IndexBufferBuilder;
-  private size:number;
+  private idx: IndexBufferBuilder;
+  private size: number;
 
-  constructor(size:number=64*1024) {
+  constructor(size: number = 64 * 1024) {
     this.size = size;
   }
 
-  public buffer(name:string, arrayType:any, type:number, spacing:number, normalized:boolean=false):MeshBuilderConstructor {
+  public buffer(name: string, arrayType: any, type: number, spacing: number, normalized: boolean = false): MeshBuilderConstructor {
     this.buffers[name] = new DynamicVertexBufferBuilder(this.size, arrayType, type, spacing, normalized);
     return this;
   }
 
-  public index(idxArrayType:any, idxType:number):MeshBuilderConstructor {
+  public index(idxArrayType: any, idxType: number): MeshBuilderConstructor {
     this.idx = new IndexBufferBuilder(idxArrayType, idxType);
     return this;
   }
 
-  public build():MeshBuilder {
+  public build(): MeshBuilder {
     return new MeshBuilder(this.buffers, this.idx);
   }
 }
 
-export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:number[]):DS.IndexBuffer {
+export function genIndexBuffer(gl: WebGLRenderingContext, count: number, pattern: number[]): DS.IndexBuffer {
   var bufIdx = gl.createBuffer();
   var len = pattern.length;
-  var size =  Math.max.apply(null, pattern) + 1;
+  var size = Math.max.apply(null, pattern) + 1;
   var data = new Uint16Array(count * len);
   for (var i = 0; i < count; i++) {
     var off = i * len;
@@ -356,8 +353,8 @@ export function genIndexBuffer(gl:WebGLRenderingContext, count:number, pattern:n
   return new IndexBufferImpl(bufIdx, gl.UNSIGNED_SHORT);
 }
 
-export function GlType2ArrayType(glType:number):any {
-  switch(glType) {
+export function GlType2ArrayType(glType: number): any {
+  switch (glType) {
     case WebGLRenderingContext.BYTE:
       return Int8Array;
     case WebGLRenderingContext.UNSIGNED_BYTE:
@@ -377,8 +374,8 @@ export function GlType2ArrayType(glType:number):any {
   }
 }
 
-export function ArrayType2GlType(arrayType:any):number {
-  switch(arrayType) {
+export function ArrayType2GlType(arrayType: any): number {
+  switch (arrayType) {
     case Int8Array:
       return WebGLRenderingContext.BYTE;
     case Uint8Array:
@@ -398,44 +395,48 @@ export function ArrayType2GlType(arrayType:any):number {
   }
 }
 
-export class VertexBufferDynamic extends VertexBufferImpl {
-  private data:ArrayBufferView;
+export interface Updatable {
+  updateRegion(gl: WebGLRenderingContext, offset: number, length: number): void;
+}
+
+export class VertexBufferDynamic extends VertexBufferImpl implements Updatable {
+  private data: ArrayBufferView;
 
   constructor(
-    gl:WebGLRenderingContext, 
-    type:number, 
-    data:ArrayBufferView,
-    spacing:number,
-    usage:number = WebGLRenderingContext.STREAM_DRAW,
-    normalized:boolean = false
-  ){
+    gl: WebGLRenderingContext,
+    type: number,
+    data: ArrayBufferView,
+    spacing: number,
+    usage: number = WebGLRenderingContext.STREAM_DRAW,
+    normalized: boolean = false
+  ) {
     super(gl.createBuffer(), type, spacing, normalized, 0, 0);
     this.data = data;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, this.data, usage);
   }
 
-  public getData():ArrayBufferView {
+  public getData(): ArrayBufferView {
     return this.data;
   }
 
-  public update(gl:WebGLRenderingContext):void {
+  public update(gl: WebGLRenderingContext): void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.data);
   }
 
-  public updateRegion(gl:WebGLRenderingContext, offset:number, length:number):void {
-    var sizeof = (<any>this.data).BYTES_PER_ELEMENT*this.getSpacing();
-    var region = new Uint8Array(this.data.buffer, offset*sizeof, length*sizeof);
+  public updateRegion(gl: WebGLRenderingContext, offset: number, length: number): void {
+    var sizeof = (<any>this.data).BYTES_PER_ELEMENT * this.getSpacing();
+    var region = new Uint8Array(this.data.buffer, offset * sizeof, length * sizeof);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.getBuffer());
-    gl.bufferSubData(gl.ARRAY_BUFFER, offset*sizeof, region);
+    gl.bufferSubData(gl.ARRAY_BUFFER, offset * sizeof, region);
   }
 }
 
-export function createVertexBuffer(gl:WebGLRenderingContext, type:number, data:any, spacing:number, usage:number=WebGLRenderingContext.STREAM_DRAW, norm:boolean=false):VertexBufferDynamic {
+export function createVertexBuffer(gl: WebGLRenderingContext, type: number, data: any, spacing: number, usage: number = WebGLRenderingContext.STREAM_DRAW, norm: boolean = false): VertexBufferDynamic {
   var arrtype = GlType2ArrayType(type);
   if (typeof data == 'number') {
-    data = new arrtype(data*spacing);
+    data = new arrtype(data * spacing);
   } else {
     if (arrtype != data.constructor)
       throw new Error('GL Type and ArrayBuffer is incompatible');
@@ -443,18 +444,18 @@ export function createVertexBuffer(gl:WebGLRenderingContext, type:number, data:a
   return new VertexBufferDynamic(gl, type, data, spacing, usage, norm);
 }
 
-export function wrap(gl:WebGLRenderingContext, data:ArrayBufferView, spacing:number, usage:number=WebGLRenderingContext.STREAM_DRAW, norm:boolean=false):VertexBufferDynamic {
+export function wrap(gl: WebGLRenderingContext, data: ArrayBufferView, spacing: number, usage: number = WebGLRenderingContext.STREAM_DRAW, norm: boolean = false): VertexBufferDynamic {
   return new VertexBufferDynamic(gl, ArrayType2GlType(data.constructor), data, spacing, usage, norm);
 }
 
-export class DynamicIndexBuffer extends IndexBufferImpl {
-  private data:ArrayBufferView;
+export class DynamicIndexBuffer extends IndexBufferImpl implements Updatable {
+  private data: ArrayBufferView;
 
   constructor(
-    gl:WebGLRenderingContext,
-    data:ArrayBufferView,
-    type:number=WebGLRenderingContext.UNSIGNED_SHORT,
-    usage:number=WebGLRenderingContext.STREAM_DRAW
+    gl: WebGLRenderingContext,
+    data: ArrayBufferView,
+    type: number = WebGLRenderingContext.UNSIGNED_SHORT,
+    usage: number = WebGLRenderingContext.STREAM_DRAW
   ) {
     super(gl.createBuffer(), type);
     this.data = data;
@@ -462,24 +463,24 @@ export class DynamicIndexBuffer extends IndexBufferImpl {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.data, usage);
   }
 
-  public update(gl:WebGLRenderingContext, length:number=0) {
+  public update(gl: WebGLRenderingContext, length: number = 0) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.getBuffer());
     gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, this.data);
   }
 
-  public updateRegion(gl:WebGLRenderingContext, offset:number, length:number):void {
+  public updateRegion(gl: WebGLRenderingContext, offset: number, length: number): void {
     var sizeof = 2;
-    var region = new Uint8Array(this.data.buffer, offset*sizeof, length*sizeof);
+    var region = new Uint8Array(this.data.buffer, offset * sizeof, length * sizeof);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.getBuffer());
-    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, offset*sizeof, region);
+    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, offset * sizeof, region);
   }
 
-  public getData():ArrayBufferView {
+  public getData(): ArrayBufferView {
     return this.data;
   }
 }
 
-export function createIndexBuffer(gl:WebGLRenderingContext, type:number, data:any, usage:number=WebGLRenderingContext.STREAM_DRAW):DynamicIndexBuffer {
+export function createIndexBuffer(gl: WebGLRenderingContext, type: number, data: any, usage: number = WebGLRenderingContext.STREAM_DRAW): DynamicIndexBuffer {
   var arrtype = GlType2ArrayType(type);
   if (typeof data == 'number') {
     data = new arrtype(data);
@@ -490,6 +491,6 @@ export function createIndexBuffer(gl:WebGLRenderingContext, type:number, data:an
   return new DynamicIndexBuffer(gl, data, type, usage);
 }
 
-export function wrapIndexBuffer(gl:WebGLRenderingContext, data:ArrayBufferView, usage:number=WebGLRenderingContext.STREAM_DRAW):DynamicIndexBuffer {
+export function wrapIndexBuffer(gl: WebGLRenderingContext, data: ArrayBufferView, usage: number = WebGLRenderingContext.STREAM_DRAW): DynamicIndexBuffer {
   return new DynamicIndexBuffer(gl, data, ArrayType2GlType(data.constructor), usage);
 }  

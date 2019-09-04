@@ -1,3 +1,4 @@
+import { Iterator, ForwardIterator, BackIterator } from "./iterator";
 
 export interface Collection<T> {
   get(i: number): T;
@@ -50,4 +51,12 @@ export class IndexedDeck<T> extends Deck<T>{
     let idx = this.index.get(value);
     return idx == undefined ? -1 : idx;
   }
+}
+
+export class DeckIterator<T> implements Iterator<T>, ForwardIterator, BackIterator {
+  constructor(private deck: Deck<T>, private idx: number = 0) { }
+  get(): T { return this.deck.get(this.idx); }
+  next(): void { this.idx++; }
+  back(): void { this.idx--; }
+  eq(iter: DeckIterator<T>): boolean { return this.deck === iter.deck && this.idx === iter.idx; }
 }
