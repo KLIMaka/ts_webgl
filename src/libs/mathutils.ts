@@ -72,6 +72,10 @@ export function cyclic(x: number, max: number): number {
   return x > 0 ? (x % max) : (max + x % max);
 }
 
+export function reverse(x: number, max: number) {
+  return max - x;
+}
+
 export function ubyte2byte(n: number) {
   var minus = (n & 0x80) != 0;
   return minus ? -(~n & 0xFF) - 1 : n;

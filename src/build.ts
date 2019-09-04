@@ -18,6 +18,9 @@ import * as INPUT from './modules/input';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
+import { createNewSector, createInnerLoop } from './modules/engines/build/boardutils';
+import { Deck } from './modules/deck';
+import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -188,56 +191,43 @@ function createMoveStruct(board: BS.Board, control: controller.Controller3D) {
   return ms;
 }
 
-function createWall(x: number, y: number, p2: number, ns: number, nw: number) {
-  let wall = new BS.Wall();
-  wall.x = x; wall.y = y;
-  wall.point2 = p2;
-  wall.nextwall = nw;
-  wall.nextsector = ns;
-  wall.picnum = 0;
-  wall.shade = 0;
-  wall.pal = 0;
-  wall.xrepeat = 8; wall.yrepeat = 8;
-  wall.xpanning = 0; wall.ypanning = 0;
-  wall.cstat = new BS.WallStats();
-  return wall;
-}
-
-function createSector(wallptr: number, wallnum: number, floorz: number, ceilingz: number): BS.Sector {
-  let sector = new BS.Sector();
-  sector.wallptr = wallptr; sector.wallnum = wallnum;
-  sector.ceilingz = ceilingz;
-  sector.floorz = floorz;
-  sector.ceilingstat = new BS.SectorStats(); sector.floorstat = new BS.SectorStats();
-  sector.ceilingpicnum = wallptr; sector.floorpicnum = wallptr;
-  sector.ceilingpal = 0; sector.floorpal = 0;
-  sector.ceilingheinum = 0; sector.floorheinum = 0;
-  sector.ceilingshade = wallptr; sector.floorshade = wallptr;
-  sector.ceilingxpanning = 0; sector.floorxpanning = 0;
-  sector.ceilingypanning = 0; sector.floorypanning = 0;
-  return sector;
-}
 
 function createBoard() {
-  let board = new BS.Board();
+  let board = new BloodBoard();
   board.walls = [];
   board.sectors = [];
   board.sprites = [];
-  board.walls.push(createWall(0, 0, 1, -1, -1));
-  board.walls.push(createWall(4096, 0, 2, -1, -1));
-  board.walls.push(createWall(4096, 4096, 3, -1, -1));
-  board.walls.push(createWall(0, 4096, 0, -1, -1));
-  board.walls.push(createWall(1024, 1024, 5, 1, 11));
-  board.walls.push(createWall(1024, 2048, 6, 1, 10));
-  board.walls.push(createWall(2048, 2048, 7, 1, 9));
-  board.walls.push(createWall(2048, 1024, 4, 1, 8));
-  board.walls.push(createWall(1024, 1024, 9, 0, 7));
-  board.walls.push(createWall(2048, 1024, 10, 0, 6));
-  board.walls.push(createWall(2048, 2048, 11, 0, 5));
-  board.walls.push(createWall(1024, 2048, 8, 0, 4));
-  board.sectors.push(createSector(0, 8, 0, -16 * 4096));
-  board.sectors.push(createSector(8, 4, 1024 * -16, -16 * 3072));
-  let sprite = new BS.Sprite();
+  board.numwalls = 0;
+  board.numsectors = 0;
+  board.numsprites = 1;
+
+  let points = new Deck<[number, number]>();
+
+  createNewSector(board, points.clear()
+    .push([0, 0])
+    .push([4096, 0])
+    .push([4096, 4096])
+    .push([0, 4096])
+  );
+  createInnerLoop(board, 0, points.clear()
+    .push([1024, 1024])
+    .push([1024, 3072])
+    .push([3072, 3072])
+    .push([3072, 1024])
+  );
+  createNewSector(board, points.clear()
+    .push([1024, 1024])
+    .push([1024, 3072])
+    .push([3072, 3072])
+    .push([3072, 1024])
+  );
+
+  board.sectors[0].floorz = 0;
+  board.sectors[0].ceilingz = -16 * 4096;
+  board.sectors[1].floorz = -16 * 1024;
+  board.sectors[1].ceilingz = -16 * 3072;
+
+  let sprite = new BloodSprite();
   sprite.x = 1024;
   sprite.y = 1024;
   sprite.z = 0;
@@ -245,9 +235,6 @@ function createBoard() {
   sprite.lotag = 1;
   sprite.sectnum = 0;
   board.sprites.push(sprite);
-  board.numwalls = board.walls.length;
-  board.numsectors = board.sectors.length;
-  board.numsprites = board.sprites.length;
   return board;
 }
 
@@ -286,8 +273,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  // let board = createBoard();
-  let board = bloodloader.loadBloodMap(stream);
+  let board = createBoard();
+  // let board = bloodloader.loadBloodMap(stream);
   console.log(board);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let control = new controller.Controller3D();

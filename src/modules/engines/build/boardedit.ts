@@ -139,10 +139,6 @@ class WallSegmentsEnt {
   private invalidate(ctx: BuildContext) {
     let invalidatedSectors = WallSegmentsEnt.invalidatedSectors.clear();
     let cwalls = WallSegmentsEnt.connectedWalls(ctx.board, this.wallIds, this.connectedWalls);
-    for (let i = 0; i < this.wallIds.length(); i++) {
-      let w = this.wallIds.get(i);
-      connectedWalls(ctx.board, w, cwalls);
-    }
 
     for (let i = 0; i < cwalls.length(); i++) {
       let w = cwalls.get(i);
@@ -208,12 +204,14 @@ class WallSegmentsEnt {
   public move(msg: Move, ctx: BuildContext) {
     let x = ctx.snap(this.origin[0] + msg.handle.dx());
     let y = ctx.snap(this.origin[1] + msg.handle.dy());
-    let wall = ctx.board.walls[this.refwall];
-    let dx = x - this.origin[0];
-    let dy = y - this.origin[1];
+    let refwall = ctx.board.walls[this.refwall];
+    let ox = refwall.x; let oy = refwall.y;
+    let dx = x - ox;
+    let dy = y - oy;
     if (moveWall(ctx.board, this.refwall, x, y)) {
       for (let i = 0; i < this.wallIds.length(); i++) {
         let w = this.wallIds.get(i);
+        if (w == this.refwall) continue;
         let wall = ctx.board.walls[w];
         moveWall(ctx.board, w, wall.x + dx, wall.y + dy);
       }
@@ -247,10 +245,14 @@ class WallSegmentsEnt {
   }
 
   public split(msg: SplitWall, ctx: BuildContext) {
-    //   if (this.wallId != msg.wallId) return;
-    //   splitWall(ctx.board, this.wallId, msg.x, msg.y, ctx.art, []);
-    //   let s = sectorOfWall(ctx.board, this.wallId);
-    //   invalidateSector(s, ctx);
+    for (let i = 0; i < this.wallIds.length(); i++) {
+      let w = this.wallIds.get(i);
+      if (w == msg.wallId) {
+        splitWall(ctx.board, w, msg.x, msg.y, ctx.art, []);
+        let s = sectorOfWall(ctx.board, w);
+        invalidateSector(s, ctx);
+      }
+    }
   }
 }
 
