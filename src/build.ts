@@ -273,8 +273,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  let board = createBoard();
-  // let board = bloodloader.loadBloodMap(stream);
+  // let board = createBoard();
+  let board = bloodloader.loadBloodMap(stream);
   console.log(board);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let control = new controller.Controller3D();

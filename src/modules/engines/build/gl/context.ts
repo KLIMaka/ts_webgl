@@ -63,6 +63,14 @@ function drawEdges(gl: WebGLRenderingContext, cache: Cache, board: Board, id: nu
     BGL.draw(gl, points.get(i));
 }
 
+function drawWallPoints(gl: WebGLRenderingContext, cache: Cache, board: Board, wallId: number) {
+  points.clear();
+  points.push(cache.getWallPoint(wallId, 32, false));
+  points.push(cache.getWallPoint(wallId, 32, true));
+  for (let i = 0; i < points.length(); i++)
+    BGL.draw(gl, points.get(i));
+}
+
 function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
 }
@@ -111,13 +119,17 @@ export class Context implements BuildContext {
     drawEdges(gl, this.cache, board, sectorId, -1, SubType.FLOOR);
   }
 
-  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
+  highlightWallSegment(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
     drawGrid(gl, this.cache, board, wallId, sectorId, SubType.UPPER_WALL);
     drawGrid(gl, this.cache, board, wallId, sectorId, SubType.MID_WALL);
     drawGrid(gl, this.cache, board, wallId, sectorId, SubType.LOWER_WALL);
     drawEdges(gl, this.cache, board, wallId, sectorId, SubType.UPPER_WALL);
     drawEdges(gl, this.cache, board, wallId, sectorId, SubType.MID_WALL);
     drawEdges(gl, this.cache, board, wallId, sectorId, SubType.LOWER_WALL);
+  }
+
+  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number) {
+    drawWallPoints(gl, this.cache, board, wallId);
   }
 
   highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number) {

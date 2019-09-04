@@ -66,7 +66,8 @@ export interface BuildContext {
   invalidateWall(id: number): void;
   invalidateSprite(id: number): void;
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
-  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
+  highlightWallSegment(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
+  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number): void;
   highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number): void;
   highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: SubType): void;
 }
@@ -133,7 +134,7 @@ class WallSegmentsEnt {
     public refwall = -1,
     public active = false,
     public highlighted = new Deck<number>(),
-    public connectedWalls = new IndexedDeck<number>()
+    public connectedWalls = new Deck<number>()
   ) { }
 
   private invalidate(ctx: BuildContext) {
@@ -185,7 +186,7 @@ class WallSegmentsEnt {
     return result;
   }
 
-  private static connectedWalls(board: Board, walls: Collection<number>, result: IndexedDeck<number>) {
+  private static connectedWalls(board: Board, walls: Collection<number>, result: Deck<number>) {
     if (result.length() != 0) return result;
     for (let i = 0; i < walls.length(); i++) {
       let w = walls.get(i);
@@ -205,9 +206,8 @@ class WallSegmentsEnt {
     let x = ctx.snap(this.origin[0] + msg.handle.dx());
     let y = ctx.snap(this.origin[1] + msg.handle.dy());
     let refwall = ctx.board.walls[this.refwall];
-    let ox = refwall.x; let oy = refwall.y;
-    let dx = x - ox;
-    let dy = y - oy;
+    let dx = x - refwall.x;
+    let dy = y - refwall.y;
     if (moveWall(ctx.board, this.refwall, x, y)) {
       for (let i = 0; i < this.wallIds.length(); i++) {
         let w = this.wallIds.get(i);
@@ -229,9 +229,9 @@ class WallSegmentsEnt {
       for (let i = 0; i < cwalls.length(); i++) {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
-        ctx.highlightWall(ctx.gl, ctx.board, w, s);
+        ctx.highlightWallSegment(ctx.gl, ctx.board, w, s);
         let p = prevwall(ctx.board, w);
-        ctx.highlightWall(ctx.gl, ctx.board, p, s);
+        ctx.highlightWallSegment(ctx.gl, ctx.board, p, s);
         ctx.highlightSector(ctx.gl, ctx.board, s);
       }
     } else {
@@ -239,7 +239,7 @@ class WallSegmentsEnt {
       for (let i = 0; i < hwalls.length(); i++) {
         let w = hwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
-        ctx.highlightWall(ctx.gl, ctx.board, w, s);
+        ctx.highlightWallSegment(ctx.gl, ctx.board, w, s);
       }
     }
   }
@@ -257,7 +257,6 @@ class WallSegmentsEnt {
 }
 
 class WallEnt {
-  private static connectedWalls = new Deck<number>();
   private static invalidatedSectors = new IndexedDeck<number>();
   private static factory = new MessageHandlerFactory()
     .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
@@ -275,7 +274,8 @@ class WallEnt {
     public originZ = 0,
     public zMotionSector = -1,
     public zMotionType: SubType = SubType.CEILING,
-    public active = false) { }
+    public active = false,
+    public connectedWalls = new Deck<number>()) { }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
@@ -294,9 +294,9 @@ class WallEnt {
 
   private invalidate(ctx: BuildContext) {
     WallEnt.invalidatedSectors.clear();
-    connectedWalls(ctx.board, this.wallId, WallEnt.connectedWalls.clear());
-    for (let i = 0; i < WallEnt.connectedWalls.length(); i++) {
-      let w = WallEnt.connectedWalls.get(i);
+    let cwalls = WallEnt.connectedWalls(ctx.board, this.wallId, this.connectedWalls);
+    for (let i = 0; i < cwalls.length(); i++) {
+      let w = cwalls.get(i);
       let s = sectorOfWall(ctx.board, w);
       if (WallEnt.invalidatedSectors.indexOf(s) == -1) {
         invalidateSector(s, ctx);
@@ -332,20 +332,25 @@ class WallEnt {
     this.active = false;
   }
 
+  private static connectedWalls(board: Board, wallId: number, result: Deck<number>) {
+    if (result.length() != 0) return result;
+    connectedWalls(board, wallId, result);
+    return result;
+  }
+
   public highlight(msg: Highlight, ctx: BuildContext) {
     if (this.active) {
-      connectedWalls(ctx.board, this.wallId, WallEnt.connectedWalls.clear());
-      for (let i = 0; i < WallEnt.connectedWalls.length(); i++) {
-        let w = WallEnt.connectedWalls.get(i);
+      let cwalls = WallEnt.connectedWalls(ctx.board, this.wallId, this.connectedWalls);
+      for (let i = 0; i < cwalls.length(); i++) {
+        let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
-        ctx.highlightWall(ctx.gl, ctx.board, w, s);
+        ctx.highlightWallSegment(ctx.gl, ctx.board, w, s);
         let p = prevwall(ctx.board, w);
-        ctx.highlightWall(ctx.gl, ctx.board, p, s);
+        ctx.highlightWallSegment(ctx.gl, ctx.board, p, s);
         ctx.highlightSector(ctx.gl, ctx.board, s);
       }
     } else {
-      let s = sectorOfWall(ctx.board, this.wallId);
-      ctx.highlightWall(ctx.gl, ctx.board, this.wallId, s);
+      ctx.highlightWall(ctx.gl, ctx.board, this.wallId);
     }
   }
 }
