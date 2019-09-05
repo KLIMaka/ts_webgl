@@ -9,7 +9,7 @@ import { Deck } from '../../../deck';
 import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
-import * as EDIT from "../boardedit";
+import * as EDIT from "../edit/boardedit";
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
 import { Message, MessageHandler, sendMessage } from '../messages';

@@ -4,7 +4,7 @@ import { Board } from '../structs';
 import { Solid, wrapInGrid } from './renderable';
 import { ArtProvider } from './cache';
 import { walllen } from '../boardutils';
-import { BuildContext } from '../boardedit';
+import { BuildContext } from '../edit/boardedit';
 import { Cache } from './cache';
 import { PvsBoardVisitorResult } from '../boardvisitor';
 import { Deck } from '../../../deck';
