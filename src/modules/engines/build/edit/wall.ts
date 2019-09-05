@@ -5,7 +5,8 @@ import { SubType } from "../hitscan";
 import { MessageHandlerFactory } from "../messages";
 import { Board } from "../structs";
 import { createSlopeCalculator, heinumCalc, sectorOfWall, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "../utils";
-import { BuildContext, EndMove, Highlight, invalidateSector, Move, StartMove } from "./boardedit";
+import { StartMove, BuildContext, Move, EndMove, Highlight } from "./editapi";
+import { invalidateSector } from "./boardedit";
 
 function collectConnectedWalls(board: Board, wallId: number, result: Deck<number>) {
   if (result.length() != 0)

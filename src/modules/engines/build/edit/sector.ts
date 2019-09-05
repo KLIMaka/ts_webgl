@@ -1,8 +1,9 @@
 import { isSector, SubType } from "../hitscan";
 import { MessageHandlerFactory } from "../messages";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "../utils";
-import { StartMove, BuildContext, Move, Highlight, invalidateSector } from "./boardedit";
 import * as GLM from "../../../../libs_js/glmatrix";
+import { StartMove, Move, BuildContext, Highlight } from "./editapi";
+import { invalidateSector } from "./boardedit";
 
 export class SectorEnt {
   private static factory = new MessageHandlerFactory()

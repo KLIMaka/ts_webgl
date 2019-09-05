@@ -1,17 +1,17 @@
 import { List } from "../../../../libs/list";
+import { len2d } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../deck";
-import { connectedWalls, moveWall, nextwall, prevwall, splitWall } from "../boardutils";
+import { connectedWalls, moveWall, nextwall, prevwall } from "../boardutils";
+import { Hitscan } from "../hitscan";
 import { MessageHandlerFactory } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { BuildContext, EndMove, Highlight, invalidateSector, Move, SplitWall, StartMove } from "./boardedit";
-import { Hitscan } from "../hitscan";
-import { len2d } from "../../../../libs/mathutils";
+import { StartMove, Move, EndMove, Highlight, BuildContext } from "./editapi";
+import { invalidateSector } from "./boardedit";
 
 function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
-  if (ids.length() == 1)
-    return ids.get(0);
+  if (ids.length() == 1) return ids.get(0);
   let id = -1;
   let mindist = Number.MAX_VALUE;
   for (let i = 0; i < ids.length(); i++) {
@@ -76,8 +76,7 @@ export class WallSegmentsEnt {
     .register(StartMove, (obj: WallSegmentsEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: WallSegmentsEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(EndMove, (obj: WallSegmentsEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
-    .register(Highlight, (obj: WallSegmentsEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx))
-    .register(SplitWall, (obj: WallSegmentsEnt, msg: SplitWall, ctx: BuildContext) => obj.split(msg, ctx));
+    .register(Highlight, (obj: WallSegmentsEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
   public static create(ids: Collection<number>) {
     return WallSegmentsEnt.factory.handler(new WallSegmentsEnt(ids));
@@ -149,17 +148,6 @@ export class WallSegmentsEnt {
         let w = hwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
         ctx.highlightWallSegment(ctx.gl, ctx.board, w, s);
-      }
-    }
-  }
-
-  public split(msg: SplitWall, ctx: BuildContext) {
-    for (let i = 0; i < this.wallIds.length(); i++) {
-      let w = this.wallIds.get(i);
-      if (w == msg.wallId) {
-        splitWall(ctx.board, w, msg.x, msg.y, ctx.art, []);
-        let s = sectorOfWall(ctx.board, w);
-        invalidateSector(s, ctx);
       }
     }
   }

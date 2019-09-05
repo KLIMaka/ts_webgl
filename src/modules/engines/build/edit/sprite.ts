@@ -1,8 +1,8 @@
 import { moveSprite } from "../boardutils";
 import { MessageHandlerFactory } from "../messages";
 import { ZSCALE } from "../utils";
-import { StartMove, BuildContext, Move, Highlight } from "./boardedit";
 import * as GLM from "../../../../libs_js/glmatrix";
+import { StartMove, BuildContext, Move, Highlight } from "./editapi";
 
 export class SpriteEnt {
   private static factory = new MessageHandlerFactory()

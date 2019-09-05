@@ -4,11 +4,11 @@ import { Board } from '../structs';
 import { Solid, wrapInGrid } from './renderable';
 import { ArtProvider } from './cache';
 import { walllen } from '../boardutils';
-import { BuildContext } from '../edit/boardedit';
 import { Cache } from './cache';
 import { PvsBoardVisitorResult } from '../boardvisitor';
 import { Deck } from '../../../deck';
 import { isSector, SubType, isWall, isSprite } from '../hitscan';
+import { BuildContext } from '../edit/editapi';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();

@@ -1,41 +1,36 @@
 import { Deck } from "../../../deck";
-import { closestWallInSector, nextwall } from "../boardutils";
-import { ArtProvider } from "../gl/cache";
-import { Hitscan, isSector, isSprite, isWall, SubType } from "../hitscan";
-import { Message, MessageHandler } from "../messages";
+import { closestWallInSector, nextwall, splitWall } from "../boardutils";
+import { Hitscan, isSector, isSprite, isWall } from "../hitscan";
+import { MessageHandler } from "../messages";
 import { Board } from "../structs";
 import { createSlopeCalculator, sectorOfWall } from "../utils";
+import { MovingHandle } from "./handle";
 import { SectorEnt } from "./sector";
 import { SpriteEnt } from "./sprite";
 import { WallEnt } from "./wall";
 import { WallSegmentsEnt } from "./wallsegment";
-import { MovingHandle } from "./handle";
+import { BuildContext, Move, StartMove, EndMove, Highlight } from "./editapi";
 
-export interface BuildContext {
-  art: ArtProvider;
-  gl: WebGLRenderingContext;
-  board: Board;
 
-  snap(x: number): number;
-  scaledSnap(x: number, scale: number): number;
-  invalidateAll(): void;
-  invalidateSector(id: number): void;
-  invalidateWall(id: number): void;
-  invalidateSprite(id: number): void;
-  highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
-  highlightWallSegment(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
-  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number): void;
-  highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number): void;
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: SubType): void;
+export class SplitWall {
+  private x = 0;
+  private y = 0;
+  private wallId = -1;
+
+  public update(x: number, y: number, wallId: number) {
+    this.x = x;
+    this.y = y;
+    this.wallId = wallId;
+  }
+
+  public run(ctx: BuildContext) {
+    splitWall(ctx.board, this.wallId, this.x, this.y, ctx.art, []);
+    let s = sectorOfWall(ctx.board, this.wallId);
+    invalidateSector(s, ctx);
+  }
 }
 
-export class StartMove implements Message { constructor(public handle: MovingHandle) { } }
-export class Move implements Message { constructor(public handle: MovingHandle) { } }
-export class EndMove implements Message { constructor(public handle: MovingHandle) { } }
-export class Highlight implements Message { }
-export class SplitWall implements Message { x: number; y: number; wallId: number; }
-
-class DrawWall implements Message {
+class DrawWall {
   private wallId = -1;
   private fromFloor = true;
   private points = new Deck<number[]>();
@@ -68,6 +63,7 @@ export let MOVE = new Move(handle);
 export let START_MOVE = new StartMove(handle);
 export let END_MOVE = new EndMove(handle);
 export let HIGHLIGHT = new Highlight();
+
 export let SPLIT_WALL = new SplitWall();
 export let DRAW_WALL = new DrawWall();
 

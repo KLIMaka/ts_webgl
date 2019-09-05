@@ -144,9 +144,7 @@ function snap(board: Board) {
       x = MU.int(wall.x + (t * dx));
       y = MU.int(wall.y + (t * dy));
     }
-    EDIT.SPLIT_WALL.x = x;
-    EDIT.SPLIT_WALL.y = y;
-    EDIT.SPLIT_WALL.wallId = hit.id;
+    EDIT.SPLIT_WALL.update(x, y, hit.id);
     BGL.setCursorPosiotion(x, hit.z / U.ZSCALE, y);
   }
 }
@@ -208,7 +206,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   drawHelpers(gl, board);
 
   if (INPUT.keys['INSERT']) {
-    sendToSelected(EDIT.SPLIT_WALL);
+    EDIT.SPLIT_WALL.run(context);
   }
   joinSectors(board);
 }
