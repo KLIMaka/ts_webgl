@@ -126,6 +126,8 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
 }
 
 function snap(board: Board) {
+  EDIT.SPLIT_WALL.deactivate();
+
   if (hit.t != -1) {
     let x = hit.x; let y = hit.y;
     if (isSector(hit.type)) {
@@ -143,8 +145,8 @@ function snap(board: Board) {
       t = context.snap(t * repeat) / repeat;
       x = MU.int(wall.x + (t * dx));
       y = MU.int(wall.y + (t * dy));
+      EDIT.SPLIT_WALL.update(x, y, hit.id);
     }
-    EDIT.SPLIT_WALL.update(x, y, hit.id);
     BGL.setCursorPosiotion(x, hit.z / U.ZSCALE, y);
   }
 }

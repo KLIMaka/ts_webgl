@@ -26,8 +26,8 @@ function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>
   return id;
 }
 
-function collectHighlightedWalls(board: Board, walls: Collection<number>, result: Deck<number>): Collection<number> {
-  if (result.length() != 0) return result;
+function collectHighlightedWalls(board: Board, walls: Collection<number>): Collection<number> {
+  let result = new Deck<number>();
   let chains = new Deck<List<number>>();
   for (let i = 0; i < walls.length(); i++) {
     let w = walls.get(i);
@@ -61,13 +61,18 @@ function collectHighlightedWalls(board: Board, walls: Collection<number>, result
   return result;
 }
 
-function collectConnectedWalls(board: Board, walls: Collection<number>, result: Deck<number>) {
-  if (result.length() != 0) return result;
+function collectConnectedWalls(board: Board, walls: Collection<number>) {
+  let result = new Deck<number>();
   for (let i = 0; i < walls.length(); i++) {
     let w = walls.get(i);
     connectedWalls(board, w, result);
   }
   return result;
+}
+
+function collectMotionSectors(board: Board, walls: Collection<number>): Set<number> {
+  let sectors = new Set<number>();
+  return sectors;
 }
 
 export class WallSegmentsEnt {
@@ -78,21 +83,23 @@ export class WallSegmentsEnt {
     .register(EndMove, (obj: WallSegmentsEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
     .register(Highlight, (obj: WallSegmentsEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
-  public static create(ids: Collection<number>) {
-    return WallSegmentsEnt.factory.handler(new WallSegmentsEnt(ids));
+  public static create(board: Board, ids: Collection<number>) {
+    return WallSegmentsEnt.factory.handler(new WallSegmentsEnt(board, ids));
   }
 
   constructor(
+    board: Board,
     public wallIds: Collection<number>,
     public origin = GLM.vec2.create(),
     public refwall = -1,
     public active = false,
-    public highlighted = new Deck<number>(),
-    public connectedWalls = new Deck<number>()) { }
+    public highlighted = collectHighlightedWalls(board, wallIds),
+    public connectedWalls = collectConnectedWalls(board, wallIds),
+    public motionSectors = collectMotionSectors(board, wallIds)) { }
 
   private invalidate(ctx: BuildContext) {
     let invalidatedSectors = WallSegmentsEnt.invalidatedSectors.clear();
-    let cwalls = collectConnectedWalls(ctx.board, this.wallIds, this.connectedWalls);
+    let cwalls = this.connectedWalls;
     for (let i = 0; i < cwalls.length(); i++) {
       let w = cwalls.get(i);
       let s = sectorOfWall(ctx.board, w);
@@ -133,7 +140,7 @@ export class WallSegmentsEnt {
 
   public highlight(msg: Highlight, ctx: BuildContext) {
     if (this.active) {
-      let cwalls = collectConnectedWalls(ctx.board, this.wallIds, this.connectedWalls);
+      let cwalls = this.connectedWalls;
       for (let i = 0; i < cwalls.length(); i++) {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
@@ -143,7 +150,7 @@ export class WallSegmentsEnt {
         ctx.highlightSector(ctx.gl, ctx.board, s);
       }
     } else {
-      let hwalls = collectHighlightedWalls(ctx.board, this.wallIds, this.highlighted);
+      let hwalls = this.highlighted;
       for (let i = 0; i < hwalls.length(); i++) {
         let w = hwalls.get(i);
         let s = sectorOfWall(ctx.board, w);

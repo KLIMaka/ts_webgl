@@ -15,7 +15,12 @@ export class SectorEnt {
     return SectorEnt.factory.handler(new SectorEnt(id, type));
   }
 
-  constructor(public sectorId: number, public type: SubType, public originz = 0, public origin = GLM.vec2.create()) { }
+  constructor(
+    public sectorId: number,
+    public type: SubType,
+    public originz = 0,
+    public origin = GLM.vec2.create()
+  ) { }
 
   public startMove(msg: StartMove, ctx: BuildContext) {
     let x = msg.handle.hit.x;
@@ -35,17 +40,14 @@ export class SectorEnt {
       let y = this.origin[1];
       let z = ctx.scaledSnap(this.originz + msg.handle.dz() * ZSCALE, 1);
       let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
-      if (setSectorHeinum(ctx.board, this.sectorId, this.type, h)) {
+      if (setSectorHeinum(ctx.board, this.sectorId, this.type, h))
         invalidateSector(this.sectorId, ctx);
-      }
-    }
-    else {
+    } else {
       let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
         ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
         : ctx.snap(this.originz + msg.handle.dz());
-      if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE)) {
+      if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE))
         invalidateSector(this.sectorId, ctx);
-      }
     }
   }
 
