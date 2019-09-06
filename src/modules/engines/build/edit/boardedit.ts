@@ -10,6 +10,7 @@ import { SectorEnt } from "./sector";
 import { SpriteEnt } from "./sprite";
 import { WallEnt } from "./wall";
 import { WallSegmentsEnt } from "./wallsegment";
+import * as GLM from "../../../../libs_js/glmatrix";
 
 export class SplitWall {
   private x = 0;
@@ -33,6 +34,22 @@ export class SplitWall {
     splitWall(ctx.board, this.wallId, this.x, this.y, ctx.art, []);
     let s = sectorOfWall(ctx.board, this.wallId);
     invalidateSector(s, ctx);
+  }
+}
+
+class DrawSector {
+  private points = new Deck<[number, number]>();
+  private z = 0;
+  private pointer = GLM.vec3.create();
+  private
+
+  public start(board: Board, hit: Hitscan) {
+    this.points.clear();
+    this.z = hit.t == -1 ? 0 : hit.z;
+  }
+
+  public update(board: Board, hit: Hitscan) {
+    let direction = hit.vec;
   }
 }
 
