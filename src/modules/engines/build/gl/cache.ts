@@ -88,6 +88,7 @@ export class Cache {
   public sprites: EnsureArray<Entry<SpriteSolid>> = createArray(spriteRenerableFactory);
   public wallCeilPoints: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
   public wallFloorPoints: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
+  public wallLines: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
   public sectorsWireframe: EnsureArray<Entry<SectorWireframe>> = createArray(sectorWireframeFactory);
   public wallsWireframe: EnsureArray<Entry<WallWireframe>> = createArray(wallWireframeFactory);
   public spritesWireframe: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
@@ -179,6 +180,15 @@ export class Cache {
     return hinge.value;
   }
 
+  public getWallLine(id: number): Wireframe {
+    let line = this.wallLines.get(id);
+    if (!line.valid) {
+      prepareWallLine(this.board, id, line.value);
+      line.valid = true;
+    }
+    return line.value;
+  }
+
   public invalidateSector(id: number) {
     let sec = this.sectors.get(id);
     sec.valid = false;
@@ -205,6 +215,7 @@ export class Cache {
     wallw.value.top.buff.deallocate();
     this.wallCeilPoints.get(id).valid = false;
     this.wallFloorPoints.get(id).valid = false;
+    this.wallLines.get(id).valid = false;
   }
 
   public invalidateSprite(id: number) {
@@ -222,6 +233,7 @@ export class Cache {
     this.spritesWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.reset(); } });
     this.wallCeilPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
     this.wallFloorPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
+    this.wallLines.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
     this.spritesAngWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate() } })
     this.sectorCeilingHinge.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate() } })
     this.sectorFloorHinge.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate() } })
@@ -244,6 +256,19 @@ export class Cache {
     }
     return null;
   }
+}
+
+function prepareWallLine(board: Board, wallId: number, line: Wireframe) {
+  let buff = line.buff;
+  buff.allocate(2, 2);
+  let sectorId = U.sectorOfWall(board, wallId);
+  let sector = board.sectors[sectorId];
+  let wall = board.walls[wallId];
+  let fz = sector.floorz + U.slope(board, sectorId, wall.x, wall.y, sector.floorheinum);
+  let cz = sector.ceilingz + U.slope(board, sectorId, wall.x, wall.y, sector.ceilingheinum);
+  buff.writePos(0, wall.x, fz / U.ZSCALE, wall.y);
+  buff.writePos(1, wall.x, cz / U.ZSCALE, wall.y);
+  buff.writeLine(0, 0, 1);
 }
 
 function prepareHinge(board: Board, sectorId: number, ceiling: boolean, hinge: Wireframe) {
@@ -442,10 +467,10 @@ function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: 
     x, y, z,
     x, y, z
   ], [
-      -hw + xo, +hh + yo,
-      +hw + xo, +hh + yo,
-      +hw + xo, -hh + yo,
-      -hw + xo, -hh + yo],
+    -hw + xo, +hh + yo,
+    +hw + xo, +hh + yo,
+    +hw + xo, -hh + yo,
+    -hw + xo, -hh + yo],
     renderable.buff);
 }
 

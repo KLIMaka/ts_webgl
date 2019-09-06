@@ -71,6 +71,7 @@ export class WallEnt {
       for (let i = 0; i < cwalls.length(); i++) {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
+        ctx.highlightWall(ctx.gl, ctx.board, w);
         ctx.highlightWallSegment(ctx.gl, ctx.board, w, s);
         let p = prevwall(ctx.board, w);
         ctx.highlightWallSegment(ctx.gl, ctx.board, p, s);

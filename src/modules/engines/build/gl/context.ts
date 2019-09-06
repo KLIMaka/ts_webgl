@@ -67,6 +67,7 @@ function drawWallPoints(gl: WebGLRenderingContext, cache: Cache, board: Board, w
   points.clear();
   points.push(cache.getWallPoint(wallId, 32, false));
   points.push(cache.getWallPoint(wallId, 32, true));
+  points.push(cache.getWallLine(wallId));
   for (let i = 0; i < points.length(); i++)
     BGL.draw(gl, points.get(i));
 }

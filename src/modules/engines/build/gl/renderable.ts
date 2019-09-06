@@ -73,7 +73,7 @@ export class Solid implements Renderable {
 
   public draw(gl: WebGLRenderingContext, state: State) {
     let ptr = this.buff.get();
-    if (ptr == null) return;
+    if (!this.renderable()) return;
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
@@ -93,6 +93,10 @@ export class Solid implements Renderable {
     this.trans = 1;
     this.parallax = 0;
   }
+
+  public renderable(): boolean {
+    return this.buff.get() != null;
+  }
 }
 
 class Grid implements Renderable {
@@ -101,7 +105,7 @@ class Grid implements Renderable {
 
   public draw(gl: WebGLRenderingContext, state: State) {
     let ptr = this.solid.buff.get();
-    if (ptr == null) return;
+    if (!this.renderable()) return;
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
@@ -110,6 +114,10 @@ class Grid implements Renderable {
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
     state.draw(gl);
+  }
+
+  public renderable(): boolean {
+    return this.solid.buff.get() != null;
   }
 }
 
@@ -128,7 +136,7 @@ export class Wireframe implements Renderable {
 
   public draw(gl: WebGLRenderingContext, state: State) {
     let ptr = this.buff.get();
-    if (ptr == null) return;
+    if (!this.renderable()) return;
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
@@ -143,5 +151,9 @@ export class Wireframe implements Renderable {
     this.buff.deallocate();
     this.type = Type.SURFACE;
     this.mode = WebGLRenderingContext.LINES;
+  }
+
+  public renderable(): boolean {
+    return this.buff.get() != null;
   }
 }
