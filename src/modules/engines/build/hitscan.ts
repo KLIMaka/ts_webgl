@@ -3,6 +3,7 @@ import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE, inPolygo
 import { ArtInfoProvider, ArtInfo } from "./art";
 import { IndexedDeck, Deck } from "../../deck";
 import { int, len2d, cross2d, sqrLen2d, dot2d, PI2, sign } from "../../../libs/mathutils";
+import * as GLM from "../../../libs_js/glmatrix";
 
 export enum SubType {
   FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE
@@ -21,12 +22,22 @@ export function isSprite(type: SubType) {
 }
 
 export class Hitscan {
-  constructor(public x: number = -1, public y: number = -1, public z: number = -1, public t: number = -1, public id: number = -1, public type: SubType = null) { }
+  constructor(
+    public x: number = -1,
+    public y: number = -1,
+    public z: number = -1,
+    public t: number = -1,
+    public id: number = -1,
+    public type: SubType = null,
+    public start = GLM.vec3.create(),
+    public vec = GLM.vec3.create()) { }
 
-  public reset() {
+  public reset(xs: number, ys: number, zs: number, vx: number, vy: number, vz: number) {
     this.id = -1;
     this.t = -1;
     this.type = null;
+    GLM.vec3.set(this.start, xs, ys, zs);
+    GLM.vec3.set(this.vec, vx, vy, vz);
   }
 
   private testHit(x: number, y: number, z: number, t: number): boolean {
@@ -230,7 +241,7 @@ function resetStack(board: Board, sectorId: number, stack: IndexedDeck<number>):
 
 let stack = new IndexedDeck<number>();
 export function hitscan(board: Board, artInfo: ArtInfoProvider, xs: number, ys: number, zs: number, secId: number, vx: number, vy: number, vz: number, hit: Hitscan, cliptype: number) {
-  hit.reset();
+  hit.reset(xs, ys, zs, vx, vy, vz);
 
   resetStack(board, secId, stack);
   let sprites = groupSprites(board);
