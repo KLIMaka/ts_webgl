@@ -59,15 +59,15 @@ export class Hitscan {
   }
 }
 
-function hitSector(board: Board, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, t: number, hit: Hitscan, type: SubType) {
-  let x = xs + int(vx * t);
-  let y = ys + int(vy * t);
-  let z = zs + int(vz * t) * ZSCALE;
+function hitSector(board: Board, secId: number, t: number, hit: Hitscan, type: SubType) {
+  let x = hit.start[0] + int(hit.vec[0] * t);
+  let y = hit.start[1] + int(hit.vec[1] * t);
+  let z = hit.start[2] + int(hit.vec[2] * t) * ZSCALE;
   if (inSector(board, x, y, secId))
     hit.hit(x, y, z, t, secId, type);
 }
 
-function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+function intersectSectorPlanes(board: Board, sec: Sector, secId: number, hit: Hitscan) {
   let wall1 = board.walls[sec.wallptr]
   let wall2 = board.walls[wall1.point2];
   let dx = wall2.x - wall1.x;
@@ -76,33 +76,34 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, xs: num
   if (dl == 0) return;
   let ndx = dx / dl;
   let ndy = dy / dl;
-  let angk = -cross2d(ndx, ndy, vx, vy);
+  let angk = -cross2d(ndx, ndy, hit.vec[0], hit.vec[1]);
 
   let ceilk = sec.ceilingheinum * ANGSCALE * angk;
-  let dk = vz - ceilk;
+  let dk = hit.vec[2] - ceilk;
   if (dk > 0) {
-    let ceilz = slope(board, secId, xs, ys, sec.ceilingheinum) + sec.ceilingz;
-    let ceildz = (ceilz - zs) / ZSCALE;
+    let ceilz = slope(board, secId, hit.start[0], hit.start[1], sec.ceilingheinum) + sec.ceilingz;
+    let ceildz = (ceilz - hit.start[2]) / ZSCALE;
     let t = ceildz / dk;
-    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, SubType.CEILING);
+    hitSector(board, secId, t, hit, SubType.CEILING);
   }
 
   let floork = sec.floorheinum * ANGSCALE * angk;
-  let dk1 = floork - vz;
+  let dk1 = floork - hit.vec[2];
   if (dk1 > 0) {
-    let floorz = slope(board, secId, xs, ys, sec.floorheinum) + sec.floorz;
-    let floordz = (zs - floorz) / ZSCALE;
+    let floorz = slope(board, secId, hit.start[0], hit.start[1], sec.floorheinum) + sec.floorz;
+    let floordz = (hit.start[2] - floorz) / ZSCALE;
     let t = floordz / dk1;
-    hitSector(board, secId, xs, ys, zs, vx, vy, vz, t, hit, SubType.FLOOR);
+    hitSector(board, secId, t, hit, SubType.FLOOR);
   }
 }
 
-function intersectWall(board: Board, wallId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan): number {
+function intersectWall(board: Board, wallId: number, hit: Hitscan): number {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let x1 = wall.x, y1 = wall.y;
   let x2 = wall2.x, y2 = wall2.y;
-
+  let [xs, ys, zs] = hit.start;
+  let [vx, vy, vz] = hit.vec;
 
   if (cross2d(x1 - xs, y1 - ys, x2 - xs, y2 - ys) <= 0) return -1;
 
@@ -133,7 +134,9 @@ function intersectWall(board: Board, wallId: number, xs: number, ys: number, zs:
   return nextsecId;
 }
 
-function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, hit: Hitscan) {
+  let [xs, ys, zs] = hit.start;
+  let [vx, vy, vz] = hit.vec;
   if (vx == 0 && vy == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
@@ -153,7 +156,9 @@ function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, xs: num
   hit.hit(intx, inty, intz, t, sprId, SubType.SPRITE);
 }
 
-function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, hit: Hitscan) {
+  let [xs, ys, zs] = hit.start;
+  let [vx, vy, vz] = hit.vec;
   if (vx == 0 && vy == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
@@ -179,7 +184,9 @@ function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, xs: num
 
 let xss = new Deck<number>();
 let yss = new Deck<number>();
-function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, hit: Hitscan) {
+  let [xs, ys, zs] = hit.start;
+  let [vx, vy, vz] = hit.vec;
   if (vz == 0) return;
   let spr = board.sprites[sprId];
   let x = spr.x, y = spr.y, z = spr.z;
@@ -216,16 +223,16 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, xs: nu
 }
 
 
-function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, xs: number, ys: number, zs: number, vx: number, vy: number, vz: number, hit: Hitscan) {
+function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, hit: Hitscan) {
   let spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible) return;
   let info = artInfo.getInfo(spr.picnum);
   if (spr.cstat.type == FACE) {
-    intersectFaceSprite(board, info, sprId, xs, ys, zs, vx, vy, vz, hit);
+    intersectFaceSprite(board, info, sprId, hit);
   } else if (spr.cstat.type == WALL) {
-    intersectWallSprite(board, info, sprId, xs, ys, zs, vx, vy, vz, hit);
+    intersectWallSprite(board, info, sprId, hit);
   } else if (spr.cstat.type == FLOOR) {
-    intersectFloorSprite(board, info, sprId, xs, ys, zs, vx, vy, vz, hit);
+    intersectFloorSprite(board, info, sprId, hit);
   }
 }
 
@@ -248,11 +255,11 @@ export function hitscan(board: Board, artInfo: ArtInfoProvider, xs: number, ys: 
   for (let i = 0; i < stack.length(); i++) {
     let s = stack.get(i);
     let sec = board.sectors[s];
-    intersectSectorPlanes(board, sec, s, xs, ys, zs, vx, vy, vz, hit);
+    intersectSectorPlanes(board, sec, s, hit);
 
     let endwall = sec.wallptr + sec.wallnum;
     for (let w = sec.wallptr; w < endwall; w++) {
-      let nextsec = intersectWall(board, w, xs, ys, zs, vx, vy, vz, hit);
+      let nextsec = intersectWall(board, w, hit);
       if (nextsec != -1 && stack.indexOf(nextsec) == -1) {
         stack.push(nextsec);
       }
@@ -261,7 +268,7 @@ export function hitscan(board: Board, artInfo: ArtInfoProvider, xs: number, ys: 
     let sprs = sprites[s];
     if (sprs == undefined) continue;
     for (let j = 0; j < sprs.length; j++) {
-      intersectSprite(board, artInfo, sprs[j], xs, ys, zs, vx, vy, vz, hit);
+      intersectSprite(board, artInfo, sprs[j], hit);
     }
   }
 }

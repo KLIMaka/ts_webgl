@@ -41,7 +41,7 @@ class DrawSector {
   private points = new Deck<[number, number]>();
   private z = 0;
   private pointer = GLM.vec3.create();
-  private
+  private direction = GLM.vec3.create();
 
   public start(board: Board, hit: Hitscan) {
     this.points.clear();
@@ -49,7 +49,11 @@ class DrawSector {
   }
 
   public update(board: Board, hit: Hitscan) {
-    let direction = hit.vec;
+    if (hit.t == -1) {
+
+    } else {
+      this.z = hit.z;
+    }
   }
 }
 
@@ -99,7 +103,7 @@ function getClosestWall(board: Board, hit: Hitscan): number {
   return -1;
 }
 
-function getAttacherSector(board: Board, hit: Hitscan): MessageHandler {
+function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
   let wall = board.walls[hit.id];
   let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.id) : wall.nextsector;
   let sec = board.sectors[sectorId];
@@ -117,12 +121,12 @@ export function getFromHitscan(board: Board, hit: Hitscan): Deck<MessageHandler>
   let w = getClosestWall(board, hit);
   if (w != -1) {
     list.push(WallEnt.create(board, w));
-    list.push(getAttacherSector(board, hit))
+    list.push(getAttachedSector(board, hit))
   } else if (isWall(hit.type)) {
     let w1 = nextwall(board, hit.id);
     segment.clear().push(hit.id).push(w1);
     list.push(WallSegmentsEnt.create(board, segment));
-    list.push(getAttacherSector(board, hit))
+    list.push(getAttachedSector(board, hit))
   } else if (isSector(hit.type)) {
     list.push(SectorEnt.create(hit.id, hit.type));
   } else if (isSprite(hit.type)) {
