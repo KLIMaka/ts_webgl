@@ -125,29 +125,13 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
   sendToSelected(EDIT.MOVE);
 }
 
-function snap(board: Board) {
+function updateCursor(board: Board) {
   EDIT.SPLIT_WALL.deactivate();
-
+  EDIT.DRAW_SECTOR.update(board, hit, context);
   if (hit.t != -1) {
-    let x = hit.x; let y = hit.y;
-    if (isSector(hit.type)) {
-      x = context.snap(x);
-      y = context.snap(y);
-    } else if (isWall(hit.type)) {
-      let w = hit.id;
-      let wall = board.walls[w];
-      let w1 = BU.nextwall(board, w); let wall1 = board.walls[w1];
-      let dx = wall1.x - wall.x;
-      let dy = wall1.y - wall.y;
-      let repeat = BU.DEFAULT_REPEAT_RATE * wall.xrepeat;
-      let dxt = x - wall.x; let dyt = y - wall.y;
-      let t = MU.len2d(dxt, dyt) / MU.len2d(dx, dy);
-      t = context.snap(t * repeat) / repeat;
-      x = MU.int(wall.x + (t * dx));
-      y = MU.int(wall.y + (t * dy));
-      EDIT.SPLIT_WALL.update(x, y, hit.id);
-    }
+    let [x, y] = EDIT.snap(board, hit, context);
     BGL.setCursorPosiotion(x, hit.z / U.ZSCALE, y);
+    if (isWall(hit.type)) EDIT.SPLIT_WALL.update(x, y, hit.id);
   }
 }
 
@@ -201,15 +185,14 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   pointerHitscan(gl, board, ms, ctr);
   move(gl, board, ctr);
   select(board)
-  snap(board);
+  updateCursor(board);
 
   BGL.newFrame(gl);
   drawGeometry(gl, board, ms, ctr);
   drawHelpers(gl, board);
 
-  if (INPUT.keys['INSERT']) {
-    EDIT.SPLIT_WALL.run(context);
-  }
+  if (INPUT.keys['INSERT']) EDIT.SPLIT_WALL.run(context);
+  if (INPUT.keys['SPACE']) EDIT.DRAW_SECTOR.insertPoint();
   joinSectors(board);
 }
 
@@ -217,6 +200,7 @@ function drawHelpers(gl: WebGLRenderingContext, board: Board) {
   gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   sendToSelected(EDIT.HIGHLIGHT);
+  BGL.draw(gl, EDIT.DRAW_SECTOR.getRenderable());
   gl.disable(gl.BLEND);
   gl.enable(gl.DEPTH_TEST);
 }

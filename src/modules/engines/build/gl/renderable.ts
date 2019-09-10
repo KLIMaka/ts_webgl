@@ -3,6 +3,7 @@ import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
 import { State } from '../../../stategl';
 import * as BUFF from './buffers';
+import { Collection } from '../../../deck';
 
 export class Buffer {
   private ptr: Pointer;
@@ -58,6 +59,18 @@ export enum Type {
 
 export interface Renderable {
   draw(gl: WebGLRenderingContext, state: State): void;
+}
+
+export class RenderableList implements Renderable {
+  constructor(
+    private renderables: Array<Renderable>
+  ) { }
+
+  draw(gl: WebGLRenderingContext, state: State): void {
+    for (let i = 0; i < this.renderables.length; i++) {
+      this.renderables[i].draw(gl, state);
+    }
+  }
 }
 
 let color = GLM.vec4.create();

@@ -1,9 +1,9 @@
 import { Deck } from "../../../deck";
-import { closestWallInSector, nextwall, splitWall } from "../boardutils";
+import { closestWallInSector, nextwall, splitWall, DEFAULT_REPEAT_RATE, pointOnWall } from "../boardutils";
 import { Hitscan, isSector, isSprite, isWall, SubType } from "../hitscan";
 import { MessageHandler } from "../messages";
-import { Board } from "../structs";
-import { createSlopeCalculator, sectorOfWall } from "../utils";
+import { Board, FLOOR } from "../structs";
+import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../utils";
 import { BuildContext, EndMove, Highlight, Move, StartMove } from "./editapi";
 import { MovingHandle } from "./handle";
 import { SectorEnt } from "./sector";
@@ -11,6 +11,11 @@ import { SpriteEnt } from "./sprite";
 import { WallEnt } from "./wall";
 import { WallSegmentsEnt } from "./wallsegment";
 import * as GLM from "../../../../libs_js/glmatrix";
+import { Context } from "../gl/context";
+import { len2d, int } from "../../../../libs/mathutils";
+import * as BGL from '../gl/buildgl';
+import { Wireframe, Renderable, RenderableList } from "../gl/renderable";
+import { init } from "../gl/buffers";
 
 export class SplitWall {
   private x = 0;
@@ -42,18 +47,101 @@ class DrawSector {
   private z = 0;
   private pointer = GLM.vec3.create();
   private direction = GLM.vec3.create();
+  private active = false;
+  private valid = false;
+  private cursor = new Wireframe();
+  private contour = new Wireframe();
+  private contourPoints = new Wireframe();
+  private renderable = new RenderableList([this.cursor, this.contour, this.contourPoints]);
 
-  public start(board: Board, hit: Hitscan) {
-    this.points.clear();
-    this.z = hit.t == -1 ? 0 : hit.z;
+  public update(board: Board, hit: Hitscan, context: Context) {
+    this.updatePointerUnactive(board, hit, context);
   }
 
-  public update(board: Board, hit: Hitscan) {
-    if (hit.t == -1) {
+  public insertPoint() {
+    if (!this.valid) return;
+    if (!this.active) this.startDraw();
+    this.points.push([this.pointer[0], this.pointer[1]]);
+  }
 
+  private startDraw() {
+    this.active = true;
+    this.z = this.pointer[2];
+    this.points.clear();
+  }
+
+  private updatePointerUnactive(board: Board, hit: Hitscan, context: Context) {
+    if (hit.t == -1) {
+      this.valid = false;
     } else {
-      this.z = hit.z;
+      this.valid = true;
+      let [x, y] = snap(board, hit, context);
+      GLM.vec3.set(this.pointer, x, y, this.getPointerZ(board, hit));
     }
+  }
+
+  private getPointerZ(board: Board, hit: Hitscan) {
+    if (isSector(hit.type)) {
+      return hit.z;
+    } else if (isWall(hit.type)) {
+      return getClosestSectorZ(board, sectorOfWall(board, hit.id), hit.x, hit.y, hit.z)[1];
+    } else if (isSprite(hit.type)) {
+      let sprite = board.sprites[hit.id];
+      return getClosestSectorZ(board, sprite.sectnum, hit.x, hit.y, hit.z)[1];
+    }
+  }
+
+  public getRenderable(): Renderable {
+    if (this.valid) {
+      this.cursor.mode = WebGLRenderingContext.TRIANGLES;
+      let buff = this.cursor.buff;
+      buff.allocate(4, 12);
+      let d = 64;
+      let [x, y, z] = this.pointer;
+      buff.writePos(0, x - d, z / ZSCALE, y - d);
+      buff.writePos(1, x + d, z / ZSCALE, y - d);
+      buff.writePos(2, x + d, z / ZSCALE, y + d);
+      buff.writePos(3, x - d, z / ZSCALE, y + d);
+      buff.writeQuad(0, 0, 1, 2, 3);
+      buff.writeQuad(6, 3, 2, 1, 0);
+    }
+    if (this.active) {
+      this.updateContour();
+      this.updateContourPoints();
+    }
+    return this.renderable;
+  }
+
+  private updateContourPoints(): Renderable {
+    let points = this.points.length();
+    this.contourPoints.mode = WebGLRenderingContext.TRIANGLES;
+    let buff = this.contourPoints.buff;
+    buff.allocate(points * 4, points * 12);
+    let d = 32;
+    for (let i = 0; i < points - 1; i++) {
+      let p = this.points.get(i);
+      let off = i * 4;
+      buff.writePos(off + 0, p[0] - d, this.z / ZSCALE, p[1] - d);
+      buff.writePos(off + 1, p[0] + d, this.z / ZSCALE, p[1] - d);
+      buff.writePos(off + 2, p[0] + d, this.z / ZSCALE, p[1] + d);
+      buff.writePos(off + 3, p[0] - d, this.z / ZSCALE, p[1] + d);
+      buff.writeQuad(i * 12 + 0, off, off + 1, off + 2, off + 3);
+      buff.writeQuad(i * 12 + 6, off + 3, off + 2, off + 1, off);
+    }
+    return this.contourPoints;
+  }
+
+  private updateContour(): Renderable {
+    let points = this.points.length() + 1;
+    let buff = this.contour.buff;
+    buff.allocate(points, points * 2);
+    for (let i = 0; i < points - 1; i++) {
+      let p = this.points.get(i);
+      buff.writePos(i, p[0], this.z / ZSCALE, p[1]);
+      buff.writeLine(i * 2, i, i + 1);
+    }
+    buff.writePos(points - 1, this.pointer[0], this.z / ZSCALE, this.pointer[1]);
+    return this.contour;
   }
 }
 
@@ -65,13 +153,9 @@ class DrawWall {
   public start(board: Board, hit: Hitscan) {
     this.points.clear();
     this.wallId = hit.id;
-    let s = sectorOfWall(board, this.wallId);
-    let sec = board.sectors[s];
-    let slope = createSlopeCalculator(sec, board.walls);
-    let floorz = slope(hit.x, hit.y, sec.floorheinum) + sec.floorz;
-    let ceilz = slope(hit.x, hit.y, sec.ceilingheinum) + sec.ceilingz;
-    this.fromFloor = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz);
-    this.points.push([hit.x, hit.y, this.fromFloor ? floorz : ceilz]);
+    let [type, z] = getClosestSectorZ(board, sectorOfWall(board, this.wallId), hit.x, hit.y, hit.z);
+    this.fromFloor = type == SubType.FLOOR;
+    this.points.push([hit.x, hit.y, z]);
   }
 }
 
@@ -93,24 +177,54 @@ export let HIGHLIGHT = new Highlight();
 
 export let SPLIT_WALL = new SplitWall();
 export let DRAW_WALL = new DrawWall();
+export let DRAW_SECTOR = new DrawSector();
+
+export function snap(board: Board, hit: Hitscan, context: Context): [number, number] {
+  let w = getClosestWall(board, hit);
+  if (w != -1) {
+    let wall = board.walls[w];
+    return [wall.x, wall.y];
+  } else if (isSector(hit.type)) {
+    let x = context.snap(hit.x);
+    let y = context.snap(hit.y);
+    return [x, y];
+  } else if (isWall(hit.type)) {
+    let w = hit.id;
+    let wall = board.walls[w];
+    let w1 = nextwall(board, w);
+    let wall1 = board.walls[w1];
+    let dx = wall1.x - wall.x;
+    let dy = wall1.y - wall.y;
+    let repeat = DEFAULT_REPEAT_RATE * wall.xrepeat;
+    let dxt = hit.x - wall.x;
+    let dyt = hit.y - wall.y;
+    let dt = len2d(dxt, dyt) / len2d(dx, dy);
+    let t = context.snap(dt * repeat) / repeat;
+    let x = int(wall.x + (t * dx));
+    let y = int(wall.y + (t * dy));
+    return [x, y];
+  }
+}
 
 function getClosestWall(board: Board, hit: Hitscan): number {
-  if (isWall(hit.type)) {
-    return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, 64);
-  } else if (isSector(hit.type)) {
-    return closestWallInSector(board, hit.id, hit.x, hit.y, 64);
-  }
+  if (isWall(hit.type))
+    return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, 128);
+  else if (isSector(hit.type))
+    return closestWallInSector(board, hit.id, hit.x, hit.y, 128);
   return -1;
+}
+
+function getClosestSectorZ(board: Board, sectorId: number, x: number, y: number, z: number): [SubType, number] {
+  let sector = board.sectors[sectorId];
+  let fz = slope(board, sectorId, x, y, sector.floorheinum) + sector.floorz;
+  let cz = slope(board, sectorId, x, y, sector.ceilingheinum) + sector.ceilingz;
+  return Math.abs(z - fz) < Math.abs(z - cz) ? [SubType.FLOOR, fz] : [SubType.CEILING, cz];
 }
 
 function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
   let wall = board.walls[hit.id];
   let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.id) : wall.nextsector;
-  let sec = board.sectors[sectorId];
-  let slope = createSlopeCalculator(sec, board.walls);
-  let floorz = slope(hit.x, hit.y, sec.floorheinum) + sec.floorz;
-  let ceilz = slope(hit.x, hit.y, sec.ceilingheinum) + sec.ceilingz;
-  let type = Math.abs(hit.z - floorz) < Math.abs(hit.z - ceilz) ? SubType.FLOOR : SubType.CEILING;
+  let type = getClosestSectorZ(board, sectorId, hit.x, hit.y, hit.z)[0];
   return SectorEnt.create(sectorId, type);
 }
 
