@@ -76,18 +76,18 @@ class DrawSector {
     } else {
       this.valid = true;
       let [x, y] = snap(board, hit, context);
-      GLM.vec3.set(this.pointer, x, y, this.getPointerZ(board, hit));
+      GLM.vec3.set(this.pointer, x, y, this.getPointerZ(board, hit, x, y));
     }
   }
 
-  private getPointerZ(board: Board, hit: Hitscan) {
+  private getPointerZ(board: Board, hit: Hitscan, x: number, y: number) {
     if (isSector(hit.type)) {
       return hit.z;
     } else if (isWall(hit.type)) {
-      return getClosestSectorZ(board, sectorOfWall(board, hit.id), hit.x, hit.y, hit.z)[1];
+      return getClosestSectorZ(board, sectorOfWall(board, hit.id), x, y, hit.z)[1];
     } else if (isSprite(hit.type)) {
       let sprite = board.sprites[hit.id];
-      return getClosestSectorZ(board, sprite.sectnum, hit.x, hit.y, hit.z)[1];
+      return getClosestSectorZ(board, sprite.sectnum, x, y, hit.z)[1];
     }
   }
 
@@ -96,7 +96,7 @@ class DrawSector {
       this.cursor.mode = WebGLRenderingContext.TRIANGLES;
       let buff = this.cursor.buff;
       buff.allocate(4, 12);
-      let d = 64;
+      let d = 32;
       let [x, y, z] = this.pointer;
       buff.writePos(0, x - d, z / ZSCALE, y - d);
       buff.writePos(1, x + d, z / ZSCALE, y - d);
@@ -117,8 +117,8 @@ class DrawSector {
     this.contourPoints.mode = WebGLRenderingContext.TRIANGLES;
     let buff = this.contourPoints.buff;
     buff.allocate(points * 4, points * 12);
-    let d = 32;
-    for (let i = 0; i < points - 1; i++) {
+    let d = 16;
+    for (let i = 0; i < points; i++) {
       let p = this.points.get(i);
       let off = i * 4;
       buff.writePos(off + 0, p[0] - d, this.z / ZSCALE, p[1] - d);
@@ -134,7 +134,7 @@ class DrawSector {
   private updateContour(): Renderable {
     let points = this.points.length() + 1;
     let buff = this.contour.buff;
-    buff.allocate(points, points * 2);
+    buff.allocate(points, (points - 1) * 2);
     for (let i = 0; i < points - 1; i++) {
       let p = this.points.get(i);
       buff.writePos(i, p[0], this.z / ZSCALE, p[1]);
