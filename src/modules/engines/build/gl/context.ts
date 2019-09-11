@@ -89,6 +89,10 @@ export class Context implements BuildContext {
     return snapGrid(x, this.gridSize);
   }
 
+  snapScale() {
+    return this.gridSize;
+  }
+
   scaledSnap(x: number, scale: number) {
     return snapGrid(x, this.gridSize * scale);
   }

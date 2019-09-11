@@ -8,7 +8,7 @@ import { MessageHandlerFactory } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
 import { StartMove, Move, EndMove, Highlight, BuildContext } from "./editapi";
-import { invalidateSector } from "./boardedit";
+import { invalidateSectorAndWalls } from "./editutils";
 
 function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
   if (ids.length() == 1) return ids.get(0);
@@ -104,7 +104,7 @@ export class WallSegmentsEnt {
       let w = cwalls.get(i);
       let s = sectorOfWall(ctx.board, w);
       if (invalidatedSectors.indexOf(s) == -1) {
-        invalidateSector(s, ctx);
+        invalidateSectorAndWalls(s, ctx);
         invalidatedSectors.push(s);
       }
     }

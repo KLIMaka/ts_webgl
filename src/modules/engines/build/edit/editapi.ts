@@ -10,11 +10,14 @@ export interface BuildContext {
   board: Board;
 
   snap(x: number): number;
+  snapScale(): number;
   scaledSnap(x: number, scale: number): number;
+
   invalidateAll(): void;
   invalidateSector(id: number): void;
   invalidateWall(id: number): void;
   invalidateSprite(id: number): void;
+
   highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
   highlightWallSegment(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
   highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number): void;

@@ -22,6 +22,11 @@ export class Deck<T> implements Collection<T>{
     return this;
   }
 
+  public pop(): Deck<T> {
+    this.pointer--;
+    return this;
+  }
+
   public clear(): Deck<T> {
     this.pointer = 0;
     return this;

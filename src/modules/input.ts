@@ -18,6 +18,7 @@ function mapKeyCode(code: number): string {
 }
 
 export var keys: { [index: string]: boolean } = {};
+export var keysPress: { [index: string]: boolean } = {};
 export var mouseButtons = [false, false, false];
 export var mouseClicks = [false, false, false];
 export var mouseX = 0;
@@ -29,6 +30,7 @@ export function postFrame() {
   mouseClicks[0] = false;
   mouseClicks[1] = false;
   mouseClicks[2] = false;
+  keysPress = {};
 }
 
 export function bind() {
@@ -40,7 +42,7 @@ export function bind() {
   document.addEventListener('keydown', (e: KeyboardEvent) => keydown(e));
 }
 
-function updateState(e: KeyboardEvent, state: boolean) {
+function updateState(keys: { [index: string]: boolean }, e: KeyboardEvent, state: boolean) {
   keys['ALT'] = e.altKey;
   keys['SHIFT'] = e.shiftKey;
   keys['CTRL'] = e.ctrlKey;
@@ -50,13 +52,14 @@ function updateState(e: KeyboardEvent, state: boolean) {
 }
 
 function keydown(e: KeyboardEvent) {
-  updateState(e, true);
+  updateState(keys, e, true);
   e.preventDefault();
   return false;
 }
 
 function keyup(e: KeyboardEvent) {
-  updateState(e, false);
+  updateState(keys, e, false);
+  updateState(keysPress, e, true);
   e.preventDefault();
   return false;
 }

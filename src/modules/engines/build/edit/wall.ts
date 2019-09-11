@@ -4,7 +4,7 @@ import { connectedWalls, moveWall, prevwall } from "../boardutils";
 import { MessageHandlerFactory } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { invalidateSector } from "./boardedit";
+import { invalidateSectorAndWalls } from "./editutils";
 import { BuildContext, EndMove, Highlight, Move, StartMove } from "./editapi";
 
 function collectConnectedWalls(board: Board, wallId: number) {
@@ -45,7 +45,7 @@ export class WallEnt {
       let w = cwalls.get(i);
       let s = sectorOfWall(ctx.board, w);
       if (WallEnt.invalidatedSectors.indexOf(s) == -1) {
-        invalidateSector(s, ctx);
+        invalidateSectorAndWalls(s, ctx);
         WallEnt.invalidatedSectors.push(s);
       }
     }

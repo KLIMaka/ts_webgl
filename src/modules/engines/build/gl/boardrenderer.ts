@@ -9,7 +9,7 @@ import { Deck } from '../../../deck';
 import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
-import * as EDIT from "../edit/boardedit";
+import * as EDIT from "../edit/edit";
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
 import { Message, MessageHandler, sendMessage } from '../messages';
@@ -20,6 +20,7 @@ import { ArtProvider, Cache } from './cache';
 import { Context } from './context';
 import { Renderable } from './renderable';
 import { isSector, isWall, SubType, hitscan, Hitscan } from '../hitscan';
+import { snap } from '../edit/editutils';
 
 export interface PalProvider extends ArtProvider {
   getPalTexture(): Texture;
@@ -129,7 +130,7 @@ function updateCursor(board: Board) {
   EDIT.SPLIT_WALL.deactivate();
   EDIT.DRAW_SECTOR.update(board, hit, context);
   if (hit.t != -1) {
-    let [x, y] = EDIT.snap(board, hit, context);
+    let [x, y] = snap(board, hit, context);
     BGL.setCursorPosiotion(x, hit.z / U.ZSCALE, y);
     if (isWall(hit.type)) EDIT.SPLIT_WALL.update(x, y, hit.id);
   }
@@ -140,7 +141,7 @@ function select(board: Board) {
     return;
 
   selection.clear();
-  let list = EDIT.getFromHitscan(board, hit);
+  let list = EDIT.getFromHitscan(board, hit, context);
   for (let i = 0; i < list.length(); i++) {
     selection.push(list.get(i));
   }
@@ -191,8 +192,10 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   drawGeometry(gl, board, ms, ctr);
   drawHelpers(gl, board);
 
-  if (INPUT.keys['INSERT']) EDIT.SPLIT_WALL.run(context);
-  if (INPUT.keys['SPACE']) EDIT.DRAW_SECTOR.insertPoint();
+  if (INPUT.keysPress['INSERT']) EDIT.SPLIT_WALL.run(context);
+  if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint();
+  if (INPUT.keysPress['BACKSPACE']) EDIT.DRAW_SECTOR.popPoint();
+  if (INPUT.keysPress['T']) EDIT.DRAW_SECTOR.createSector(context);
   joinSectors(board);
 }
 

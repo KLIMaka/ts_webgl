@@ -3,7 +3,7 @@ import { MessageHandlerFactory } from "../messages";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "../utils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { StartMove, Move, BuildContext, Highlight } from "./editapi";
-import { invalidateSector } from "./boardedit";
+import { invalidateSectorAndWalls } from "./editutils";
 
 export class SectorEnt {
   private static factory = new MessageHandlerFactory()
@@ -41,13 +41,13 @@ export class SectorEnt {
       let z = ctx.scaledSnap(this.originz + msg.handle.dz() * ZSCALE, 1);
       let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
       if (setSectorHeinum(ctx.board, this.sectorId, this.type, h))
-        invalidateSector(this.sectorId, ctx);
+        invalidateSectorAndWalls(this.sectorId, ctx);
     } else {
       let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
         ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
         : ctx.snap(this.originz + msg.handle.dz());
       if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE))
-        invalidateSector(this.sectorId, ctx);
+        invalidateSectorAndWalls(this.sectorId, ctx);
     }
   }
 
