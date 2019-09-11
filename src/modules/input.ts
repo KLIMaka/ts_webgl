@@ -33,6 +33,8 @@ export function postFrame() {
   keysPress = {};
 }
 
+
+
 export function bind() {
   document.addEventListener('mousemove', (e: MouseEvent) => mousemove(e));
   document.addEventListener('mouseup', (e: MouseEvent) => mouseup(e));
@@ -53,13 +55,13 @@ function updateState(keys: { [index: string]: boolean }, e: KeyboardEvent, state
 
 function keydown(e: KeyboardEvent) {
   updateState(keys, e, true);
+  updateState(keysPress, e, true);
   e.preventDefault();
   return false;
 }
 
 function keyup(e: KeyboardEvent) {
   updateState(keys, e, false);
-  updateState(keysPress, e, true);
   e.preventDefault();
   return false;
 }

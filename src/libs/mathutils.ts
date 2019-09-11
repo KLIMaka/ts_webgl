@@ -88,3 +88,16 @@ export function int2vec4(int: number) {
 export function int2vec4norm(int: number) {
   return [(int & 0xff) / 256, ((int >>> 8) & 0xff) / 256, ((int >>> 16) & 0xff) / 256, ((int >>> 24) & 0xff) / 256];
 }
+
+export function tuple2<T1, T2>(value: [T1, T2], v0: T1, v1: T2): [T1, T2] {
+  value[0] = v0;
+  value[1] = v1;
+  return value;
+}
+
+export function tuple3<T1, T2, T3>(value: [T1, T2, T3], v0: T1, v1: T2, v2: T3): [T1, T2, T3] {
+  value[0] = v0;
+  value[1] = v1;
+  value[2] = v2;
+  return value;
+}

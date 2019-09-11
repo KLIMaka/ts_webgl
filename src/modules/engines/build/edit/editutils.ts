@@ -1,4 +1,4 @@
-import { int, len2d } from "../../../../libs/mathutils";
+import { int, len2d, tuple2 } from "../../../../libs/mathutils";
 import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector } from "../boardutils";
 import { Hitscan, isSector, isWall, SubType } from "../hitscan";
 import { Board } from "../structs";
@@ -23,6 +23,7 @@ export function getClosestWall(board: Board, hit: Hitscan, ctx: BuildContext): n
   return -1;
 }
 
+let snapResult: [number, number] = [0, 0];
 export function snap(board: Board, hit: Hitscan, ctx: BuildContext): [number, number] {
   let w = getClosestWall(board, hit, ctx);
   if (w != -1) {
@@ -31,7 +32,7 @@ export function snap(board: Board, hit: Hitscan, ctx: BuildContext): [number, nu
   } else if (isSector(hit.type)) {
     let x = ctx.snap(hit.x);
     let y = ctx.snap(hit.y);
-    return [x, y];
+    return tuple2(snapResult, x, y);
   } else if (isWall(hit.type)) {
     let w = hit.id;
     let wall = board.walls[w];
@@ -46,14 +47,15 @@ export function snap(board: Board, hit: Hitscan, ctx: BuildContext): [number, nu
     let t = ctx.snap(dt * repeat) / repeat;
     let x = int(wall.x + (t * dx));
     let y = int(wall.y + (t * dy));
-    return [x, y];
+    return tuple2(snapResult, x, y);
   }
 }
 
+let sectorZesult: [SubType, number] = [null, 0];
 export function getClosestSectorZ(board: Board, sectorId: number, x: number, y: number, z: number): [SubType, number] {
   let sector = board.sectors[sectorId];
   let fz = slope(board, sectorId, x, y, sector.floorheinum) + sector.floorz;
   let cz = slope(board, sectorId, x, y, sector.ceilingheinum) + sector.ceilingz;
-  return Math.abs(z - fz) < Math.abs(z - cz) ? [SubType.FLOOR, fz] : [SubType.CEILING, cz];
+  return Math.abs(z - fz) < Math.abs(z - cz) ? tuple2(sectorZesult, SubType.FLOOR, fz) : tuple2(sectorZesult, SubType.CEILING, cz);
 }
 

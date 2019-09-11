@@ -193,9 +193,8 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   drawHelpers(gl, board);
 
   if (INPUT.keysPress['INSERT']) EDIT.SPLIT_WALL.run(context);
-  if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint();
+  if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context);
   if (INPUT.keysPress['BACKSPACE']) EDIT.DRAW_SECTOR.popPoint();
-  if (INPUT.keysPress['T']) EDIT.DRAW_SECTOR.createSector(context);
   joinSectors(board);
 }
 

@@ -671,8 +671,8 @@ function matchWalls(board: Board, points: Collection<[number, number]>) {
 }
 
 function commonSectorWall(board: Board, matched: Array<[number, number]>): [Sector, Wall] {
-  for (let i = 0; i < matchWalls.length; i++) {
-    let m = matchWalls[i];
+  for (let i = 0; i < matched.length; i++) {
+    let m = matched[i];
     if (m != null) return [board.sectors[m[0]], board.walls[m[1]]];
   }
   return [newSector(), newWall(0, 0)];
