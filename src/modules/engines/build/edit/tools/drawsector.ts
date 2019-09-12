@@ -101,7 +101,6 @@ class Contour {
 export class DrawSector {
   private static zintersect: [number, number] = [0, 0];
   private static pointerz: [number, number] = [0, 0];
-  private static vec = GLM.vec3.create();
 
   private points = new Deck<[number, number]>();
   private pointer = GLM.vec3.create();
@@ -111,23 +110,33 @@ export class DrawSector {
   private startSectorId = -1;
 
   public update(board: Board, hit: Hitscan, context: Context) {
-    if (hit.t == -1) {
-      this.valid = false;
-    } else {
-      this.valid = true;
-      let [x, y] = snap(board, hit, context);
-      let [z, sectorId] = this.getPointerZ(board, hit, x, y);
+    let [x, y] = this.getIntersectionZPlane(hit);
+
+    if (this.points.length() > 0) {
+      let z = this.contour.getZ();
+      x = context.snap(x);
+      y = context.snap(y);
       GLM.vec3.set(this.pointer, x, y, z);
-      this.contour.setZ(z / ZSCALE);
       this.contour.updateLastPoint(x, y);
-      this.currentSectorId = sectorId;
+    } else {
+      if (hit.t == -1) {
+        this.valid = false;
+      } else {
+        this.valid = true;
+        let [x, y] = snap(board, hit, context);
+        let [z, sectorId] = this.getPointerZ(board, hit, x, y);
+        GLM.vec3.set(this.pointer, x, y, z);
+        this.contour.setZ(z / ZSCALE);
+        this.contour.updateLastPoint(x, y);
+        this.currentSectorId = sectorId;
+      }
     }
   }
 
   private getIntersectionZPlane(hit: Hitscan): [number, number] {
     let z = this.contour.getZ();
     let dz = hit.start[2] / ZSCALE - z;
-    let t = dz / hit.vec[2];
+    let t = -dz / hit.vec[2];
     if (t < 0) return null;
     return tuple2(DrawSector.zintersect, hit.start[0] + hit.vec[0] * t, hit.start[1] + hit.vec[1] * t);
   }
@@ -167,7 +176,7 @@ export class DrawSector {
   }
 
   private createSector(ctx: BuildContext) {
-    createInnerLoop(ctx.board, this.startSectorId, this.points);
+    // createInnerLoop(ctx.board, this.startSectorId, this.points);
     createNewSector(ctx.board, this.points);
     ctx.invalidateAll();
     this.points.clear();

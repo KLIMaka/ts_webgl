@@ -166,7 +166,7 @@ function moveWalls(board: Board, secId: number, afterWallId: number, size: numbe
   board.sectors[secId].wallnum += size;
   for (let i = 0; i < board.numsectors; i++) {
     let sec = board.sectors[i];
-    if (sec.wallptr > afterWallId + 1)
+    if (sec.wallptr >= afterWallId + 1 && i != secId)
       sec.wallptr += size;
   }
 }
