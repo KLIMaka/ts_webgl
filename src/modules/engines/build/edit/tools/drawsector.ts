@@ -1,7 +1,7 @@
 import { Deck } from "../../../../deck";
 import { Hitscan, isSector, isSprite, isWall } from "../../hitscan";
 import { Board } from "../../structs";
-import { sectorOfWall, ZSCALE } from "../../utils";
+import { sectorOfWall, ZSCALE, findSector } from "../../utils";
 import { Context } from "../../gl/context";
 import { Wireframe, Renderable, RenderableList } from "../../gl/renderable";
 import { snap, getClosestSectorZ } from "../editutils";
@@ -100,20 +100,18 @@ class Contour {
 
 export class DrawSector {
   private static zintersect: [number, number] = [0, 0];
-  private static pointerz: [number, number] = [0, 0];
 
   private points = new Deck<[number, number]>();
   private pointer = GLM.vec3.create();
   private valid = false;
   private contour = new Contour();
-  private currentSectorId = -1;
-  private startSectorId = -1;
 
   public update(board: Board, hit: Hitscan, context: Context) {
-    let [x, y] = this.getIntersectionZPlane(hit);
-
     if (this.points.length() > 0) {
       let z = this.contour.getZ();
+      let res = this.getIntersectionZPlane(hit);
+      if (res == null) return;
+      let [x, y] = res;
       x = context.snap(x);
       y = context.snap(y);
       GLM.vec3.set(this.pointer, x, y, z);
@@ -124,11 +122,10 @@ export class DrawSector {
       } else {
         this.valid = true;
         let [x, y] = snap(board, hit, context);
-        let [z, sectorId] = this.getPointerZ(board, hit, x, y);
+        let z = this.getPointerZ(board, hit, x, y);
         GLM.vec3.set(this.pointer, x, y, z);
         this.contour.setZ(z / ZSCALE);
         this.contour.updateLastPoint(x, y);
-        this.currentSectorId = sectorId;
       }
     }
   }
@@ -151,8 +148,6 @@ export class DrawSector {
         this.createSector(ctx);
         return;
       }
-    } else {
-      this.startSectorId = this.currentSectorId;
     }
     this.points.push([this.pointer[0], this.pointer[1]]);
     this.contour.pushPoint(this.pointer[0], this.pointer[1]);
@@ -165,18 +160,31 @@ export class DrawSector {
     this.contour.updateLastPoint(this.pointer[0], this.pointer[1]);
   }
 
-  private getPointerZ(board: Board, hit: Hitscan, x: number, y: number): [number, number] {
-    if (isSector(hit.type)) return tuple2(DrawSector.pointerz, hit.z, hit.id);
+  private getPointerZ(board: Board, hit: Hitscan, x: number, y: number): number {
+    if (isSector(hit.type)) return hit.z;
     let sectorId = isWall(hit.type) ? sectorOfWall(board, hit.id) : board.sprites[hit.id].sectnum;
-    return tuple2(DrawSector.pointerz, getClosestSectorZ(board, sectorId, x, y, hit.z)[1], sectorId);
+    return getClosestSectorZ(board, sectorId, x, y, hit.z)[1];
   }
 
   public getRenderable(): Renderable {
     return this.contour.getRenderable();
   }
 
+  private findContainingSector(ctx: BuildContext) {
+    let sectorId = -1;
+    for (let i = 0; i < this.points.length(); i++) {
+      let p = this.points.get(i);
+      let s = findSector(ctx.board, p[0], p[1], sectorId);
+      if (i != 0 && s != sectorId) return -1;
+      sectorId = s;
+    }
+    return sectorId;
+  }
+
   private createSector(ctx: BuildContext) {
-    // createInnerLoop(ctx.board, this.startSectorId, this.points);
+    let sectorId = this.findContainingSector(ctx);
+    if (sectorId != -1)
+      createInnerLoop(ctx.board, sectorId, this.points);
     createNewSector(ctx.board, this.points);
     ctx.invalidateAll();
     this.points.clear();

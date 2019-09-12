@@ -9,6 +9,7 @@ import { PvsBoardVisitorResult } from '../boardvisitor';
 import { Deck } from '../../../deck';
 import { isSector, SubType, isWall, isSprite } from '../hitscan';
 import { BuildContext } from '../edit/editapi';
+import { cyclic } from '../../../../libs/mathutils';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
@@ -83,18 +84,24 @@ export class Context implements BuildContext {
 
   cache: Cache = null;
   pvs: PvsBoardVisitorResult = null;
-  gridSize = 128;
+
+  private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
+  private gridSize = 3;
+
+  changeGridSize() {
+    this.gridSize = cyclic(this.gridSize + 1, this.gridSizes.length);
+  }
 
   snap(x: number) {
-    return snapGrid(x, this.gridSize);
+    return snapGrid(x, this.gridSizes[this.gridSize]);
   }
 
   snapScale() {
-    return this.gridSize;
+    return this.gridSizes[this.gridSize];
   }
 
   scaledSnap(x: number, scale: number) {
-    return snapGrid(x, this.gridSize * scale);
+    return snapGrid(x, this.gridSizes[this.gridSize] * scale);
   }
 
   invalidateAll() {
