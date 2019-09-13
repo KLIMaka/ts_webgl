@@ -4,7 +4,7 @@ import { Hitscan, isSector, isSprite, isWall } from "../hitscan";
 import { MessageHandler } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Highlight, Move, StartMove, BuildContext } from "./editapi";
+import { EndMove, Highlight, Move, StartMove, BuildContext, SetPicnum } from "./editapi";
 import { getClosestSectorZ, getClosestWall } from "./editutils";
 import { MovingHandle } from "./handle";
 import { SectorEnt } from "./sector";
@@ -13,6 +13,7 @@ import { DrawSector } from "./tools/drawsector";
 import { SplitWall } from "./tools/splitwall";
 import { WallEnt } from "./wall";
 import { WallSegmentsEnt } from "./wallsegment";
+import { JoinSectors } from "./tools/joinsectors";
 
 // Messages
 let handle = new MovingHandle();
@@ -20,10 +21,12 @@ export let MOVE = new Move(handle);
 export let START_MOVE = new StartMove(handle);
 export let END_MOVE = new EndMove(handle);
 export let HIGHLIGHT = new Highlight();
+export let SET_PICNUM = new SetPicnum(-1);
 
 // Tools
 export let SPLIT_WALL = new SplitWall();
 export let DRAW_SECTOR = new DrawSector();
+export let JOIN_SECTORS = new JoinSectors();
 
 function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
   let wall = board.walls[hit.id];

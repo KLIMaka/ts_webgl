@@ -33,8 +33,6 @@ export function postFrame() {
   keysPress = {};
 }
 
-
-
 export function bind() {
   document.addEventListener('mousemove', (e: MouseEvent) => mousemove(e));
   document.addEventListener('mouseup', (e: MouseEvent) => mouseup(e));
@@ -51,6 +49,7 @@ function updateState(keys: { [index: string]: boolean }, e: KeyboardEvent, state
   var key = mapKeyCode(e.keyCode);
   if (key) keys[key] = state;
   keys[e.keyCode] = state;
+  keys[e.key] = state;
 }
 
 function keydown(e: KeyboardEvent) {

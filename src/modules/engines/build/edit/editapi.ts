@@ -29,3 +29,4 @@ export class StartMove implements Message { constructor(public handle: MovingHan
 export class Move implements Message { constructor(public handle: MovingHandle) { } }
 export class EndMove implements Message { constructor(public handle: MovingHandle) { } }
 export class Highlight implements Message { }
+export class SetPicnum implements Message { constructor(public picnum: number) { } }

@@ -9,9 +9,11 @@ import { Deck } from '../../../deck';
 import { Texture } from '../../../drawstruct';
 import * as INPUT from '../../../input';
 import * as TEX from '../../../textures';
-import * as EDIT from "../edit/edit";
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
+import * as EDIT from "../edit/edit";
+import { snap } from '../edit/editutils';
+import { hitscan, Hitscan, isWall, SubType } from '../hitscan';
 import { Message, MessageHandler, sendMessage } from '../messages';
 import { Board } from '../structs';
 import * as U from '../utils';
@@ -19,8 +21,9 @@ import * as BGL from './buildgl';
 import { ArtProvider, Cache } from './cache';
 import { Context } from './context';
 import { Renderable } from './renderable';
-import { isSector, isWall, SubType, hitscan, Hitscan } from '../hitscan';
-import { snap } from '../edit/editutils';
+
+export type PicNumCallback = (picnum: number) => void;
+export type PicNumSelector = (cb: PicNumCallback) => void;
 
 export interface PalProvider extends ArtProvider {
   getPalTexture(): Texture;
@@ -60,8 +63,9 @@ let visible = new VIS.PvsBoardVisitorResult();
 let selection = new List<MessageHandler>();
 let hit = new Hitscan();
 let implementation: Implementation;
+let picnumSelector: PicNumSelector;
 
-export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implementation, board: Board, cb: () => void) {
+export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implementation, board: Board, selector: PicNumSelector, cb: () => void) {
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
@@ -73,8 +77,20 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implemen
   cache = context.cache = new Cache(board, art);
   context.pvs = visible;
   implementation = impl;
+  picnumSelector = selector;
   loadGridTexture(gl, (gridTex: Texture) =>
     BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTex, cb));
+}
+
+function setTexture() {
+  let sel = new List<MessageHandler>();
+  for (let n = selection.first(); n != selection.terminator(); n = n.next) {
+    sel.push(n.obj);
+  }
+  picnumSelector((picnum: number) => {
+    EDIT.SET_PICNUM.picnum = picnum;
+    sendMessage(EDIT.SET_PICNUM, context, sel);
+  })
 }
 
 function sendToSelected(msg: Message) {
@@ -154,29 +170,6 @@ function updateContext(gl: WebGLRenderingContext, board: Board) {
   context.gl = gl;
 }
 
-let joinSector1 = -1;
-let joinSector2 = -1;
-function joinSectors(board: Board) {
-  if (isSector(hit.type) && INPUT.mouseClicks[1]) {
-    if (joinSector1 == -1) {
-      joinSector1 = hit.id;
-    } else if (joinSector2 == -1) {
-      joinSector2 = hit.id;
-    }
-
-    if (joinSector1 != -1 && joinSector2 != -1) {
-      console.log('joining ' + joinSector1 + ' and ' + joinSector2);
-      let result = BU.joinSectors(board, joinSector1, joinSector2);
-      if (result == 0) {
-        cache.invalidateAll();
-        visible.reset();
-      }
-      joinSector1 = -1;
-      joinSector2 = -1;
-    }
-  }
-}
-
 export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
@@ -195,8 +188,10 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   if (INPUT.keysPress['INSERT']) EDIT.SPLIT_WALL.run(context);
   if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context);
   if (INPUT.keysPress['BACKSPACE']) EDIT.DRAW_SECTOR.popPoint();
-  if (INPUT.keysPress['G']) context.changeGridSize();
-  joinSectors(board);
+  if (INPUT.keysPress['[']) context.incGridSize();
+  if (INPUT.keysPress[']']) context.decGridSize();
+  if (INPUT.keysPress['J']) EDIT.JOIN_SECTORS.join(hit, context);
+  if (INPUT.keysPress['V']) setTexture();
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {

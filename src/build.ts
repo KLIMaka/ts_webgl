@@ -21,6 +21,7 @@ import * as UI from './modules/ui/ui';
 import { createNewSector, createInnerLoop } from './modules/engines/build/boardutils';
 import { Deck } from './modules/deck';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
+import { Selector } from './modules/engines/build/artselector';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -266,6 +267,8 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Contr
 function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[]) {
   let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
 
+  let artSelector = new Selector(800, 500, artFiles, pal);
+
   let panel = UI.panel('Info');
   let props = UI.props();
   panel.append(props);
@@ -288,7 +291,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     rorLinks() { return rorLinks }
   }
 
-  RENDERER.init(gl, art, impl, board, () => {
+  RENDERER.init(gl, art, impl, board, (cb) => artSelector.modal(cb), () => {
 
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
 

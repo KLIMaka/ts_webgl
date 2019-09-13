@@ -5,7 +5,7 @@ import { MessageHandlerFactory } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { BuildContext, EndMove, Highlight, Move, StartMove } from "./editapi";
+import { BuildContext, EndMove, Highlight, Move, StartMove, SetPicnum } from "./editapi";
 
 function collectConnectedWalls(board: Board, wallId: number) {
   let result = new Deck<number>();
@@ -19,6 +19,7 @@ export class WallEnt {
     .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: WallEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(EndMove, (obj: WallEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
+    .register(SetPicnum, (obj: WallEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
     .register(Highlight, (obj: WallEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
   public static create(board: Board, id: number) {
@@ -80,5 +81,11 @@ export class WallEnt {
     } else {
       ctx.highlightWall(ctx.gl, ctx.board, this.wallId);
     }
+  }
+
+  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+    let wall = ctx.board.walls[this.wallId];
+    wall.picnum = msg.picnum;
+    ctx.invalidateWall(this.wallId);
   }
 }

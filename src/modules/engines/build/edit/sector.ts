@@ -2,13 +2,14 @@ import { isSector, SubType } from "../hitscan";
 import { MessageHandlerFactory } from "../messages";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "../utils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { StartMove, Move, BuildContext, Highlight } from "./editapi";
+import { StartMove, Move, BuildContext, Highlight, SetPicnum } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
 
 export class SectorEnt {
   private static factory = new MessageHandlerFactory()
     .register(StartMove, (obj: SectorEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: SectorEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
+    .register(SetPicnum, (obj: SectorEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
     .register(Highlight, (obj: SectorEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
   public static create(id: number, type: SubType) {
@@ -53,5 +54,12 @@ export class SectorEnt {
 
   public highlight(msg: Highlight, ctx: BuildContext) {
     ctx.highlight(ctx.gl, ctx.board, this.sectorId, -1, this.type);
+  }
+
+  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+    let sector = ctx.board.sectors[this.sectorId];
+    if (this.type == SubType.CEILING) sector.ceilingpicnum = msg.picnum;
+    if (this.type == SubType.FLOOR) sector.floorpicnum = msg.picnum;
+    ctx.invalidateSector(this.sectorId);
   }
 }

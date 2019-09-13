@@ -86,22 +86,26 @@ export class Context implements BuildContext {
   pvs: PvsBoardVisitorResult = null;
 
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
-  private gridSize = 3;
+  private gridSizeIdx = 3;
 
-  changeGridSize() {
-    this.gridSize = cyclic(this.gridSize + 1, this.gridSizes.length);
+  snapScale() {
+    return this.gridSizes[this.gridSizeIdx];
+  }
+
+  incGridSize() {
+    this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length);
+  }
+
+  decGridSize() {
+    this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length);
   }
 
   snap(x: number) {
-    return snapGrid(x, this.gridSizes[this.gridSize]);
-  }
-
-  snapScale() {
-    return this.gridSizes[this.gridSize];
+    return snapGrid(x, this.snapScale());
   }
 
   scaledSnap(x: number, scale: number) {
-    return snapGrid(x, this.gridSizes[this.gridSize] * scale);
+    return snapGrid(x, this.gridSizes[this.gridSizeIdx] * scale);
   }
 
   invalidateAll() {

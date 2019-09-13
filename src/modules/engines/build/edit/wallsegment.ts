@@ -7,7 +7,7 @@ import { Hitscan } from "../hitscan";
 import { MessageHandlerFactory } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { StartMove, Move, EndMove, Highlight, BuildContext } from "./editapi";
+import { StartMove, Move, EndMove, Highlight, BuildContext, SetPicnum } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
 
 function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
@@ -81,6 +81,7 @@ export class WallSegmentsEnt {
     .register(StartMove, (obj: WallSegmentsEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: WallSegmentsEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
     .register(EndMove, (obj: WallSegmentsEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
+    .register(SetPicnum, (obj: WallSegmentsEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
     .register(Highlight, (obj: WallSegmentsEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
   public static create(board: Board, ids: Collection<number>) {
@@ -157,6 +158,16 @@ export class WallSegmentsEnt {
         let s = sectorOfWall(ctx.board, w);
         ctx.highlightWallSegment(ctx.gl, ctx.board, w, s);
       }
+    }
+  }
+
+  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+    let hwalls = this.highlighted;
+    for (let i = 0; i < hwalls.length(); i++) {
+      let w = hwalls.get(i);
+      let wall = ctx.board.walls[w];
+      wall.picnum = msg.picnum
+      ctx.invalidateWall(w);
     }
   }
 }

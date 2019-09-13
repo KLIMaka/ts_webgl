@@ -2,12 +2,13 @@ import { moveSprite } from "../boardutils";
 import { MessageHandlerFactory } from "../messages";
 import { ZSCALE } from "../utils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { StartMove, BuildContext, Move, Highlight } from "./editapi";
+import { StartMove, BuildContext, Move, Highlight, SetPicnum } from "./editapi";
 
 export class SpriteEnt {
   private static factory = new MessageHandlerFactory()
     .register(StartMove, (obj: SpriteEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
     .register(Move, (obj: SpriteEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
+    .register(SetPicnum, (obj: SpriteEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
     .register(Highlight, (obj: SpriteEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
   public static create(id: number) {
@@ -43,5 +44,11 @@ export class SpriteEnt {
 
   public highlight(msg: Highlight, ctx: BuildContext) {
     ctx.highlightSprite(ctx.gl, ctx.board, this.spriteId);
+  }
+
+  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+    let sprite = ctx.board.sprites[this.spriteId];
+    sprite.picnum = msg.picnum;
+    ctx.invalidateSprite(this.spriteId);
   }
 }
