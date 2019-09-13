@@ -166,7 +166,7 @@ export class WallSegmentsEnt {
     for (let i = 0; i < hwalls.length(); i++) {
       let w = hwalls.get(i);
       let wall = ctx.board.walls[w];
-      wall.picnum = msg.picnum
+      wall.picnum = msg.picnum;
       ctx.invalidateWall(w);
     }
   }

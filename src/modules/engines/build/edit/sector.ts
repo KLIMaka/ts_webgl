@@ -1,6 +1,6 @@
 import { isSector, SubType } from "../hitscan";
 import { MessageHandlerFactory } from "../messages";
-import { heinumCalc, sectorZ, setSectorHeinum, setSectorZ, ZSCALE } from "../utils";
+import { heinumCalc, sectorZ, setSectorHeinum, setSectorZ, ZSCALE, setSectorPicnum } from "../utils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { StartMove, Move, BuildContext, Highlight, SetPicnum } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
@@ -57,9 +57,7 @@ export class SectorEnt {
   }
 
   public setpicnum(msg: SetPicnum, ctx: BuildContext) {
-    let sector = ctx.board.sectors[this.sectorId];
-    if (this.type == SubType.CEILING) sector.ceilingpicnum = msg.picnum;
-    if (this.type == SubType.FLOOR) sector.floorpicnum = msg.picnum;
-    ctx.invalidateSector(this.sectorId);
+    if (setSectorPicnum(ctx.board, this.sectorId, this.type, msg.picnum))
+      ctx.invalidateSector(this.sectorId);
   }
 }

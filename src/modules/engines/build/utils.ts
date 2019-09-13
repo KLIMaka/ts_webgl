@@ -125,6 +125,18 @@ export function setSectorHeinum(board: Board, sectorId: number, type: SubType, h
   return true;
 }
 
+export function sectorPicnum(board: Board, sectorId: number, type: SubType) {
+  let sec = board.sectors[sectorId];
+  return type == SubType.CEILING ? sec.ceilingpicnum : sec.floorpicnum;
+}
+
+export function setSectorPicnum(board: Board, sectorId: number, type: SubType, picnum: number): boolean {
+  if (picnum == -1 || sectorPicnum(board, sectorId, type) == picnum) return false;
+  let sec = board.sectors[sectorId];
+  if (type == SubType.CEILING) sec.ceilingpicnum = picnum; else sec.floorpicnum = picnum;
+  return true;
+}
+
 export function findSector(board: Board, x: number, y: number, secnum: number = -1): number {
   if (secnum == -1)
     return findSectorAll(board, x, y);

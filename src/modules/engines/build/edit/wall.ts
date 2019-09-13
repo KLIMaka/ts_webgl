@@ -53,12 +53,10 @@ export class WallEnt {
   }
 
   public move(msg: Move, ctx: BuildContext) {
-    if (!msg.handle.elevate) {
-      let x = ctx.snap(this.origin[0] + msg.handle.dx());
-      let y = ctx.snap(this.origin[1] + msg.handle.dy());
-      if (moveWall(ctx.board, this.wallId, x, y)) {
-        this.invalidate(ctx);
-      }
+    let x = ctx.snap(this.origin[0] + msg.handle.dx());
+    let y = ctx.snap(this.origin[1] + msg.handle.dy());
+    if (moveWall(ctx.board, this.wallId, x, y)) {
+      this.invalidate(ctx);
     }
   }
 
