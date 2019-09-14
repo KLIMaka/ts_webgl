@@ -1,19 +1,15 @@
-import { isSector, SubType } from "../hitscan";
-import { MessageHandlerFactory } from "../messages";
-import { heinumCalc, sectorZ, setSectorHeinum, setSectorZ, ZSCALE, setSectorPicnum } from "../utils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { StartMove, Move, BuildContext, Highlight, SetPicnum } from "./editapi";
+import { isSector, SubType } from "../hitscan";
+import { MessageHandlerIml } from "../messages";
+import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
+import { BuildContext, Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
+import { cyclic } from "../../../../libs/mathutils";
 
-export class SectorEnt {
-  private static factory = new MessageHandlerFactory()
-    .register(StartMove, (obj: SectorEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
-    .register(Move, (obj: SectorEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
-    .register(SetPicnum, (obj: SectorEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
-    .register(Highlight, (obj: SectorEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
+export class SectorEnt extends MessageHandlerIml {
 
   public static create(id: number, type: SubType) {
-    return SectorEnt.factory.handler(new SectorEnt(id, type));
+    return new SectorEnt(id, type);
   }
 
   constructor(
@@ -21,9 +17,9 @@ export class SectorEnt {
     public type: SubType,
     public originz = 0,
     public origin = GLM.vec2.create()
-  ) { }
+  ) { super() }
 
-  public startMove(msg: StartMove, ctx: BuildContext) {
+  public StartMove(msg: StartMove, ctx: BuildContext) {
     let x = msg.handle.hit.x;
     let y = msg.handle.hit.y;
     // let sec = ctx.board.sectors[this.sectorId];
@@ -33,13 +29,13 @@ export class SectorEnt {
     GLM.vec2.set(this.origin, x, y);
   }
 
-  public move(msg: Move, ctx: BuildContext) {
+  public Move(msg: Move, ctx: BuildContext) {
     if (!msg.handle.elevate)
       return;
     if (msg.handle.parallel) {
       let x = this.origin[0];
       let y = this.origin[1];
-      let z = ctx.scaledSnap(this.originz + msg.handle.dz() * ZSCALE, 1);
+      let z = ctx.snap(this.originz + msg.handle.dz() * ZSCALE);
       let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
       if (setSectorHeinum(ctx.board, this.sectorId, this.type, h))
         invalidateSectorAndWalls(this.sectorId, ctx);
@@ -52,12 +48,75 @@ export class SectorEnt {
     }
   }
 
-  public highlight(msg: Highlight, ctx: BuildContext) {
+  public Highlight(msg: Highlight, ctx: BuildContext) {
     ctx.highlight(ctx.gl, ctx.board, this.sectorId, -1, this.type);
   }
 
-  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+  public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     if (setSectorPicnum(ctx.board, this.sectorId, this.type, msg.picnum))
       ctx.invalidateSector(this.sectorId);
+  }
+
+  public ToggleParallax(msg: ToggleParallax, ctx: BuildContext) {
+    let sector = ctx.board.sectors[this.sectorId];
+    let stat = this.type == SubType.CEILING ? sector.ceilingstat : sector.floorstat;
+    stat.parallaxing = stat.parallaxing == 1 ? 0 : 1;
+    ctx.invalidateSector(this.sectorId);
+  }
+
+  public Shade(msg: Shade, ctx: BuildContext) {
+    let sector = ctx.board.sectors[this.sectorId];
+    let shade = this.type == SubType.CEILING ? sector.ceilingshade : sector.floorshade;
+    if (msg.absolute && msg.value == shade) return;
+    if (msg.absolute) {
+      if (this.type == SubType.CEILING) sector.ceilingshade = msg.value; else sector.floorshade = msg.value;
+    } else {
+      if (this.type == SubType.CEILING) sector.ceilingshade += msg.value; else sector.floorshade += msg.value;
+    }
+    ctx.invalidateSector(this.sectorId);
+  }
+
+  public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
+    let sector = ctx.board.sectors[this.sectorId];
+    if (msg.absolute) {
+      if (this.type == SubType.CEILING) {
+        if (sector.ceilingxpanning == msg.xpan && sector.ceilingypanning == msg.ypan) return;
+        sector.ceilingxpanning = msg.xpan;
+        sector.ceilingypanning = msg.ypan;
+      } else {
+        if (sector.floorxpanning == msg.xpan && sector.floorypanning == msg.ypan) return;
+        sector.floorxpanning = msg.xpan;
+        sector.floorypanning = msg.ypan;
+      }
+    } else {
+      if (this.type == SubType.CEILING) {
+        sector.ceilingxpanning += msg.xpan;
+        sector.ceilingypanning += msg.ypan;
+      } else {
+        sector.floorxpanning += msg.xpan;
+        sector.floorypanning += msg.ypan;
+      }
+    }
+    ctx.invalidateSector(this.sectorId);
+  }
+
+  public Palette(msg: Palette, ctx: BuildContext) {
+    let sector = ctx.board.sectors[this.sectorId];
+    if (msg.absolute) {
+      if (this.type == SubType.CEILING) {
+        if (msg.value == sector.ceilingpal) return;
+        sector.ceilingpal = msg.value;
+      } else {
+        if (msg.value == sector.floorpal) return;
+        sector.floorpal = msg.value;
+      }
+    } else {
+      if (this.type == SubType.CEILING) {
+        sector.ceilingpal = cyclic(sector.ceilingpal + msg.value, msg.max);
+      } else {
+        sector.floorpal = cyclic(sector.floorpal + msg.value, msg.max);
+      }
+    }
+    ctx.invalidateSector(this.sectorId);
   }
 }

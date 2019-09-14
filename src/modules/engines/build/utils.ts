@@ -3,7 +3,7 @@ import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
 import { SubType } from './hitscan';
 import { Board, Sector, Sprite, Wall } from './structs';
-import { Collection } from '../../deck';
+import { Collection, Deck } from '../../deck';
 
 export const ZSCALE = -16;
 
@@ -89,7 +89,7 @@ export function sectorOfWall(board: Board, wallId: number): number {
   while (end - start >= 0) {
     let pivot = MU.int(start + (end - start) / 2);
     let sec = board.sectors[pivot];
-    if (sec.wallptr <= wallId && sec.wallptr + sec.wallnum >= wallId)
+    if (sec.wallptr <= wallId && sec.wallptr + sec.wallnum - 1 >= wallId)
       return pivot;
     if (sec.wallptr > wallId) {
       end = pivot - 1;

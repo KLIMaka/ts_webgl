@@ -1,32 +1,28 @@
-import { moveSprite } from "../boardutils";
-import { MessageHandlerFactory } from "../messages";
-import { ZSCALE } from "../utils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { StartMove, BuildContext, Move, Highlight, SetPicnum } from "./editapi";
+import { moveSprite } from "../boardutils";
+import { MessageHandlerIml } from "../messages";
+import { ZSCALE } from "../utils";
+import { BuildContext, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette } from "./editapi";
+import { cyclic } from "../../../../libs/mathutils";
 
-export class SpriteEnt {
-  private static factory = new MessageHandlerFactory()
-    .register(StartMove, (obj: SpriteEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
-    .register(Move, (obj: SpriteEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
-    .register(SetPicnum, (obj: SpriteEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
-    .register(Highlight, (obj: SpriteEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
+export class SpriteEnt extends MessageHandlerIml {
 
   public static create(id: number) {
-    return SpriteEnt.factory.handler(new SpriteEnt(id));
+    return new SpriteEnt(id);
   }
 
   constructor(
     public spriteId: number,
     public origin = GLM.vec3.create(),
-    public origAng = 0) { }
+    public origAng = 0) { super() }
 
-  public startMove(msg: StartMove, ctx: BuildContext) {
+  public StartMove(msg: StartMove, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
     GLM.vec3.set(this.origin, spr.x, spr.z / ZSCALE, spr.y);
     this.origAng = spr.ang;
   }
 
-  public move(msg: Move, ctx: BuildContext) {
+  public Move(msg: Move, ctx: BuildContext) {
     if (msg.handle.parallel) {
       let spr = ctx.board.sprites[this.spriteId];
       spr.ang = ctx.snap(this.origAng + msg.handle.dz());
@@ -42,13 +38,49 @@ export class SpriteEnt {
     }
   }
 
-  public highlight(msg: Highlight, ctx: BuildContext) {
+  public Highlight(msg: Highlight, ctx: BuildContext) {
     ctx.highlightSprite(ctx.gl, ctx.board, this.spriteId);
   }
 
-  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+  public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let sprite = ctx.board.sprites[this.spriteId];
     sprite.picnum = msg.picnum;
     ctx.invalidateSprite(this.spriteId);
+  }
+
+  public Shade(msg: Shade, ctx: BuildContext) {
+    let sprite = ctx.board.sprites[this.spriteId];
+    let shade = sprite.shade;
+    if (msg.absolute && shade == msg.value) return;
+    if (msg.absolute) sprite.shade = msg.value; else sprite.shade += msg.value;
+    ctx.invalidateSprite(this.spriteId);
+  }
+
+  public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
+    let sprite = ctx.board.sprites[this.spriteId];
+    if (msg.absolute) {
+      if (sprite.xoffset == msg.xpan && sprite.yoffset == msg.ypan && sprite.xrepeat == msg.xrepeat && sprite.yrepeat == msg.yrepeat) return;
+      sprite.xoffset = msg.xpan;
+      sprite.yoffset = msg.ypan;
+      sprite.xrepeat = msg.xrepeat;
+      sprite.yrepeat = msg.yrepeat;
+    } else {
+      sprite.xoffset += msg.xpan;
+      sprite.yoffset += msg.ypan;
+      sprite.xrepeat += msg.xrepeat;
+      sprite.yrepeat += msg.yrepeat;
+    }
+    ctx.invalidateSprite(this.spriteId);
+  }
+
+  public Palette(msg: Palette, ctx: BuildContext) {
+    let spr = ctx.board.sprites[this.spriteId];
+    if (msg.absolute) {
+      if (msg.value == spr.pal) return;
+      spr.pal = msg.value;
+    } else {
+      spr.pal = cyclic(spr.pal + msg.value, msg.max);
+    }
+    ctx.invalidateWall(this.spriteId);
   }
 }

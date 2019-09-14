@@ -210,23 +210,23 @@ function createBoard() {
     .push([4096, 4096])
     .push([0, 4096])
   );
-  createInnerLoop(board, 0, points.clear()
-    .push([1024, 1024])
-    .push([1024, 3072])
-    .push([3072, 3072])
-    .push([3072, 1024])
-  );
-  createNewSector(board, points.clear()
-    .push([1024, 1024])
-    .push([1024, 3072])
-    .push([3072, 3072])
-    .push([3072, 1024])
-  );
+  // createInnerLoop(board, 0, points.clear()
+  //   .push([1024, 1024])
+  //   .push([1024, 3072])
+  //   .push([3072, 3072])
+  //   .push([3072, 1024])
+  // );
+  // createNewSector(board, points.clear()
+  //   .push([1024, 1024])
+  //   .push([1024, 3072])
+  //   .push([3072, 3072])
+  //   .push([3072, 1024])
+  // );
 
   board.sectors[0].floorz = 0;
   board.sectors[0].ceilingz = -16 * 4096;
-  board.sectors[1].floorz = -16 * 1024;
-  board.sectors[1].ceilingz = -16 * 3072;
+  // board.sectors[1].floorz = -16 * 1024;
+  // board.sectors[1].ceilingz = -16 * 3072;
 
   let sprite = new BloodSprite();
   sprite.x = 1024;
@@ -281,7 +281,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   console.log(board);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let control = new controller.Controller3D();
-  INPUT.bind();
+  INPUT.bind(<HTMLCanvasElement>gl.canvas);
   control.setFov(75);
   let ms = createMoveStruct(board, control);
 

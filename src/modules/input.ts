@@ -33,11 +33,11 @@ export function postFrame() {
   keysPress = {};
 }
 
-export function bind() {
-  document.addEventListener('mousemove', (e: MouseEvent) => mousemove(e));
-  document.addEventListener('mouseup', (e: MouseEvent) => mouseup(e));
-  document.addEventListener('mousedown', (e: MouseEvent) => mousedown(e));
-  document.addEventListener('wheel', (e: WheelEvent) => wheelevent(e));
+export function bind(canvas: HTMLCanvasElement) {
+  canvas.addEventListener('mousemove', (e: MouseEvent) => mousemove(e));
+  canvas.addEventListener('mouseup', (e: MouseEvent) => mouseup(e));
+  canvas.addEventListener('mousedown', (e: MouseEvent) => mousedown(e));
+  canvas.addEventListener('wheel', (e: WheelEvent) => wheelevent(e));
   document.addEventListener('keyup', (e: KeyboardEvent) => keyup(e));
   document.addEventListener('keydown', (e: KeyboardEvent) => keydown(e));
 }

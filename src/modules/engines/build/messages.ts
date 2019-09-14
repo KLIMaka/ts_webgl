@@ -4,35 +4,27 @@ export interface Message { }
 
 export interface Context { }
 
-export type MessageHandler = (message: Message, ctx: Context) => void;
-
-export type InstanceMessageHandler<T> = (obj: T, message: Message, ctx: Context) => void;
-export const DEFAULT_HANDLER = (obj: any, message: Message, ctx: Context) => { };
+export interface MessageHandler {
+  handle(message: Message, ctx: Context): void;
+}
 
 export function sendMessage(message: Message, ctx: Context, receivers: List<MessageHandler>) {
   for (let item = receivers.first(); item != receivers.terminator(); item = item.next) {
-    item.obj(message, ctx);
+    item.obj.handle(message, ctx);
   }
 }
 
-export class MessageHandlerFactory<T> {
-  private handlers = new Map<Function, InstanceMessageHandler<T>>();
-  private defaultHandler: InstanceMessageHandler<any> = DEFAULT_HANDLER;
+export class MessageHandlerIml {
 
-  public register(constr: Function, receiver: InstanceMessageHandler<T>): MessageHandlerFactory<T> {
-    this.handlers.set(constr, receiver);
-    return this;
-  }
-
-  public setDefaultReceiver(receiver: MessageHandler): MessageHandlerFactory<T> {
-    this.defaultHandler = receiver;
-    return this;
-  }
-
-  public handler(obj: T): MessageHandler {
-    return (message: Message, ctx: Context) => {
-      let handler = this.handlers.get(message.constructor) || this.defaultHandler;
-      handler(obj, message, ctx);
+  handle(message: Message, ctx: Context) {
+    let name = message.constructor.name;
+    let handler = this[name];
+    if (handler != undefined) {
+      handler.apply(this, [message, ctx]);
+    } else {
+      this.handleDefault(message, ctx);
     }
   }
+
+  handleDefault(message: Message, ctx: Context) { }
 }

@@ -97,6 +97,24 @@ function sendToSelected(msg: Message) {
   sendMessage(msg, context, selection);
 }
 
+function sendShadeChange(value: number) {
+  EDIT.SHADE_CHANGE.value = value * (INPUT.keys['SHIFT'] ? 8 : 1);
+  sendToSelected(EDIT.SHADE_CHANGE);
+}
+
+function sendPanRepeat(x: number, y: number) {
+  if (INPUT.keys['CTRL']) {
+    EDIT.PANREPEAT.xpan = EDIT.PANREPEAT.ypan = 0;
+    EDIT.PANREPEAT.xrepeat = x * (INPUT.keys['SHIFT'] ? 1 : 8);
+    EDIT.PANREPEAT.yrepeat = y * (INPUT.keys['SHIFT'] ? 1 : 8);
+  } else {
+    EDIT.PANREPEAT.xrepeat = EDIT.PANREPEAT.yrepeat = 0;
+    EDIT.PANREPEAT.xpan = x * (INPUT.keys['SHIFT'] ? 1 : 8);
+    EDIT.PANREPEAT.ypan = y * (INPUT.keys['SHIFT'] ? 1 : 8);
+  }
+  sendToSelected(EDIT.PANREPEAT);
+}
+
 function print(board: Board, id: number, type: SubType) {
   if (INPUT.mouseClicks[0]) {
     switch (type) {
@@ -157,7 +175,7 @@ function select(board: Board) {
     return;
 
   selection.clear();
-  let list = EDIT.getFromHitscan(board, hit, context);
+  let list = EDIT.getFromHitscan(board, hit, context, INPUT.keys['TAB']);
   for (let i = 0; i < list.length(); i++) {
     selection.push(list.get(i));
   }
@@ -192,6 +210,15 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   if (INPUT.keysPress[']']) context.decGridSize();
   if (INPUT.keysPress['J']) EDIT.JOIN_SECTORS.join(hit, context);
   if (INPUT.keysPress['V']) setTexture();
+  if (INPUT.keysPress['P']) sendToSelected(EDIT.TOGGLE_PARALLAX);
+  if (INPUT.keysPress['UP']) sendPanRepeat(0, 1);
+  if (INPUT.keysPress['DOWN']) sendPanRepeat(0, -1);
+  if (INPUT.keysPress['LEFT']) sendPanRepeat(1, 0);
+  if (INPUT.keysPress['RIGHT']) sendPanRepeat(-1, 0);
+  if (INPUT.keysPress['O']) sendToSelected(EDIT.PALETTE);
+  if (INPUT.keysPress['F']) sendToSelected(EDIT.FLIP);
+  if (INPUT.wheel != 0) sendShadeChange(INPUT.wheel);
+
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {

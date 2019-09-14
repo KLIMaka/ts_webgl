@@ -1,11 +1,12 @@
+import { cyclic } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../deck";
 import { connectedWalls, moveWall, prevwall } from "../boardutils";
-import { MessageHandlerFactory } from "../messages";
+import { MessageHandlerIml } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
+import { BuildContext, EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
-import { BuildContext, EndMove, Highlight, Move, StartMove, SetPicnum } from "./editapi";
 
 function collectConnectedWalls(board: Board, wallId: number) {
   let result = new Deck<number>();
@@ -13,17 +14,11 @@ function collectConnectedWalls(board: Board, wallId: number) {
   return result;
 }
 
-export class WallEnt {
+export class WallEnt extends MessageHandlerIml {
   private static invalidatedSectors = new IndexedDeck<number>();
-  private static factory = new MessageHandlerFactory()
-    .register(StartMove, (obj: WallEnt, msg: StartMove, ctx: BuildContext) => obj.startMove(msg, ctx))
-    .register(Move, (obj: WallEnt, msg: Move, ctx: BuildContext) => obj.move(msg, ctx))
-    .register(EndMove, (obj: WallEnt, msg: EndMove, ctx: BuildContext) => obj.endMove(msg, ctx))
-    .register(SetPicnum, (obj: WallEnt, msg: SetPicnum, ctx: BuildContext) => obj.setpicnum(msg, ctx))
-    .register(Highlight, (obj: WallEnt, msg: Highlight, ctx: BuildContext) => obj.highlight(msg, ctx));
 
   public static create(board: Board, id: number) {
-    return WallEnt.factory.handler(new WallEnt(board, id));
+    return new WallEnt(board, id);
   }
 
   constructor(
@@ -31,9 +26,9 @@ export class WallEnt {
     public wallId: number,
     public origin = GLM.vec2.create(),
     public active = false,
-    public connectedWalls = collectConnectedWalls(board, wallId)) { }
+    public connectedWalls = collectConnectedWalls(board, wallId)) { super() }
 
-  public startMove(msg: StartMove, ctx: BuildContext) {
+  public StartMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     GLM.vec2.set(this.origin, wall.x, wall.y);
     this.active = true;
@@ -52,7 +47,7 @@ export class WallEnt {
     }
   }
 
-  public move(msg: Move, ctx: BuildContext) {
+  public Move(msg: Move, ctx: BuildContext) {
     let x = ctx.snap(this.origin[0] + msg.handle.dx());
     let y = ctx.snap(this.origin[1] + msg.handle.dy());
     if (moveWall(ctx.board, this.wallId, x, y)) {
@@ -60,11 +55,11 @@ export class WallEnt {
     }
   }
 
-  public endMove(msg: EndMove, ctx: BuildContext) {
+  public EndMove(msg: EndMove, ctx: BuildContext) {
     this.active = false;
   }
 
-  public highlight(msg: Highlight, ctx: BuildContext) {
+  public Highlight(msg: Highlight, ctx: BuildContext) {
     if (this.active) {
       let cwalls = this.connectedWalls;
       for (let i = 0; i < cwalls.length(); i++) {
@@ -81,9 +76,54 @@ export class WallEnt {
     }
   }
 
-  public setpicnum(msg: SetPicnum, ctx: BuildContext) {
+  public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     wall.picnum = msg.picnum;
+    ctx.invalidateWall(this.wallId);
+  }
+
+  public Shade(msg: Shade, ctx: BuildContext) {
+    let wall = ctx.board.walls[this.wallId];
+    let shade = wall.shade;
+    if (msg.absolute && shade == msg.value) return;
+    if (msg.absolute) wall.shade = msg.value; else wall.shade += msg.value;
+    ctx.invalidateWall(this.wallId);
+  }
+
+  public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
+    let wall = ctx.board.walls[this.wallId];
+    if (msg.absolute) {
+      if (wall.xpanning == msg.xpan && wall.ypanning == msg.ypan && wall.xrepeat == msg.xrepeat && wall.yrepeat == msg.yrepeat) return;
+      wall.xpanning = msg.xpan;
+      wall.ypanning = msg.ypan;
+      wall.xrepeat = msg.xrepeat;
+      wall.yrepeat = msg.yrepeat;
+    } else {
+      wall.xpanning += msg.xpan;
+      wall.ypanning += msg.ypan;
+      wall.xrepeat += msg.xrepeat;
+      wall.yrepeat += msg.yrepeat;
+    }
+    ctx.invalidateWall(this.wallId);
+  }
+
+  public Palette(msg: Palette, ctx: BuildContext) {
+    let wall = ctx.board.walls[this.wallId];
+    if (msg.absolute) {
+      if (msg.value == wall.pal) return;
+      wall.pal = msg.value;
+    } else {
+      wall.pal = cyclic(wall.pal + msg.value, msg.max);
+    }
+    ctx.invalidateWall(this.wallId);
+  }
+
+  public Flip(msg: Flip, ctx: BuildContext) {
+    let wall = ctx.board.walls[this.wallId];
+    let flip = wall.cstat.xflip + wall.cstat.yflip * 2;
+    let nflip = cyclic(flip + 1, 4);
+    wall.cstat.xflip = nflip & 1;
+    wall.cstat.yflip = (nflip & 2) >> 1;
     ctx.invalidateWall(this.wallId);
   }
 }

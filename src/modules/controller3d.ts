@@ -48,16 +48,16 @@ export class Controller3D {
 
     speed *= 8000;
     // Forward movement
-    var up = INPUT.keys['W'] || INPUT.keys['UP'] ? 1 : 0;
-    var down = INPUT.keys['S'] || INPUT.keys['DOWN'] ? 1 : 0;
+    var up = INPUT.keys['W'] ? 1 : 0;
+    var down = INPUT.keys['S'] ? 1 : 0;
     var forward = this.camera.forward();
     GLM.vec3.scale(forward, forward, speed * (up - down));
     var campos = this.camera.getPosition();
     GLM.vec3.add(campos, campos, forward);
 
     // Sideways movement
-    var left = INPUT.keys['A'] || INPUT.keys['LEFT'] ? 1 : 0;
-    var right = INPUT.keys['D'] || INPUT.keys['RIGHT'] ? 1 : 0;
+    var left = INPUT.keys['A'] ? 1 : 0;
+    var right = INPUT.keys['D'] ? 1 : 0;
     var sideways = this.camera.side();
     GLM.vec3.scale(sideways, sideways, speed * (right - left));
     GLM.vec3.add(campos, campos, sideways);

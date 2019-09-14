@@ -692,7 +692,7 @@ function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base:
   let dx = wall2.x - wall1.x;
   let dy = wall2.y - wall1.y;
   let tcscalex = (originalWall.xrepeat * 8.0) / (flip * MU.len2d(dx, dy) * tw);
-  let tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0);
+  let tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0) * (originalWall.cstat.yflip ? -1 : 1);
   let tcxoff = originalWall.xpanning / tw;
   let tcyoff = wall.ypanning / 256.0;
 

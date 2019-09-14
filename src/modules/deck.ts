@@ -22,6 +22,12 @@ export class Deck<T> implements Collection<T>{
     return this;
   }
 
+  public pushAll(values: Collection<T>): Deck<T> {
+    for (let i = 0; i < values.length(); i++)
+      this.push(values.get(i));
+    return this;
+  }
+
   public pop(): Deck<T> {
     this.pointer--;
     return this;
@@ -64,4 +70,19 @@ export class DeckIterator<T> implements Iterator<T>, ForwardIterator, BackIterat
   next(): void { this.idx++; }
   back(): void { this.idx--; }
   eq(iter: DeckIterator<T>): boolean { return this.deck === iter.deck && this.idx === iter.idx; }
+}
+
+export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
+  for (let i = start; i < collection.length(); i++) {
+    if (collection.get(i) == value) return i;
+  }
+  return -1;
+}
+
+export function reversed<T>(collection: Collection<T>): Collection<T> {
+  let length = collection.length();
+  return {
+    get: (i: number) => { return collection.get(length - 1 - i) },
+    length: () => { return length }
+  }
 }

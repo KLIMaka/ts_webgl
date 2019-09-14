@@ -188,3 +188,36 @@ export function verticalPanel(className: string): VerticalPanel {
   return new VerticalPanel(className);
 }
 
+export function dragElement(header: HTMLElement, elment: HTMLElement) {
+  let startx = 0;
+  let starty = 0;
+  let onmouseup = null;
+  let onmousemove = null;
+  header.onmousedown = dragMouseDown;
+
+  function dragMouseDown(e: MouseEvent) {
+    e.preventDefault();
+    startx = e.clientX;
+    starty = e.clientY;
+    onmouseup = document.onmouseup;
+    onmousemove = document.onmousemove;
+    document.onmouseup = closeDragElement;
+    document.onmousemove = elementDrag;
+  }
+
+  function elementDrag(e: MouseEvent) {
+    e.preventDefault();
+    let x = startx - e.clientX;
+    let y = starty - e.clientY;
+    startx = e.clientX;
+    starty = e.clientY;
+    elment.style.top = (elment.offsetTop - y) + "px";
+    elment.style.left = (elment.offsetLeft - x) + "px";
+  }
+
+  function closeDragElement() {
+    document.onmouseup = onmouseup;
+    document.onmousemove = onmousemove;
+  }
+}
+

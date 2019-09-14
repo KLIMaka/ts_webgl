@@ -1,7 +1,7 @@
 import { DrawPanel, PixelDataProvider } from "../../ui/drawpanel";
 import { ArtInfoProvider } from "./art";
 import { RGBPalPixelProvider, axisSwap } from "../../pixelprovider";
-import { Element, panel, button } from "../../ui/ui";
+import { Element, panel, button, dragElement } from "../../ui/ui";
 
 function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: SelectionCallback) {
   let provider = new PixelDataProvider(4096, (i: number) => {
@@ -39,6 +39,7 @@ export class Selector {
     this.panel.append(close);
     this.hide();
     document.body.appendChild(this.panel.elem());
+    dragElement(<HTMLElement>this.panel.elem().getElementsByClassName('header')[0], this.panel.elem());
   }
 
   public show() {

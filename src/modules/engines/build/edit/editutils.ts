@@ -1,6 +1,6 @@
 import { int, len2d, tuple2 } from "../../../../libs/mathutils";
 import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector } from "../boardutils";
-import { Hitscan, isSector, isWall, SubType } from "../hitscan";
+import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
 import { Board } from "../structs";
 import { slope, sectorOfWall } from "../utils";
 import { BuildContext } from "./editapi";
@@ -29,7 +29,7 @@ export function snap(board: Board, hit: Hitscan, ctx: BuildContext): [number, nu
   if (w != -1) {
     let wall = board.walls[w];
     return [wall.x, wall.y];
-  } else if (isSector(hit.type)) {
+  } else if (isSector(hit.type) || isSprite(hit.type)) {
     let x = ctx.snap(hit.x);
     let y = ctx.snap(hit.y);
     return tuple2(snapResult, x, y);
