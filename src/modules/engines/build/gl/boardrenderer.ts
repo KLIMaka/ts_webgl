@@ -12,8 +12,8 @@ import * as TEX from '../../../textures';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
 import * as EDIT from "../edit/edit";
-import { snap } from '../edit/editutils';
-import { hitscan, Hitscan, isWall, SubType } from '../hitscan';
+import { snap, getClosestSectorZ } from '../edit/editutils';
+import { hitscan, Hitscan, isWall, SubType, isSector } from '../hitscan';
 import { Message, MessageHandler, sendMessage } from '../messages';
 import { Board } from '../structs';
 import * as U from '../utils';
@@ -115,6 +115,12 @@ function sendPanRepeat(x: number, y: number) {
   sendToSelected(EDIT.PANREPEAT);
 }
 
+function insertSprite() {
+  let [x, y] = snap(hit, context);
+  if (!isSector(hit.type)) return;
+  BU.insertSprite(context.board, x, y, hit.z);
+}
+
 function print(board: Board, id: number, type: SubType) {
   if (INPUT.mouseClicks[0]) {
     switch (type) {
@@ -164,7 +170,7 @@ function updateCursor(board: Board) {
   EDIT.SPLIT_WALL.deactivate();
   EDIT.DRAW_SECTOR.update(board, hit, context);
   if (hit.t != -1) {
-    let [x, y] = snap(board, hit, context);
+    let [x, y] = snap(hit, context);
     BGL.setCursorPosiotion(x, hit.z / U.ZSCALE, y);
     if (isWall(hit.type)) EDIT.SPLIT_WALL.update(x, y, hit.id);
   }
@@ -217,6 +223,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   if (INPUT.keysPress['RIGHT']) sendPanRepeat(-1, 0);
   if (INPUT.keysPress['O']) sendToSelected(EDIT.PALETTE);
   if (INPUT.keysPress['F']) sendToSelected(EDIT.FLIP);
+  if (INPUT.keysPress['L']) insertSprite();
   if (INPUT.wheel != 0) sendShadeChange(INPUT.wheel);
 
 }

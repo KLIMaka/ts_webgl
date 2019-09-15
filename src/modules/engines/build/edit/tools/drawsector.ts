@@ -122,7 +122,7 @@ export class DrawSector {
         this.valid = false;
       } else {
         this.valid = true;
-        let [x, y] = snap(board, hit, context);
+        let [x, y] = snap(hit, context);
         let z = this.getPointerZ(board, hit, x, y);
         GLM.vec3.set(this.pointer, x, y, z);
         this.contour.setZ(z / ZSCALE);

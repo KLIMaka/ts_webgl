@@ -24,10 +24,10 @@ export function getClosestWall(board: Board, hit: Hitscan, ctx: BuildContext): n
 }
 
 let snapResult: [number, number] = [0, 0];
-export function snap(board: Board, hit: Hitscan, ctx: BuildContext): [number, number] {
-  let w = getClosestWall(board, hit, ctx);
+export function snap(hit: Hitscan, ctx: BuildContext): [number, number] {
+  let w = getClosestWall(ctx.board, hit, ctx);
   if (w != -1) {
-    let wall = board.walls[w];
+    let wall = ctx.board.walls[w];
     return [wall.x, wall.y];
   } else if (isSector(hit.type) || isSprite(hit.type)) {
     let x = ctx.snap(hit.x);
@@ -35,9 +35,9 @@ export function snap(board: Board, hit: Hitscan, ctx: BuildContext): [number, nu
     return tuple2(snapResult, x, y);
   } else if (isWall(hit.type)) {
     let w = hit.id;
-    let wall = board.walls[w];
-    let w1 = nextwall(board, w);
-    let wall1 = board.walls[w1];
+    let wall = ctx.board.walls[w];
+    let w1 = nextwall(ctx.board, w);
+    let wall1 = ctx.board.walls[w1];
     let dx = wall1.x - wall.x;
     let dy = wall1.y - wall.y;
     let repeat = DEFAULT_REPEAT_RATE * wall.xrepeat;

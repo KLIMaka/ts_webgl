@@ -2,8 +2,9 @@ import * as MU from '../../../libs/mathutils';
 import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
 import { Collection, Deck, findFirst, reversed } from '../../deck';
 import { ArtInfoProvider } from './art';
-import { Board, Sector, SectorStats, Wall, WallStats } from './structs';
-import * as U from './utils';
+import { Board, Sector, SectorStats, Wall, WallStats, Sprite, SpriteStats, FACE } from './structs';
+import { findSector, sectorOfWall } from './utils';
+import { Type } from './gl/renderable';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -90,7 +91,7 @@ export function wallInSector(board: Board, secId: number, x: number, y: number) 
 }
 
 export function closestWall(board: Board, x: number, y: number, secId: number): number[] {
-  secId = U.findSector(board, x, y, secId);
+  secId = findSector(board, x, y, secId);
   let mindist = Number.MAX_VALUE;
   if (secId != -1) {
     let start = board.sectors[secId].wallptr;
@@ -215,7 +216,7 @@ function fixpoint2xpan(board: Board, wallId: number, art: ArtInfoProvider) {
 }
 
 function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]) {
-  let secId = U.sectorOfWall(board, wallId);
+  let secId = sectorOfWall(board, wallId);
   let wall = board.walls[wallId];
   let lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
   moveWalls(board, secId, wallId, 1, wallptrs);
@@ -268,7 +269,7 @@ function copyWall(wall: Wall, x: number, y: number): Wall {
   return nwall;
 }
 
-function createWallStats() {
+function newWallStats() {
   let stat = new WallStats();
   stat.alignBottom = 0;
   stat.blocking = 0;
@@ -290,7 +291,7 @@ function newWall(x: number, y: number): Wall {
   wall.point2 = -1;
   wall.nextwall = -1;
   wall.nextsector = -1;
-  wall.cstat = createWallStats();
+  wall.cstat = newWallStats();
   wall.picnum = 0;
   wall.overpicnum = 0;
   wall.shade = 0;
@@ -344,7 +345,7 @@ function copySector(sector: Sector): Sector {
   return nsector;
 }
 
-function createSectorStats() {
+function newSectorStats() {
   let stat = new SectorStats();
   stat.alignToFirstWall = 0;
   stat.doubleSmooshiness = 0;
@@ -362,7 +363,7 @@ function newSector(): Sector {
   sector.ceilingpal = 0;
   sector.ceilingpicnum = 0;
   sector.ceilingshade = 0;
-  sector.ceilingstat = createSectorStats();
+  sector.ceilingstat = newSectorStats();
   sector.ceilingxpanning = 0;
   sector.ceilingypanning = 0;
   sector.ceilingz = -(32 << 8);
@@ -371,7 +372,7 @@ function newSector(): Sector {
   sector.floorpal = 0;
   sector.floorpicnum = 0;
   sector.floorshade = 0;
-  sector.floorstat = createSectorStats();
+  sector.floorstat = newSectorStats();
   sector.floorxpanning = 0;
   sector.floorypanning = 0;
   sector.floorz = (32 << 8);
@@ -381,6 +382,48 @@ function newSector(): Sector {
   sector.wallnum = 0;
   sector.wallptr = 0;
   return sector;
+}
+
+function newSpriteStats() {
+  let stats = new SpriteStats();
+  stats.blocking = 0;
+  stats.blocking2 = 0;
+  stats.invisible = 0;
+  stats.noautoshading = 0;
+  stats.onesided = 0;
+  stats.realCenter = 0;
+  stats.tranclucentReversed = 0;
+  stats.translucent = 0;
+  stats.type = FACE;
+  stats.xflip = 0;
+  stats.yflip = 0;
+  return stats;
+}
+
+function newSprite(sectorId: number, x: number, y: number, z: number): Sprite {
+  let sprite = new Sprite();
+  sprite.ang = 0;
+  sprite.clipdist = 0;
+  sprite.cstat = newSpriteStats();
+  sprite.extra = -1;
+  sprite.hitag = 0;
+  sprite.lotag = 0;
+  sprite.owner = -1;
+  sprite.pal = 0;
+  sprite.picnum = 1;
+  sprite.sectnum = sectorId;
+  sprite.shade = 0;
+  sprite.statnum = 0;
+  sprite.x = x;
+  sprite.y = y;
+  sprite.z = z;
+  sprite.xoffset = 0;
+  sprite.yoffset = 0;
+  sprite.xvel = 0;
+  sprite.yvel = 0;
+  sprite.xrepeat = 32;
+  sprite.yrepeat = 32;
+  return sprite;
 }
 
 export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
@@ -466,7 +509,7 @@ export function moveSprite(board: Board, sprId: number, x: number, y: number, z:
   var spr = board.sprites[sprId];
   if (spr.x == x && spr.y == y && spr.z == z) return false;
   spr.x = x; spr.y = y; spr.z = z;
-  spr.sectnum = U.findSector(board, x, y, spr.sectnum);
+  spr.sectnum = findSector(board, x, y, spr.sectnum);
   return true;
 }
 
@@ -546,7 +589,7 @@ function updateSpriteSector(board: Board, fromSector: number) {
   for (let s = 0; s < board.numsprites; s++) {
     let spr = board.sprites[s];
     if (spr.sectnum == fromSector)
-      spr.sectnum = U.findSector(board, spr.x, spr.y, spr.sectnum);
+      spr.sectnum = findSector(board, spr.x, spr.y, spr.sectnum);
   }
 }
 
@@ -633,7 +676,7 @@ export function joinSectors(board: Board, s1: number, s2: number) {
 
 export function pushWallToSector(board: Board, wallId: number) {
   let wall = board.walls[wallId];
-  let s = U.sectorOfWall(board, wallId);
+  let s = sectorOfWall(board, wallId);
   let sec = board.sectors[s];
   if (wall.nextsector == -1) {
     let nsec = copySector(sec);
@@ -811,4 +854,12 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   recreateSectorWalls(board, newSectorId, nwalls, looppoints);
   updateSpriteSector(board, sectorId);
   return newSectorId;
+}
+
+export function insertSprite(board: Board, x: number, y: number, z: number) {
+  let sectorId = findSector(board, x, y, -1);
+  if (sectorId == -1) return -1;
+  let sprite = newSprite(sectorId, x, y, z);
+  board.sprites[board.numsprites++] = sprite;
+  return board.numsprites - 1;
 }
