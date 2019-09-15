@@ -542,11 +542,11 @@ function fillWallSet(board: Board, s1: number, s2: number) {
   return wallset;
 }
 
-function moveSpritesToSector(board: Board, fromSector: number, toSector: number) {
+function updateSpriteSector(board: Board, fromSector: number) {
   for (let s = 0; s < board.numsprites; s++) {
     let spr = board.sprites[s];
     if (spr.sectnum == fromSector)
-      spr.sectnum = toSector;
+      spr.sectnum = U.findSector(board, spr.x, spr.y, spr.sectnum);
   }
 }
 
@@ -625,7 +625,7 @@ export function joinSectors(board: Board, s1: number, s2: number) {
   if (isJoinedSectors(board, s1, s2) == -1) return -1;
   let [nwalls, looppoints] = getJoinedWallsLoops(board, s1, s2);
   recreateSectorWalls(board, s1, nwalls, looppoints);
-  moveSpritesToSector(board, s2, s1);
+  updateSpriteSector(board, s2);
   resizeWalls(board, s2, 0);
   deleteSectorImpl(board, s2);
   return 0;
@@ -707,7 +707,6 @@ export function createNewSector(board: Board, points: Collection<[number, number
   let [commonSector, commonWall] = commonSectorWall(board, mwalls);
   let sector = copySector(commonSector);
   let sectorId = addSector(board, sector);
-  resizeWalls(board, sectorId, sector.wallnum + points.length());
   let walls = new Deck<Wall>();
   let cw = clockwise(points);
   for (let i = 0; i < points.length(); i++) {
@@ -751,27 +750,31 @@ export function createInnerLoop(board: Board, sectorId: number, points: Collecti
 
 
 let newLoops = new Deck<Wall>();
+let restLoop = new Deck<Wall>();
 let newLoopLooppoints = new Deck<number>();
-function sliceSector(board: Board, sectorId: number, points: Collection<[number, number]>, firstWall: number, lastWall: number): [Deck<Wall>, Deck<number>] {
+function sliceSector(board: Board, sectorId: number, points: Collection<[number, number]>, firstWall: number, lastWall: number): [Deck<Wall>, Deck<number>, Deck<Wall>] {
   newLoops.clear();
   newLoopLooppoints.clear();
+  restLoop.clear();
   let sector = board.sectors[sectorId];
   let end = sector.wallptr + sector.wallnum;
   for (let w = sector.wallptr; w < end; w++) {
     let wall = board.walls[w];
-    newLoops.push(wall);
     if (w == firstWall) {
-      for (let i = 1; i < points.length() - 1; i++) {
+      for (let i = 0; i < points.length() - 1; i++) {
         let p = points.get(i);
         newLoops.push(copyWall(wall, p[0], p[1]));
       }
-      wall = board.walls[lastWall];
-      newLoops.push(wall);
+      for (let w1 = w; w1 != lastWall; w1++) {
+        restLoop.push(board.walls[w1]);
+      }
       w = lastWall;
+      wall = board.walls[w];
     }
-    if (w > wall.point2) newLoopLooppoints.push(w - sector.wallptr);
+    newLoops.push(wall);
+    if (w > wall.point2) newLoopLooppoints.push(newLoops.length());
   }
-  return [newLoops, newLoopLooppoints];
+  return [newLoops, newLoopLooppoints, restLoop];
 }
 
 export function splitSector(board: Board, sectorId: number, points: Collection<[number, number]>) {
@@ -782,6 +785,30 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   let loop = loopWalls(board, firstWall, sectorId);
   if (findFirst(loop, lastWall) == -1) return -1;
   [firstWall, lastWall, points] = firstWall > lastWall ? [lastWall, firstWall, reversed(points)] : [firstWall, lastWall, points];
-  let [nwalls, looppoints] = sliceSector(board, sectorId, points, firstWall, lastWall);
+  let [nwalls, looppoints, rest] = sliceSector(board, sectorId, points, firstWall, lastWall);
   recreateSectorWalls(board, sectorId, nwalls, looppoints);
+  let sector = copySector(board.sectors[sectorId]);
+  let newSectorId = addSector(board, sector);
+
+  nwalls.clear();
+  points = reversed(points);
+  firstPoint = points.get(0);
+  lastPoint = points.get(points.length() - 1);
+  firstWall = wallInSector(board, sectorId, firstPoint[0], firstPoint[1]);
+  lastWall = wallInSector(board, sectorId, lastPoint[0], lastPoint[1]);
+  for (let i = 1; i < points.length(); i++) {
+    let p = points.get(i);
+    let pp = points.get(i - 1);
+    let nextwall = wallInSector(board, sectorId, p[0], p[1]);
+    let wall = copyWall(board.walls[nextwall], pp[0], pp[1]);
+    wall.nextwall = nextwall;
+    wall.nextsector = sectorId;
+    nwalls.push(wall);
+  }
+
+  nwalls.pushAll(rest);
+  looppoints.clear().push(nwalls.length());
+  recreateSectorWalls(board, newSectorId, nwalls, looppoints);
+  updateSpriteSector(board, sectorId);
+  return newSectorId;
 }

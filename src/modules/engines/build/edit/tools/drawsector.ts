@@ -6,7 +6,7 @@ import { Context } from "../../gl/context";
 import { Wireframe, Renderable, RenderableList } from "../../gl/renderable";
 import { snap, getClosestSectorZ } from "../editutils";
 import * as GLM from "../../../../../libs_js/glmatrix";
-import { createInnerLoop, createNewSector } from "../../boardutils";
+import { createInnerLoop, createNewSector, wallInSector, splitSector } from "../../boardutils";
 import { BuildContext } from "../editapi";
 import { tuple2 } from "../../../../../libs/mathutils";
 
@@ -103,6 +103,7 @@ export class DrawSector {
 
   private points = new Deck<[number, number]>();
   private pointer = GLM.vec3.create();
+  private hintSector = -1;
   private valid = false;
   private contour = new Contour();
 
@@ -126,6 +127,9 @@ export class DrawSector {
         GLM.vec3.set(this.pointer, x, y, z);
         this.contour.setZ(z / ZSCALE);
         this.contour.updateLastPoint(x, y);
+        if (isSector(hit.type)) this.hintSector = hit.id;
+        if (isSprite(hit.type)) this.hintSector = board.sprites[hit.id].sectnum;
+        if (isWall(hit.type)) this.hintSector = sectorOfWall(board, hit.id);
       }
     }
   }
@@ -138,9 +142,22 @@ export class DrawSector {
     return tuple2(DrawSector.zintersect, hit.start[0] + hit.vec[0] * t, hit.start[1] + hit.vec[1] * t);
   }
 
+  private isSplitSector(ctx: BuildContext, x: number, y: number) {
+    let sectorId = this.findContainingSector(ctx);
+    if (sectorId == -1) return -1;
+    let fp = this.points.get(0);
+    return wallInSector(ctx.board, sectorId, fp[0], fp[1]) != -1 && wallInSector(ctx.board, sectorId, x, y) != -1 ? sectorId : -1;
+  }
+
   public insertPoint(ctx: BuildContext) {
     if (!this.valid) return;
     if (this.points.length() > 0) {
+      let splitSector = this.isSplitSector(ctx, this.pointer[0], this.pointer[1]);
+      if (splitSector != -1) {
+        this.points.push([this.pointer[0], this.pointer[1]]);
+        this.splitSector(ctx, splitSector);
+        return;
+      }
       let latsPoint = this.points.get(this.points.length() - 1);
       if (latsPoint[0] == this.pointer[0] && latsPoint[1] == this.pointer[1]) return;
       let firstPoint = this.points.get(0);
@@ -171,12 +188,12 @@ export class DrawSector {
   }
 
   private findContainingSector(ctx: BuildContext) {
-    let sectorId = -1;
+    let sectorId = this.hintSector;
     for (let i = 0; i < this.points.length(); i++) {
       let p = this.points.get(i);
+      let w = wallInSector(ctx.board, this.hintSector, p[0], p[1]);
       let s = findSector(ctx.board, p[0], p[1], sectorId);
-      if (i != 0 && s != sectorId) return -1;
-      sectorId = s;
+      if (w == -1 && s != sectorId) return -1;
     }
     return sectorId;
   }
@@ -187,6 +204,15 @@ export class DrawSector {
       createInnerLoop(ctx.board, sectorId, this.points);
     createNewSector(ctx.board, this.points);
     ctx.invalidateAll();
+    this.points.clear();
+    this.contour.clear();
+    this.contour.pushPoint(0, 0);
+  }
+
+  private splitSector(ctx: BuildContext, sectorId: number) {
+    if (splitSector(ctx.board, sectorId, this.points) != -1) {
+      ctx.invalidateAll();
+    }
     this.points.clear();
     this.contour.clear();
     this.contour.pushPoint(0, 0);
