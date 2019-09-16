@@ -1,5 +1,4 @@
 import { loadImage } from '../../../../libs/imgutils';
-import { List } from '../../../../libs/list';
 import * as MU from '../../../../libs/mathutils';
 import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
@@ -12,9 +11,9 @@ import * as TEX from '../../../textures';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
 import * as EDIT from "../edit/edit";
-import { snap, getClosestSectorZ } from '../edit/editutils';
-import { hitscan, Hitscan, isWall, SubType, isSector } from '../hitscan';
-import { Message, MessageHandler, sendMessage } from '../messages';
+import { snap } from '../edit/editutils';
+import { hitscan, Hitscan, isSector, isWall, SubType } from '../hitscan';
+import { Message, MessageHandlerList } from '../messages';
 import { Board } from '../structs';
 import * as U from '../utils';
 import * as BGL from './buildgl';
@@ -60,7 +59,7 @@ let context: Context;
 let artProvider: ArtProvider;
 let cache: Cache;
 let visible = new VIS.PvsBoardVisitorResult();
-let selection = new List<MessageHandler>();
+let selection = new MessageHandlerList();
 let hit = new Hitscan();
 let implementation: Implementation;
 let picnumSelector: PicNumSelector;
@@ -83,18 +82,16 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implemen
 }
 
 function setTexture() {
-  let sel = new List<MessageHandler>();
-  for (let n = selection.first(); n != selection.terminator(); n = n.next) {
-    sel.push(n.obj);
-  }
+  let sel = selection.clone();
   picnumSelector((picnum: number) => {
+    if (picnum == -1) return;
     EDIT.SET_PICNUM.picnum = picnum;
-    sendMessage(EDIT.SET_PICNUM, context, sel);
+    sel.handle(EDIT.SET_PICNUM, context);
   })
 }
 
 function sendToSelected(msg: Message) {
-  sendMessage(msg, context, selection);
+  selection.handle(msg, context);
 }
 
 function sendShadeChange(value: number) {
@@ -118,7 +115,11 @@ function sendPanRepeat(x: number, y: number) {
 function insertSprite() {
   let [x, y] = snap(hit, context);
   if (!isSector(hit.type)) return;
-  BU.insertSprite(context.board, x, y, hit.z);
+  picnumSelector((picnum: number) => {
+    if (picnum == -1) return;
+    let spriteId = BU.insertSprite(context.board, x, y, hit.z);
+    context.board.sprites[spriteId].picnum = picnum;
+  });
 }
 
 function print(board: Board, id: number, type: SubType) {
@@ -151,6 +152,10 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
   if (selection.isEmpty())
     return;
 
+  let fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
+  let pos = ctr.getCamera().getPosition();
+  EDIT.MOVE.handle.update(pos, fwd, INPUT.keys['SHIFT'], INPUT.keys['ALT'], INPUT.keys['CTRL'], hit, board);
+
   if (!EDIT.MOVE.handle.isActive() && INPUT.mouseButtons[0]) {
     EDIT.MOVE.handle.start(hit);
     sendToSelected(EDIT.START_MOVE);
@@ -160,9 +165,6 @@ function move(gl: WebGLRenderingContext, board: Board, ctr: Controller3D) {
     return;
   }
 
-  let fwd = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
-  let pos = ctr.getCamera().getPosition();
-  EDIT.MOVE.handle.update(pos, fwd, INPUT.keys['ALT'], INPUT.keys['SHIFT'], hit, board);
   sendToSelected(EDIT.MOVE);
 }
 
@@ -183,7 +185,7 @@ function select(board: Board) {
   selection.clear();
   let list = EDIT.getFromHitscan(board, hit, context, INPUT.keys['TAB']);
   for (let i = 0; i < list.length(); i++) {
-    selection.push(list.get(i));
+    selection.add(list.get(i));
   }
 
   print(board, hit.id, hit.type);
@@ -209,7 +211,7 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   drawGeometry(gl, board, ms, ctr);
   drawHelpers(gl, board);
 
-  if (INPUT.keysPress['INSERT']) EDIT.SPLIT_WALL.run(context);
+  if (INPUT.keys['CTRL'] && INPUT.mouseClicks[0]) EDIT.SPLIT_WALL.run(context);
   if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context);
   if (INPUT.keysPress['BACKSPACE']) EDIT.DRAW_SECTOR.popPoint();
   if (INPUT.keysPress['[']) context.incGridSize();
@@ -219,11 +221,12 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   if (INPUT.keysPress['P']) sendToSelected(EDIT.TOGGLE_PARALLAX);
   if (INPUT.keysPress['UP']) sendPanRepeat(0, 1);
   if (INPUT.keysPress['DOWN']) sendPanRepeat(0, -1);
-  if (INPUT.keysPress['LEFT']) sendPanRepeat(1, 0);
-  if (INPUT.keysPress['RIGHT']) sendPanRepeat(-1, 0);
+  if (INPUT.keysPress['LEFT']) sendPanRepeat(-1, 0);
+  if (INPUT.keysPress['RIGHT']) sendPanRepeat(1, 0);
   if (INPUT.keysPress['O']) sendToSelected(EDIT.PALETTE);
   if (INPUT.keysPress['F']) sendToSelected(EDIT.FLIP);
   if (INPUT.keysPress['L']) insertSprite();
+  if (INPUT.keysPress['R']) sendToSelected(EDIT.SPRITE_MODE);
   if (INPUT.wheel != 0) sendShadeChange(INPUT.wheel);
 
 }
