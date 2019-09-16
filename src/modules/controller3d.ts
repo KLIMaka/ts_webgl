@@ -44,29 +44,25 @@ export class Controller3D {
     return GLM.vec3.normalize(forward, forward);
   }
 
-  public think(speed: number): void {
-
-    speed *= 8000;
-    // Forward movement
-    var up = INPUT.keys['W'] ? 1 : 0;
-    var down = INPUT.keys['S'] ? 1 : 0;
+  public moveForward(dist: number) {
     var forward = this.camera.forward();
-    GLM.vec3.scale(forward, forward, speed * (up - down));
     var campos = this.camera.getPosition();
+    GLM.vec3.scale(forward, forward, dist);
     GLM.vec3.add(campos, campos, forward);
+    this.camera.setPosition(campos);
+  }
 
-    // Sideways movement
-    var left = INPUT.keys['A'] ? 1 : 0;
-    var right = INPUT.keys['D'] ? 1 : 0;
+  public moveSideway(dist: number) {
     var sideways = this.camera.side();
-    GLM.vec3.scale(sideways, sideways, speed * (right - left));
+    var campos = this.camera.getPosition();
+    GLM.vec3.scale(sideways, sideways, dist);
     GLM.vec3.add(campos, campos, sideways);
     this.camera.setPosition(campos);
+  }
 
-    if (INPUT.mouseButtons[2]) {
-      this.camera.updateAngles((INPUT.mouseX - this.oldX) / 2, (INPUT.mouseY - this.oldY) / 2);
-    }
-    this.oldX = INPUT.mouseX;
-    this.oldY = INPUT.mouseY;
+  public track(x: number, y: number, move: boolean) {
+    if (move) this.camera.updateAngles((x - this.oldX) / 2, (y - this.oldY) / 2);
+    this.oldX = x;
+    this.oldY = y;
   }
 }

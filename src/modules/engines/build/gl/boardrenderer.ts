@@ -196,20 +196,20 @@ function updateContext(gl: WebGLRenderingContext, board: Board) {
   context.gl = gl;
 }
 
-export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
+export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D, dt: number) {
   if (!U.inSector(board, ms.x, ms.y, ms.sec)) {
     ms.sec = U.findSector(board, ms.x, ms.y, ms.sec);
   }
+
+  BGL.newFrame(gl);
+  drawGeometry(gl, board, ms, ctr);
+  drawHelpers(gl, board);
 
   updateContext(gl, board);
   pointerHitscan(gl, board, ms, ctr);
   move(gl, board, ctr);
   select(board)
   updateCursor(board);
-
-  BGL.newFrame(gl);
-  drawGeometry(gl, board, ms, ctr);
-  drawHelpers(gl, board);
 
   if (INPUT.keys['CTRL'] && INPUT.mouseClicks[0]) EDIT.SPLIT_WALL.run(context);
   if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context);
@@ -227,8 +227,12 @@ export function draw(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, 
   if (INPUT.keysPress['F']) sendToSelected(EDIT.FLIP);
   if (INPUT.keysPress['L']) insertSprite();
   if (INPUT.keysPress['R']) sendToSelected(EDIT.SPRITE_MODE);
+  if (INPUT.keys['W']) ctr.moveForward(dt * 8000);
+  if (INPUT.keys['S']) ctr.moveForward(-dt * 8000);
+  if (INPUT.keys['A']) ctr.moveSideway(-dt * 8000);
+  if (INPUT.keys['D']) ctr.moveSideway(dt * 8000);
   if (INPUT.wheel != 0) sendShadeChange(INPUT.wheel);
-
+  ctr.track(INPUT.mouseX, INPUT.mouseY, INPUT.mouseButtons[2]);
 }
 
 function drawHelpers(gl: WebGLRenderingContext, board: Board) {

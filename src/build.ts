@@ -299,12 +299,11 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       control.getCamera().setPosition([ms.x, ms.z / -16, ms.y]);
 
       PROFILE.start();
-      RENDERER.draw(gl, board, ms, control);
+      RENDERER.draw(gl, board, ms, control, time);
       PROFILE.endProfile()
 
       updateUi(props, ms, control);
 
-      control.think(time);
       INPUT.postFrame();
     });
 

@@ -86,15 +86,25 @@ class Contour {
   private updateContour() {
     let buff = this.contour.buff;
     buff.deallocate();
-    if (this.size < 2) return;
     let size = this.size - 1;
-    buff.allocate(size + 1, size * 2);
+    buff.allocate(size + 1 + 4, size * 2 + 4);
+
     for (let i = 0; i < size; i++) {
       let p = this.points[i];
       buff.writePos(i, p[0], this.z, p[1]);
       buff.writeLine(i * 2, i, i + 1);
     }
     buff.writePos(size, this.points[size][0], this.z, this.points[size][1]);
+
+    let x = this.points[size][0];
+    let y = this.points[size][1];
+    let off = size + 1;
+    off = buff.writePos(off, x, this.z, -32 * 1024);
+    off = buff.writePos(off, x, this.z, 32 * 1024);
+    buff.writeLine(size * 2, off - 1, off - 2);
+    off = buff.writePos(off, -32 * 1024, this.z, y);
+    off = buff.writePos(off, 32 * 1024, this.z, y);
+    buff.writeLine(size * 2 + 2, off - 1, off - 2);
   }
 }
 

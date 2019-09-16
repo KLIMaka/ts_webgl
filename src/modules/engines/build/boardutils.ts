@@ -421,8 +421,8 @@ function newSprite(x: number, y: number, z: number): Sprite {
   sprite.yoffset = 0;
   sprite.xvel = 0;
   sprite.yvel = 0;
-  sprite.xrepeat = 32;
-  sprite.yrepeat = 32;
+  sprite.xrepeat = 64;
+  sprite.yrepeat = 64;
   return sprite;
 }
 
