@@ -1,7 +1,7 @@
 import { cyclic } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../deck";
-import { connectedWalls, moveWall, prevwall } from "../boardutils";
+import { connectedWalls, moveWall, prevwall, insertWall } from "../boardutils";
 import { MessageHandlerIml } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
@@ -30,6 +30,10 @@ export class WallEnt extends MessageHandlerIml {
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
+    if (msg.handle.mod3) {
+      this.wallId = insertWall(ctx.board, this.wallId, wall.x, wall.y, ctx.art, []);
+      this.connectedWalls = collectConnectedWalls(ctx.board, this.wallId);
+    }
     GLM.vec2.set(this.origin, wall.x, wall.y);
     this.active = true;
   }

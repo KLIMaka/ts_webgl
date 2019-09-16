@@ -489,11 +489,13 @@ function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, w
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
 
   if (spr.cstat.type == FACE) {
-    fillBuffersForFaceSpriteWireframe(x, y, z, xo, yo, hw, hh, wireframe);
     wireframe.type = Type.FACE;
+    fillBuffersForFaceSpriteWireframe(x, y, z, xo, yo, hw, hh, wireframe);
   } else if (spr.cstat.type == WALL) {
+    wireframe.type = Type.SURFACE;
     fillbuffersForWallSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
   } else if (spr.cstat.type == FLOOR) {
+    wireframe.type = Type.SURFACE;
     fillbuffersForFloorSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
   }
 }

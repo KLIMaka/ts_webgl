@@ -9,8 +9,9 @@ export class MovingHandle {
   private currentPoint = GLM.vec3.create();
   private dzoff = 0;
   private active = false;
-  public parallel = false;
-  public elevate = false;
+  public mod1 = false;
+  public mod2 = false;
+  public mod3 = false;
   public hit: Hitscan;
 
   public start(hit: Hitscan) {
@@ -21,17 +22,18 @@ export class MovingHandle {
     this.active = true;
   }
 
-  public update(s: GLM.Vec3Array, v: GLM.Vec3Array, elevate: boolean, parallel: boolean, hit: Hitscan, board: Board) {
-    this.parallel = parallel;
-    this.elevate = elevate;
+  public update(s: GLM.Vec3Array, v: GLM.Vec3Array, mod1: boolean, mod2: boolean, mod3: boolean, hit: Hitscan, board: Board) {
+    this.mod1 = mod1;
+    this.mod2 = mod2;
+    this.mod3 = mod3;
     this.hit = hit;
-    if (elevate) {
+
+    if (mod2) {
       let dx = this.currentPoint[0] - s[0];
       let dy = this.currentPoint[2] - s[2];
       let t = len2d(dx, dy) / len2d(v[0], v[2]);
       this.dzoff = v[1] * t + s[1] - this.currentPoint[1];
-    }
-    else {
+    } else {
       this.dzoff = 0;
       let dz = this.startPoint[1] - s[1];
       let t = dz / v[1];
@@ -43,9 +45,9 @@ export class MovingHandle {
 
   public isActive() { return this.active; }
   public stop() { this.active = false; }
-  public dx() { return this.parallel && Math.abs(this.dx_()) < Math.abs(this.dy_()) ? 0 : this.dx_(); }
-  public dy() { return this.parallel && Math.abs(this.dy_()) < Math.abs(this.dx_()) ? 0 : this.dy_(); }
-  public dz() { return this.elevate ? this.currentPoint[1] - this.startPoint[1] + this.dzoff : 0; }
+  public dx() { return this.mod1 && Math.abs(this.dx_()) < Math.abs(this.dy_()) ? 0 : this.dx_(); }
+  public dy() { return this.mod1 && Math.abs(this.dy_()) < Math.abs(this.dx_()) ? 0 : this.dy_(); }
+  public dz() { return this.mod2 ? this.currentPoint[1] - this.startPoint[1] + this.dzoff : 0; }
   private dx_() { return this.currentPoint[0] - this.startPoint[0]; }
   private dy_() { return this.currentPoint[2] - this.startPoint[2]; }
 }

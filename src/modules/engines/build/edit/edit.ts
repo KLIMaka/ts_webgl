@@ -4,7 +4,7 @@ import { Hitscan, isSector, isSprite, isWall, SubType } from "../hitscan";
 import { MessageHandler } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Highlight, Move, StartMove, BuildContext, SetPicnum, ToggleParallax, Shade, PanRepeat, Palette, Flip } from "./editapi";
+import { EndMove, Highlight, Move, StartMove, BuildContext, SetPicnum, ToggleParallax, Shade, PanRepeat, Palette, Flip, SpriteMode } from "./editapi";
 import { getClosestSectorZ, getClosestWall } from "./editutils";
 import { MovingHandle } from "./handle";
 import { SectorEnt } from "./sector";
@@ -28,6 +28,7 @@ export const PANREPEAT = new PanRepeat(0, 0, 0, 0);
 export const RESET_PANREPEAT = new PanRepeat(0, 0, 0, 0, true);
 export const PALETTE = new Palette(1, 14);
 export const FLIP = new Flip();
+export const SPRITE_MODE = new SpriteMode();
 
 // Tools
 export const SPLIT_WALL = new SplitWall();

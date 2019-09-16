@@ -1,7 +1,7 @@
 import { DrawPanel, PixelDataProvider } from "../../ui/drawpanel";
 import { ArtInfoProvider } from "./art";
 import { RGBPalPixelProvider, axisSwap } from "../../pixelprovider";
-import { Element, panel, button, dragElement } from "../../ui/ui";
+import { Element, panel, button, dragElement, div } from "../../ui/ui";
 
 function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: SelectionCallback) {
   let provider = new PixelDataProvider(4096, (i: number) => {
@@ -20,7 +20,14 @@ export class Selector {
   private cb: SelectionCallback;
 
   constructor(w: number, h: number, arts: ArtInfoProvider, pal: Uint8Array) {
-    this.panel = panel('Tiles');
+    let frame = div('frame');
+    let header = div('header').text('Tiles');
+    header.append(button('<').click(() => { this.drawPanel.prevPage(); this.drawPanel.draw(); }));
+    header.append(button('>').click(() => { this.drawPanel.nextPage(); this.drawPanel.draw(); }));
+    header.append(button('x').click(() => this.select(-1)));
+    frame.append(header).append(div('hline'));
+
+    this.panel = frame;
     this.panel.pos('100', '100');
     let canvas: HTMLCanvasElement = document.createElement('canvas');
     canvas.width = w;
@@ -28,18 +35,9 @@ export class Selector {
     this.drawPanel = createDrawPanel(arts, pal, canvas, (id: number) => this.select(id));
     this.drawPanel.setCellSize(64, 64);
     this.panel.append(new Element(canvas));
-    let prev = button('<');
-    prev.elem().onclick = (e: MouseEvent) => { this.drawPanel.prevPage(); this.drawPanel.draw(); }
-    let next = button('>');
-    next.elem().onclick = (e: MouseEvent) => { this.drawPanel.nextPage(); this.drawPanel.draw(); }
-    let close = button('x');
-    close.elem().onclick = (e: MouseEvent) => this.select(-1)
-    this.panel.append(prev);
-    this.panel.append(next);
-    this.panel.append(close);
     this.hide();
     document.body.appendChild(this.panel.elem());
-    dragElement(<HTMLElement>this.panel.elem().getElementsByClassName('header')[0], this.panel.elem());
+    dragElement(header.elem(), this.panel.elem());
   }
 
   public show() {

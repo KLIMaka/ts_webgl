@@ -35,3 +35,4 @@ export class Shade implements Message { constructor(public value: number, public
 export class PanRepeat implements Message { constructor(public xpan: number, public ypan: number, public xrepeat: number, public yrepeat: number, public absolute = false) { } }
 export class Palette implements Message { constructor(public value: number, public max: number, public absolute = false) { } }
 export class Flip implements Message { constructor() { } }
+export class SpriteMode implements Message { }

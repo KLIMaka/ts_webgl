@@ -30,9 +30,9 @@ export class SectorEnt extends MessageHandlerIml {
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    if (!msg.handle.elevate)
+    if (!msg.handle.mod2)
       return;
-    if (msg.handle.parallel) {
+    if (msg.handle.mod1) {
       let x = this.origin[0];
       let y = this.origin[1];
       let z = ctx.snap(this.originz + msg.handle.dz() * ZSCALE);

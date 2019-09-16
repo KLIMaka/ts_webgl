@@ -1,9 +1,9 @@
+import { cyclic } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { moveSprite } from "../boardutils";
+import { moveSprite, insertSprite } from "../boardutils";
 import { MessageHandlerIml } from "../messages";
 import { ZSCALE } from "../utils";
-import { BuildContext, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette } from "./editapi";
-import { cyclic } from "../../../../libs/mathutils";
+import { BuildContext, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./editapi";
 
 export class SpriteEnt extends MessageHandlerIml {
 
@@ -18,17 +18,17 @@ export class SpriteEnt extends MessageHandlerIml {
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
+    if (msg.handle.mod3) this.spriteId = insertSprite(ctx.board, spr.x, spr.y, spr.z, spr);
     GLM.vec3.set(this.origin, spr.x, spr.z / ZSCALE, spr.y);
     this.origAng = spr.ang;
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    if (msg.handle.parallel) {
+    if (msg.handle.mod1) {
       let spr = ctx.board.sprites[this.spriteId];
       spr.ang = ctx.snap(this.origAng + msg.handle.dz());
       ctx.invalidateSprite(this.spriteId);
-    }
-    else {
+    } else {
       let x = ctx.snap(this.origin[0] + msg.handle.dx());
       let y = ctx.snap(this.origin[2] + msg.handle.dy());
       let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
@@ -81,6 +81,21 @@ export class SpriteEnt extends MessageHandlerIml {
     } else {
       spr.pal = cyclic(spr.pal + msg.value, msg.max);
     }
-    ctx.invalidateWall(this.spriteId);
+    ctx.invalidateSprite(this.spriteId);
+  }
+
+  public SpriteMode(msg: SpriteMode, ctx: BuildContext) {
+    let spr = ctx.board.sprites[this.spriteId];
+    spr.cstat.type = cyclic(spr.cstat.type + 1, 3);
+    ctx.invalidateSprite(this.spriteId);
+  }
+
+  public Flip(msg: Flip, ctx: BuildContext) {
+    let spr = ctx.board.sprites[this.spriteId];
+    let flip = spr.cstat.xflip + spr.cstat.yflip * 2;
+    let nflip = cyclic(flip + 1, 4);
+    spr.cstat.xflip = nflip & 1;
+    spr.cstat.yflip = (nflip & 2) >> 1;
+    ctx.invalidateSprite(this.spriteId);
   }
 }

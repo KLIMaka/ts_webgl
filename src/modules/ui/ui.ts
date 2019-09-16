@@ -53,6 +53,11 @@ export class Element {
     this.element.style[name] = val;
     return this;
   }
+
+  public click(e: () => void): Element {
+    this.element.onclick = e;
+    return this;
+  }
 }
 
 function create(tag: string) {

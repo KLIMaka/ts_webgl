@@ -3,8 +3,7 @@ import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
 import { Collection, Deck, findFirst, reversed } from '../../deck';
 import { ArtInfoProvider } from './art';
 import { Board, Sector, SectorStats, Wall, WallStats, Sprite, SpriteStats, FACE } from './structs';
-import { findSector, sectorOfWall } from './utils';
-import { Type } from './gl/renderable';
+import { findSector, sectorOfWall, sectorPicnum } from './utils';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -215,7 +214,7 @@ function fixpoint2xpan(board: Board, wallId: number, art: ArtInfoProvider) {
   wall2.xpanning = ((wall.xpanning + (wall.xrepeat << 3)) % art.getInfo(wall.picnum).w) & 0xff;
 }
 
-function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]) {
+export function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
   let secId = sectorOfWall(board, wallId);
   let wall = board.walls[wallId];
   let lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
@@ -226,6 +225,7 @@ function insertWall(board: Board, wallId: number, x: number, y: number, art: Art
   fixxrepeat(board, wallId, lenperrep);
   fixpoint2xpan(board, wallId, art);
   fixxrepeat(board, wallId + 1, lenperrep);
+  return wallId + 1;
 }
 
 function insertSector(board: Board, sector: Sector) {
@@ -400,7 +400,7 @@ function newSpriteStats() {
   return stats;
 }
 
-function newSprite(sectorId: number, x: number, y: number, z: number): Sprite {
+function newSprite(x: number, y: number, z: number): Sprite {
   let sprite = new Sprite();
   sprite.ang = 0;
   sprite.clipdist = 0;
@@ -411,7 +411,7 @@ function newSprite(sectorId: number, x: number, y: number, z: number): Sprite {
   sprite.owner = -1;
   sprite.pal = 0;
   sprite.picnum = 1;
-  sprite.sectnum = sectorId;
+  sprite.sectnum = -1;
   sprite.shade = 0;
   sprite.statnum = 0;
   sprite.x = x;
@@ -424,6 +424,48 @@ function newSprite(sectorId: number, x: number, y: number, z: number): Sprite {
   sprite.xrepeat = 32;
   sprite.yrepeat = 32;
   return sprite;
+}
+
+function copySpriteStats(stats: SpriteStats) {
+  let nstats = new SpriteStats();
+  nstats.blocking = stats.blocking;
+  nstats.blocking2 = stats.blocking2;
+  nstats.invisible = stats.invisible;
+  nstats.noautoshading = stats.noautoshading;
+  nstats.onesided = stats.onesided;
+  nstats.realCenter = stats.realCenter;
+  nstats.tranclucentReversed = stats.tranclucentReversed;
+  nstats.translucent = stats.translucent;
+  nstats.type = stats.type;
+  nstats.xflip = stats.xflip;
+  nstats.yflip = stats.yflip;
+  return nstats;
+}
+
+function copySprite(sprite: Sprite, x: number, y: number, z: number): Sprite {
+  let nsprite = new Sprite();
+  nsprite.ang = sprite.ang;
+  nsprite.clipdist = sprite.clipdist;
+  nsprite.extra = sprite.extra;
+  nsprite.hitag = sprite.hitag;
+  nsprite.lotag = sprite.lotag;
+  nsprite.owner = sprite.owner;
+  nsprite.pal = sprite.pal;
+  nsprite.picnum = sprite.picnum;
+  nsprite.sectnum = sprite.sectnum;
+  nsprite.shade = sprite.shade;
+  nsprite.statnum = sprite.statnum;
+  nsprite.x = x;
+  nsprite.y = y;
+  nsprite.z = z;
+  nsprite.xoffset = sprite.xoffset;
+  nsprite.yoffset = sprite.yoffset;
+  nsprite.xvel = sprite.xvel;
+  nsprite.yvel = sprite.yvel;
+  nsprite.xrepeat = sprite.xrepeat;
+  nsprite.yrepeat = sprite.yrepeat;
+  nsprite.cstat = copySpriteStats(sprite.cstat);
+  return nsprite;
 }
 
 export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
@@ -856,10 +898,10 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   return newSectorId;
 }
 
-export function insertSprite(board: Board, x: number, y: number, z: number) {
+export function insertSprite(board: Board, x: number, y: number, z: number, sprite: Sprite = newSprite(0, 0, 0)) {
   let sectorId = findSector(board, x, y, -1);
   if (sectorId == -1) return -1;
-  let sprite = newSprite(sectorId, x, y, z);
-  board.sprites[board.numsprites++] = sprite;
-  return board.numsprites - 1;
+  let spr = board.sprites[board.numsprites] = copySprite(sprite, x, y, z);
+  spr.sectnum = sectorId;
+  return board.numsprites++;
 }
