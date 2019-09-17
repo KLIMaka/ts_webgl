@@ -1,13 +1,56 @@
-import { Solid, Wireframe, Buffer, Type, Renderable } from './renderable';
-import { ArtInfo, ArtInfoProvider } from '../art';
-import { Board, Sector, Wall, FACE, WALL, FLOOR } from '../structs';
+import * as MU from '../../../../libs/mathutils';
+import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
 import { Texture } from '../../../drawstruct';
-import * as U from '../utils';
-import * as GLM from '../../../../libs_js/glmatrix';
-import * as MU from '../../../../libs/mathutils';
 import { State } from '../../../stategl';
+import { ArtInfo, ArtInfoProvider } from '../art';
+import { BuildContext } from '../edit/editapi';
 import { SubType } from '../hitscan';
+import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
+import * as U from '../utils';
+import { Buffer, Renderable, Solid, Type, Wireframe } from './renderable';
+
+class Entry<T> {
+  constructor(public value: T, public valid: boolean = false) { }
+  update(value: T) { this.value = value; this.valid = true; }
+}
+
+class CacheMap<T> {
+  constructor(
+    readonly update: (ctx: BuildContext, id: number, value: T) => T,
+    readonly evict: (value: T) => void = null
+  ) { }
+
+  private cache: { [index: number]: Entry<T> } = {};
+
+  get(id: number, ctx: BuildContext): T {
+    let v = this.ensureValue(id);
+    if (!v.valid) v.update(this.update(ctx, id, v.value));
+    return v.value;
+  }
+
+  private ensureValue(id: number) {
+    let v = this.cache[id];
+    if (v == undefined) {
+      v = new Entry<T>(null);
+      this.cache[id] = v;
+    }
+    return v;
+  }
+
+  invalidate(id: number) {
+    let v = this.cache[id];
+    if (v == undefined) return;
+    this.evict(v.value);
+    v.valid = false;
+  }
+
+  invalidateAll() {
+    for (let id in this.cache) {
+      this.invalidate(<any>id);
+    }
+  }
+}
 
 class EnsureArray<T> {
   private array: Array<T> = [];
@@ -26,6 +69,7 @@ class EnsureArray<T> {
     this.array.map(f);
   }
 }
+
 function createArray<T>(factory: () => T): EnsureArray<T> {
   return new EnsureArray<T>(factory);
 }
@@ -70,179 +114,48 @@ class WallWireframe {
   public bot: Wireframe = new Wireframe();
 }
 
-
-class Entry<T> {
-  constructor(public value: T, public valid: boolean = false) { }
-}
-
-let sectorRenerableFactory = () => new Entry<SectorSolid>(new SectorSolid());
-let wallRenerableFactory = () => new Entry<WallSolid>(new WallSolid());
-let spriteRenerableFactory = () => new Entry<SpriteSolid>(new SpriteSolid());
-let wireframeFactory = () => new Entry<Wireframe>(new Wireframe());
-let sectorWireframeFactory = () => new Entry<SectorWireframe>(new SectorWireframe());
-let wallWireframeFactory = () => new Entry<WallWireframe>(new WallWireframe());
-
 export class Cache {
-  public sectors: EnsureArray<Entry<SectorSolid>> = createArray(sectorRenerableFactory);
-  public walls: EnsureArray<Entry<WallSolid>> = createArray(wallRenerableFactory);
-  public sprites: EnsureArray<Entry<SpriteSolid>> = createArray(spriteRenerableFactory);
-  public wallCeilPoints: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-  public wallFloorPoints: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-  public wallLines: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-  public sectorsWireframe: EnsureArray<Entry<SectorWireframe>> = createArray(sectorWireframeFactory);
-  public wallsWireframe: EnsureArray<Entry<WallWireframe>> = createArray(wallWireframeFactory);
-  public spritesWireframe: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-  public spritesAngWireframe: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-  public sectorCeilingHinge: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-  public sectorFloorHinge: EnsureArray<Entry<Wireframe>> = createArray(wireframeFactory);
-
-  constructor(private board: Board, private art: ArtProvider) {
-  }
-
-  public getSector(secId: number): SectorSolid {
-    let sector = this.sectors.get(secId);
-    if (!sector.valid) {
-      prepareSector(this.board, this.art, secId, sector.value);
-      sector.valid = true;
-    }
-    return sector.value;
-  }
-
-  public getWall(wallId: number, sectorId: number): WallSolid {
-    let wall = this.walls.get(wallId);
-    if (!wall.valid) {
-      prepareWall(this.board, this.art, wallId, sectorId, wall.value);
-      wall.valid = true;
-    }
-    return wall.value;
-  }
-
-  public getSprite(spriteId: number): SpriteSolid {
-    let sprite = this.sprites.get(spriteId);
-    if (!sprite.valid) {
-      prepareSprite(this.board, this.art, spriteId, sprite.value);
-      sprite.valid = true;
-    }
-    return sprite.value;
-  }
-
-  public getSectorWireframe(secId: number): SectorWireframe {
-    let sectorWireframe = this.sectorsWireframe.get(secId);
-    if (!sectorWireframe.valid) {
-      prepareSectorWireframe(this.board, secId, sectorWireframe.value);
-      sectorWireframe.valid = true;
-    }
-    return sectorWireframe.value;
-  }
-
-  public getWallWireframe(wallId: number, secId: number): WallWireframe {
-    let wallWireframe = this.wallsWireframe.get(wallId);
-    if (!wallWireframe.valid) {
-      prepareWallWireframe(this.board, wallId, secId, wallWireframe.value);
-      wallWireframe.valid = true;
-    }
-    return wallWireframe.value;
-  }
-
-  public getSpriteWireframe(sprId: number): Wireframe {
-    let spriteWireframe = this.spritesWireframe.get(sprId);
-    if (!spriteWireframe.valid) {
-      prepareSpriteWireframe(this.board, sprId, this.art, spriteWireframe.value);
-      spriteWireframe.valid = true;
-    }
-    return spriteWireframe.value;
-  }
-
-  public getWallPoint(id: number, d: number, ceiling: boolean): Wireframe {
-    let point = (ceiling ? this.wallCeilPoints : this.wallFloorPoints).get(id);
-    if (!point.valid) {
-      prepareWallPoint(this.board, ceiling, id, d, point.value);
-      point.valid = true;
-    }
-    return point.value;
-  }
-
-  public getSpriteAng(id: number): Wireframe {
-    let spriteAng = this.spritesAngWireframe.get(id);
-    if (!spriteAng.valid) {
-      prepareSpriteAngle(this.board, id, spriteAng.value)
-      spriteAng.valid = true;
-    }
-    return spriteAng.value;
-  }
-
-  public getSectorHinge(id: number, ceiling: boolean): Wireframe {
-    let hinge = (ceiling ? this.sectorCeilingHinge : this.sectorFloorHinge).get(id);
-    if (!hinge.valid) {
-      prepareHinge(this.board, id, ceiling, hinge.value);
-      hinge.valid = true;
-    }
-    return hinge.value;
-  }
-
-  public getWallLine(id: number): Wireframe {
-    let line = this.wallLines.get(id);
-    if (!line.valid) {
-      prepareWallLine(this.board, id, line.value);
-      line.valid = true;
-    }
-    return line.value;
-  }
+  public sectors = new CacheMap(updateSector);
+  public walls = new CacheMap(updateWall);
+  public sprites = new CacheMap(updateSprite);
+  public wallCeilPoints = new CacheMap(updateWallPointCeiling);
+  public wallFloorPoints = new CacheMap(updateWallPointFloor);
+  public wallLines = new CacheMap(updateWallLine);
+  public sectorsWireframe = new CacheMap(updateSectorWireframe);
+  public wallsWireframe = new CacheMap(updateWallWireframe);
+  public spritesWireframe = new CacheMap(updateSpriteWireframe);
+  public spritesAngWireframe = new CacheMap(updateSpriteAngle);
+  public sectorCeilingHinge = new CacheMap(updateCeilingHinge);
+  public sectorFloorHinge = new CacheMap(updateFloorHinge);
 
   public invalidateSector(id: number) {
-    let sec = this.sectors.get(id);
-    sec.valid = false;
-    sec.value.ceiling.reset();
-    sec.value.floor.reset();
-    let secw = this.sectorsWireframe.get(id);
-    secw.valid = false;
-    secw.value.ceiling.buff.deallocate();
-    secw.value.floor.buff.deallocate();
-    this.sectorCeilingHinge.get(id).valid = false;
-    this.sectorFloorHinge.get(id).valid = false;
+    this.sectors.invalidate(id);
+    this.sectorsWireframe.invalidate(id);
+    this.sectorCeilingHinge.invalidate(id);
+    this.sectorFloorHinge.invalidate(id);
   }
 
   public invalidateWall(id: number) {
-    let wall = this.walls.get(id);
-    wall.valid = false;
-    wall.value.bot.reset();
-    wall.value.mid.reset();
-    wall.value.top.reset();
-    let wallw = this.wallsWireframe.get(id);
-    wallw.valid = false;
-    wallw.value.bot.buff.deallocate();
-    wallw.value.mid.buff.deallocate();
-    wallw.value.top.buff.deallocate();
-    this.wallCeilPoints.get(id).valid = false;
-    this.wallFloorPoints.get(id).valid = false;
-    this.wallLines.get(id).valid = false;
+    this.walls.invalidate(id);
+    this.wallsWireframe.invalidate(id);
+    this.wallLines.invalidate(id);
+    this.wallCeilPoints.invalidate(id);
+    this.wallFloorPoints.invalidate(id);
   }
 
   public invalidateSprite(id: number) {
-    this.sprites.get(id).valid = false;
-    this.spritesWireframe.get(id).valid = false;
-    this.spritesAngWireframe.get(id).valid = false;
+    this.sprites.invalidate(id);
+    this.spritesWireframe.invalidate(id);
+    this.spritesAngWireframe.invalidate(id);
   }
 
   public invalidateAll() {
-    this.sectors.map(s => { if (s != undefined) { s.valid = false; s.value.ceiling.reset(); s.value.floor.reset(); } });
-    this.walls.map(w => { if (w != undefined) { w.valid = false; w.value.bot.reset(); w.value.mid.reset(); w.value.top.reset(); } });
-    this.sprites.map(s => { if (s != undefined) { s.valid = false; s.value.reset(); } });
-    this.sectorsWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.ceiling.reset(); s.value.floor.reset(); } });
-    this.wallsWireframe.map(w => { if (w != undefined) { w.valid = false; w.value.bot.reset(); w.value.mid.reset(); w.value.top.reset(); } });
-    this.spritesWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.reset(); } });
-    this.wallCeilPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
-    this.wallFloorPoints.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
-    this.wallLines.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate(); } });
-    this.spritesAngWireframe.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate() } })
-    this.sectorCeilingHinge.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate() } })
-    this.sectorFloorHinge.map(s => { if (s != undefined) { s.valid = false; s.value.buff.deallocate() } })
   }
 
   public getByIdType(id: number, addId: number, type: SubType, wireframe: boolean = false): Renderable {
     switch (type) {
       case SubType.CEILING:
-        return wireframe ? this.getSectorWireframe(id).ceiling : this.getSector(id).ceiling;
+        return wireframe ? this.sectorsWireframe.get(id).ceiling : this.getSector(id).ceiling;
       case SubType.FLOOR:
         return wireframe ? this.getSectorWireframe(id).floor : this.getSector(id).floor;
       case SubType.LOWER_WALL:
@@ -258,7 +171,9 @@ export class Cache {
   }
 }
 
-function prepareWallLine(board: Board, wallId: number, line: Wireframe) {
+function updateWallLine(ctx: BuildContext, wallId: number, line: Wireframe): Wireframe {
+  if (line == null) line = new Wireframe();
+  let board = ctx.board;
   let buff = line.buff;
   buff.allocate(2, 2);
   let sectorId = U.sectorOfWall(board, wallId);
@@ -269,9 +184,15 @@ function prepareWallLine(board: Board, wallId: number, line: Wireframe) {
   buff.writePos(0, wall.x, fz / U.ZSCALE, wall.y);
   buff.writePos(1, wall.x, cz / U.ZSCALE, wall.y);
   buff.writeLine(0, 0, 1);
+  return line;
 }
 
-function prepareHinge(board: Board, sectorId: number, ceiling: boolean, hinge: Wireframe) {
+function updateCeilingHinge(ctx: BuildContext, sectorId: number, hinge: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, true, hinge) }
+function updateFloorHinge(ctx: BuildContext, sectorId: number, hinge: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, false, hinge) }
+
+function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, hinge: Wireframe): Wireframe {
+  if (hinge == null) hinge == new Wireframe();
+  let board = ctx.board;
   hinge.mode = WebGLRenderingContext.TRIANGLES;
   GLM.vec4.set(hinge.color, 0.7, 0.7, 0.7, 0.7);
   let size = 128;
@@ -302,13 +223,15 @@ function prepareHinge(board: Board, sectorId: number, ceiling: boolean, hinge: W
   buff.writeQuad(6, 2, 3, 1, 0);
   buff.writeQuad(12, 0, 1, 5, 4);
   buff.writeQuad(18, 4, 5, 1, 0);
+  return hinge;
 }
 
-function prepareSpriteAngle(board: Board, spriteId: number, arrow: Wireframe) {
+function updateSpriteAngle(ctx: BuildContext, spriteId: number, arrow: Wireframe): Wireframe {
+  if (arrow == null) arrow = new Wireframe();
   arrow.mode = WebGLRenderingContext.TRIANGLES;
   let buff = arrow.buff;
   buff.allocate(3, 6);
-  let spr = board.sprites[spriteId];
+  let spr = ctx.board.sprites[spriteId];
   let x = spr.x, y = spr.y, z = spr.z / U.ZSCALE;
   let ang = U.spriteAngle(spr.ang);
   let size = 128;
@@ -321,6 +244,7 @@ function prepareSpriteAngle(board: Board, spriteId: number, arrow: Wireframe) {
   buff.writePos(2, x - vec2[0], z, y - vec2[2]);
   buff.writeTriangle(0, 0, 1, 2);
   buff.writeTriangle(3, 2, 1, 0);
+  return arrow;
 }
 
 function fillBufferForWallPoint(board: Board, wallId: number, buff: Buffer, d: number, z: number) {
@@ -334,7 +258,12 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: Buffer, d: n
   buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-function prepareWallPoint(board: Board, ceiling: boolean, wallId: number, d: number, point: Wireframe) {
+function updateWallPointCeiling(ctx: BuildContext, wallId: number, point: Wireframe) { return prepareWallPoint(ctx, true, wallId, 32, point) }
+function updateWallPointFloor(ctx: BuildContext, wallId: number, point: Wireframe) { return prepareWallPoint(ctx, false, wallId, 32, point) }
+
+function prepareWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, point: Wireframe): Wireframe {
+  if (point == null) point = new Wireframe();
+  let board = ctx.board;
   point.mode = WebGLRenderingContext.TRIANGLES;
   let s = U.sectorOfWall(board, wallId);
   let sec = board.sectors[s];
@@ -344,6 +273,7 @@ function prepareWallPoint(board: Board, ceiling: boolean, wallId: number, d: num
   let wall = board.walls[wallId];
   let zz = (slope(wall.x, wall.y, h) + z) / U.ZSCALE;
   fillBufferForWallPoint(board, wallId, point.buff, d, zz);
+  return point;
 }
 
 function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, board: Board, buff: Buffer) {
@@ -369,10 +299,13 @@ function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, b
   }
 }
 
-function prepareSectorWireframe(board: Board, secId: number, wireframe: SectorWireframe) {
+function updateSectorWireframe(ctx: BuildContext, secId: number, wireframe: SectorWireframe): SectorWireframe {
+  if (wireframe == null) wireframe = new SectorWireframe();
+  let board = ctx.board;
   let sec = board.sectors[secId];
   fillBuffersForSectorWireframe(sec, sec.ceilingheinum, sec.ceilingz, board, wireframe.ceiling.buff);
   fillBuffersForSectorWireframe(sec, sec.floorheinum, sec.floorz, board, wireframe.floor.buff);
+  return wireframe;
 }
 
 function genQuadWireframe(coords: number[], normals: number[], buff: Buffer) {
@@ -394,9 +327,11 @@ function genQuadWireframe(coords: number[], normals: number[], buff: Buffer) {
   buff.writeLine(6, 3, 0);
 }
 
-function prepareWallWireframe(board: Board, wallId: number, secId: number, wireframe: WallWireframe) {
+function updateWallWireframe(ctx: BuildContext, wallId: number, wireframe: WallWireframe): WallWireframe {
+  if (wireframe == null) wireframe = new WallWireframe();
+  let board = ctx.board;
   let wall = board.walls[wallId];
-  let sector = board.sectors[secId];
+  let sector = board.sectors[U.sectorOfWall(board, wallId)];
   let wall2 = board.walls[wall.point2];
   let x1 = wall.x; let y1 = wall.y;
   let x2 = wall2.x; let y2 = wall2.y;
@@ -434,6 +369,7 @@ function prepareWallWireframe(board: Board, wallId: number, secId: number, wiref
       genQuadWireframe(coords, null, wireframe.mid.buff);
     }
   }
+  return wireframe;
 }
 
 function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, renderable: Wireframe) {
@@ -475,13 +411,14 @@ function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: 
 }
 
 
-function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, wireframe: Wireframe) {
-  let spr = board.sprites[sprId];
+function updateSpriteWireframe(ctx: BuildContext, sprId: number, wireframe: Wireframe): Wireframe {
+  if (wireframe == null) wireframe = new Wireframe();
+  let spr = ctx.board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible)
-    return;
+    return wireframe;
 
   let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
-  let info = art.getInfo(spr.picnum);
+  let info = ctx.art.getInfo(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
   let ang = U.spriteAngle(spr.ang);
@@ -498,6 +435,7 @@ function prepareSpriteWireframe(board: Board, sprId: number, art: ArtProvider, w
     wireframe.type = Type.SURFACE;
     fillbuffersForFloorSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
   }
+  return wireframe;
 }
 
 function applySectorTextureTransform(sector: Sector, ceiling: boolean, walls: Wall[], info: ArtInfo, texMat: GLM.Mat4Array) {
@@ -577,7 +515,10 @@ function fillBuffersForSector(ceil: boolean, board: Board, sec: Sector, renderab
 }
 
 let sectorNormal = GLM.vec3.create();
-function prepareSector(board: Board, art: ArtProvider, secId: number, renderable: SectorSolid) {
+function updateSector(ctx: BuildContext, secId: number, renderable: SectorSolid): SectorSolid {
+  if (renderable == null) renderable = new SectorSolid();
+  let board = ctx.board;
+  let art = ctx.art;
   let sec = board.sectors[secId];
   let ceilinginfo = art.getInfo(sec.ceilingpicnum);
   applySectorTextureTransform(sec, true, board.walls, ceilinginfo, renderable.ceiling.texMat);
@@ -594,6 +535,8 @@ function prepareSector(board: Board, art: ArtProvider, secId: number, renderable
   renderable.floor.parallax = sec.floorstat.parallaxing;
   renderable.floor.pal = sec.floorpal;
   renderable.floor.shade = sec.floorshade;
+
+  return renderable;
 }
 
 function getWallCoords(x1: number, y1: number, x2: number, y2: number,
@@ -706,9 +649,12 @@ function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base:
 }
 
 let wallNormal = GLM.vec3.create();
-function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: number, renderable: WallSolid) {
+function updateWall(ctx: BuildContext, wallId: number, renderable: WallSolid): WallSolid {
+  if (renderable == null) renderable = new WallSolid();
+  let board = ctx.board;
+  let art = ctx.art;
   let wall = board.walls[wallId];
-  let sector = board.sectors[secId];
+  let sector = board.sectors[U.sectorOfWall(board, wallId)];
   let wall2 = board.walls[wall.point2];
   let x1 = wall.x; let y1 = wall.y;
   let x2 = wall2.x; let y2 = wall2.y;
@@ -791,6 +737,7 @@ function prepareWall(board: Board, art: ArtProvider, wallId: number, secId: numb
       renderable.mid.trans = trans;
     }
   }
+  return renderable;
 }
 
 function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SpriteSolid) {
@@ -856,21 +803,22 @@ function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, y
   ], [0, 0, 1, 0, 1, 1, 0, 1], renderable.buff);
 }
 
-function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable: SpriteSolid) {
-  let spr = board.sprites[sprId];
+function updateSprite(ctx: BuildContext, sprId: number, renderable: SpriteSolid): SpriteSolid {
+  if (renderable == null) renderable = new SpriteSolid();
+  let spr = ctx.board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible)
-    return;
+    return renderable;
 
   let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
-  let info = art.getInfo(spr.picnum);
-  let tex = art.get(spr.picnum);
+  let info = ctx.art.getInfo(spr.picnum);
+  let tex = ctx.art.get(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
   let ang = U.spriteAngle(spr.ang);
   let xo = (info.attrs.xoff * spr.xrepeat) / 4;
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
   let xf = spr.cstat.xflip; let yf = spr.cstat.yflip;
-  let sec = board.sectors[spr.sectnum];
+  let sec = ctx.board.sectors[spr.sectnum];
   let sectorShade = sec.floorshade;
   let shade = spr.shade == -8 ? sectorShade : spr.shade;
   let trans = (spr.cstat.translucent || spr.cstat.tranclucentReversed) ? 0.6 : 1;
@@ -887,4 +835,6 @@ function prepareSprite(board: Board, art: ArtProvider, sprId: number, renderable
   } else if (spr.cstat.type == FLOOR) {
     fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
   }
+
+  return renderable;
 }

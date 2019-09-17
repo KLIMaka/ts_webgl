@@ -56,13 +56,13 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
 }
 
 let context: Context;
-let artProvider: ArtProvider;
-let cache: Cache;
-let visible = new VIS.PvsBoardVisitorResult();
 let selection = new MessageHandlerList();
 let hit = new Hitscan();
-let implementation: Implementation;
 let picnumSelector: PicNumSelector;
+
+let implementation: Implementation;
+let cache: Cache;
+let visible = new VIS.PvsBoardVisitorResult();
 
 export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implementation, board: Board, selector: PicNumSelector, cb: () => void) {
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -72,7 +72,6 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implemen
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   context = new Context();
-  artProvider = context.art = art;
   cache = context.cache = new Cache(board, art);
   context.pvs = visible;
   implementation = impl;
@@ -144,7 +143,7 @@ function print(board: Board, id: number, type: SubType) {
 function pointerHitscan(gl: WebGLRenderingContext, board: Board, ms: U.MoveStruct, ctr: Controller3D) {
   PROFILE.startProfile('hitscan');
   let [vx, vz, vy] = ctr.getForwardUnprojected(gl, INPUT.mouseX, INPUT.mouseY);
-  hitscan(board, artProvider, ms.x, ms.y, ms.z, ms.sec, vx, vy, vz, hit, 0);
+  hitscan(board, context.art, ms.x, ms.y, ms.z, ms.sec, vx, vy, vz, hit, 0);
   PROFILE.endProfile();
 }
 
