@@ -34,41 +34,45 @@ function gridMatrix(board: Board, id: number, type: SubType): GLM.Mat4Array {
   return texMat;
 }
 
-function drawGrid(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: SubType) {
-  let r = <Solid>cache.getByIdType(id, addId, type);
-  BGL.draw(gl, wrapInGrid(r, gridMatrix(board, id, type)));
+function drawGrid(gl: WebGLRenderingContext, cache: Cache, ctx: BuildContext, id: number, type: SubType) {
+  let r = <Solid>cache.getByIdType(ctx, id, type);
+  BGL.draw(gl, wrapInGrid(r, gridMatrix(ctx.board, id, type)));
 }
 
 let points = new Deck<any>();
-function drawEdges(gl: WebGLRenderingContext, cache: Cache, board: Board, id: number, addId: number, type: SubType) {
+function drawEdges(gl: WebGLRenderingContext, cache: Cache, ctx: BuildContext, id: number, type: SubType) {
   points.clear();
   if (isSector(type)) {
-    let sec = board.sectors[id];
+    let sec = ctx.board.sectors[id];
     let start = sec.wallptr;
     let end = sec.wallptr + sec.wallnum;
     for (let w = start; w < end; w++) {
-      points.push(cache.getWallPoint(w, 32, type == SubType.CEILING));
+      points.push(type == SubType.CEILING
+        ? cache.wallCeilPoints.get(w, ctx)
+        : cache.wallFloorPoints.get(w, ctx));
     }
-    points.push(cache.getSectorHinge(id, type == SubType.CEILING));
+    points.push(type == SubType.CEILING
+      ? cache.sectorCeilingHinge.get(id, ctx)
+      : cache.sectorFloorHinge.get(id, ctx));
   } else if (isWall(type)) {
-    let wall = board.walls[id];
-    points.push(cache.getWallPoint(id, 32, false));
-    points.push(cache.getWallPoint(id, 32, true));
-    points.push(cache.getWallPoint(wall.point2, 32, false));
-    points.push(cache.getWallPoint(wall.point2, 32, true));
+    let wall = ctx.board.walls[id];
+    points.push(cache.wallCeilPoints.get(id, ctx));
+    points.push(cache.wallCeilPoints.get(id, ctx));
+    points.push(cache.wallFloorPoints.get(wall.point2, ctx));
+    points.push(cache.wallFloorPoints.get(wall.point2, ctx));
   } else if (isSprite(type)) {
-    points.push(cache.getSpriteAng(id));
+    points.push(cache.spritesAngWireframe.get(id, ctx));
   }
-  BGL.draw(gl, cache.getByIdType(id, addId, type, true));
+  BGL.draw(gl, cache.getByIdType(ctx, id, type, true));
   for (let i = 0; i < points.length(); i++)
     BGL.draw(gl, points.get(i));
 }
 
-function drawWallPoints(gl: WebGLRenderingContext, cache: Cache, board: Board, wallId: number) {
+function drawWallPoints(gl: WebGLRenderingContext, cache: Cache, ctx: BuildContext, wallId: number) {
   points.clear();
-  points.push(cache.getWallPoint(wallId, 32, false));
-  points.push(cache.getWallPoint(wallId, 32, true));
-  points.push(cache.getWallLine(wallId));
+  points.push(cache.wallCeilPoints.get(wallId, ctx));
+  points.push(cache.wallFloorPoints.get(wallId, ctx));
+  points.push(cache.wallLines.get(wallId, ctx));
   for (let i = 0; i < points.length(); i++)
     BGL.draw(gl, points.get(i));
 }
@@ -128,32 +132,32 @@ export class Context implements BuildContext {
     this.pvs.reset();
   }
 
-  highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number) {
-    drawGrid(gl, this.cache, board, sectorId, -1, SubType.CEILING);
-    drawGrid(gl, this.cache, board, sectorId, -1, SubType.FLOOR);
-    drawEdges(gl, this.cache, board, sectorId, -1, SubType.CEILING);
-    drawEdges(gl, this.cache, board, sectorId, -1, SubType.FLOOR);
+  highlightSector(sectorId: number) {
+    drawGrid(this.gl, this.cache, this, sectorId, SubType.CEILING);
+    drawGrid(this.gl, this.cache, this, sectorId, SubType.FLOOR);
+    drawEdges(this.gl, this.cache, this, sectorId, SubType.CEILING);
+    drawEdges(this.gl, this.cache, this, sectorId, SubType.FLOOR);
   }
 
-  highlightWallSegment(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number) {
-    drawGrid(gl, this.cache, board, wallId, sectorId, SubType.UPPER_WALL);
-    drawGrid(gl, this.cache, board, wallId, sectorId, SubType.MID_WALL);
-    drawGrid(gl, this.cache, board, wallId, sectorId, SubType.LOWER_WALL);
-    drawEdges(gl, this.cache, board, wallId, sectorId, SubType.UPPER_WALL);
-    drawEdges(gl, this.cache, board, wallId, sectorId, SubType.MID_WALL);
-    drawEdges(gl, this.cache, board, wallId, sectorId, SubType.LOWER_WALL);
+  highlightWallSegment(wallId: number) {
+    drawGrid(this.gl, this.cache, this, wallId, SubType.UPPER_WALL);
+    drawGrid(this.gl, this.cache, this, wallId, SubType.MID_WALL);
+    drawGrid(this.gl, this.cache, this, wallId, SubType.LOWER_WALL);
+    drawEdges(this.gl, this.cache, this, wallId, SubType.UPPER_WALL);
+    drawEdges(this.gl, this.cache, this, wallId, SubType.MID_WALL);
+    drawEdges(this.gl, this.cache, this, wallId, SubType.LOWER_WALL);
   }
 
-  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number) {
-    drawWallPoints(gl, this.cache, board, wallId);
+  highlightWall(wallId: number) {
+    drawWallPoints(this.gl, this.cache, this, wallId);
   }
 
-  highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number) {
-    drawEdges(gl, this.cache, board, spriteId, -1, SubType.SPRITE);
+  highlightSprite(spriteId: number) {
+    drawEdges(this.gl, this.cache, this, spriteId, SubType.SPRITE);
   }
 
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: SubType) {
-    drawGrid(gl, this.cache, board, id, addId, type);
-    drawEdges(gl, this.cache, board, id, addId, type);
+  highlight(id: number, type: SubType) {
+    drawGrid(this.gl, this.cache, this, id, type);
+    drawEdges(this.gl, this.cache, this, id, type);
   }
 }

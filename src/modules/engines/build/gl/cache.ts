@@ -15,10 +15,13 @@ class Entry<T> {
   update(value: T) { this.value = value; this.valid = true; }
 }
 
-class CacheMap<T> {
+interface Resetable {
+  reset(): void;
+}
+
+class CacheMap<T extends Resetable> {
   constructor(
-    readonly update: (ctx: BuildContext, id: number, value: T) => T,
-    readonly evict: (value: T) => void = null
+    readonly update: (ctx: BuildContext, id: number, value: T) => T
   ) { }
 
   private cache: { [index: number]: Entry<T> } = {};
@@ -41,7 +44,7 @@ class CacheMap<T> {
   invalidate(id: number) {
     let v = this.cache[id];
     if (v == undefined) return;
-    this.evict(v.value);
+    v.value.reset();
     v.valid = false;
   }
 
@@ -87,6 +90,11 @@ class SectorSolid implements Renderable {
     this.ceiling.draw(gl, state);
     this.floor.draw(gl, state);
   }
+
+  reset() {
+    this.ceiling.reset();
+    this.floor.reset();
+  }
 }
 
 class WallSolid implements Renderable {
@@ -99,6 +107,12 @@ class WallSolid implements Renderable {
     this.mid.draw(gl, state);
     this.bot.draw(gl, state);
   }
+
+  reset() {
+    this.top.reset();
+    this.mid.reset();
+    this.bot.reset();
+  }
 }
 
 class SpriteSolid extends Solid { }
@@ -106,12 +120,23 @@ class SpriteSolid extends Solid { }
 class SectorWireframe {
   public ceiling: Wireframe = new Wireframe();
   public floor: Wireframe = new Wireframe();
+
+  reset() {
+    this.ceiling.reset();
+    this.floor.reset();
+  }
 }
 
 class WallWireframe {
   public top: Wireframe = new Wireframe();
   public mid: Wireframe = new Wireframe();
   public bot: Wireframe = new Wireframe();
+
+  reset() {
+    this.top.reset();
+    this.mid.reset();
+    this.bot.reset();
+  }
 }
 
 export class Cache {
@@ -150,22 +175,34 @@ export class Cache {
   }
 
   public invalidateAll() {
+    this.sectors.invalidateAll();
+    this.sectorsWireframe.invalidateAll();
+    this.sectorCeilingHinge.invalidateAll();
+    this.sectorFloorHinge.invalidateAll();
+    this.walls.invalidateAll();
+    this.wallsWireframe.invalidateAll();
+    this.wallLines.invalidateAll();
+    this.wallCeilPoints.invalidateAll();
+    this.wallFloorPoints.invalidateAll();
+    this.sprites.invalidateAll();
+    this.spritesWireframe.invalidateAll();
+    this.spritesAngWireframe.invalidateAll();
   }
 
-  public getByIdType(id: number, addId: number, type: SubType, wireframe: boolean = false): Renderable {
+  public getByIdType(ctx: BuildContext, id: number, type: SubType, wireframe: boolean = false): Renderable {
     switch (type) {
       case SubType.CEILING:
-        return wireframe ? this.sectorsWireframe.get(id).ceiling : this.getSector(id).ceiling;
+        return wireframe ? this.sectorsWireframe.get(id, ctx).ceiling : this.sectors.get(id, ctx).ceiling;
       case SubType.FLOOR:
-        return wireframe ? this.getSectorWireframe(id).floor : this.getSector(id).floor;
+        return wireframe ? this.sectorsWireframe.get(id, ctx).floor : this.sectors.get(id, ctx).floor;
       case SubType.LOWER_WALL:
-        return wireframe ? this.getWallWireframe(id, addId).bot : this.getWall(id, addId).bot;
+        return wireframe ? this.wallsWireframe.get(id, ctx).bot : this.walls.get(id, ctx).bot;
       case SubType.MID_WALL:
-        return wireframe ? this.getWallWireframe(id, addId).mid : this.getWall(id, addId).mid;
+        return wireframe ? this.wallsWireframe.get(id, ctx).mid : this.walls.get(id, ctx).mid;
       case SubType.UPPER_WALL:
-        return wireframe ? this.getWallWireframe(id, addId).top : this.getWall(id, addId).top;
+        return wireframe ? this.wallsWireframe.get(id, ctx).top : this.walls.get(id, ctx).top;
       case SubType.SPRITE:
-        return wireframe ? this.getSpriteWireframe(id) : this.getSprite(id);
+        return wireframe ? this.spritesWireframe.get(id, ctx) : this.sprites.get(id, ctx);
     }
     return null;
   }
@@ -191,7 +228,7 @@ function updateCeilingHinge(ctx: BuildContext, sectorId: number, hinge: Wirefram
 function updateFloorHinge(ctx: BuildContext, sectorId: number, hinge: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, false, hinge) }
 
 function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, hinge: Wireframe): Wireframe {
-  if (hinge == null) hinge == new Wireframe();
+  if (hinge == null) hinge = new Wireframe();
   let board = ctx.board;
   hinge.mode = WebGLRenderingContext.TRIANGLES;
   GLM.vec4.set(hinge.color, 0.7, 0.7, 0.7, 0.7);

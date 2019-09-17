@@ -49,7 +49,7 @@ export class SectorEnt extends MessageHandlerIml {
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    ctx.highlight(ctx.gl, ctx.board, this.sectorId, -1, this.type);
+    ctx.highlight(this.sectorId, this.type);
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {

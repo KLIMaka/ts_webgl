@@ -3,7 +3,6 @@ import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
 import { State } from '../../../stategl';
 import * as BUFF from './buffers';
-import { Collection } from '../../../deck';
 
 export class Buffer {
   private ptr: Pointer;

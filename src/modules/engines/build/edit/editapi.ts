@@ -18,11 +18,11 @@ export interface BuildContext extends Context {
   invalidateWall(id: number): void;
   invalidateSprite(id: number): void;
 
-  highlightSector(gl: WebGLRenderingContext, board: Board, sectorId: number): void;
-  highlightWallSegment(gl: WebGLRenderingContext, board: Board, wallId: number, sectorId: number): void;
-  highlightWall(gl: WebGLRenderingContext, board: Board, wallId: number): void;
-  highlightSprite(gl: WebGLRenderingContext, board: Board, spriteId: number): void;
-  highlight(gl: WebGLRenderingContext, board: Board, id: number, addId: number, type: SubType): void;
+  highlightSector(sectorId: number): void;
+  highlightWallSegment(wallId: number): void;
+  highlightWall(wallId: number): void;
+  highlightSprite(spriteId: number): void;
+  highlight(id: number, type: SubType): void;
 }
 
 export class StartMove implements Message { constructor(public handle: MovingHandle) { } }

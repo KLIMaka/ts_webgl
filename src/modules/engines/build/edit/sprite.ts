@@ -39,7 +39,7 @@ export class SpriteEnt extends MessageHandlerIml {
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    ctx.highlightSprite(ctx.gl, ctx.board, this.spriteId);
+    ctx.highlightSprite(this.spriteId);
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {

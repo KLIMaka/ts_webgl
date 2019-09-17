@@ -72,8 +72,10 @@ export function init(gl: WebGLRenderingContext, art: PalProvider, impl: Implemen
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   context = new Context();
-  cache = context.cache = new Cache(board, art);
+  context.cache = cache = new Cache();
   context.pvs = visible;
+  context.board = board;
+  context.art = art;
   implementation = impl;
   picnumSelector = selector;
   loadGridTexture(gl, (gridTex: Texture) =>
@@ -340,7 +342,7 @@ function drawRor(gl: WebGLRenderingContext, board: Board, result: VIS.Result, ms
   gl.enable(gl.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
     let s = rorSectorCollector.sectors.get(i);
-    let r = cache.getSector(s);
+    let r = cache.sectors.get(s, context);
     drawStack(gl, board, ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
     drawStack(gl, board, ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
@@ -365,7 +367,7 @@ function drawMirrors(gl: WebGLRenderingContext, board: Board, result: VIS.Result
       continue;
 
     // draw mirror surface into stencil
-    let r = cache.getWall(w, BU.unpackSectorId(mirrorWallsCollector.walls.get(i)));
+    let r = cache.walls.get(w, context);
     BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
     BGL.setPosition(ctr.getCamera().getPosition());
     writeStencilOnly(gl, i + 127);
@@ -418,7 +420,7 @@ function clearDrawLists() {
 }
 
 function sectorVisitor(board: Board, sectorId: number) {
-  let sector = cache.getSector(sectorId);
+  let sector = cache.sectors.get(sectorId, context);
   if (implementation.rorLinks().floorLinks[sectorId] == undefined)
     surfaces.push(sector.floor);
   if (implementation.rorLinks().ceilLinks[sectorId] == undefined)
@@ -429,7 +431,7 @@ function sectorVisitor(board: Board, sectorId: number) {
 
 function wallVisitor(board: Board, wallId: number, sectorId: number) {
   if (implementation.isMirrorPic(board.walls[wallId].picnum)) return;
-  let wall = cache.getWall(wallId, sectorId);
+  let wall = cache.walls.get(wallId, context);
   if (wall.mid.trans != 1) {
     surfacesTrans.push(wall.mid);
     surfaces.push(wall.bot);
@@ -441,7 +443,7 @@ function wallVisitor(board: Board, wallId: number, sectorId: number) {
 }
 
 function spriteVisitor(board: Board, spriteId: number) {
-  let sprite = cache.getSprite(spriteId);
+  let sprite = cache.sprites.get(spriteId, context);
   let trans = sprite.trans != 1;
   (trans ? spritesTrans : sprites).push(sprite);
   PROFILE.incCount('sprites');
