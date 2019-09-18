@@ -48,7 +48,6 @@ function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => vo
 }
 
 let implementation: Implementation;
-let visible = new VIS.PvsBoardVisitorResult();
 let context: Context;
 
 export function init(ctx: Context, art: PalProvider, impl: Implementation, cb: () => void) {
@@ -95,6 +94,7 @@ function writeAll() {
   context.gl.colorMask(true, true, true, true);
 }
 
+let visible = new VIS.PvsBoardVisitorResult();
 let all = new VIS.AllBoardVisitorResult();
 function drawGeometry(ms: U.MoveStruct, ctr: Controller3D) {
   PROFILE.startProfile('processing');
@@ -168,7 +168,7 @@ function drawRor(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
     let s = rorSectorCollector.sectors.get(i);
-    let r = context.geometry.sector(i);
+    let r = context.geometry.sector(s);
     drawStack(ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
     drawStack(ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
