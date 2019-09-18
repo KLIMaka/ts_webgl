@@ -4,10 +4,29 @@ import { SubType } from "../hitscan";
 import { Context, Message } from "../messages";
 import { Board } from "../structs";
 import { MovingHandle } from "./handle";
+import { Renderable } from "../gl/renderable";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
   getParallaxTexture(picnum: number): Texture
+}
+
+export interface SectorRenderable extends Renderable {
+  ceiling: Renderable;
+  floor: Renderable;
+}
+
+export interface WallRenderable extends Renderable {
+  top: Renderable;
+  mid: Renderable;
+  bot: Renderable;
+}
+
+export interface BuildRenderableProvider {
+  sector(id: number): SectorRenderable;
+  wall(id: number): WallRenderable;
+  wallPoint(id: number): Renderable;
+  sprite(id: number): Renderable;
 }
 
 export interface BuildContext extends Context {

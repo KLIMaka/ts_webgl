@@ -3,11 +3,12 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
 import { State } from '../../../stategl';
 import { ArtInfo } from '../art';
-import { BuildContext } from '../edit/editapi';
-import { SubType } from '../hitscan';
+import { BuildContext, BuildRenderableProvider, SectorRenderable, WallRenderable } from '../edit/editapi';
+import { SubType, isSector, isWall } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
 import * as U from '../utils';
-import { Buffer, Renderable, Solid, Type, Wireframe } from './renderable';
+import { Buffer, Renderable, Solid, Type, Wireframe, GridRenderable, RenderableList, NULL_RENDERABLE } from './renderable';
+import { walllen } from '../boardutils';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -89,9 +90,16 @@ class WallSolid implements Renderable {
 
 class SpriteSolid extends Solid { }
 
-class SectorWireframe {
-  public ceiling: Wireframe = new Wireframe();
-  public floor: Wireframe = new Wireframe();
+class SectorHelper implements Renderable {
+  constructor(
+    public ceiling: Renderable = NULL_RENDERABLE,
+    public floor: Renderable = NULL_RENDERABLE
+  ) { }
+
+  draw(gl: WebGLRenderingContext, state: State) {
+    this.ceiling.draw(gl, state);
+    this.floor.draw(gl, state);
+  }
 
   reset() {
     this.ceiling.reset();
@@ -99,10 +107,18 @@ class SectorWireframe {
   }
 }
 
-class WallWireframe {
-  public top: Wireframe = new Wireframe();
-  public mid: Wireframe = new Wireframe();
-  public bot: Wireframe = new Wireframe();
+class WallHelper implements Renderable {
+  constructor(
+    public top: Renderable = NULL_RENDERABLE,
+    public mid: Renderable = NULL_RENDERABLE,
+    public bot: Renderable = NULL_RENDERABLE
+  ) { }
+
+  draw(gl: WebGLRenderingContext, state: State) {
+    this.top.draw(gl, state);
+    this.mid.draw(gl, state);
+    this.bot.draw(gl, state);
+  }
 
   reset() {
     this.top.reset();
@@ -118,12 +134,12 @@ export class Cache {
   public wallCeilPoints = new CacheMap(updateWallPointCeiling);
   public wallFloorPoints = new CacheMap(updateWallPointFloor);
   public wallLines = new CacheMap(updateWallLine);
-  public sectorsWireframe = new CacheMap(updateSectorWireframe);
+  public sectorsWireframe = new CacheMap(buildSectorWireframe);
   public wallsWireframe = new CacheMap(updateWallWireframe);
   public spritesWireframe = new CacheMap(updateSpriteWireframe);
   public spritesAngWireframe = new CacheMap(updateSpriteAngle);
-  public sectorCeilingHinge = new CacheMap(updateCeilingHinge);
-  public sectorFloorHinge = new CacheMap(updateFloorHinge);
+  public sectorCeilingHinge = new CacheMap(buildCeilingHinge);
+  public sectorFloorHinge = new CacheMap(buildFloorHinge);
 
   public invalidateSector(id: number) {
     this.sectors.invalidate(id);
@@ -180,8 +196,173 @@ export class Cache {
   }
 }
 
-function updateWallLine(ctx: BuildContext, wallId: number, line: Wireframe): Wireframe {
-  if (line == null) line = new Wireframe();
+export class CachedBuildRenderableProvider implements BuildRenderableProvider {
+  private sectors = new CacheMap(updateSector);
+  private walls = new CacheMap(updateWall);
+  private sprites = new CacheMap(updateSprite);
+
+  constructor(readonly ctx: BuildContext) { }
+
+  sector(id: number): SectorRenderable {
+    return this.sectors.get(id, this.ctx);
+  }
+
+  wall(id: number): WallRenderable {
+    return this.walls.get(id, this.ctx);
+  }
+
+  wallPoint(id: number): Renderable {
+    throw new Error('Cant render points');
+  }
+
+  sprite(id: number): Renderable {
+    return this.sprites.get(id, this.ctx);
+  }
+}
+
+
+let tmp = GLM.vec4.create();
+let texMat = GLM.mat4.create();
+function genGridMatrix(board: Board, id: number, type: SubType): GLM.Mat4Array {
+  GLM.mat4.identity(texMat);
+  if (isSector(type)) {
+    GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
+    GLM.mat4.scale(texMat, texMat, tmp);
+    GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
+  } else if (isWall(type)) {
+    let wall1 = board.walls[id];
+    let wall2 = board.walls[wall1.point2];
+    let dx = wall2.x - wall1.x;
+    let dy = wall2.y - wall1.y;
+    let d = 128 / (walllen(board, id) / wall1.xrepeat);
+    GLM.vec4.set(tmp, d / 512, 1 / 512, 1, 1);
+    GLM.mat4.scale(texMat, texMat, tmp);
+    GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
+    GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
+    GLM.mat4.translate(texMat, texMat, tmp);
+  }
+  return texMat;
+}
+
+
+export class CachedHelperBuildRenderableProvider implements BuildRenderableProvider {
+  private sectors: CacheMap<SectorHelper>;
+  private walls: CacheMap<WallHelper>;
+  private sprites: CacheMap<Renderable>;
+  private wallPoints: CacheMap<Renderable>;
+
+  private wallCeilPoints = new CacheMap(updateWallPointCeiling);
+  private wallFloorPoints = new CacheMap(updateWallPointFloor);
+
+  constructor(readonly cache: CachedBuildRenderableProvider, readonly ctx: BuildContext) {
+    this.sectors = new CacheMap((ctx: BuildContext, id: number, value: SectorHelper) => { return this.updateSectorHelper(id, value) });
+    this.walls = new CacheMap((ctx: BuildContext, id: number, value: WallHelper) => { return this.updateWallHelper(id, value) });
+    this.sprites = new CacheMap((ctx: BuildContext, id: number, value: Renderable) => { return this.updateSpriteHelper(id, value) });
+    this.wallPoints = new CacheMap((ctx: BuildContext, id: number, value: Renderable) => { return this.updateWallPoint(id, value) });
+  }
+
+  sector(id: number): SectorRenderable {
+    return this.sectors.get(id, this.ctx);
+  }
+
+  wall(id: number): WallRenderable {
+    return this.walls.get(id, this.ctx);
+  }
+
+  wallPoint(id: number): Renderable {
+    return this.wallPoints.get(id, this.ctx);
+  }
+
+  sprite(id: number): Renderable {
+    return this.sprites.get(id, this.ctx);
+  }
+
+  private updateSectorHelper(secId: number, renderable: SectorHelper): SectorHelper {
+    if (renderable == null) renderable = new SectorHelper();
+    let ceiling = new Array<Renderable>();
+    let floor = new Array<Renderable>();
+
+    let sectorRenderable = this.cache.sector(secId);
+    let ceilingGrid = new GridRenderable();
+    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, SubType.CEILING));
+    ceilingGrid.gridTexMat = gridMatrix;
+    ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
+    ceiling.push(ceilingGrid);
+    let floorGrid = new GridRenderable();
+    floorGrid.gridTexMat = gridMatrix;
+    floorGrid.solid = <Solid>sectorRenderable.floor;
+    floor.push(floorGrid);
+
+    let sectorWireframe = buildSectorWireframe(this.ctx, secId);
+    ceiling.push(sectorWireframe.ceiling);
+    floor.push(sectorWireframe.floor);
+
+    let sec = this.ctx.board.sectors[secId];
+    let end = sec.wallptr + sec.wallnum;
+    for (let w = sec.wallptr; w < end; w++) {
+      ceiling.push(this.wallCeilPoints.get(w, this.ctx));
+      floor.push(this.wallFloorPoints.get(w, this.ctx));
+    }
+    ceiling.push(buildCeilingHinge(this.ctx, secId));
+    floor.push(buildFloorHinge(this.ctx, secId));
+    renderable.reset();
+    renderable.ceiling = new RenderableList(ceiling);
+    renderable.floor = new RenderableList(floor);
+    return renderable;
+  }
+
+  private updateWallHelper(wallId: number, renderable: WallHelper): WallHelper {
+    if (renderable == null) renderable = new WallHelper();
+    let top = new Array<Renderable>();
+    let mid = new Array<Renderable>();
+    let bot = new Array<Renderable>();
+
+    let wall = this.ctx.board.walls[wallId];
+    let wallWireframe = updateWallWireframe(this.ctx, wallId);
+    let wallRenderable = this.cache.wall(wallId);
+    if (wall.nextsector == -1) {
+      let w2 = wall.point2;
+      mid.push(this.wallCeilPoints.get(wallId, this.ctx));
+      mid.push(this.wallFloorPoints.get(wallId, this.ctx));
+      mid.push(this.wallCeilPoints.get(w2, this.ctx));
+      mid.push(this.wallFloorPoints.get(w2, this.ctx));
+      mid.push(wallWireframe.mid);
+      let gridMatrix = genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL);
+      let wallGrid = new GridRenderable();
+      wallGrid.gridTexMat = gridMatrix;
+      wallGrid.solid = <Solid>wallRenderable.mid;
+      mid.push(wallGrid);
+    } else {
+
+    }
+
+    renderable.reset();
+    renderable.top = top.length == 0 ? NULL_RENDERABLE : new RenderableList(top);
+    renderable.mid = mid.length == 0 ? NULL_RENDERABLE : new RenderableList(mid);
+    renderable.bot = bot.length == 0 ? NULL_RENDERABLE : new RenderableList(bot);
+    return renderable;
+  }
+
+  private updateSpriteHelper(sprId: number, renderable: Renderable): Renderable {
+    let list = new Array<Renderable>();
+    list.push(updateSpriteWireframe(this.ctx, sprId));
+    list.push(updateSpriteAngle(this.ctx, sprId));
+    if (renderable != null) renderable.reset();
+    return new RenderableList(list);
+  }
+
+  private updateWallPoint(wallId: number, renderable: Renderable): Renderable {
+    let list = new Array<Renderable>();
+    list.push(this.wallCeilPoints.get(wallId, this.ctx));
+    list.push(this.wallFloorPoints.get(wallId, this.ctx));
+    list.push(updateWallLine(this.ctx, wallId));
+    if (renderable != null) renderable.reset();
+    return new RenderableList(list);
+  }
+}
+
+function updateWallLine(ctx: BuildContext, wallId: number): Wireframe {
+  let line = new Wireframe();
   let board = ctx.board;
   let buff = line.buff;
   buff.allocate(2, 2);
@@ -196,11 +377,11 @@ function updateWallLine(ctx: BuildContext, wallId: number, line: Wireframe): Wir
   return line;
 }
 
-function updateCeilingHinge(ctx: BuildContext, sectorId: number, hinge: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, true, hinge) }
-function updateFloorHinge(ctx: BuildContext, sectorId: number, hinge: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, false, hinge) }
+function buildCeilingHinge(ctx: BuildContext, sectorId: number): Wireframe { return prepareHinge(ctx, sectorId, true) }
+function buildFloorHinge(ctx: BuildContext, sectorId: number): Wireframe { return prepareHinge(ctx, sectorId, false) }
 
-function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, hinge: Wireframe): Wireframe {
-  if (hinge == null) hinge = new Wireframe();
+function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean): Wireframe {
+  let hinge = new Wireframe();
   let board = ctx.board;
   hinge.mode = WebGLRenderingContext.TRIANGLES;
   GLM.vec4.set(hinge.color, 0.7, 0.7, 0.7, 0.7);
@@ -235,8 +416,8 @@ function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, hin
   return hinge;
 }
 
-function updateSpriteAngle(ctx: BuildContext, spriteId: number, arrow: Wireframe): Wireframe {
-  if (arrow == null) arrow = new Wireframe();
+function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wireframe {
+  let arrow = new Wireframe();
   arrow.mode = WebGLRenderingContext.TRIANGLES;
   let buff = arrow.buff;
   buff.allocate(3, 6);
@@ -308,13 +489,14 @@ function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, b
   }
 }
 
-function updateSectorWireframe(ctx: BuildContext, secId: number, wireframe: SectorWireframe): SectorWireframe {
-  if (wireframe == null) wireframe = new SectorWireframe();
+function buildSectorWireframe(ctx: BuildContext, secId: number): SectorHelper {
   let board = ctx.board;
+  let ceiling = new Wireframe();
+  let floor = new Wireframe();
   let sec = board.sectors[secId];
-  fillBuffersForSectorWireframe(sec, sec.ceilingheinum, sec.ceilingz, board, wireframe.ceiling.buff);
-  fillBuffersForSectorWireframe(sec, sec.floorheinum, sec.floorz, board, wireframe.floor.buff);
-  return wireframe;
+  fillBuffersForSectorWireframe(sec, sec.ceilingheinum, sec.ceilingz, board, ceiling.buff);
+  fillBuffersForSectorWireframe(sec, sec.floorheinum, sec.floorz, board, floor.buff);
+  return new SectorHelper(ceiling, floor);
 }
 
 function genQuadWireframe(coords: number[], normals: number[], buff: Buffer) {
@@ -336,8 +518,10 @@ function genQuadWireframe(coords: number[], normals: number[], buff: Buffer) {
   buff.writeLine(6, 3, 0);
 }
 
-function updateWallWireframe(ctx: BuildContext, wallId: number, wireframe: WallWireframe): WallWireframe {
-  if (wireframe == null) wireframe = new WallWireframe();
+function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelper {
+  let top = NULL_RENDERABLE;
+  let mid = NULL_RENDERABLE;
+  let bot = NULL_RENDERABLE;
   let board = ctx.board;
   let wall = board.walls[wallId];
   let sector = board.sectors[U.sectorOfWall(board, wallId)];
@@ -352,7 +536,8 @@ function updateWallWireframe(ctx: BuildContext, wallId: number, wireframe: WallW
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     let coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
-    genQuadWireframe(coords, null, wireframe.mid.buff);
+    mid = new Wireframe();
+    genQuadWireframe(coords, null, (<Wireframe>mid).buff);
   } else {
     let nextsector = board.sectors[wall.nextsector];
     let nextslope = U.createSlopeCalculator(nextsector, board.walls);
@@ -362,23 +547,26 @@ function updateWallWireframe(ctx: BuildContext, wallId: number, wireframe: WallW
     let nextfloorheinum = nextsector.floorheinum;
     let botcoords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
     if (botcoords != null) {
-      genQuadWireframe(botcoords, null, wireframe.bot.buff);
+      bot = new Wireframe();
+      genQuadWireframe(botcoords, null, (<Wireframe>bot).buff);
     }
 
     let nextceilingheinum = nextsector.ceilingheinum;
     let topcoords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
     if (topcoords != null) {
-      genQuadWireframe(topcoords, null, wireframe.top.buff);
+      bot = new Wireframe();
+      genQuadWireframe(topcoords, null, (<Wireframe>bot).buff);
     }
 
     if (wall.cstat.masking) {
       let coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope,
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
         floorheinum, nextfloorheinum, floorz, nextfloorz);
-      genQuadWireframe(coords, null, wireframe.mid.buff);
+      mid = new Wireframe();
+      genQuadWireframe(coords, null, (<Wireframe>mid).buff);
     }
   }
-  return wireframe;
+  return new WallHelper(top, mid, bot);
 }
 
 function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, renderable: Wireframe) {
@@ -420,12 +608,12 @@ function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: 
 }
 
 
-function updateSpriteWireframe(ctx: BuildContext, sprId: number, wireframe: Wireframe): Wireframe {
-  if (wireframe == null) wireframe = new Wireframe();
+function updateSpriteWireframe(ctx: BuildContext, sprId: number): Renderable {
   let spr = ctx.board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible)
-    return wireframe;
+    return NULL_RENDERABLE;
 
+  let wireframe = new Wireframe();
   let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
   let info = ctx.art.getInfo(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;

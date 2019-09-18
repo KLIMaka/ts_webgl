@@ -59,6 +59,12 @@ export enum Type {
 
 export interface Renderable {
   draw(gl: WebGLRenderingContext, state: State): void;
+  reset(): void;
+}
+
+export const NULL_RENDERABLE: Renderable = {
+  draw: (gl: WebGLRenderingContext, state: State) => { },
+  reset: () => { }
 }
 
 export class RenderableList implements Renderable {
@@ -69,6 +75,12 @@ export class RenderableList implements Renderable {
   draw(gl: WebGLRenderingContext, state: State): void {
     for (let i = 0; i < this.renderables.length; i++) {
       this.renderables[i].draw(gl, state);
+    }
+  }
+
+  reset() {
+    for (let i = 0; i < this.renderables.length; i++) {
+      this.renderables[i].reset();
     }
   }
 }
@@ -113,7 +125,7 @@ export class Solid implements Renderable {
   }
 }
 
-class Grid implements Renderable {
+export class GridRenderable implements Renderable {
   public solid: Solid;
   public gridTexMat: GLM.Mat4Array;
 
@@ -134,13 +146,10 @@ class Grid implements Renderable {
   public renderable(): boolean {
     return this.solid.buff.get() != null;
   }
-}
 
-let grid = new Grid();
-export function wrapInGrid(solid: Solid, texMat: GLM.Mat4Array) {
-  grid.solid = solid;
-  grid.gridTexMat = texMat;
-  return grid;
+  reset() {
+    this.solid.reset();
+  }
 }
 
 export class Wireframe implements Renderable {

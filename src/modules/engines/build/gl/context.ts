@@ -1,14 +1,14 @@
-import * as GLM from '../../../../libs_js/glmatrix';
-import * as BGL from './buildgl';
-import { Board } from '../structs';
-import { Solid, wrapInGrid } from './renderable';
-import { walllen } from '../boardutils';
-import { Cache } from './cache';
-import { PvsBoardVisitorResult } from '../boardvisitor';
-import { Deck } from '../../../deck';
-import { isSector, SubType, isWall, isSprite } from '../hitscan';
-import { BuildContext, ArtProvider } from '../edit/editapi';
 import { cyclic } from '../../../../libs/mathutils';
+import * as GLM from '../../../../libs_js/glmatrix';
+import { Deck } from '../../../deck';
+import { walllen } from '../boardutils';
+import { PvsBoardVisitorResult } from '../boardvisitor';
+import { ArtProvider, BuildContext } from '../edit/editapi';
+import { isSector, isSprite, isWall, SubType } from '../hitscan';
+import { Board } from '../structs';
+import * as BGL from './buildgl';
+import { Cache } from './cache';
+import { Solid } from './renderable';
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
