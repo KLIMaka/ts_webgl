@@ -15,11 +15,7 @@ class Entry<T> {
   update(value: T) { this.value = value; this.valid = true; }
 }
 
-interface Resetable {
-  reset(): void;
-}
-
-class CacheMap<T extends Resetable> {
+class CacheMap<T extends Renderable> {
   constructor(
     readonly update: (ctx: BuildContext, id: number, value: T) => T
   ) { }

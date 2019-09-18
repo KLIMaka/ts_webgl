@@ -72,13 +72,13 @@ export class RenderableList implements Renderable {
     private renderables: Array<Renderable>
   ) { }
 
-  draw(gl: WebGLRenderingContext, state: State): void {
+  public draw(gl: WebGLRenderingContext, state: State): void {
     for (let i = 0; i < this.renderables.length; i++) {
       this.renderables[i].draw(gl, state);
     }
   }
 
-  reset() {
+  public reset() {
     for (let i = 0; i < this.renderables.length; i++) {
       this.renderables[i].reset();
     }
@@ -147,7 +147,7 @@ export class GridRenderable implements Renderable {
     return this.solid.buff.get() != null;
   }
 
-  reset() {
+  public reset() {
   }
 }
 

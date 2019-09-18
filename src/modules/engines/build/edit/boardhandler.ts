@@ -9,7 +9,6 @@ import { Message, MessageHandlerList } from '../messages';
 import * as U from '../utils';
 import * as EDIT from "./edit";
 import { snap } from './editutils';
-import { BuildRenderableProvider } from './editapi';
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
