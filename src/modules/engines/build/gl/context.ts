@@ -2,13 +2,12 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import * as BGL from './buildgl';
 import { Board } from '../structs';
 import { Solid, wrapInGrid } from './renderable';
-import { ArtProvider } from './cache';
 import { walllen } from '../boardutils';
 import { Cache } from './cache';
 import { PvsBoardVisitorResult } from '../boardvisitor';
 import { Deck } from '../../../deck';
 import { isSector, SubType, isWall, isSprite } from '../hitscan';
-import { BuildContext } from '../edit/editapi';
+import { BuildContext, ArtProvider } from '../edit/editapi';
 import { cyclic } from '../../../../libs/mathutils';
 
 let tmp = GLM.vec4.create();

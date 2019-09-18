@@ -1,8 +1,14 @@
-import { ArtProvider } from "../gl/cache";
+import { Texture } from "../../../drawstruct";
+import { ArtInfoProvider } from "../art";
+import { SubType } from "../hitscan";
+import { Context, Message } from "../messages";
 import { Board } from "../structs";
 import { MovingHandle } from "./handle";
-import { Message, Context } from "../messages";
-import { SubType } from "../hitscan";
+
+export interface ArtProvider extends ArtInfoProvider {
+  get(picnum: number): Texture;
+  getParallaxTexture(picnum: number): Texture
+}
 
 export interface BuildContext extends Context {
   art: ArtProvider;

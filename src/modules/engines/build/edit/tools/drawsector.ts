@@ -117,7 +117,7 @@ export class DrawSector {
   private valid = false;
   private contour = new Contour();
 
-  public update(board: Board, hit: Hitscan, context: Context) {
+  public update(board: Board, hit: Hitscan, context: BuildContext) {
     if (this.points.length() > 0) {
       let z = this.contour.getZ();
       let res = this.getIntersectionZPlane(hit);

@@ -10,6 +10,7 @@ import * as ART from './modules/engines/build/art';
 import * as bloodloader from './modules/engines/build/bloodloader';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import * as HANDLER from './modules/engines/build/edit/boardhandler';
 import * as RFF from './modules/engines/build/rff';
 import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
@@ -22,6 +23,8 @@ import { createNewSector, createInnerLoop } from './modules/engines/build/boardu
 import { Deck } from './modules/deck';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { Selector } from './modules/engines/build/artselector';
+import { Context } from './modules/engines/build/gl/context';
+import { Cache } from './modules/engines/build/gl/cache';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -281,7 +284,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let control = new controller.Controller3D();
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  control.setFov(75);
+  control.setFov(90);
   let ms = createMoveStruct(board, control);
 
   let rorLinks = loadRorLinks(board);
@@ -290,16 +293,25 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     rorLinks() { return rorLinks }
   }
 
-  RENDERER.init(gl, art, impl, board, (cb) => artSelector.modal(cb), () => {
+  let context = new Context();
+  context.art = art;
+  context.gl = gl;
+  context.board = board;
+  context.cache = new Cache();
+
+  HANDLER.init(context, (cb) => artSelector.modal(cb));
+  RENDERER.init(context, art, impl, () => {
 
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
 
       let pos = control.getCamera().getPosition();
-      ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1]) * -16);
+      ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1]) * BU.ZSCALE);
+      if (!BU.inSector(board, ms.x, ms.y, ms.sec)) ms.sec = BU.findSector(board, ms.x, ms.y, ms.sec);
       control.getCamera().setPosition([ms.x, ms.z / -16, ms.y]);
 
       PROFILE.start();
-      RENDERER.draw(gl, board, ms, control, time);
+      RENDERER.draw(ms, control);
+      HANDLER.handle(ms, control, time);
       PROFILE.endProfile()
 
       updateUi(props, ms, control);

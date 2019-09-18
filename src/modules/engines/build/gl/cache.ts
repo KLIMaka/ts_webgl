@@ -1,9 +1,8 @@
 import * as MU from '../../../../libs/mathutils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
-import { Texture } from '../../../drawstruct';
 import { State } from '../../../stategl';
-import { ArtInfo, ArtInfoProvider } from '../art';
+import { ArtInfo } from '../art';
 import { BuildContext } from '../edit/editapi';
 import { SubType } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
@@ -53,33 +52,6 @@ class CacheMap<T extends Resetable> {
       this.invalidate(<any>id);
     }
   }
-}
-
-class EnsureArray<T> {
-  private array: Array<T> = [];
-  constructor(private factory: () => T) { }
-
-  public get(id: number): T {
-    let ent = this.array[id];
-    if (ent == undefined) {
-      ent = this.factory();
-      this.array[id] = ent;
-    }
-    return ent;
-  }
-
-  public map(f: (arg: T) => void) {
-    this.array.map(f);
-  }
-}
-
-function createArray<T>(factory: () => T): EnsureArray<T> {
-  return new EnsureArray<T>(factory);
-}
-
-export interface ArtProvider extends ArtInfoProvider {
-  get(picnum: number): Texture;
-  getParallaxTexture(picnum: number): Texture
 }
 
 class SectorSolid implements Renderable {

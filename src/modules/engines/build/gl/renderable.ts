@@ -2,6 +2,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
 import { State } from '../../../stategl';
+import * as PROFILE from '../../../profiler';
 import * as BUFF from './buffers';
 
 export class Buffer {
@@ -84,8 +85,8 @@ export class Solid implements Renderable {
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    let ptr = this.buff.get();
     if (!this.renderable()) return;
+    let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
@@ -97,6 +98,7 @@ export class Solid implements Renderable {
     state.setUniform('shade', this.shade);
     state.setDrawElements(this.buff.get());
     state.draw(gl);
+    PROFILE.get(null).inc('draws');
   }
 
   public reset() {
@@ -116,8 +118,8 @@ class Grid implements Renderable {
   public gridTexMat: GLM.Mat4Array;
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    let ptr = this.solid.buff.get();
     if (!this.renderable()) return;
+    let ptr = this.solid.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
@@ -126,6 +128,7 @@ class Grid implements Renderable {
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
     state.draw(gl);
+    PROFILE.get(null).inc('draws');
   }
 
   public renderable(): boolean {
@@ -147,8 +150,8 @@ export class Wireframe implements Renderable {
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
   public draw(gl: WebGLRenderingContext, state: State) {
-    let ptr = this.buff.get();
     if (!this.renderable()) return;
+    let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
     state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
@@ -157,6 +160,7 @@ export class Wireframe implements Renderable {
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
     state.draw(gl, this.mode);
+    PROFILE.get(null).inc('draws');
   }
 
   public reset() {

@@ -67,7 +67,6 @@ export function setClipPlane(x: number, y: number, z: number, w: number) {
 
 export function draw(gl: WebGLRenderingContext, renderable: Renderable) {
   if (renderable == null) return;
-  PROFILE.get(null).inc('draws');
   renderable.draw(gl, state);
 }
 
