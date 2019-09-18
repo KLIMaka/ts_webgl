@@ -3,8 +3,8 @@ import { isSector, SubType } from "../hitscan";
 import { MessageHandlerIml } from "../messages";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
 import { BuildContext, Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./editapi";
-import { invalidateSectorAndWalls } from "./editutils";
 import { cyclic } from "../../../../libs/mathutils";
+import { invalidateSectorAndWalls } from "./editutils";
 
 export class SectorEnt extends MessageHandlerIml {
 
@@ -49,7 +49,8 @@ export class SectorEnt extends MessageHandlerIml {
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    ctx.highlight(this.sectorId, this.type);
+    let r = ctx.helpers.sector(this.sectorId)
+    msg.list.push(this.type == SubType.CEILING ? r.ceiling : r.floor);
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {

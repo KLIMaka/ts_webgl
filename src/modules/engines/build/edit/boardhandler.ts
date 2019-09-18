@@ -9,6 +9,7 @@ import { Message, MessageHandlerList } from '../messages';
 import * as U from '../utils';
 import * as EDIT from "./edit";
 import { snap } from './editutils';
+import { BuildRenderableProvider } from './editapi';
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -136,7 +137,9 @@ function select() {
 function drawHelpers() {
   context.gl.disable(WebGLRenderingContext.DEPTH_TEST);
   context.gl.enable(WebGLRenderingContext.BLEND);
+  EDIT.HIGHLIGHT.list.clear();
   sendToSelected(EDIT.HIGHLIGHT);
+  BGL.drawAll(context.gl, EDIT.HIGHLIGHT.list);
   BGL.draw(context.gl, EDIT.DRAW_SECTOR.getRenderable());
   context.gl.disable(WebGLRenderingContext.BLEND);
   context.gl.enable(WebGLRenderingContext.DEPTH_TEST);

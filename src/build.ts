@@ -1,16 +1,20 @@
 import * as browser from './libs/browser';
 import * as CFG from './libs/config';
-import * as data from './libs/stream';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as MU from './libs/mathutils';
+import * as data from './libs/stream';
 import * as controller from './modules/controller3d';
+import { Deck } from './modules/deck';
 import * as DS from './modules/drawstruct';
 import * as ART from './modules/engines/build/art';
-import * as bloodloader from './modules/engines/build/bloodloader';
+import { Selector } from './modules/engines/build/artselector';
+import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
-import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import { createNewSector } from './modules/engines/build/boardutils';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
+import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import { Context } from './modules/engines/build/gl/context';
 import * as RFF from './modules/engines/build/rff';
 import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
@@ -19,12 +23,7 @@ import * as INPUT from './modules/input';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import { createNewSector, createInnerLoop } from './modules/engines/build/boardutils';
-import { Deck } from './modules/deck';
-import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
-import { Selector } from './modules/engines/build/artselector';
-import { Context } from './modules/engines/build/gl/context';
-import { Cache } from './modules/engines/build/gl/cache';
+import { loadBloodMap } from './modules/engines/build/bloodloader';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -238,6 +237,7 @@ function createBoard() {
   sprite.picnum = 0;
   sprite.lotag = 1;
   sprite.sectnum = 0;
+  sprite.cstat = new BS.SpriteStats();
   board.sprites.push(sprite);
   return board;
 }
@@ -278,8 +278,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  let board = createBoard();
-  // let board = bloodloader.loadBloodMap(stream);
+  // let board = createBoard();
+  let board = loadBloodMap(stream);
   console.log(board);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let control = new controller.Controller3D();
@@ -293,11 +293,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     rorLinks() { return rorLinks }
   }
 
-  let context = new Context();
-  context.art = art;
-  context.gl = gl;
-  context.board = board;
-  context.cache = new Cache();
+
+  let context = new Context(art, board, gl);
 
   HANDLER.init(context, (cb) => artSelector.modal(cb));
   RENDERER.init(context, art, impl, () => {
@@ -319,7 +316,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       INPUT.postFrame();
     });
 
-    gl.canvas.oncontextmenu = () => false;
+    (<HTMLCanvasElement>gl.canvas).oncontextmenu = () => false;
   });
 
 }

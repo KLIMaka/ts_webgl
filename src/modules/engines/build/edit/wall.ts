@@ -69,14 +69,14 @@ export class WallEnt extends MessageHandlerIml {
       for (let i = 0; i < cwalls.length(); i++) {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
-        ctx.highlightWall(w);
-        ctx.highlightWallSegment(w);
         let p = prevwall(ctx.board, w);
-        ctx.highlightWallSegment(p);
-        ctx.highlightSector(s);
+        msg.list.push(ctx.helpers.wall(w));
+        msg.list.push(ctx.helpers.wallPoint(w));
+        msg.list.push(ctx.helpers.wall(p));
+        msg.list.push(ctx.helpers.sector(s));
       }
     } else {
-      ctx.highlightWall(this.wallId);
+      msg.list.push(ctx.helpers.wallPoint(this.wallId));
     }
   }
 

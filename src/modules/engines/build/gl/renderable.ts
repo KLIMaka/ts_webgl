@@ -148,7 +148,6 @@ export class GridRenderable implements Renderable {
   }
 
   reset() {
-    this.solid.reset();
   }
 }
 

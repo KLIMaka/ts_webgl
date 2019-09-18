@@ -127,75 +127,6 @@ class WallHelper implements Renderable {
   }
 }
 
-export class Cache {
-  public sectors = new CacheMap(updateSector);
-  public walls = new CacheMap(updateWall);
-  public sprites = new CacheMap(updateSprite);
-  public wallCeilPoints = new CacheMap(updateWallPointCeiling);
-  public wallFloorPoints = new CacheMap(updateWallPointFloor);
-  public wallLines = new CacheMap(updateWallLine);
-  public sectorsWireframe = new CacheMap(buildSectorWireframe);
-  public wallsWireframe = new CacheMap(updateWallWireframe);
-  public spritesWireframe = new CacheMap(updateSpriteWireframe);
-  public spritesAngWireframe = new CacheMap(updateSpriteAngle);
-  public sectorCeilingHinge = new CacheMap(buildCeilingHinge);
-  public sectorFloorHinge = new CacheMap(buildFloorHinge);
-
-  public invalidateSector(id: number) {
-    this.sectors.invalidate(id);
-    this.sectorsWireframe.invalidate(id);
-    this.sectorCeilingHinge.invalidate(id);
-    this.sectorFloorHinge.invalidate(id);
-  }
-
-  public invalidateWall(id: number) {
-    this.walls.invalidate(id);
-    this.wallsWireframe.invalidate(id);
-    this.wallLines.invalidate(id);
-    this.wallCeilPoints.invalidate(id);
-    this.wallFloorPoints.invalidate(id);
-  }
-
-  public invalidateSprite(id: number) {
-    this.sprites.invalidate(id);
-    this.spritesWireframe.invalidate(id);
-    this.spritesAngWireframe.invalidate(id);
-  }
-
-  public invalidateAll() {
-    this.sectors.invalidateAll();
-    this.sectorsWireframe.invalidateAll();
-    this.sectorCeilingHinge.invalidateAll();
-    this.sectorFloorHinge.invalidateAll();
-    this.walls.invalidateAll();
-    this.wallsWireframe.invalidateAll();
-    this.wallLines.invalidateAll();
-    this.wallCeilPoints.invalidateAll();
-    this.wallFloorPoints.invalidateAll();
-    this.sprites.invalidateAll();
-    this.spritesWireframe.invalidateAll();
-    this.spritesAngWireframe.invalidateAll();
-  }
-
-  public getByIdType(ctx: BuildContext, id: number, type: SubType, wireframe: boolean = false): Renderable {
-    switch (type) {
-      case SubType.CEILING:
-        return wireframe ? this.sectorsWireframe.get(id, ctx).ceiling : this.sectors.get(id, ctx).ceiling;
-      case SubType.FLOOR:
-        return wireframe ? this.sectorsWireframe.get(id, ctx).floor : this.sectors.get(id, ctx).floor;
-      case SubType.LOWER_WALL:
-        return wireframe ? this.wallsWireframe.get(id, ctx).bot : this.walls.get(id, ctx).bot;
-      case SubType.MID_WALL:
-        return wireframe ? this.wallsWireframe.get(id, ctx).mid : this.walls.get(id, ctx).mid;
-      case SubType.UPPER_WALL:
-        return wireframe ? this.wallsWireframe.get(id, ctx).top : this.walls.get(id, ctx).top;
-      case SubType.SPRITE:
-        return wireframe ? this.spritesWireframe.get(id, ctx) : this.sprites.get(id, ctx);
-    }
-    return null;
-  }
-}
-
 export class CachedBuildRenderableProvider implements BuildRenderableProvider {
   private sectors = new CacheMap(updateSector);
   private walls = new CacheMap(updateWall);
@@ -218,30 +149,24 @@ export class CachedBuildRenderableProvider implements BuildRenderableProvider {
   sprite(id: number): Renderable {
     return this.sprites.get(id, this.ctx);
   }
-}
 
-
-let tmp = GLM.vec4.create();
-let texMat = GLM.mat4.create();
-function genGridMatrix(board: Board, id: number, type: SubType): GLM.Mat4Array {
-  GLM.mat4.identity(texMat);
-  if (isSector(type)) {
-    GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
-    GLM.mat4.scale(texMat, texMat, tmp);
-    GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
-  } else if (isWall(type)) {
-    let wall1 = board.walls[id];
-    let wall2 = board.walls[wall1.point2];
-    let dx = wall2.x - wall1.x;
-    let dy = wall2.y - wall1.y;
-    let d = 128 / (walllen(board, id) / wall1.xrepeat);
-    GLM.vec4.set(tmp, d / 512, 1 / 512, 1, 1);
-    GLM.mat4.scale(texMat, texMat, tmp);
-    GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
-    GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
-    GLM.mat4.translate(texMat, texMat, tmp);
+  invalidateSector(id: number) {
+    this.sectors.invalidate(id);
   }
-  return texMat;
+
+  invalidateWall(id: number) {
+    this.walls.invalidate(id);
+  }
+
+  invalidateSprite(id: number) {
+    this.sprites.invalidate(id);
+  }
+
+  invalidateAll() {
+    this.sectors.invalidateAll();
+    this.walls.invalidateAll();
+    this.sprites.invalidateAll();
+  }
 }
 
 
@@ -275,6 +200,30 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
 
   sprite(id: number): Renderable {
     return this.sprites.get(id, this.ctx);
+  }
+
+  invalidateSector(id: number) {
+    this.sectors.invalidate(id);
+  }
+
+  invalidateWall(id: number) {
+    this.walls.invalidate(id);
+    this.wallPoints.invalidate(id);
+    this.wallCeilPoints.invalidate(id);
+    this.wallFloorPoints.invalidate(id);
+  }
+
+  invalidateSprite(id: number) {
+    this.sprites.invalidate(id);
+  }
+
+  invalidateAll() {
+    this.sectors.invalidateAll();
+    this.walls.invalidateAll();
+    this.sprites.invalidateAll();
+    this.wallPoints.invalidateAll();
+    this.wallCeilPoints.invalidateAll();
+    this.wallFloorPoints.invalidateAll();
   }
 
   private updateSectorHelper(secId: number, renderable: SectorHelper): SectorHelper {
@@ -327,7 +276,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
       mid.push(this.wallCeilPoints.get(w2, this.ctx));
       mid.push(this.wallFloorPoints.get(w2, this.ctx));
       mid.push(wallWireframe.mid);
-      let gridMatrix = genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL);
+      let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL));
       let wallGrid = new GridRenderable();
       wallGrid.gridTexMat = gridMatrix;
       wallGrid.solid = <Solid>wallRenderable.mid;
@@ -359,6 +308,29 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     if (renderable != null) renderable.reset();
     return new RenderableList(list);
   }
+}
+
+let tmp = GLM.vec4.create();
+let texMat = GLM.mat4.create();
+function genGridMatrix(board: Board, id: number, type: SubType): GLM.Mat4Array {
+  GLM.mat4.identity(texMat);
+  if (isSector(type)) {
+    GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
+    GLM.mat4.scale(texMat, texMat, tmp);
+    GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
+  } else if (isWall(type)) {
+    let wall1 = board.walls[id];
+    let wall2 = board.walls[wall1.point2];
+    let dx = wall2.x - wall1.x;
+    let dy = wall2.y - wall1.y;
+    let d = 128 / (walllen(board, id) / wall1.xrepeat);
+    GLM.vec4.set(tmp, d / 512, 1 / 512, 1, 1);
+    GLM.mat4.scale(texMat, texMat, tmp);
+    GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
+    GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
+    GLM.mat4.translate(texMat, texMat, tmp);
+  }
+  return texMat;
 }
 
 function updateWallLine(ctx: BuildContext, wallId: number): Wireframe {

@@ -13,7 +13,6 @@ import { ArtProvider } from '../edit/editapi';
 import { Board } from '../structs';
 import * as U from '../utils';
 import * as BGL from './buildgl';
-import { Cache } from './cache';
 import { Context } from './context';
 import { Renderable } from './renderable';
 
@@ -54,7 +53,6 @@ let context: Context;
 
 export function init(ctx: Context, art: PalProvider, impl: Implementation, cb: () => void) {
   context = ctx;
-  context.pvs = visible;
   let gl = ctx.gl;
 
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -170,7 +168,7 @@ function drawRor(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
     let s = rorSectorCollector.sectors.get(i);
-    let r = context.cache.sectors.get(s, context);
+    let r = context.geometry.sector(i);
     drawStack(ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
     drawStack(ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
@@ -195,7 +193,7 @@ function drawMirrors(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
       continue;
 
     // draw mirror surface into stencil
-    let r = context.cache.walls.get(w, context);
+    let r = context.geometry.wall(w);
     BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
     BGL.setPosition(ctr.getCamera().getPosition());
     writeStencilOnly(i + 127);
@@ -229,12 +227,6 @@ function drawMirrors(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   writeAll();
 }
 
-function drawArray(arr: Deck<Renderable>) {
-  for (let i = 0; i < arr.length(); i++) {
-    BGL.draw(context.gl, arr.get(i));
-  }
-}
-
 let surfaces = new Deck<Renderable>();
 let surfacesTrans = new Deck<Renderable>();
 let sprites = new Deck<Renderable>();
@@ -248,32 +240,33 @@ function clearDrawLists() {
 }
 
 function sectorVisitor(board: Board, sectorId: number) {
-  let sector = context.cache.sectors.get(sectorId, context);
+  let sector = context.geometry.sector(sectorId);
   if (implementation.rorLinks().floorLinks[sectorId] == undefined)
     surfaces.push(sector.floor);
   if (implementation.rorLinks().ceilLinks[sectorId] == undefined)
     surfaces.push(sector.ceiling);
-  surfaces.push(sector);
   PROFILE.incCount('sectors');
 }
 
 function wallVisitor(board: Board, wallId: number, sectorId: number) {
   if (implementation.isMirrorPic(board.walls[wallId].picnum)) return;
-  let wall = context.cache.walls.get(wallId, context);
-  if (wall.mid.trans != 1) {
-    surfacesTrans.push(wall.mid);
-    surfaces.push(wall.bot);
-    surfaces.push(wall.top);
+  let wall = board.walls[wallId];
+  let wallr = context.geometry.wall(wallId);
+  if (wall.cstat.translucent || wall.cstat.translucentReversed) {
+    surfacesTrans.push(wallr.mid);
+    surfaces.push(wallr.bot);
+    surfaces.push(wallr.top);
   } else {
-    surfaces.push(wall);
+    surfaces.push(wallr);
   }
   PROFILE.incCount('walls');
 }
 
 function spriteVisitor(board: Board, spriteId: number) {
-  let sprite = context.cache.sprites.get(spriteId, context);
-  let trans = sprite.trans != 1;
-  (trans ? spritesTrans : sprites).push(sprite);
+  let spriter = context.geometry.sprite(spriteId);
+  let sprite = board.sprites[spriteId];
+  let trans = sprite.cstat.tranclucentReversed == 1 || sprite.cstat.translucent == 1;
+  (trans ? spritesTrans : sprites).push(spriter);
   PROFILE.incCount('sprites');
 }
 
@@ -286,17 +279,17 @@ function drawRooms(result: VIS.Result) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  drawArray(surfaces);
+  BGL.drawAll(context.gl, surfaces);
 
   context.gl.polygonOffset(-1, -8);
-  drawArray(sprites);
+  BGL.drawAll(context.gl, sprites);
   context.gl.polygonOffset(0, 0);
 
   context.gl.enable(WebGLRenderingContext.BLEND);
-  drawArray(surfacesTrans);
+  BGL.drawAll(context.gl, surfacesTrans);
 
   context.gl.polygonOffset(-1, -8);
-  drawArray(spritesTrans);
+  BGL.drawAll(context.gl, spritesTrans);
   context.gl.polygonOffset(0, 0);
   context.gl.disable(WebGLRenderingContext.BLEND);
   PROFILE.endProfile();
