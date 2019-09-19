@@ -3,7 +3,7 @@ import { isSector, SubType } from "../hitscan";
 import { MessageHandlerIml } from "../messages";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
 import { BuildContext, Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./editapi";
-import { cyclic } from "../../../../libs/mathutils";
+import { cyclic, tuple } from "../../../../libs/mathutils";
 import { invalidateSectorAndWalls } from "./editutils";
 
 export class SectorEnt extends MessageHandlerIml {
@@ -49,20 +49,19 @@ export class SectorEnt extends MessageHandlerIml {
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    let r = ctx.helpers.sector(this.sectorId)
-    msg.list.push(this.type == SubType.CEILING ? r.ceiling : r.floor);
+    msg.list.push(tuple(this.type == SubType.CEILING ? 0 : 1, this.sectorId));
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     if (setSectorPicnum(ctx.board, this.sectorId, this.type, msg.picnum))
-      ctx.invalidateSector(this.sectorId);
+      ctx.invalidator.invalidateSector(this.sectorId);
   }
 
   public ToggleParallax(msg: ToggleParallax, ctx: BuildContext) {
     let sector = ctx.board.sectors[this.sectorId];
     let stat = this.type == SubType.CEILING ? sector.ceilingstat : sector.floorstat;
     stat.parallaxing = stat.parallaxing == 1 ? 0 : 1;
-    ctx.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorId);
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
@@ -74,7 +73,7 @@ export class SectorEnt extends MessageHandlerIml {
     } else {
       if (this.type == SubType.CEILING) sector.ceilingshade += msg.value; else sector.floorshade += msg.value;
     }
-    ctx.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorId);
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
@@ -98,7 +97,7 @@ export class SectorEnt extends MessageHandlerIml {
         sector.floorypanning += msg.ypan;
       }
     }
-    ctx.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorId);
   }
 
   public Palette(msg: Palette, ctx: BuildContext) {
@@ -118,6 +117,6 @@ export class SectorEnt extends MessageHandlerIml {
         sector.floorpal = cyclic(sector.floorpal + msg.value, msg.max);
       }
     }
-    ctx.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorId);
   }
 }

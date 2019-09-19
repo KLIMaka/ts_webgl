@@ -1,11 +1,10 @@
+import { Deck } from "../../../deck";
 import { Texture } from "../../../drawstruct";
 import { ArtInfoProvider } from "../art";
-import { SubType } from "../hitscan";
+import { Renderable } from "../gl/renderable";
 import { Context, Message } from "../messages";
 import { Board } from "../structs";
 import { MovingHandle } from "./handle";
-import { Renderable } from "../gl/renderable";
-import { Deck } from "../../../deck";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
@@ -30,28 +29,28 @@ export interface BuildRenderableProvider {
   sprite(id: number): Renderable;
 }
 
-export interface BuildContext extends Context {
-  art: ArtProvider;
-  gl: WebGLRenderingContext;
-  board: Board;
-
-  geometry: BuildRenderableProvider;
-  helpers: BuildRenderableProvider;
-
-  snap(x: number): number;
-  snapScale(): number;
-  scaledSnap(x: number, scale: number): number;
-
+export interface BoardInvalidator {
   invalidateAll(): void;
   invalidateSector(id: number): void;
   invalidateWall(id: number): void;
   invalidateSprite(id: number): void;
 }
 
+export interface BuildContext extends Context {
+  readonly art: ArtProvider;
+  readonly board: Board;
+  readonly invalidator: BoardInvalidator;
+  readonly gl: WebGLRenderingContext;
+
+  snap(x: number): number;
+  snapScale(): number;
+  scaledSnap(x: number, scale: number): number;
+}
+
 export class StartMove implements Message { constructor(public handle: MovingHandle) { } }
 export class Move implements Message { constructor(public handle: MovingHandle) { } }
 export class EndMove implements Message { constructor(public handle: MovingHandle) { } }
-export class Highlight implements Message { constructor(public list: Deck<Renderable> = new Deck()) { } }
+export class Highlight implements Message { constructor(public list: Deck<number> = new Deck()) { } }
 export class SetPicnum implements Message { constructor(public picnum: number) { } }
 export class ToggleParallax implements Message { }
 export class Shade implements Message { constructor(public value: number, public absolute = false) { } }

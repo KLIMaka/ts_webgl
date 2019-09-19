@@ -1,7 +1,6 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { ArtProvider, BuildContext } from '../edit/editapi';
+import { ArtProvider, BuildContext, BoardInvalidator } from '../edit/editapi';
 import { Board } from '../structs';
-import { CachedBuildRenderableProvider, CachedHelperBuildRenderableProvider } from './cache';
 
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -10,20 +9,34 @@ function snapGrid(coord: number, gridSize: number): number {
 
 export class Context implements BuildContext {
   readonly art: ArtProvider;
-  readonly board: Board;
   readonly gl: WebGLRenderingContext;
-  readonly geometry: CachedBuildRenderableProvider;
-  readonly helpers: CachedHelperBuildRenderableProvider;
 
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
+  private boardInt: Board;
+  private invalidatorInt: BoardInvalidator;
 
   constructor(art: ArtProvider, board: Board, gl: WebGLRenderingContext) {
     this.art = art;
-    this.board = board;
+    this.boardInt = board;
     this.gl = gl;
-    this.geometry = new CachedBuildRenderableProvider(this);
-    this.helpers = new CachedHelperBuildRenderableProvider(this.geometry, this);
+  }
+
+  get invalidator() {
+    return this.invalidatorInt;
+  }
+
+  get board() {
+    return this.boardInt;
+  }
+
+  setBoard(board: Board) {
+    this.boardInt = board;
+    this.invalidatorInt.invalidateAll();
+  }
+
+  setBoardInvalidator(inv: BoardInvalidator) {
+    this.invalidatorInt = inv;
   }
 
   snapScale() {
@@ -46,23 +59,4 @@ export class Context implements BuildContext {
     return snapGrid(x, this.gridSizes[this.gridSizeIdx] * scale);
   }
 
-  invalidateAll(): void {
-    this.geometry.invalidateAll();
-    this.helpers.invalidateAll();
-  }
-
-  invalidateSector(id: number): void {
-    this.geometry.invalidateSector(id);
-    this.helpers.invalidateSector(id);
-  }
-
-  invalidateWall(id: number): void {
-    this.geometry.invalidateWall(id);
-    this.helpers.invalidateWall(id);
-  }
-
-  invalidateSprite(id: number): void {
-    this.geometry.invalidateSprite(id);
-    this.helpers.invalidateSprite(id);
-  }
 }

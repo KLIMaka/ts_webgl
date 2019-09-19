@@ -2,8 +2,8 @@ import * as MU from '../../../libs/mathutils';
 import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
 import { Collection, Deck, findFirst, reversed } from '../../deck';
 import { ArtInfoProvider } from './art';
-import { Board, Sector, SectorStats, Wall, WallStats, Sprite, SpriteStats, FACE } from './structs';
-import { findSector, sectorOfWall, sectorPicnum } from './utils';
+import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
+import { findSector, sectorOfWall } from './utils';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;

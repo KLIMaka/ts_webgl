@@ -89,6 +89,18 @@ export function int2vec4norm(int: number) {
   return [(int & 0xff) / 256, ((int >>> 8) & 0xff) / 256, ((int >>> 16) & 0xff) / 256, ((int >>> 24) & 0xff) / 256];
 }
 
+export function tuple(v0: number, v1: number) {
+  return (v0 & 0xffff) | (v1 << 16);
+}
+
+export function detuple0(v: number) {
+  return v & 0xffff;
+}
+
+export function detuple1(v: number) {
+  return (v >>> 16) & 0xffff;
+}
+
 export function tuple2<T1, T2>(value: [T1, T2], v0: T1, v1: T2): [T1, T2] {
   value[0] = v0;
   value[1] = v1;

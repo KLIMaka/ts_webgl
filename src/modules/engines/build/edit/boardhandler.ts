@@ -9,6 +9,10 @@ import { Message, MessageHandlerList } from '../messages';
 import * as U from '../utils';
 import * as EDIT from "./edit";
 import { snap } from './editutils';
+import { BuildRenderableProvider } from './editapi';
+import { Deck } from '../../../deck';
+import { Renderable } from '../gl/renderable';
+import { detuple0, detuple1 } from '../../../../libs/mathutils';
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -133,19 +137,33 @@ function select() {
   print(hit.id, hit.type);
 }
 
-function drawHelpers() {
+let drawlist = new Deck<Renderable>();
+function drawHelpers(r: BuildRenderableProvider) {
   context.gl.disable(WebGLRenderingContext.DEPTH_TEST);
   context.gl.enable(WebGLRenderingContext.BLEND);
   EDIT.HIGHLIGHT.list.clear();
   sendToSelected(EDIT.HIGHLIGHT);
-  BGL.drawAll(context.gl, EDIT.HIGHLIGHT.list);
+  drawlist.clear();
+  for (let i = 0; i < EDIT.HIGHLIGHT.list.length(); i++) {
+    let v = EDIT.HIGHLIGHT.list.get(i);
+    let type = detuple0(v);
+    let id = detuple1(v);
+    switch (type) {
+      case 0: drawlist.push(r.sector(id).ceiling); break;
+      case 1: drawlist.push(r.sector(id).floor); break;
+      case 2: drawlist.push(r.wall(id)); break;
+      case 3: drawlist.push(r.wallPoint(id)); break;
+      case 4: drawlist.push(r.sprite(id)); break;
+    }
+  }
+  BGL.drawAll(context.gl, drawlist);
   BGL.draw(context.gl, EDIT.DRAW_SECTOR.getRenderable());
   context.gl.disable(WebGLRenderingContext.BLEND);
   context.gl.enable(WebGLRenderingContext.DEPTH_TEST);
 }
 
-export function handle(ms: U.MoveStruct, ctr: Controller3D, dt: number) {
-  drawHelpers();
+export function handle(r: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D, dt: number) {
+  drawHelpers(r);
 
   pointerHitscan(ms, ctr);
   move(ctr);

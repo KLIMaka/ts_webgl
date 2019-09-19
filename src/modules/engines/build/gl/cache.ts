@@ -3,7 +3,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
 import { State } from '../../../stategl';
 import { ArtInfo } from '../art';
-import { BuildContext, BuildRenderableProvider, SectorRenderable, WallRenderable } from '../edit/editapi';
+import { BuildContext, BuildRenderableProvider, SectorRenderable, WallRenderable, BoardInvalidator } from '../edit/editapi';
 import { SubType, isSector, isWall } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
 import * as U from '../utils';
@@ -265,6 +265,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     let wall = this.ctx.board.walls[wallId];
     let wallWireframe = updateWallWireframe(this.ctx, wallId);
     let wallRenderable = this.cache.wall(wallId);
+    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL));
     if (wall.nextsector == -1) {
       let w2 = wall.point2;
       mid.push(this.wallCeilPoints.get(wallId, this.ctx));
@@ -272,13 +273,36 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
       mid.push(this.wallCeilPoints.get(w2, this.ctx));
       mid.push(this.wallFloorPoints.get(w2, this.ctx));
       mid.push(wallWireframe.mid);
-      let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL));
       let wallGrid = new GridRenderable();
       wallGrid.gridTexMat = gridMatrix;
       wallGrid.solid = <Solid>wallRenderable.mid;
       mid.push(wallGrid);
     } else {
-
+      let w2 = wall.point2;
+      let nw = wall.nextwall;
+      let nw2 = this.ctx.board.walls[nw].point2;
+      if ((<WallSolid>wallRenderable).top.renderable()) {
+        top.push(this.wallCeilPoints.get(wallId, this.ctx));
+        top.push(this.wallCeilPoints.get(nw, this.ctx));
+        top.push(this.wallCeilPoints.get(w2, this.ctx));
+        top.push(this.wallCeilPoints.get(nw2, this.ctx));
+        top.push(wallWireframe.top);
+        let wallGrid = new GridRenderable();
+        wallGrid.gridTexMat = gridMatrix;
+        wallGrid.solid = <Solid>wallRenderable.top;
+        top.push(wallGrid);
+      }
+      if ((<WallSolid>wallRenderable).bot.renderable()) {
+        bot.push(this.wallFloorPoints.get(wallId, this.ctx));
+        bot.push(this.wallFloorPoints.get(nw, this.ctx));
+        bot.push(this.wallFloorPoints.get(w2, this.ctx));
+        bot.push(this.wallFloorPoints.get(nw2, this.ctx));
+        bot.push(wallWireframe.bot);
+        let wallGrid = new GridRenderable();
+        wallGrid.gridTexMat = gridMatrix;
+        wallGrid.solid = <Solid>wallRenderable.bot;
+        bot.push(wallGrid);
+      }
     }
 
     renderable.reset();
@@ -303,6 +327,36 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     list.push(updateWallLine(this.ctx, wallId));
     if (renderable != null) renderable.reset();
     return new RenderableList(list);
+  }
+}
+
+export class RenderablesCache implements BoardInvalidator {
+  readonly geometry: CachedBuildRenderableProvider;
+  readonly helpers: CachedHelperBuildRenderableProvider;
+
+  constructor(ctx: BuildContext) {
+    this.geometry = new CachedBuildRenderableProvider(ctx);
+    this.helpers = new CachedHelperBuildRenderableProvider(this.geometry, ctx);
+  }
+
+  invalidateAll(): void {
+    this.geometry.invalidateAll();
+    this.helpers.invalidateAll();
+  }
+
+  invalidateSector(id: number): void {
+    this.geometry.invalidateSector(id);
+    this.helpers.invalidateSector(id);
+  }
+
+  invalidateWall(id: number): void {
+    this.geometry.invalidateWall(id);
+    this.helpers.invalidateWall(id);
+  }
+
+  invalidateSprite(id: number): void {
+    this.geometry.invalidateSprite(id);
+    this.helpers.invalidateSprite(id);
   }
 }
 

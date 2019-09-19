@@ -1,4 +1,4 @@
-import { cyclic } from "../../../../libs/mathutils";
+import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { moveSprite, insertSprite } from "../boardutils";
 import { MessageHandlerIml } from "../messages";
@@ -27,25 +27,25 @@ export class SpriteEnt extends MessageHandlerIml {
     if (msg.handle.mod1) {
       let spr = ctx.board.sprites[this.spriteId];
       spr.ang = ctx.snap(this.origAng + msg.handle.dz());
-      ctx.invalidateSprite(this.spriteId);
+      ctx.invalidator.invalidateSprite(this.spriteId);
     } else {
       let x = ctx.snap(this.origin[0] + msg.handle.dx());
       let y = ctx.snap(this.origin[2] + msg.handle.dy());
       let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
       if (moveSprite(ctx.board, this.spriteId, x, y, z)) {
-        ctx.invalidateSprite(this.spriteId);
+        ctx.invalidator.invalidateSprite(this.spriteId);
       }
     }
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    msg.list.push(ctx.helpers.sprite(this.spriteId));
+    msg.list.push(tuple(4, this.spriteId));
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let sprite = ctx.board.sprites[this.spriteId];
     sprite.picnum = msg.picnum;
-    ctx.invalidateSprite(this.spriteId);
+    ctx.invalidator.invalidateSprite(this.spriteId);
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
@@ -53,7 +53,7 @@ export class SpriteEnt extends MessageHandlerIml {
     let shade = sprite.shade;
     if (msg.absolute && shade == msg.value) return;
     if (msg.absolute) sprite.shade = msg.value; else sprite.shade += msg.value;
-    ctx.invalidateSprite(this.spriteId);
+    ctx.invalidator.invalidateSprite(this.spriteId);
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
@@ -70,7 +70,7 @@ export class SpriteEnt extends MessageHandlerIml {
       sprite.xrepeat += msg.xrepeat;
       sprite.yrepeat += msg.yrepeat;
     }
-    ctx.invalidateSprite(this.spriteId);
+    ctx.invalidator.invalidateSprite(this.spriteId);
   }
 
   public Palette(msg: Palette, ctx: BuildContext) {
@@ -81,13 +81,13 @@ export class SpriteEnt extends MessageHandlerIml {
     } else {
       spr.pal = cyclic(spr.pal + msg.value, msg.max);
     }
-    ctx.invalidateSprite(this.spriteId);
+    ctx.invalidator.invalidateSprite(this.spriteId);
   }
 
   public SpriteMode(msg: SpriteMode, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
     spr.cstat.type = cyclic(spr.cstat.type + 1, 3);
-    ctx.invalidateSprite(this.spriteId);
+    ctx.invalidator.invalidateSprite(this.spriteId);
   }
 
   public Flip(msg: Flip, ctx: BuildContext) {
@@ -96,6 +96,6 @@ export class SpriteEnt extends MessageHandlerIml {
     let nflip = cyclic(flip + 1, 4);
     spr.cstat.xflip = nflip & 1;
     spr.cstat.yflip = (nflip & 2) >> 1;
-    ctx.invalidateSprite(this.spriteId);
+    ctx.invalidator.invalidateSprite(this.spriteId);
   }
 }

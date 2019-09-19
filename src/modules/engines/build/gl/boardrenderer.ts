@@ -1,27 +1,17 @@
-import { loadImage } from '../../../../libs/imgutils';
 import * as MU from '../../../../libs/mathutils';
 import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { Controller3D } from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
 import { Deck } from '../../../deck';
-import { Texture } from '../../../drawstruct';
-import * as TEX from '../../../textures';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
-import { ArtProvider } from '../edit/editapi';
 import { Board } from '../structs';
 import * as U from '../utils';
 import * as BGL from './buildgl';
 import { Context } from './context';
 import { Renderable } from './renderable';
-
-export interface PalProvider extends ArtProvider {
-  getPalTexture(): Texture;
-  getPluTexture(): Texture;
-  getPalswaps(): number;
-  getShadowSteps(): number;
-}
+import { BuildRenderableProvider } from '../edit/editapi';
 
 export class RorLink {
   constructor(public srcSpriteId: number, public dstSpriteId: number) { }
@@ -41,33 +31,24 @@ export interface Implementation {
   isMirrorPic(picnum: number): boolean;
 }
 
-function loadGridTexture(gl: WebGLRenderingContext, cb: (gridTex: Texture) => void): void {
-  loadImage('resources/grid.png', (w: number, h: number, img: Uint8Array) => {
-    cb(TEX.createTexture(w, h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, img, gl.RGBA));
-  });
-}
-
 let implementation: Implementation;
 let context: Context;
 
-export function init(ctx: Context, art: PalProvider, impl: Implementation, cb: () => void) {
+export function init(ctx: Context, impl: Implementation) {
   context = ctx;
-  let gl = ctx.gl;
+  implementation = impl;
 
+  let gl = ctx.gl;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.POLYGON_OFFSET_FILL);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-  implementation = impl;
-  loadGridTexture(gl, (gridTex: Texture) =>
-    BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTex, cb));
 }
 
-export function draw(ms: U.MoveStruct, ctr: Controller3D) {
+export function draw(renderables: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D) {
   BGL.newFrame(context.gl);
-  drawGeometry(ms, ctr);
+  drawGeometry(renderables, ms, ctr);
 }
 
 function writeStencilOnly(value: number) {
@@ -96,7 +77,7 @@ function writeAll() {
 
 let visible = new VIS.PvsBoardVisitorResult();
 let all = new VIS.AllBoardVisitorResult();
-function drawGeometry(ms: U.MoveStruct, ctr: Controller3D) {
+function drawGeometry(renderables: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D) {
   PROFILE.startProfile('processing');
   let result = ms.sec == -1
     ? all.visit(context.board)
@@ -104,12 +85,12 @@ function drawGeometry(ms: U.MoveStruct, ctr: Controller3D) {
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(ctr.getProjectionMatrix(context.gl));
-  drawMirrors(result, ms, ctr);
-  drawRor(result, ms, ctr);
+  drawMirrors(renderables, result, ms, ctr);
+  drawRor(renderables, result, ms, ctr);
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
-  drawRooms(result);
+  drawRooms(renderables, result);
 }
 
 let rorViss = new Map<RorLink, VIS.PvsBoardVisitorResult>();
@@ -129,9 +110,8 @@ let srcPos = GLM.vec3.create();
 let dstPos = GLM.vec3.create();
 let npos = GLM.vec3.create();
 
-function drawStack(ctr: Controller3D, link: RorLink, surface: Renderable, stencilValue: number) {
-  if (!link)
-    return;
+function drawStack(renderables: BuildRenderableProvider, ctr: Controller3D, link: RorLink, surface: Renderable, stencilValue: number) {
+  if (!link) return;
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
@@ -151,7 +131,7 @@ function drawStack(ctr: Controller3D, link: RorLink, surface: Renderable, stenci
   BGL.setViewMatrix(stackTransform);
   BGL.setPosition(npos);
   writeStenciledOnly(stencilValue);
-  drawRooms(getLinkVis(link).visit(context.board, mstmp, ctr.getCamera().forward()));
+  drawRooms(renderables, getLinkVis(link).visit(context.board, mstmp, ctr.getCamera().forward()));
 
   BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
   BGL.setPosition(ctr.getCamera().getPosition());
@@ -161,16 +141,16 @@ function drawStack(ctr: Controller3D, link: RorLink, surface: Renderable, stenci
 
 let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 
-function drawRor(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
+function drawRor(renderables: BuildRenderableProvider, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forSector(context.board, rorSectorCollector.visit());
   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
     let s = rorSectorCollector.sectors.get(i);
-    let r = context.geometry.sector(s);
-    drawStack(ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
-    drawStack(ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
+    let r = renderables.sector(s);
+    drawStack(renderables, ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
+    drawStack(renderables, ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
   context.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll();
@@ -183,7 +163,7 @@ let mirrorNormal = GLM.vec3.create();
 let mirroredTransform = GLM.mat4.create();
 let mpos = GLM.vec3.create();
 
-function drawMirrors(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
+function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
@@ -193,7 +173,7 @@ function drawMirrors(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
       continue;
 
     // draw mirror surface into stencil
-    let r = context.geometry.wall(w);
+    let r = renderables.wall(w);
     BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
     BGL.setPosition(ctr.getCamera().getPosition());
     writeStencilOnly(i + 127);
@@ -214,7 +194,7 @@ function drawMirrors(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
     VEC.reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     mstmp.sec = ms.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
     writeStenciledOnly(i + 127);
-    drawRooms(mirrorVis.visit(context.board, mstmp, ctr.getCamera().forward()));
+    drawRooms(renderables, mirrorVis.visit(context.board, mstmp, ctr.getCamera().forward()));
     context.gl.cullFace(WebGLRenderingContext.BACK);
 
     // seal reflections by writing depth of mirror surface
@@ -227,6 +207,7 @@ function drawMirrors(result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
   writeAll();
 }
 
+let renderables: BuildRenderableProvider;
 let surfaces = new Deck<Renderable>();
 let surfacesTrans = new Deck<Renderable>();
 let sprites = new Deck<Renderable>();
@@ -240,7 +221,7 @@ function clearDrawLists() {
 }
 
 function sectorVisitor(board: Board, sectorId: number) {
-  let sector = context.geometry.sector(sectorId);
+  let sector = renderables.sector(sectorId);
   if (implementation.rorLinks().floorLinks[sectorId] == undefined)
     surfaces.push(sector.floor);
   if (implementation.rorLinks().ceilLinks[sectorId] == undefined)
@@ -251,7 +232,7 @@ function sectorVisitor(board: Board, sectorId: number) {
 function wallVisitor(board: Board, wallId: number, sectorId: number) {
   if (implementation.isMirrorPic(board.walls[wallId].picnum)) return;
   let wall = board.walls[wallId];
-  let wallr = context.geometry.wall(wallId);
+  let wallr = renderables.wall(wallId);
   if (wall.cstat.translucent || wall.cstat.translucentReversed) {
     surfacesTrans.push(wallr.mid);
     surfaces.push(wallr.bot);
@@ -263,15 +244,16 @@ function wallVisitor(board: Board, wallId: number, sectorId: number) {
 }
 
 function spriteVisitor(board: Board, spriteId: number) {
-  let spriter = context.geometry.sprite(spriteId);
+  let spriter = renderables.sprite(spriteId);
   let sprite = board.sprites[spriteId];
   let trans = sprite.cstat.tranclucentReversed == 1 || sprite.cstat.translucent == 1;
   (trans ? spritesTrans : sprites).push(spriter);
   PROFILE.incCount('sprites');
 }
 
-function drawRooms(result: VIS.Result) {
+function drawRooms(r: BuildRenderableProvider, result: VIS.Result) {
   PROFILE.startProfile('processing');
+  renderables = r;
   clearDrawLists();
   result.forSector(context.board, sectorVisitor);
   result.forWall(context.board, wallVisitor);

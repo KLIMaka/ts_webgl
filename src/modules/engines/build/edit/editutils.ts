@@ -6,12 +6,12 @@ import { slope, sectorOfWall } from "../utils";
 import { BuildContext } from "./editapi";
 
 export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
-  ctx.invalidateSector(sectorId);
+  ctx.invalidator.invalidateSector(sectorId);
   let sec = ctx.board.sectors[sectorId];
   let end = sec.wallnum + sec.wallptr;
   for (let w = sec.wallptr; w < end; w++) {
-    ctx.invalidateWall(w);
-    ctx.invalidateWall(ctx.board.walls[w].nextwall);
+    ctx.invalidator.invalidateWall(w);
+    ctx.invalidator.invalidateWall(ctx.board.walls[w].nextwall);
   }
 }
 

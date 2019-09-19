@@ -18,17 +18,21 @@ import { Context } from './modules/engines/build/gl/context';
 import * as RFF from './modules/engines/build/rff';
 import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
+import * as BGL from './modules/engines/build/gl/buildgl';
 import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
 import { loadBloodMap } from './modules/engines/build/bloodloader';
+import { AsyncBarrier } from './libs/asyncbarrier';
+import { ArtProvider, BoardInvalidator } from './modules/engines/build/edit/editapi';
+import { CachedBuildRenderableProvider, CachedHelperBuildRenderableProvider, RenderablesCache } from './modules/engines/build/gl/cache';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
 
-class BuildArtProvider implements RENDERER.PalProvider {
+class BuildArtProvider implements ArtProvider {
   private textures: DS.Texture[] = [];
   private parallaxTextures: DS.Texture[] = [];
   private infos: ART.ArtInfo[] = [];
@@ -267,7 +271,7 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Contr
   drawCompass(compass, ctr.getCamera().forward());
 }
 
-function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[]) {
+function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
   let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
   let artSelector = new Selector(640, 640, artFiles, pal);
 
@@ -280,11 +284,11 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let stream = new data.Stream(map, true);
   // let board = createBoard();
   let board = loadBloodMap(stream);
-  console.log(board);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
+  let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   let control = new controller.Controller3D();
-  INPUT.bind(<HTMLCanvasElement>gl.canvas);
   control.setFov(90);
+  INPUT.bind(<HTMLCanvasElement>gl.canvas);
   let ms = createMoveStruct(board, control);
 
   let rorLinks = loadRorLinks(board);
@@ -293,12 +297,13 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     rorLinks() { return rorLinks }
   }
 
-
   let context = new Context(art, board, gl);
+  let cache = new RenderablesCache(context);
+  context.setBoardInvalidator(cache);
 
-  HANDLER.init(context, (cb) => artSelector.modal(cb));
-  RENDERER.init(context, art, impl, () => {
-
+  BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
+    HANDLER.init(context, (cb) => artSelector.modal(cb));
+    RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
 
       let pos = control.getCamera().getPosition();
@@ -307,59 +312,59 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       control.getCamera().setPosition([ms.x, ms.z / -16, ms.y]);
 
       PROFILE.start();
-      RENDERER.draw(ms, control);
-      HANDLER.handle(ms, control, time);
+      RENDERER.draw(cache.geometry, ms, control);
+      HANDLER.handle(cache.helpers, ms, control, time);
       PROFILE.endProfile()
 
       updateUi(props, ms, control);
 
       INPUT.postFrame();
     });
-
     (<HTMLCanvasElement>gl.canvas).oncontextmenu = () => false;
   });
-
 }
 
 let path = 'resources/engines/blood/';
+let ab = new AsyncBarrier();
 let artNames = [];
 for (let a = 0; a < 18; a++) {
   artNames[a] = path + 'TILES0' + ("00" + a).slice(-2) + '.ART';
-  getter.loader.load(artNames[a], progress(artNames[a]));
+  getter.preload(artNames[a], ab.callback(artNames[a]), progress(artNames[a]));
 }
 
-getter.loader
-  .loadString(cfgFile)
-  .load(rffFile, progress(rffFile))
-  .finish(() => {
+getter.preloadString(cfgFile, ab.callback('cfg'));
+getter.preload(rffFile, ab.callback('rff'), progress(rffFile));
+let gridcb = ab.callback('grid');
+IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
 
-    let cfg = CFG.create(getter.getString(cfgFile));
-    let rff = RFF.create(getter.get(rffFile));
-    let pal = rff.get('BLOOD.PAL');
-    let arts = [];
-    for (let a = 0; a < 18; a++)
-      arts.push(ART.create(new data.Stream(getter.get(artNames[a]), true)));
-    let artFiles = ART.createArts(arts);
+ab.wait((res) => {
 
-    let PLUs = [
-      rff.get('NORMAL.PLU'),
-      rff.get('SATURATE.PLU'),
-      rff.get('BEAST.PLU'),
-      rff.get('TOMMY.PLU'),
-      rff.get('SPIDER3.PLU'),
-      rff.get('GRAY.PLU'),
-      rff.get('GRAYISH.PLU'),
-      rff.get('SPIDER1.PLU'),
-      rff.get('SPIDER2.PLU'),
-      rff.get('FLAME.PLU'),
-      rff.get('COLD.PLU'),
-      rff.get('P1.PLU'),
-      rff.get('P2.PLU'),
-      rff.get('P3.PLU'),
-      rff.get('P4.PLU'),
-    ];
+  let cfg = CFG.create(res['cfg']);
+  let rff = RFF.create(res['rff']);
+  let pal = rff.get('BLOOD.PAL');
+  let arts = [];
+  for (let a = 0; a < 18; a++)
+    arts.push(ART.create(new data.Stream(res[artNames[a]], true)));
+  let artFiles = ART.createArts(arts);
 
-    let map = rff.get(browser.getQueryVariable('map')).buffer;
-    render(cfg, map, artFiles, pal, PLUs);
+  let PLUs = [
+    rff.get('NORMAL.PLU'),
+    rff.get('SATURATE.PLU'),
+    rff.get('BEAST.PLU'),
+    rff.get('TOMMY.PLU'),
+    rff.get('SPIDER3.PLU'),
+    rff.get('GRAY.PLU'),
+    rff.get('GRAYISH.PLU'),
+    rff.get('SPIDER1.PLU'),
+    rff.get('SPIDER2.PLU'),
+    rff.get('FLAME.PLU'),
+    rff.get('COLD.PLU'),
+    rff.get('P1.PLU'),
+    rff.get('P2.PLU'),
+    rff.get('P3.PLU'),
+    rff.get('P4.PLU'),
+  ];
 
-  });
+  let map = rff.get(browser.getQueryVariable('map')).buffer;
+  render(cfg, map, artFiles, pal, PLUs, res['grid']);
+});

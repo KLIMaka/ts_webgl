@@ -1,4 +1,4 @@
-import { cyclic } from "../../../../libs/mathutils";
+import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../deck";
 import { connectedWalls, moveWall, prevwall, insertWall } from "../boardutils";
@@ -70,20 +70,21 @@ export class WallEnt extends MessageHandlerIml {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
         let p = prevwall(ctx.board, w);
-        msg.list.push(ctx.helpers.wall(w));
-        msg.list.push(ctx.helpers.wallPoint(w));
-        msg.list.push(ctx.helpers.wall(p));
-        msg.list.push(ctx.helpers.sector(s));
+        msg.list.push(tuple(2, w));
+        msg.list.push(tuple(3, w));
+        msg.list.push(tuple(2, p));
+        msg.list.push(tuple(0, s));
+        msg.list.push(tuple(1, s));
       }
     } else {
-      msg.list.push(ctx.helpers.wallPoint(this.wallId));
+      msg.list.push(tuple(3, this.wallId));
     }
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     wall.picnum = msg.picnum;
-    ctx.invalidateWall(this.wallId);
+    ctx.invalidator.invalidateWall(this.wallId);
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
@@ -91,7 +92,7 @@ export class WallEnt extends MessageHandlerIml {
     let shade = wall.shade;
     if (msg.absolute && shade == msg.value) return;
     if (msg.absolute) wall.shade = msg.value; else wall.shade += msg.value;
-    ctx.invalidateWall(this.wallId);
+    ctx.invalidator.invalidateWall(this.wallId);
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
@@ -108,7 +109,7 @@ export class WallEnt extends MessageHandlerIml {
       wall.xrepeat += msg.xrepeat;
       wall.yrepeat += msg.yrepeat;
     }
-    ctx.invalidateWall(this.wallId);
+    ctx.invalidator.invalidateWall(this.wallId);
   }
 
   public Palette(msg: Palette, ctx: BuildContext) {
@@ -119,7 +120,7 @@ export class WallEnt extends MessageHandlerIml {
     } else {
       wall.pal = cyclic(wall.pal + msg.value, msg.max);
     }
-    ctx.invalidateWall(this.wallId);
+    ctx.invalidator.invalidateWall(this.wallId);
   }
 
   public Flip(msg: Flip, ctx: BuildContext) {
@@ -128,6 +129,6 @@ export class WallEnt extends MessageHandlerIml {
     let nflip = cyclic(flip + 1, 4);
     wall.cstat.xflip = nflip & 1;
     wall.cstat.yflip = (nflip & 2) >> 1;
-    ctx.invalidateWall(this.wallId);
+    ctx.invalidator.invalidateWall(this.wallId);
   }
 }

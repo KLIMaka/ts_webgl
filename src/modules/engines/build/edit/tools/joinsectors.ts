@@ -16,7 +16,7 @@ export class JoinSectors {
     if (this.sectorId1 != -1 && this.sectorId2 != -1) {
       console.log('joining ' + this.sectorId1 + ' and ' + this.sectorId2);
       let result = joinSectors(ctx.board, this.sectorId1, this.sectorId2);
-      if (result == 0) ctx.invalidateAll();
+      if (result == 0) ctx.invalidator.invalidateAll();
       this.sectorId1 = -1;
       this.sectorId2 = -1;
     }

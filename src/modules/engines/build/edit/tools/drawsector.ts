@@ -213,7 +213,7 @@ export class DrawSector {
     if (sectorId != -1)
       createInnerLoop(ctx.board, sectorId, this.points);
     createNewSector(ctx.board, this.points);
-    ctx.invalidateAll();
+    ctx.invalidator.invalidateAll();
     this.points.clear();
     this.contour.clear();
     this.contour.pushPoint(0, 0);
@@ -221,7 +221,7 @@ export class DrawSector {
 
   private splitSector(ctx: BuildContext, sectorId: number) {
     if (splitSector(ctx.board, sectorId, this.points) != -1) {
-      ctx.invalidateAll();
+      ctx.invalidator.invalidateAll();
     }
     this.points.clear();
     this.contour.clear();
