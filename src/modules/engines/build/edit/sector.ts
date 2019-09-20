@@ -49,7 +49,7 @@ export class SectorEnt extends MessageHandlerIml {
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    msg.list.push(tuple(this.type == SubType.CEILING ? 0 : 1, this.sectorId));
+    msg.set.add(tuple(this.type == SubType.CEILING ? 0 : 1, this.sectorId));
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {

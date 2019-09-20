@@ -1,3 +1,4 @@
+import { AsyncBarrier } from './libs/asyncbarrier';
 import * as browser from './libs/browser';
 import * as CFG from './libs/config';
 import * as getter from './libs/getter';
@@ -9,25 +10,24 @@ import { Deck } from './modules/deck';
 import * as DS from './modules/drawstruct';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
+import { loadBloodMap } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
+import { ArtProvider } from './modules/engines/build/edit/editapi';
 import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import * as BGL from './modules/engines/build/gl/buildgl';
+import { RenderablesCache } from './modules/engines/build/gl/cache';
 import { Context } from './modules/engines/build/gl/context';
 import * as RFF from './modules/engines/build/rff';
 import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
-import * as BGL from './modules/engines/build/gl/buildgl';
 import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import { loadBloodMap } from './modules/engines/build/bloodloader';
-import { AsyncBarrier } from './libs/asyncbarrier';
-import { ArtProvider, BoardInvalidator } from './modules/engines/build/edit/editapi';
-import { CachedBuildRenderableProvider, CachedHelperBuildRenderableProvider, RenderablesCache } from './modules/engines/build/gl/cache';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -282,8 +282,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  // let board = createBoard();
-  let board = loadBloodMap(stream);
+  let board = createBoard();
+  // let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   let control = new controller.Controller3D();

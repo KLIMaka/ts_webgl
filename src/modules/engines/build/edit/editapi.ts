@@ -50,7 +50,7 @@ export interface BuildContext extends Context {
 export class StartMove implements Message { constructor(public handle: MovingHandle) { } }
 export class Move implements Message { constructor(public handle: MovingHandle) { } }
 export class EndMove implements Message { constructor(public handle: MovingHandle) { } }
-export class Highlight implements Message { constructor(public list: Deck<number> = new Deck()) { } }
+export class Highlight implements Message { constructor(public set: Set<number> = new Set()) { } }
 export class SetPicnum implements Message { constructor(public picnum: number) { } }
 export class ToggleParallax implements Message { }
 export class Shade implements Message { constructor(public value: number, public absolute = false) { } }

@@ -141,11 +141,10 @@ let drawlist = new Deck<Renderable>();
 function drawHelpers(r: BuildRenderableProvider) {
   context.gl.disable(WebGLRenderingContext.DEPTH_TEST);
   context.gl.enable(WebGLRenderingContext.BLEND);
-  EDIT.HIGHLIGHT.list.clear();
+  EDIT.HIGHLIGHT.set.clear();
   sendToSelected(EDIT.HIGHLIGHT);
   drawlist.clear();
-  for (let i = 0; i < EDIT.HIGHLIGHT.list.length(); i++) {
-    let v = EDIT.HIGHLIGHT.list.get(i);
+  for (let v of EDIT.HIGHLIGHT.set.keys()) {
     let type = detuple0(v);
     let id = detuple1(v);
     switch (type) {

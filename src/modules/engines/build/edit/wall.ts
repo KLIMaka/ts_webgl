@@ -70,14 +70,14 @@ export class WallEnt extends MessageHandlerIml {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
         let p = prevwall(ctx.board, w);
-        msg.list.push(tuple(2, w));
-        msg.list.push(tuple(3, w));
-        msg.list.push(tuple(2, p));
-        msg.list.push(tuple(0, s));
-        msg.list.push(tuple(1, s));
+        msg.set.add(tuple(2, w));
+        msg.set.add(tuple(3, w));
+        msg.set.add(tuple(2, p));
+        msg.set.add(tuple(0, s));
+        msg.set.add(tuple(1, s));
       }
     } else {
-      msg.list.push(tuple(3, this.wallId));
+      msg.set.add(tuple(3, this.wallId));
     }
   }
 
