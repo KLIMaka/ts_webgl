@@ -170,7 +170,7 @@ export function handle(r: BuildRenderableProvider, ms: U.MoveStruct, ctr: Contro
   updateCursor();
 
   if (INPUT.keys['CTRL'] && INPUT.mouseClicks[0]) EDIT.SPLIT_WALL.run(context);
-  if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context);
+  if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context, INPUT.keys['SHIFT']);
   if (INPUT.keysPress['BACKSPACE']) EDIT.DRAW_SECTOR.popPoint();
   if (INPUT.keysPress['[']) context.incGridSize();
   if (INPUT.keysPress[']']) context.decGridSize();

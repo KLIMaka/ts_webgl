@@ -87,7 +87,7 @@ class Contour {
     let buff = this.contour.buff;
     buff.deallocate();
     let size = this.size - 1;
-    buff.allocate(size + 1 + 4, size * 2 + 4);
+    buff.allocate(size + 1, size * 2);
 
     for (let i = 0; i < size; i++) {
       let p = this.points[i];
@@ -96,15 +96,15 @@ class Contour {
     }
     buff.writePos(size, this.points[size][0], this.z, this.points[size][1]);
 
-    let x = this.points[size][0];
-    let y = this.points[size][1];
-    let off = size + 1;
-    off = buff.writePos(off, x, this.z, -32 * 1024);
-    off = buff.writePos(off, x, this.z, 32 * 1024);
-    buff.writeLine(size * 2, off - 1, off - 2);
-    off = buff.writePos(off, -32 * 1024, this.z, y);
-    off = buff.writePos(off, 32 * 1024, this.z, y);
-    buff.writeLine(size * 2 + 2, off - 1, off - 2);
+    // let x = this.points[size][0];
+    // let y = this.points[size][1];
+    // let off = size + 1;
+    // off = buff.writePos(off, x, this.z, -32 * 1024);
+    // off = buff.writePos(off, x, this.z, 32 * 1024);
+    // buff.writeLine(size * 2, off - 1, off - 2);
+    // off = buff.writePos(off, -32 * 1024, this.z, y);
+    // off = buff.writePos(off, 32 * 1024, this.z, y);
+    // buff.writeLine(size * 2 + 2, off - 1, off - 2);
   }
 }
 
@@ -116,32 +116,54 @@ export class DrawSector {
   private hintSector = -1;
   private valid = false;
   private contour = new Contour();
+  private isRect = true;
 
   public update(board: Board, hit: Hitscan, context: BuildContext) {
-    if (this.points.length() > 0) {
-      let z = this.contour.getZ();
-      let res = this.getIntersectionZPlane(hit);
-      if (res == null) return;
-      let [x, y] = res;
-      x = context.snap(x);
-      y = context.snap(y);
-      GLM.vec3.set(this.pointer, x, y, z);
-      this.contour.updateLastPoint(x, y);
+    if (this.predrawUpdate(board, hit, context)) return;
+
+    let z = this.contour.getZ();
+    let res = this.getIntersectionZPlane(hit);
+    if (res == null) return;
+    let [x, y] = res;
+    x = context.snap(x);
+    y = context.snap(y);
+    GLM.vec3.set(this.pointer, x, y, z);
+
+    if (this.isRect) {
+      let fp = this.points.get(0);
+      let dx = x - fp[0];
+      let dy = y - fp[1];
+      let p1 = this.points.get(1);
+      let p2 = this.points.get(2);
+      let p3 = this.points.get(3);
+      p1[0] = fp[0] + dx;
+      p2[0] = fp[0] + dx;
+      p2[1] = fp[1] + dy;
+      p3[1] = fp[1] + dy;
+      this.contour.updatePoint(1, fp[0] + dx, fp[1]);
+      this.contour.updatePoint(2, fp[0] + dx, fp[1] + dy);
+      this.contour.updatePoint(3, fp[0], fp[1] + dy);
     } else {
-      if (hit.t == -1) {
-        this.valid = false;
-      } else {
-        this.valid = true;
-        let [x, y] = snap(hit, context);
-        let z = this.getPointerZ(board, hit, x, y);
-        GLM.vec3.set(this.pointer, x, y, z);
-        this.contour.setZ(z / ZSCALE);
-        this.contour.updateLastPoint(x, y);
-        if (isSector(hit.type)) this.hintSector = hit.id;
-        if (isSprite(hit.type)) this.hintSector = board.sprites[hit.id].sectnum;
-        if (isWall(hit.type)) this.hintSector = sectorOfWall(board, hit.id);
-      }
+      this.contour.updateLastPoint(x, y);
     }
+  }
+
+  private predrawUpdate(board: Board, hit: Hitscan, context: BuildContext) {
+    if (this.points.length() > 0) return false;
+    if (hit.t == -1) {
+      this.valid = false;
+    } else {
+      this.valid = true;
+      let [x, y] = snap(hit, context);
+      let z = this.getPointerZ(board, hit, x, y);
+      GLM.vec3.set(this.pointer, x, y, z);
+      this.contour.setZ(z / ZSCALE);
+      this.contour.updateLastPoint(x, y);
+      if (isSector(hit.type)) this.hintSector = hit.id;
+      if (isSprite(hit.type)) this.hintSector = board.sprites[hit.id].sectnum;
+      if (isWall(hit.type)) this.hintSector = sectorOfWall(board, hit.id);
+    }
+    return true;
   }
 
   private getIntersectionZPlane(hit: Hitscan): [number, number] {
@@ -159,31 +181,52 @@ export class DrawSector {
     return wallInSector(ctx.board, sectorId, fp[0], fp[1]) != -1 && wallInSector(ctx.board, sectorId, x, y) != -1 ? sectorId : -1;
   }
 
-  public insertPoint(ctx: BuildContext) {
+  public insertPoint(ctx: BuildContext, rect: boolean) {
+    if (this.points.length() == 0) this.isRect = rect;
     if (!this.valid) return;
-    if (this.points.length() > 0) {
-      let splitSector = this.isSplitSector(ctx, this.pointer[0], this.pointer[1]);
-      if (splitSector != -1) {
+    if (this.checkFinish(ctx)) return;
+
+    if (this.isRect) {
+      for (let i = 0; i < 4; i++) {
         this.points.push([this.pointer[0], this.pointer[1]]);
-        this.splitSector(ctx, splitSector);
-        return;
+        this.contour.pushPoint(this.pointer[0], this.pointer[1]);
       }
-      let latsPoint = this.points.get(this.points.length() - 1);
-      if (latsPoint[0] == this.pointer[0] && latsPoint[1] == this.pointer[1]) return;
-      let firstPoint = this.points.get(0);
-      if (firstPoint[0] == this.pointer[0] && firstPoint[1] == this.pointer[1]) {
-        this.createSector(ctx);
-        return;
-      }
+    } else {
+      this.points.push([this.pointer[0], this.pointer[1]]);
+      this.contour.pushPoint(this.pointer[0], this.pointer[1]);
     }
-    this.points.push([this.pointer[0], this.pointer[1]]);
-    this.contour.pushPoint(this.pointer[0], this.pointer[1]);
+  }
+
+  private checkFinish(ctx: BuildContext) {
+    if (this.points.length() == 0) return false;
+
+    let splitSector = this.isSplitSector(ctx, this.pointer[0], this.pointer[1]);
+    if (splitSector != -1) {
+      this.points.push([this.pointer[0], this.pointer[1]]);
+      this.splitSector(ctx, splitSector);
+      return true;
+    }
+    let latsPoint = this.points.get(this.points.length() - 1);
+    if (latsPoint[0] == this.pointer[0] && latsPoint[1] == this.pointer[1]) return;
+    let firstPoint = this.points.get(0);
+    if (firstPoint[0] == this.pointer[0] && firstPoint[1] == this.pointer[1] || this.isRect) {
+      this.createSector(ctx);
+      return true;
+    }
+    return false;
   }
 
   public popPoint() {
     if (this.points.length() == 0) return;
-    this.points.pop();
-    this.contour.popPoint();
+    if (this.isRect) {
+      for (let i = 0; i < 4; i++) {
+        this.points.pop();
+        this.contour.popPoint();
+      }
+    } else {
+      this.points.pop();
+      this.contour.popPoint();
+    }
     this.contour.updateLastPoint(this.pointer[0], this.pointer[1]);
   }
 
