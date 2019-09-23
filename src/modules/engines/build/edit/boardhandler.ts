@@ -95,8 +95,7 @@ function pointerHitscan(ms: U.MoveStruct, ctr: Controller3D) {
 }
 
 function move(ctr: Controller3D) {
-  if (selection.isEmpty())
-    return;
+  if (selection.isEmpty()) return;
 
   let fwd = ctr.getForwardUnprojected(context.gl, INPUT.mouseX, INPUT.mouseY);
   let pos = ctr.getCamera().getPosition();
@@ -162,12 +161,12 @@ function drawHelpers(r: BuildRenderableProvider) {
 }
 
 export function handle(r: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D, dt: number) {
-  drawHelpers(r);
-
   pointerHitscan(ms, ctr);
+  select();
   move(ctr);
-  select()
   updateCursor();
+
+  drawHelpers(r);
 
   if (INPUT.keys['CTRL'] && INPUT.mouseClicks[0]) EDIT.SPLIT_WALL.run(context);
   if (INPUT.keysPress['SPACE']) EDIT.DRAW_SECTOR.insertPoint(context, INPUT.keys['SHIFT']);

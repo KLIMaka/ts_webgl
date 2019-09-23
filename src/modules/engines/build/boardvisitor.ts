@@ -124,14 +124,13 @@ export class PvsBoardVisitorResult implements Result {
   private sectors = new Deck<number>();
   private walls = new Deck<number>();
   private sprites = new Deck<number>();
+
   private prepvs = new IndexedDeck<number>();
   private pvs = new IndexedDeck<number>();
   private entryWalls = new Map<number, Deck<number>>();
   private angCache = new Map<number, number>();
   private board: Board;
-  private cachedX = 0;
-  private cachedY = 0;
-  private needToUpdate = true;
+
 
   private init(board: Board, sectorId: number) {
     this.board = board;
@@ -143,7 +142,7 @@ export class PvsBoardVisitorResult implements Result {
     this.pvs.clear();
     this.pvs.push(sectorId);
     this.angCache.clear();
-    // this.ensureEntryWalls(sectorId).clear();
+    this.entryWalls.clear();
   }
 
   private ensureEntryWalls(sectorId: number) {
@@ -194,7 +193,6 @@ export class PvsBoardVisitorResult implements Result {
   }
 
   private visibleFromEntryWalls(wallId: number, entryWalls: Deck<number>, ms: U.MoveStruct) {
-    // return true;
     if (entryWalls.length() == 0)
       return true;
     for (let i = 0; i < entryWalls.length(); i++) {
@@ -209,22 +207,8 @@ export class PvsBoardVisitorResult implements Result {
     return false;
   }
 
-  private cached(board: Board, ms: U.MoveStruct) {
-    // if (!this.needToUpdate && ms.x == this.cachedX && ms.y == this.cachedY)
-    //   return true;
-    // this.cachedX = ms.x;
-    // this.cachedY = ms.y;
-    // this.needToUpdate = false;
-    return false;
-  }
-
-  public reset() {
-    this.needToUpdate = true;
-  }
 
   public visit(board: Board, ms: U.MoveStruct, forward: GLM.Vec3Array): Result {
-    if (this.cached(board, ms))
-      return this;
     this.init(board, ms.sec);
     this.fillPVS(ms, forward);
     PROFILE.get(null).inc('pvs', this.prepvs.length());

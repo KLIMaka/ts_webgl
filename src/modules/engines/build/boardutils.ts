@@ -848,7 +848,10 @@ function sliceSector(board: Board, sectorId: number, points: Collection<[number,
     if (w == firstWall) {
       for (let i = 0; i < points.length() - 1; i++) {
         let p = points.get(i);
-        newLoops.push(copyWall(wall, p[0], p[1]));
+        let nwall = copyWall(wall, p[0], p[1]);
+        nwall.nextwall = -1;
+        nwall.nextsector = -1;
+        newLoops.push(nwall);
       }
       for (let w1 = w; w1 != lastWall; w1++) {
         restLoop.push(board.walls[w1]);
