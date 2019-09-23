@@ -305,6 +305,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     HANDLER.init(context, (cb) => artSelector.modal(cb));
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
+      BGL.newFrame(gl);
 
       let pos = control.getCamera().getPosition();
       ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1]) * BU.ZSCALE);

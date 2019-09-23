@@ -47,7 +47,6 @@ export function init(ctx: Context, impl: Implementation) {
 }
 
 export function draw(renderables: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D) {
-  BGL.newFrame(context.gl);
   drawGeometry(renderables, ms, ctr);
 }
 
