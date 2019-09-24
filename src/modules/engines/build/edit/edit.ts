@@ -4,7 +4,7 @@ import { Hitscan, isSector, isSprite, isWall, SubType } from "../hitscan";
 import { MessageHandler } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Highlight, Move, StartMove, BuildContext, SetPicnum, ToggleParallax, Shade, PanRepeat, Palette, Flip, SpriteMode } from "./editapi";
+import { EndMove, Highlight, Move, StartMove, SetPicnum, ToggleParallax, Shade, PanRepeat, Palette, Flip, SpriteMode } from "./editapi";
 import { getClosestSectorZ, getClosestWall } from "./editutils";
 import { MovingHandle } from "./handle";
 import { SectorEnt } from "./sector";
@@ -14,6 +14,7 @@ import { SplitWall } from "./tools/splitwall";
 import { WallEnt } from "./wall";
 import { WallSegmentsEnt } from "./wallsegment";
 import { JoinSectors } from "./tools/joinsectors";
+import { BuildContext } from "../api";
 
 // Messages
 let handle = new MovingHandle();

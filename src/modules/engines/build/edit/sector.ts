@@ -2,9 +2,10 @@ import * as GLM from "../../../../libs_js/glmatrix";
 import { isSector, SubType } from "../hitscan";
 import { MessageHandlerIml } from "../messages";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
-import { BuildContext, Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./editapi";
+import { Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./editapi";
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import { invalidateSectorAndWalls } from "./editutils";
+import { BuildContext } from "../api";
 
 export class SectorEnt extends MessageHandlerIml {
 

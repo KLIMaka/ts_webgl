@@ -1,5 +1,5 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { ArtProvider, BuildContext, BoardInvalidator } from '../edit/editapi';
+import { ArtProvider, BuildContext, BoardInvalidator } from '../api';
 import { Board } from '../structs';
 
 

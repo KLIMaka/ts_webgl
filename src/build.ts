@@ -15,7 +15,7 @@ import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
-import { ArtProvider } from './modules/engines/build/edit/editapi';
+import { ArtProvider } from './modules/engines/build/api';
 import * as RENDERER from './modules/engines/build/gl/boardrenderer';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';

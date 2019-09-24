@@ -4,7 +4,7 @@ import { RGBPalPixelProvider, axisSwap } from "../../pixelprovider";
 import { Element, panel, button, dragElement, div } from "../../ui/ui";
 
 function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: SelectionCallback) {
-  let provider = new PixelDataProvider(4096, (i: number) => {
+  let provider = new PixelDataProvider(1024 * 10, (i: number) => {
     let info = arts.getInfo(i);
     if (info == null) return null;
     return axisSwap(new RGBPalPixelProvider(info.img, pal, info.h, info.w));

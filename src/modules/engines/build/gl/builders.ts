@@ -3,12 +3,12 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
 import { ArtInfo } from '../art';
 import { walllen } from '../boardutils';
-import { BuildContext } from '../edit/editapi';
 import { isSector, isWall, SubType } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
 import * as U from '../utils';
 import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid } from './renderable';
 import { State } from '../../../stategl';
+import { BuildContext } from '../api';
 
 export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();

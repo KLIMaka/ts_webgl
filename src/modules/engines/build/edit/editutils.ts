@@ -3,7 +3,7 @@ import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector } from "../boardutil
 import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
 import { Board } from "../structs";
 import { slope, sectorOfWall } from "../utils";
-import { BuildContext } from "./editapi";
+import { BuildContext } from "../api";
 
 export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
   ctx.invalidator.invalidateSector(sectorId);

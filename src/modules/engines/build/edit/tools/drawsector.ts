@@ -7,8 +7,8 @@ import { Wireframe, Renderable, RenderableList } from "../../gl/renderable";
 import { snap, getClosestSectorZ } from "../editutils";
 import * as GLM from "../../../../../libs_js/glmatrix";
 import { createInnerLoop, createNewSector, wallInSector, splitSector } from "../../boardutils";
-import { BuildContext } from "../editapi";
 import { tuple2 } from "../../../../../libs/mathutils";
+import { BuildContext } from "../../api";
 
 class Contour {
   private points: Array<[number, number]> = [];

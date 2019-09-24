@@ -7,8 +7,9 @@ import { Hitscan } from "../hitscan";
 import { MessageHandlerIml } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { BuildContext, EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip } from "./editapi";
+import { EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
+import { BuildContext } from "../api";
 
 function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
   if (ids.length() == 1) return ids.get(0);

@@ -9,9 +9,8 @@ import * as VIS from '../boardvisitor';
 import { Board } from '../structs';
 import * as U from '../utils';
 import * as BGL from './buildgl';
-import { Context } from './context';
 import { Renderable } from './renderable';
-import { BuildRenderableProvider } from '../edit/editapi';
+import { BuildRenderableProvider, BuildContext } from '../api';
 
 export class RorLink {
   constructor(public srcSpriteId: number, public dstSpriteId: number) { }
@@ -32,9 +31,9 @@ export interface Implementation {
 }
 
 let implementation: Implementation;
-let context: Context;
+let context: BuildContext;
 
-export function init(ctx: Context, impl: Implementation) {
+export function init(ctx: BuildContext, impl: Implementation) {
   context = ctx;
   implementation = impl;
 

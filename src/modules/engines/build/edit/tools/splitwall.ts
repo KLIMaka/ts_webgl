@@ -1,7 +1,7 @@
 import { splitWall } from "../../boardutils";
 import { sectorOfWall } from "../../utils";
-import { BuildContext } from "../editapi";
 import { invalidateSectorAndWalls } from "../editutils";
+import { BuildContext } from "../../api";
 
 export class SplitWall {
   private x = 0;

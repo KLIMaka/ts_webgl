@@ -1,6 +1,6 @@
 import { joinSectors } from "../../boardutils";
 import { Hitscan } from "../../hitscan";
-import { BuildContext } from "../editapi";
+import { BuildContext } from "../../api";
 
 export class JoinSectors {
   private sectorId1 = -1;

@@ -5,8 +5,9 @@ import { connectedWalls, moveWall, prevwall, insertWall } from "../boardutils";
 import { MessageHandlerIml } from "../messages";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { BuildContext, EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./editapi";
+import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./editapi";
 import { invalidateSectorAndWalls } from "./editutils";
+import { BuildContext } from "../api";
 
 function collectConnectedWalls(board: Board, wallId: number) {
   let result = new Deck<number>();

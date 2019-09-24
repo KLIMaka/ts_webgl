@@ -1,18 +1,18 @@
+import { detuple0, detuple1 } from '../../../../libs/mathutils';
 import { Controller3D } from '../../../controller3d';
+import { Deck } from '../../../deck';
 import * as INPUT from '../../../input';
 import * as PROFILE from '../../../profiler';
 import * as BU from '../boardutils';
 import * as BGL from '../gl/buildgl';
 import { Context } from '../gl/context';
+import { Renderable } from '../gl/renderable';
 import { hitscan, Hitscan, isSector, isWall, SubType } from '../hitscan';
 import { Message, MessageHandlerList } from '../messages';
 import * as U from '../utils';
 import * as EDIT from "./edit";
 import { snap } from './editutils';
-import { BuildRenderableProvider } from './editapi';
-import { Deck } from '../../../deck';
-import { Renderable } from '../gl/renderable';
-import { detuple0, detuple1 } from '../../../../libs/mathutils';
+import { BuildRenderableProvider } from '../api';
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;

@@ -3,7 +3,8 @@ import * as GLM from "../../../../libs_js/glmatrix";
 import { moveSprite, insertSprite } from "../boardutils";
 import { MessageHandlerIml } from "../messages";
 import { ZSCALE } from "../utils";
-import { BuildContext, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./editapi";
+import { Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./editapi";
+import { BuildContext } from "../api";
 
 export class SpriteEnt extends MessageHandlerIml {
 
