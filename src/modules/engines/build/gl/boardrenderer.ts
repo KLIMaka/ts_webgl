@@ -9,8 +9,8 @@ import * as VIS from '../boardvisitor';
 import { Board } from '../structs';
 import * as U from '../utils';
 import * as BGL from './buildgl';
-import { Renderable } from './renderable';
-import { BuildRenderableProvider, BuildContext } from '../api';
+import { Renderable, BuildRenderableProvider } from './renderable';
+import { BuildContext } from '../api';
 
 export class RorLink {
   constructor(public srcSpriteId: number, public dstSpriteId: number) { }

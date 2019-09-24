@@ -1,8 +1,8 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import { SubType } from '../hitscan';
 import { buildCeilingHinge, buildFloorHinge, buildSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
-import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid } from './renderable';
-import { BuildContext, BuildRenderableProvider, SectorRenderable, WallRenderable, BoardInvalidator } from '../api';
+import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable } from './renderable';
+import { BuildContext, BoardInvalidator } from '../api';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }

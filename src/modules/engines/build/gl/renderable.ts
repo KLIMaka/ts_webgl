@@ -85,6 +85,24 @@ export class RenderableList implements Renderable {
   }
 }
 
+export interface SectorRenderable extends Renderable {
+  ceiling: Renderable;
+  floor: Renderable;
+}
+
+export interface WallRenderable extends Renderable {
+  top: Renderable;
+  mid: Renderable;
+  bot: Renderable;
+}
+
+export interface BuildRenderableProvider {
+  sector(id: number): SectorRenderable;
+  wall(id: number): WallRenderable;
+  wallPoint(id: number): Renderable;
+  sprite(id: number): Renderable;
+}
+
 let color = GLM.vec4.create();
 export class Solid implements Renderable {
   public type: Type = Type.SURFACE;
