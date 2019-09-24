@@ -16,14 +16,11 @@ export function getPlayerStart(board: Board): Sprite {
   return null;
 }
 
-export class MoveStruct {
-  public x: number;
-  public y: number;
-  public z: number;
-  public sec: number;
-  public xvel: number;
-  public yvel: number;
-  public zvel: number;
+export interface MoveStruct {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly sec: number;
 }
 
 export function getSector(board: Board, ms: MoveStruct): number {

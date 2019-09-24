@@ -187,13 +187,9 @@ function progress(fname: string) {
   }
 }
 
-function createMoveStruct(board: BS.Board, control: controller.Controller3D) {
+function createMoveStruct(board: BS.Board, control: controller.Controller3D): { sec: number, x: number, y: number, z: number } {
   let playerstart = BU.getPlayerStart(board);
-  let ms = new BU.MoveStruct();
-  ms.sec = playerstart.sectnum;
-  ms.x = playerstart.x;
-  ms.y = playerstart.y;
-  ms.z = playerstart.z;
+  let ms: BU.MoveStruct = { sec: playerstart.sectnum, x: playerstart.x, y: playerstart.y, z: playerstart.z };
   control.getCamera().setPositionXYZ(ms.x, ms.z / -16 + 1024, ms.y);
   return ms;
 }
@@ -313,7 +309,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       control.getCamera().setPosition([ms.x, ms.z / -16, ms.y]);
 
       PROFILE.start();
-      RENDERER.draw(cache.geometry, ms, control);
+      RENDERER.draw(cache.geometry, ms);
       HANDLER.handle(cache.helpers, ms, control, time);
       PROFILE.endProfile()
 

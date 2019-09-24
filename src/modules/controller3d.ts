@@ -31,6 +31,18 @@ export class Controller3D {
     return GLM.mat4.perspective(this.projection, MU.deg2rad(this.fov), gl.drawingBufferWidth / gl.drawingBufferHeight, 1, 0xFFFF);
   }
 
+  public getTransformMatrix() {
+    return this.camera.getTransformMatrix();
+  }
+
+  public getPosition() {
+    return this.camera.getPosition();
+  }
+
+  public getForward() {
+    return this.camera.forward();
+  }
+
   public getCamera(): camera.Camera {
     return this.camera;
   }

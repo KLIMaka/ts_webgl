@@ -1,7 +1,6 @@
 import * as MU from '../../../../libs/mathutils';
 import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
-import { Controller3D } from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
 import { Deck } from '../../../deck';
 import * as BU from '../boardutils';
@@ -10,7 +9,7 @@ import { Board } from '../structs';
 import * as U from '../utils';
 import * as BGL from './buildgl';
 import { Renderable, BuildRenderableProvider } from './renderable';
-import { BuildContext } from '../api';
+import { BuildContext, ViewPoint } from '../api';
 
 export class RorLink {
   constructor(public srcSpriteId: number, public dstSpriteId: number) { }
@@ -45,8 +44,8 @@ export function init(ctx: BuildContext, impl: Implementation) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
 
-export function draw(renderables: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D) {
-  drawGeometry(renderables, ms, ctr);
+export function draw(renderables: BuildRenderableProvider, view: ViewPoint) {
+  drawGeometry(renderables, view);
 }
 
 function writeStencilOnly(value: number) {
@@ -75,19 +74,19 @@ function writeAll() {
 
 let visible = new VIS.PvsBoardVisitorResult();
 let all = new VIS.AllBoardVisitorResult();
-function drawGeometry(renderables: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D) {
+function drawGeometry(renderables: BuildRenderableProvider, view: ViewPoint) {
   PROFILE.startProfile('processing');
-  let result = ms.sec == -1
+  let result = view.sec == -1
     ? all.visit(context.board)
-    : visible.visit(context.board, ms, ctr.getCamera().forward());
+    : visible.visit(context.board, view, view.getForward());
   PROFILE.endProfile();
 
-  BGL.setProjectionMatrix(ctr.getProjectionMatrix(context.gl));
-  drawMirrors(renderables, result, ms, ctr);
-  drawRor(renderables, result, ms, ctr);
+  BGL.setProjectionMatrix(view.getProjectionMatrix(context.gl));
+  drawMirrors(renderables, result, view);
+  drawRor(renderables, result, view);
 
-  BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
-  BGL.setPosition(ctr.getCamera().getPosition());
+  BGL.setViewMatrix(view.getTransformMatrix());
+  BGL.setPosition(view.getPosition());
   drawRooms(renderables, result);
 }
 
@@ -103,16 +102,16 @@ function getLinkVis(link: RorLink) {
 
 let diff = GLM.vec3.create();
 let stackTransform = GLM.mat4.create();
-let mstmp = new U.MoveStruct();
 let srcPos = GLM.vec3.create();
 let dstPos = GLM.vec3.create();
 let npos = GLM.vec3.create();
+let mstmp = { sec: 0, x: 0, y: 0, z: 0 };
 
-function drawStack(renderables: BuildRenderableProvider, ctr: Controller3D, link: RorLink, surface: Renderable, stencilValue: number) {
+function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link) return;
 
-  BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
-  BGL.setPosition(ctr.getCamera().getPosition());
+  BGL.setViewMatrix(view.getTransformMatrix());
+  BGL.setPosition(view.getPosition());
   writeStencilOnly(stencilValue);
   BGL.draw(context.gl, surface);
 
@@ -121,25 +120,25 @@ function drawStack(renderables: BuildRenderableProvider, ctr: Controller3D, link
   GLM.vec3.set(srcPos, src.x, src.z / U.ZSCALE, src.y);
   GLM.vec3.set(dstPos, dst.x, dst.z / U.ZSCALE, dst.y);
   GLM.vec3.sub(diff, srcPos, dstPos);
-  GLM.mat4.copy(stackTransform, ctr.getCamera().getTransformMatrix());
+  GLM.mat4.copy(stackTransform, view.getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
-  GLM.vec3.sub(npos, ctr.getCamera().getPosition(), diff);
+  GLM.vec3.sub(npos, view.getPosition(), diff);
 
   mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1] * U.ZSCALE;
   BGL.setViewMatrix(stackTransform);
   BGL.setPosition(npos);
   writeStenciledOnly(stencilValue);
-  drawRooms(renderables, getLinkVis(link).visit(context.board, mstmp, ctr.getCamera().forward()));
+  drawRooms(renderables, getLinkVis(link).visit(context.board, mstmp, view.getForward()));
 
-  BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
-  BGL.setPosition(ctr.getCamera().getPosition());
+  BGL.setViewMatrix(view.getTransformMatrix());
+  BGL.setPosition(view.getPosition());
   writeDepthOnly();
   BGL.draw(context.gl, surface);
 }
 
 let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 
-function drawRor(renderables: BuildRenderableProvider, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
+function drawRor(renderables: BuildRenderableProvider, result: VIS.Result, view: ViewPoint) {
   result.forSector(context.board, rorSectorCollector.visit());
   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
@@ -147,8 +146,8 @@ function drawRor(renderables: BuildRenderableProvider, result: VIS.Result, ms: U
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
     let s = rorSectorCollector.sectors.get(i);
     let r = renderables.sector(s);
-    drawStack(renderables, ctr, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
-    drawStack(renderables, ctr, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
+    drawStack(renderables, view, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
+    drawStack(renderables, view, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
   context.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll();
@@ -161,19 +160,19 @@ let mirrorNormal = GLM.vec3.create();
 let mirroredTransform = GLM.mat4.create();
 let mpos = GLM.vec3.create();
 
-function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, ms: U.MoveStruct, ctr: Controller3D) {
+function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, view: ViewPoint) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
     let w = BU.unpackWallId(mirrorWallsCollector.walls.get(i));
-    if (!U.wallVisible(context.board, w, ms))
+    if (!U.wallVisible(context.board, w, view))
       continue;
 
     // draw mirror surface into stencil
     let r = renderables.wall(w);
-    BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
-    BGL.setPosition(ctr.getCamera().getPosition());
+    BGL.setViewMatrix(view.getTransformMatrix());
+    BGL.setPosition(view.getPosition());
     writeStencilOnly(i + 127);
     BGL.draw(context.gl, r);
 
@@ -183,20 +182,21 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, m
     VEC.normal2d(wallNormal, wallNormal);
     GLM.vec3.set(mirrorNormal, wallNormal[0], 0, wallNormal[1]);
     let mirrorrD = -MU.dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
-    VEC.mirrorBasis(mirroredTransform, ctr.getCamera().getTransformMatrix(), ctr.getCamera().getPosition(), mirrorNormal, mirrorrD);
+    VEC.mirrorBasis(mirroredTransform, view.getTransformMatrix(), view.getPosition(), mirrorNormal, mirrorrD);
 
     BGL.setViewMatrix(mirroredTransform);
     BGL.setClipPlane(mirrorNormal[0], mirrorNormal[1], mirrorNormal[2], mirrorrD);
     context.gl.cullFace(WebGLRenderingContext.FRONT);
-    GLM.vec3.set(mpos, ms.x, ms.z, ms.y);
+    let [sx, sy, sz] = view.getPosition();
+    GLM.vec3.set(mpos, sx, sy, sz);
     VEC.reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
-    mstmp.sec = ms.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
+    mstmp.sec = view.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
     writeStenciledOnly(i + 127);
-    drawRooms(renderables, mirrorVis.visit(context.board, mstmp, ctr.getCamera().forward()));
+    drawRooms(renderables, mirrorVis.visit(context.board, mstmp, view.getForward()));
     context.gl.cullFace(WebGLRenderingContext.BACK);
 
     // seal reflections by writing depth of mirror surface
-    BGL.setViewMatrix(ctr.getCamera().getTransformMatrix());
+    BGL.setViewMatrix(view.getTransformMatrix());
     writeDepthOnly();
     BGL.setClipPlane(0, 0, 0, 0);
     BGL.draw(context.gl, r);

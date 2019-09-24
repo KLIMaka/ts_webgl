@@ -5,6 +5,7 @@ import * as PROFILE from '../../profiler';
 import { nextwall, packWallSectorId, unpackSectorId, unpackWallId } from './boardutils';
 import { Board } from './structs';
 import * as U from './utils';
+import { ViewPoint } from './api';
 
 export interface Result {
   forSector<T>(ctx: T, secv: SectorVisitor<T>): void;
@@ -111,7 +112,7 @@ export class AllBoardVisitorResult implements Result {
   }
 }
 
-function wallBehind(board: Board, wallId: number, fwd: GLM.Vec3Array, ms: U.MoveStruct) {
+function wallBehind(board: Board, wallId: number, ms: U.MoveStruct, fwd: GLM.Mat3Array) {
   // return false;
   let wall1 = board.walls[wallId];
   let wall2 = board.walls[wall1.point2];
@@ -154,14 +155,14 @@ export class PvsBoardVisitorResult implements Result {
     return ewalls;
   }
 
-  private fillPVS(ms: U.MoveStruct, forward: GLM.Vec3Array) {
+  private fillPVS(ms: U.MoveStruct, fwd: GLM.Mat3Array) {
     for (let i = 0; i < this.prepvs.length(); i++) {
       let s = this.prepvs.get(i);
       let sec = this.board.sectors[s];
       if (sec == undefined) continue;
       let endwall = sec.wallptr + sec.wallnum;
       for (let w = sec.wallptr; w < endwall; w++) {
-        if (!U.wallVisible(this.board, w, ms) || wallBehind(this.board, w, forward, ms)) continue;
+        if (!U.wallVisible(this.board, w, ms) || wallBehind(this.board, w, ms, fwd)) continue;
 
         let wall = this.board.walls[w];
         let nextsector = wall.nextsector;
@@ -208,9 +209,9 @@ export class PvsBoardVisitorResult implements Result {
   }
 
 
-  public visit(board: Board, ms: U.MoveStruct, forward: GLM.Vec3Array): Result {
+  public visit(board: Board, ms: U.MoveStruct, fwd: GLM.Mat3Array): Result {
     this.init(board, ms.sec);
-    this.fillPVS(ms, forward);
+    this.fillPVS(ms, fwd);
     PROFILE.get(null).inc('pvs', this.prepvs.length());
     let sectors = board.sectors;
     let sec2spr = U.groupSprites(board);
@@ -224,7 +225,7 @@ export class PvsBoardVisitorResult implements Result {
       let endwall = sec.wallptr + sec.wallnum;
       for (let w = sec.wallptr; w < endwall; w++) {
         if (!U.wallVisible(board, w, ms)
-          || wallBehind(board, w, forward, ms)
+          || wallBehind(board, w, ms, fwd)
           || !this.visibleFromEntryWalls(w, entryWalls, ms))
           continue;
 
