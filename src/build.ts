@@ -28,6 +28,10 @@ import * as INPUT from './modules/input';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
+import { Selection } from './modules/engines/build/edit/tools/selection';
+import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
+import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
+import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -299,8 +303,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  let board = createBoard();
-  // let board = loadBloodMap(stream);
+  // let board = createBoard();
+  let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   let control = new controller.Controller3D();
@@ -319,7 +323,12 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   context.setBoardInvalidator(cache);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
-    HANDLER.init(context, (cb) => artSelector.modal(cb));
+    HANDLER.init(context);
+    HANDLER.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
+    HANDLER.addHandler(new SplitWall());
+    HANDLER.addHandler(new JoinSectors());
+    HANDLER.addHandler(new DrawSector());
+
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       BGL.newFrame(gl);
@@ -327,7 +336,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
 
       PROFILE.start();
       RENDERER.draw(cache.geometry, view);
-      HANDLER.handle(cache.helpers, view, control, time);
+      HANDLER.handle(INPUT.get(), cache.helpers, view, control, time);
       PROFILE.endProfile()
 
       updateUi(props, view, control);

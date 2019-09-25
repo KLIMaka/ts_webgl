@@ -9,6 +9,8 @@ import * as GLM from "../../../../../libs_js/glmatrix";
 import { createInnerLoop, createNewSector, wallInSector, splitSector } from "../../boardutils";
 import { tuple2 } from "../../../../../libs/mathutils";
 import { BuildContext } from "../../api";
+import { MessageHandlerIml } from "../../messages";
+import { Input, HitScan, Highlight, Render } from "../editapi";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -108,7 +110,7 @@ class Contour {
   }
 }
 
-export class DrawSector {
+export class DrawSector extends MessageHandlerIml {
   private static zintersect: [number, number] = [0, 0];
 
   private points = new Deck<[number, number]>();
@@ -118,8 +120,8 @@ export class DrawSector {
   private contour = new Contour();
   private isRect = true;
 
-  public update(board: Board, hit: Hitscan, context: BuildContext) {
-    if (this.predrawUpdate(board, hit, context)) return;
+  private update(context: BuildContext, hit: Hitscan) {
+    if (this.predrawUpdate(context, hit)) return;
 
     let z = this.contour.getZ();
     let res = this.getIntersectionZPlane(hit);
@@ -148,20 +150,20 @@ export class DrawSector {
     }
   }
 
-  private predrawUpdate(board: Board, hit: Hitscan, context: BuildContext) {
+  private predrawUpdate(ctx: BuildContext, hit: Hitscan) {
     if (this.points.length() > 0) return false;
     if (hit.t == -1) {
       this.valid = false;
     } else {
       this.valid = true;
-      let [x, y] = snap(hit, context);
-      let z = this.getPointerZ(board, hit, x, y);
+      let [x, y] = snap(hit, ctx);
+      let z = this.getPointerZ(ctx.board, hit, x, y);
       GLM.vec3.set(this.pointer, x, y, z);
       this.contour.setZ(z / ZSCALE);
       this.contour.updateLastPoint(x, y);
       if (isSector(hit.type)) this.hintSector = hit.id;
-      if (isSprite(hit.type)) this.hintSector = board.sprites[hit.id].sectnum;
-      if (isWall(hit.type)) this.hintSector = sectorOfWall(board, hit.id);
+      if (isSprite(hit.type)) this.hintSector = ctx.board.sprites[hit.id].sectnum;
+      if (isWall(hit.type)) this.hintSector = sectorOfWall(ctx.board, hit.id);
     }
     return true;
   }
@@ -181,7 +183,7 @@ export class DrawSector {
     return wallInSector(ctx.board, sectorId, fp[0], fp[1]) != -1 && wallInSector(ctx.board, sectorId, x, y) != -1 ? sectorId : -1;
   }
 
-  public insertPoint(ctx: BuildContext, rect: boolean) {
+  private insertPoint(ctx: BuildContext, rect: boolean) {
     if (this.points.length() == 0) this.isRect = rect;
     if (!this.valid) return;
     if (this.checkFinish(ctx)) return;
@@ -216,7 +218,7 @@ export class DrawSector {
     return false;
   }
 
-  public popPoint() {
+  private popPoint() {
     if (this.points.length() == 0) return;
     if (this.isRect) {
       for (let i = 0; i < 4; i++) {
@@ -234,10 +236,6 @@ export class DrawSector {
     if (isSector(hit.type)) return hit.z;
     let sectorId = isWall(hit.type) ? sectorOfWall(board, hit.id) : board.sprites[hit.id].sectnum;
     return getClosestSectorZ(board, sectorId, x, y, hit.z)[1];
-  }
-
-  public getRenderable(): Renderable {
-    return this.contour.getRenderable();
   }
 
   private findContainingSector(ctx: BuildContext) {
@@ -271,4 +269,17 @@ export class DrawSector {
     this.contour.pushPoint(0, 0);
   }
 
+  public Input(msg: Input, ctx: BuildContext) {
+    let state = msg.state;
+    if (state.keysPress['SPACE']) this.insertPoint(ctx, state.keys['SHIFT']);
+    if (state.keysPress['BACKSPACE']) this.popPoint();
+  }
+
+  public HitScan(msg: HitScan, ctx: BuildContext) {
+    this.update(ctx, msg.hit);
+  }
+
+  public Render(msg: Render, ctx: BuildContext) {
+    msg.list.push(this.contour.getRenderable());
+  }
 }

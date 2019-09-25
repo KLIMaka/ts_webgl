@@ -1,5 +1,15 @@
 
-var named = {
+export interface InputState {
+  readonly keys: { [index: string]: boolean };
+  readonly keysPress: { [index: string]: boolean };
+  readonly mouseButtons: [boolean, boolean, boolean];
+  readonly mouseClicks: [boolean, boolean, boolean];
+  readonly mouseX: number;
+  readonly mouseY: number;
+  readonly wheel: number;
+}
+
+let named = {
   8: 'BACKSPACE',
   9: 'TAB',
   13: 'ENTER',
@@ -17,20 +27,22 @@ function mapKeyCode(code: number): string {
   return named[code] || (code >= 65 && code <= 90 ? String.fromCharCode(code) : null);
 }
 
-export var keys: { [index: string]: boolean } = {};
-export var keysPress: { [index: string]: boolean } = {};
-export var mouseButtons = [false, false, false];
-export var mouseClicks = [false, false, false];
-export var mouseX = 0;
-export var mouseY = 0;
-export var wheel = 0;
+const state = {
+  keys: {},
+  keysPress: {},
+  mouseButtons: <[boolean, boolean, boolean]>[false, false, false],
+  mouseClicks: <[boolean, boolean, boolean]>[false, false, false],
+  mouseX: 0,
+  mouseY: 0,
+  wheel: 0
+}
 
 export function postFrame() {
-  wheel = 0;
-  mouseClicks[0] = false;
-  mouseClicks[1] = false;
-  mouseClicks[2] = false;
-  keysPress = {};
+  state.wheel = 0;
+  state.mouseClicks[0] = false;
+  state.mouseClicks[1] = false;
+  state.mouseClicks[2] = false;
+  state.keysPress = {};
 }
 
 export function bind(canvas: HTMLCanvasElement) {
@@ -46,43 +58,47 @@ function updateState(keys: { [index: string]: boolean }, e: KeyboardEvent, state
   keys['ALT'] = e.altKey;
   keys['SHIFT'] = e.shiftKey;
   keys['CTRL'] = e.ctrlKey;
-  var key = mapKeyCode(e.keyCode);
+  let key = mapKeyCode(e.keyCode);
   if (key) keys[key] = state;
   keys[e.keyCode] = state;
   keys[e.key] = state;
 }
 
 function keydown(e: KeyboardEvent) {
-  updateState(keys, e, true);
-  updateState(keysPress, e, true);
+  updateState(state.keys, e, true);
+  updateState(state.keysPress, e, true);
   e.preventDefault();
   return false;
 }
 
 function keyup(e: KeyboardEvent) {
-  updateState(keys, e, false);
+  updateState(state.keys, e, false);
   e.preventDefault();
   return false;
 }
 
 function mousemove(e: MouseEvent): boolean {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
+  state.mouseX = e.clientX;
+  state.mouseY = e.clientY;
   return false;
 }
 
 function mouseup(e: MouseEvent): boolean {
-  mouseButtons[e.button] = false;
-  mouseClicks[e.button] = true;
+  state.mouseButtons[e.button] = false;
+  state.mouseClicks[e.button] = true;
   return false;
 }
 
 function mousedown(e: MouseEvent): boolean {
-  mouseButtons[e.button] = true;
+  state.mouseButtons[e.button] = true;
   return false;
 }
 
 function wheelevent(e: WheelEvent): boolean {
-  wheel = e.deltaY > 0 ? 1 : -1;
+  state.wheel = e.deltaY > 0 ? 1 : -1;
   return false;
+}
+
+export function get(): InputState {
+  return state;
 }

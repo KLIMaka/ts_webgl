@@ -22,24 +22,24 @@ export class MovingHandle {
     this.active = true;
   }
 
-  public update(s: GLM.Vec3Array, v: GLM.Vec3Array, mod1: boolean, mod2: boolean, mod3: boolean, hit: Hitscan, board: Board) {
+  public update(mod1: boolean, mod2: boolean, mod3: boolean, hit: Hitscan, board: Board) {
     this.mod1 = mod1;
     this.mod2 = mod2;
     this.mod3 = mod3;
     this.hit = hit;
 
     if (mod2) {
-      let dx = this.currentPoint[0] - s[0];
-      let dy = this.currentPoint[2] - s[2];
-      let t = len2d(dx, dy) / len2d(v[0], v[2]);
-      this.dzoff = v[1] * t + s[1] - this.currentPoint[1];
+      let dx = this.currentPoint[0] - hit.start[0];
+      let dy = this.currentPoint[2] - hit.start[2];
+      let t = len2d(dx, dy) / len2d(hit.vec[0], hit.vec[2]);
+      this.dzoff = hit.vec[1] * t + hit.start[1] - this.currentPoint[1];
     } else {
       this.dzoff = 0;
-      let dz = this.startPoint[1] - s[1];
-      let t = dz / v[1];
-      GLM.vec3.copy(this.currentPoint, v);
+      let dz = this.startPoint[1] - hit.start[1];
+      let t = dz / hit.vec[1];
+      GLM.vec3.copy(this.currentPoint, hit.vec);
       GLM.vec3.scale(this.currentPoint, this.currentPoint, t);
-      GLM.vec3.add(this.currentPoint, this.currentPoint, s);
+      GLM.vec3.add(this.currentPoint, this.currentPoint, hit.start);
     }
   }
 
