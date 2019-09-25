@@ -18,5 +18,5 @@ export class PanRepeat implements Message { constructor(public xpan: number, pub
 export class Palette implements Message { constructor(public value: number, public max: number, public absolute = false) { } }
 export class Flip implements Message { constructor() { } }
 export class SpriteMode implements Message { }
-export class Input implements Message { constructor(public state: InputState) { } }
+export class Input implements Message { constructor(public state: InputState, public dt: number) { } }
 export class HitScan implements Message { constructor(public hit: Hitscan) { } }

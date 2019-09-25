@@ -15,7 +15,7 @@ import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
-import { ArtProvider } from './modules/engines/build/api';
+import { ArtProvider, BuildContext } from './modules/engines/build/api';
 import * as RENDERER from './modules/engines/build/gl/boardrenderer';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
@@ -32,6 +32,8 @@ import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
+import { Input } from './modules/engines/build/edit/editapi';
+import { Message } from './modules/engines/build/messages';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -215,10 +217,19 @@ function createViewPoint(board: BS.Board, control: controller.Controller3D) {
       if (!BU.inSector(board, this.x, this.y, this.sec))
         this.sec = BU.findSector(board, this.x, this.y, this.sec);
       control.getCamera().setPosition([this.x, this.z / -16, this.y]);
+    },
+
+    handle(message: Message, ctx: Context) {
+      if (!(message instanceof Input)) return;
+      let msg = <Input>message;
+      if (msg.state.keys['W']) control.moveForward(msg.dt * 8000);
+      if (msg.state.keys['S']) control.moveForward(-msg.dt * 8000);
+      if (msg.state.keys['A']) control.moveSideway(-msg.dt * 8000);
+      if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
+      control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
     }
   }
 }
-
 
 function createBoard() {
   let board = new BloodBoard();
@@ -303,8 +314,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  // let board = createBoard();
-  let board = loadBloodMap(stream);
+  let board = createBoard();
+  // let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   let control = new controller.Controller3D();
@@ -328,6 +339,8 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     HANDLER.addHandler(new SplitWall());
     HANDLER.addHandler(new JoinSectors());
     HANDLER.addHandler(new DrawSector());
+    HANDLER.addHandler(context);
+    HANDLER.addHandler(view);
 
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
@@ -336,7 +349,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
 
       PROFILE.start();
       RENDERER.draw(cache.geometry, view);
-      HANDLER.handle(INPUT.get(), cache.helpers, view, control, time);
+      HANDLER.handle(INPUT.get(), view, time);
       PROFILE.endProfile()
 
       updateUi(props, view, control);

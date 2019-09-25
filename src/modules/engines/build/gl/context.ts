@@ -1,13 +1,15 @@
 import { cyclic } from '../../../../libs/mathutils';
 import { ArtProvider, BuildContext, BoardInvalidator } from '../api';
 import { Board } from '../structs';
+import { MessageHandlerIml } from '../messages';
+import { Input } from '../edit/editapi';
 
 
 function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
 }
 
-export class Context implements BuildContext {
+export class Context extends MessageHandlerIml implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
 
@@ -17,6 +19,7 @@ export class Context implements BuildContext {
   private invalidatorInt: BoardInvalidator;
 
   constructor(art: ArtProvider, board: Board, gl: WebGLRenderingContext) {
+    super();
     this.art = art;
     this.boardInt = board;
     this.gl = gl;
@@ -59,4 +62,8 @@ export class Context implements BuildContext {
     return snapGrid(x, this.gridSizes[this.gridSizeIdx] * scale);
   }
 
+  Input(msg: Input, ctx: BuildContext) {
+    if (msg.state.keysPress['[']) this.incGridSize();
+    if (msg.state.keysPress[']']) this.decGridSize();
+  }
 }
