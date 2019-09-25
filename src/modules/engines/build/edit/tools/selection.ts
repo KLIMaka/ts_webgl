@@ -78,14 +78,17 @@ export class Selection extends MessageHandlerIml {
 
   private updateMove(msg: Input, ctx: BuildContext) {
     if (!handle.isActive() && msg.state.mouseButtons[0]) {
+      console.log('start move');
       handle.start(this.hit);
       this.selection.handle(START_MOVE, ctx);
     } else if (!msg.state.mouseButtons[0]) {
       handle.stop();
+      console.log('end move');
       this.selection.handle(END_MOVE, ctx);
       return;
     }
 
+    console.log('move');
     this.selection.handle(MOVE, ctx);
   }
 

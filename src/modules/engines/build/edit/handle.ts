@@ -30,9 +30,9 @@ export class MovingHandle {
 
     if (mod2) {
       let dx = this.currentPoint[0] - hit.start[0];
-      let dy = this.currentPoint[2] - hit.start[2];
-      let t = len2d(dx, dy) / len2d(hit.vec[0], hit.vec[2]);
-      this.dzoff = hit.vec[1] * t + hit.start[1] - this.currentPoint[1];
+      let dy = this.currentPoint[2] - hit.start[1];
+      let t = len2d(dx, dy) / len2d(hit.vec[0], hit.vec[1]);
+      this.dzoff = hit.vec[2] * t + hit.start[2] / ZSCALE - this.currentPoint[1];
     } else {
       this.dzoff = 0;
       let dz = this.startPoint[1] - hit.start[1];

@@ -28,8 +28,10 @@ function refreshHitscan(state: InputState, view: ViewPoint) {
   let [vx, vz, vy] = view.unproject(context.gl, state.mouseX, state.mouseY);
   hitscan(context.board, context.art, view.x, view.y, view.z, view.sec, vx, vy, vz, HITSCAN.hit, 0);
   PROFILE.endProfile();
-  let [x, y] = snap(HITSCAN.hit, context);
-  BGL.setCursorPosiotion(x, HITSCAN.hit.z / U.ZSCALE, y);
+  if (HITSCAN.hit.t != -1) {
+    let [x, y] = snap(HITSCAN.hit, context);
+    BGL.setCursorPosiotion(x, HITSCAN.hit.z / U.ZSCALE, y);
+  }
 }
 
 function drawHelpers() {
