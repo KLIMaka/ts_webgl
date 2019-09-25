@@ -187,11 +187,32 @@ function progress(fname: string) {
   }
 }
 
-function createMoveStruct(board: BS.Board, control: controller.Controller3D): { sec: number, x: number, y: number, z: number } {
+function createViewPoint(board: BS.Board, control: controller.Controller3D) {
   let playerstart = BU.getPlayerStart(board);
-  let ms: BU.MoveStruct = { sec: playerstart.sectnum, x: playerstart.x, y: playerstart.y, z: playerstart.z };
-  control.getCamera().setPositionXYZ(ms.x, ms.z / -16 + 1024, ms.y);
-  return ms;
+  control.getCamera().setPositionXYZ(playerstart.x, playerstart.z / -16 + 1024, playerstart.y);
+
+  return {
+    sec: playerstart.sectnum,
+    x: playerstart.x,
+    y: playerstart.y,
+    z: playerstart.z,
+
+    getProjectionMatrix(gl: WebGLRenderingContext) { return control.getProjectionMatrix(gl) },
+    getTransformMatrix() { return control.getTransformMatrix() },
+    getPosition() { return control.getPosition() },
+    getForward() { return control.getForward() },
+    unproject(gl: WebGLRenderingContext, x: number, y: number) { return control.getForwardUnprojected(gl, x, y) },
+
+    updatePosition() {
+      let pos = this.getPosition();
+      this.x = MU.int(pos[0]);
+      this.y = MU.int(pos[2]);
+      this.z = MU.int((pos[1]) * BU.ZSCALE);
+      if (!BU.inSector(board, this.x, this.y, this.sec))
+        this.sec = BU.findSector(board, this.x, this.y, this.sec);
+      control.getCamera().setPosition([this.x, this.z / -16, this.y]);
+    }
+  }
 }
 
 
@@ -285,7 +306,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let control = new controller.Controller3D();
   control.setFov(90);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  let ms = createMoveStruct(board, control);
+  let view = createViewPoint(board, control);
 
   let rorLinks = loadRorLinks(board);
   let impl: RENDERER.Implementation = {
@@ -302,18 +323,14 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       BGL.newFrame(gl);
-
-      let pos = control.getCamera().getPosition();
-      ms.x = MU.int(pos[0]); ms.y = MU.int(pos[2]), ms.z = MU.int((pos[1]) * BU.ZSCALE);
-      if (!BU.inSector(board, ms.x, ms.y, ms.sec)) ms.sec = BU.findSector(board, ms.x, ms.y, ms.sec);
-      control.getCamera().setPosition([ms.x, ms.z / -16, ms.y]);
+      view.updatePosition();
 
       PROFILE.start();
-      RENDERER.draw(cache.geometry, ms);
-      HANDLER.handle(cache.helpers, ms, control, time);
+      RENDERER.draw(cache.geometry, view);
+      HANDLER.handle(cache.helpers, view, control, time);
       PROFILE.endProfile()
 
-      updateUi(props, ms, control);
+      updateUi(props, view, control);
 
       INPUT.postFrame();
     });
