@@ -32,6 +32,9 @@ const FLIP = new Flip();
 const SPRITE_MODE = new SpriteMode();
 const HIGHLIGHT = new Highlight();
 
+let clipboardPicnum = new SetPicnum(0);
+let clipboardShade = new Shade(0, true);
+
 function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
   let wall = board.walls[hit.id];
   let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.id) : wall.nextsector;
@@ -144,6 +147,9 @@ export class Selection extends MessageHandlerReflective {
     if (msg.state.keysPress['F']) this.selection.handle(FLIP, ctx);
     if (msg.state.keysPress['L']) this.insertSprite(ctx);
     if (msg.state.keysPress['R']) this.selection.handle(SPRITE_MODE, ctx);
+    if (msg.state.keysPress['1']) this.copy(msg, ctx);
+    if (msg.state.keysPress['2']) this.selection.handle(clipboardShade, ctx);
+    if (msg.state.keysPress['3']) this.selection.handle(clipboardPicnum, ctx);
     if (msg.state.wheel != 0) this.sendShadeChange(msg, ctx);
   }
 
@@ -198,6 +204,30 @@ export class Selection extends MessageHandlerReflective {
         break;
       case SubType.SPRITE:
         console.log(id, ctx.board.sprites[id]);
+        break;
+    }
+  }
+
+  private copy(msg: Input, ctx: BuildContext) {
+    if (this.hit.t == -1) return;
+    switch (this.hit.type) {
+      case SubType.CEILING:
+        clipboardShade.value = ctx.board.sectors[this.hit.id].ceilingshade;
+        clipboardPicnum.picnum = ctx.board.sectors[this.hit.id].ceilingpicnum;
+        break;
+      case SubType.FLOOR:
+        clipboardShade.value = ctx.board.sectors[this.hit.id].floorshade;
+        clipboardPicnum.picnum = ctx.board.sectors[this.hit.id].floorpicnum;
+        break;
+      case SubType.LOWER_WALL:
+      case SubType.MID_WALL:
+      case SubType.UPPER_WALL:
+        clipboardShade.value = ctx.board.walls[this.hit.id].shade;
+        clipboardPicnum.picnum = ctx.board.walls[this.hit.id].picnum;
+        break;
+      case SubType.SPRITE:
+        clipboardShade.value = ctx.board.sprites[this.hit.id].shade;
+        clipboardPicnum.picnum = ctx.board.sprites[this.hit.id].picnum;
         break;
     }
   }

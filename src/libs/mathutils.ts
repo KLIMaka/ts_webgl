@@ -43,6 +43,19 @@ export function len2d(x: number, y: number) {
   return Math.sqrt(x * x + y * y);
 }
 
+export function lenPointToLine(px: number, py: number, l1x: number, l1y: number, l2x: number, l2y: number) {
+  let ldx = l2x - l1x;
+  let ldy = l2y - l1y;
+  let pdx = px - l1x;
+  let pdy = py - l1y;
+  let dot = dot2d(ldx, ldy, pdx, pdy);
+  let llensqr = sqrLen2d(ldx, ldy);
+  if (dot <= 0) return len2d(pdx, pdy);
+  else if (dot >= llensqr) return len2d(px - l2x, py - l2y);
+  let t = dot / llensqr;
+  return len2d(px - (l1x + ldx * t), py - (l1y + ldy * t));
+}
+
 export function len3d(x: number, y: number, z: number) {
   return Math.sqrt(x * x + y * y + z * z);
 }

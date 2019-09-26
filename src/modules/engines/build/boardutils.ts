@@ -79,6 +79,23 @@ export function closestWallInSector(board: Board, secId: number, x: number, y: n
   return result;
 }
 
+export function closestWallLineInSector(board: Board, secId: number, x: number, y: number, d: number): number {
+  let sec = board.sectors[secId];
+  let end = sec.wallptr + sec.wallnum;
+  let mindist = Number.MAX_VALUE;
+  let result = -1;
+  for (let w = sec.wallptr; w < end; w++) {
+    let wall = board.walls[w];
+    let wall2 = board.walls[wall.point2];
+    let dist = MU.lenPointToLine(x, y, wall.x, wall.y, wall2.x, wall2.y);
+    if (dist < d && dist < mindist) {
+      mindist = dist;
+      result = w;
+    }
+  }
+  return result;
+}
+
 export function wallInSector(board: Board, secId: number, x: number, y: number) {
   let sec = board.sectors[secId];
   let end = sec.wallptr + sec.wallnum;

@@ -120,15 +120,14 @@ export class DrawSector extends MessageHandlerReflective {
   private contour = new Contour();
   private isRect = true;
 
-  private update(context: BuildContext, hit: Hitscan) {
-    if (this.predrawUpdate(context, hit)) return;
+  private update(ctx: BuildContext, hit: Hitscan) {
+    if (this.predrawUpdate(ctx, hit)) return;
 
     let z = this.contour.getZ();
-    let res = this.getIntersectionZPlane(hit);
+    let res = snap(hit, ctx);
+    if (res == null) res = this.getIntersectionZPlane(ctx, hit);
     if (res == null) return;
     let [x, y] = res;
-    x = context.snap(x);
-    y = context.snap(y);
     GLM.vec3.set(this.pointer, x, y, z);
 
     if (this.isRect) {
@@ -168,12 +167,14 @@ export class DrawSector extends MessageHandlerReflective {
     return true;
   }
 
-  private getIntersectionZPlane(hit: Hitscan): [number, number] {
+  private getIntersectionZPlane(ctx: BuildContext, hit: Hitscan): [number, number] {
+    let snapped = snap(hit, ctx);
+    if (snapped != null) return tuple2(DrawSector.zintersect, snapped[0], snapped[1]);
     let z = this.contour.getZ();
     let dz = hit.start[2] / ZSCALE - z;
     let t = -dz / hit.vec[2];
     if (t < 0) return null;
-    return tuple2(DrawSector.zintersect, hit.start[0] + hit.vec[0] * t, hit.start[1] + hit.vec[1] * t);
+    return tuple2(DrawSector.zintersect, ctx.snap(hit.start[0] + hit.vec[0] * t), ctx.snap(hit.start[1] + hit.vec[1] * t));
   }
 
   private isSplitSector(ctx: BuildContext, x: number, y: number) {
