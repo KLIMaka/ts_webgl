@@ -29,6 +29,8 @@ export class Hitscan {
     public t: number = -1,
     public id: number = -1,
     public type: SubType = null,
+    public startzscaled = GLM.vec3.create(),
+    public veczscaled = GLM.vec3.create(),
     public start = GLM.vec3.create(),
     public vec = GLM.vec3.create()) { }
 
@@ -38,6 +40,8 @@ export class Hitscan {
     this.type = null;
     GLM.vec3.set(this.start, xs, ys, zs);
     GLM.vec3.set(this.vec, vx, vy, vz);
+    GLM.vec3.set(this.veczscaled, vx, vz, vy);
+    GLM.vec3.set(this.startzscaled, xs, zs / ZSCALE, ys);
   }
 
   private testHit(x: number, y: number, z: number, t: number): boolean {

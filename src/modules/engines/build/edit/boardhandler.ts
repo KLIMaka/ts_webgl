@@ -4,9 +4,9 @@ import { ViewPoint } from '../api';
 import * as BGL from '../gl/buildgl';
 import { Context } from '../gl/context';
 import { hitscan, Hitscan } from '../hitscan';
-import { MessageHandler, MessageHandlerList } from '../messages';
+import { MessageHandler, MessageHandlerList } from '../handlerapi';
 import * as U from '../utils';
-import { HitScan, Input, Render } from './editapi';
+import { HitScan, Input, Render } from './messages';
 import { snap } from './editutils';
 
 const HITSCAN = new HitScan(new Hitscan());
@@ -32,9 +32,16 @@ function refreshHitscan(state: InputState, view: ViewPoint) {
     let [x, y] = snap(HITSCAN.hit, context);
     BGL.setCursorPosiotion(x, HITSCAN.hit.z / U.ZSCALE, y);
   }
+  return HITSCAN;
 }
 
-function drawHelpers() {
+function refreshInput(state: InputState, dt: number) {
+  INPUT.state = state;
+  INPUT.dt = dt;
+  return INPUT;
+}
+
+function draw() {
   context.gl.disable(WebGLRenderingContext.DEPTH_TEST);
   context.gl.enable(WebGLRenderingContext.BLEND);
   RENDER.list.clear();
@@ -45,10 +52,7 @@ function drawHelpers() {
 }
 
 export function handle(state: InputState, view: ViewPoint, dt: number) {
-  refreshHitscan(state, view);
-  INPUT.state = state;
-  INPUT.dt = dt;
-  handlers.handle(HITSCAN, context);
-  handlers.handle(INPUT, context);
-  drawHelpers();
+  handlers.handle(refreshHitscan(state, view), context);
+  handlers.handle(refreshInput(state, dt), context);
+  draw();
 }

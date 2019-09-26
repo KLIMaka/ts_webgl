@@ -4,10 +4,10 @@ import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../deck";
 import { connectedWalls, moveWall, nextwall, prevwall } from "../boardutils";
 import { Hitscan } from "../hitscan";
-import { MessageHandlerIml } from "../messages";
+import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip } from "./editapi";
+import { EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip } from "./messages";
 import { invalidateSectorAndWalls } from "./editutils";
 import { BuildContext } from "../api";
 
@@ -80,7 +80,7 @@ function collectMotionSectors(board: Board, walls: Collection<number>): Set<numb
   return sectors;
 }
 
-export class WallSegmentsEnt extends MessageHandlerIml {
+export class WallSegmentsEnt extends MessageHandlerReflective {
   private static invalidatedSectors = new IndexedDeck<number>();
 
   public static create(board: Board, ids: Collection<number>) {

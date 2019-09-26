@@ -1,15 +1,15 @@
 import { cyclic } from '../../../../libs/mathutils';
 import { ArtProvider, BuildContext, BoardInvalidator } from '../api';
 import { Board } from '../structs';
-import { MessageHandlerIml } from '../messages';
-import { Input } from '../edit/editapi';
+import { MessageHandlerReflective } from '../handlerapi';
+import { Input } from '../edit/messages';
 
 
 function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
 }
 
-export class Context extends MessageHandlerIml implements BuildContext {
+export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
 

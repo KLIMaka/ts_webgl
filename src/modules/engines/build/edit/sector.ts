@@ -1,13 +1,13 @@
 import * as GLM from "../../../../libs_js/glmatrix";
 import { isSector, SubType } from "../hitscan";
-import { MessageHandlerIml } from "../messages";
+import { MessageHandlerReflective } from "../handlerapi";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
-import { Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./editapi";
+import { Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./messages";
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import { invalidateSectorAndWalls } from "./editutils";
 import { BuildContext } from "../api";
 
-export class SectorEnt extends MessageHandlerIml {
+export class SectorEnt extends MessageHandlerReflective {
 
   public static create(id: number, type: SubType) {
     return new SectorEnt(id, type);

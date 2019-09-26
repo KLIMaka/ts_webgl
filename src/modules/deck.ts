@@ -41,6 +41,13 @@ export class Deck<T> implements Collection<T>{
   public length() {
     return this.pointer;
   }
+
+  public clone() {
+    let copy = new Deck<T>();
+    copy.array = [...this.array];
+    copy.pointer = this.pointer;
+    return copy;
+  }
 }
 
 export class IndexedDeck<T> extends Deck<T>{

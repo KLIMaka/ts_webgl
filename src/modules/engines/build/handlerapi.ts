@@ -1,4 +1,5 @@
 import { Deck } from "../../deck";
+import { tuple2 } from "../../../libs/mathutils";
 
 export interface Message { }
 
@@ -8,19 +9,20 @@ export interface MessageHandler {
   handle(message: Message, ctx: Context): void;
 }
 
-export class MessageHandlerIml {
-
-  handle(message: Message, ctx: Context) {
-    let name = message.constructor.name;
-    let handler = this[name];
-    if (handler != undefined) {
-      handler.apply(this, [message, ctx]);
-    } else {
-      this.handleDefault(message, ctx);
-    }
+let args: [Message, Context] = [null, null];
+export function handleReflective(obj: Object, message: Message, ctx: Context) {
+  let name = message.constructor.name;
+  let handler = obj[name];
+  if (handler != undefined) {
+    handler.apply(obj, tuple2(args, message, ctx));
+    return true;
   }
+  return false;
+}
 
-  handleDefault(message: Message, ctx: Context) { }
+export class MessageHandlerReflective {
+  public handle(message: Message, ctx: Context) { if (!handleReflective(this, message, ctx)) this.handleDefault(message, ctx) }
+  protected handleDefault(message: Message, ctx: Context) { }
 }
 
 export class MessageHandlerList implements MessageHandler {
@@ -45,9 +47,8 @@ export class MessageHandlerList implements MessageHandler {
   }
 
   public clone(): MessageHandlerList {
-    let list = new MessageHandlerList();
-    for (let i = 0; i < this.receivers.length(); i++)
-      list.add(this.receivers.get(i));
-    return list;
+    let copy = new MessageHandlerList();
+    copy.receivers = this.receivers.clone();
+    return copy;
   }
 }

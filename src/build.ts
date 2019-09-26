@@ -32,8 +32,8 @@ import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
-import { Input } from './modules/engines/build/edit/editapi';
-import { Message } from './modules/engines/build/messages';
+import { Input } from './modules/engines/build/edit/messages';
+import { Message } from './modules/engines/build/handlerapi';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';

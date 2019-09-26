@@ -1,4 +1,4 @@
-import { Message } from "../messages";
+import { Message } from "../handlerapi";
 import { MovingHandle } from "./handle";
 import { InputState } from "../../../input";
 import { Hitscan } from "../hitscan";

@@ -9,8 +9,8 @@ import * as GLM from "../../../../../libs_js/glmatrix";
 import { createInnerLoop, createNewSector, wallInSector, splitSector } from "../../boardutils";
 import { tuple2 } from "../../../../../libs/mathutils";
 import { BuildContext } from "../../api";
-import { MessageHandlerIml } from "../../messages";
-import { Input, HitScan, Highlight, Render } from "../editapi";
+import { MessageHandlerReflective } from "../../handlerapi";
+import { Input, HitScan, Highlight, Render } from "../messages";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -110,7 +110,7 @@ class Contour {
   }
 }
 
-export class DrawSector extends MessageHandlerIml {
+export class DrawSector extends MessageHandlerReflective {
   private static zintersect: [number, number] = [0, 0];
 
   private points = new Deck<[number, number]>();

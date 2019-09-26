@@ -1,6 +1,6 @@
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
-import { Context } from "./messages";
+import { Context } from "./handlerapi";
 import { Board } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import { MoveStruct } from "./utils";

@@ -1,12 +1,12 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { moveSprite, insertSprite } from "../boardutils";
-import { MessageHandlerIml } from "../messages";
+import { MessageHandlerReflective } from "../handlerapi";
 import { ZSCALE } from "../utils";
-import { Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./editapi";
+import { Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./messages";
 import { BuildContext } from "../api";
 
-export class SpriteEnt extends MessageHandlerIml {
+export class SpriteEnt extends MessageHandlerReflective {
 
   public static create(id: number) {
     return new SpriteEnt(id);

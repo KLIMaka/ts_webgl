@@ -1,10 +1,10 @@
 import { joinSectors } from "../../boardutils";
 import { Hitscan } from "../../hitscan";
 import { BuildContext } from "../../api";
-import { MessageHandlerIml } from "../../messages";
-import { HitScan, Input } from "../editapi";
+import { MessageHandlerReflective } from "../../handlerapi";
+import { HitScan, Input } from "../messages";
 
-export class JoinSectors extends MessageHandlerIml {
+export class JoinSectors extends MessageHandlerReflective {
   private sectorId1 = -1;
   private sectorId2 = -1;
   private hit: Hitscan;

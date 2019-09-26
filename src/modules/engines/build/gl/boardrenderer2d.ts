@@ -11,7 +11,7 @@ import * as U from '../utils';
 import * as BGL from './buildgl';
 import { Context } from './context';
 import { Renderable } from './renderable';
-import { BuildRenderableProvider } from '../edit/editapi';
+import { BuildRenderableProvider } from '../edit/messages';
 
 export function draw(renderables: BuildRenderableProvider, ms: U.MoveStruct, ctr: Controller3D) {
   drawGeometry(renderables, ms, ctr);

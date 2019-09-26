@@ -2,10 +2,10 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../deck";
 import { connectedWalls, moveWall, prevwall, insertWall } from "../boardutils";
-import { MessageHandlerIml } from "../messages";
+import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./editapi";
+import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./messages";
 import { invalidateSectorAndWalls } from "./editutils";
 import { BuildContext } from "../api";
 
@@ -15,7 +15,7 @@ function collectConnectedWalls(board: Board, wallId: number) {
   return result;
 }
 
-export class WallEnt extends MessageHandlerIml {
+export class WallEnt extends MessageHandlerReflective {
   private static invalidatedSectors = new IndexedDeck<number>();
 
   public static create(board: Board, id: number) {

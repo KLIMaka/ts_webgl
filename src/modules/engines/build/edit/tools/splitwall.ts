@@ -2,11 +2,11 @@ import { splitWall } from "../../boardutils";
 import { sectorOfWall } from "../../utils";
 import { invalidateSectorAndWalls, snap } from "../editutils";
 import { BuildContext } from "../../api";
-import { MessageHandlerIml } from "../../messages";
-import { HitScan, Input } from "../editapi";
+import { MessageHandlerReflective } from "../../handlerapi";
+import { HitScan, Input } from "../messages";
 import { isWall } from "../../hitscan";
 
-export class SplitWall extends MessageHandlerIml {
+export class SplitWall extends MessageHandlerReflective {
   private x = 0;
   private y = 0;
   private wallId = -1;

@@ -1,13 +1,19 @@
 import { BuildContext } from "../../api";
-import { insertSprite } from "../../boardutils";
-import { Hitscan, isSector, SubType } from "../../hitscan";
-import { MessageHandlerIml, MessageHandlerList } from "../../messages";
-import { getFromHitscan } from "../edit";
-import { EndMove, Flip, HitScan, Input, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, ToggleParallax, Render, Highlight } from "../editapi";
-import { snap } from "../editutils";
+import { insertSprite, loopWalls, nextwall } from "../../boardutils";
+import { Hitscan, isSector, SubType, isWall, isSprite } from "../../hitscan";
+import { MessageHandlerReflective, MessageHandlerList, MessageHandler } from "../../handlerapi";
+import { EndMove, Flip, HitScan, Input, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, ToggleParallax, Render, Highlight } from "../messages";
+import { snap, getClosestWall, getClosestSectorZ } from "../editutils";
 import { MovingHandle } from "../handle";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
+import { Deck } from "../../../../deck";
+import { WallSegmentsEnt } from "../wallsegment";
+import { sectorOfWall } from "../../utils";
+import { WallEnt } from "../wall";
+import { SectorEnt } from "../sector";
+import { SpriteEnt } from "../sprite";
+import { Board } from "../../structs";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -26,7 +32,44 @@ const FLIP = new Flip();
 const SPRITE_MODE = new SpriteMode();
 const HIGHLIGHT = new Highlight();
 
-export class Selection extends MessageHandlerIml {
+function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
+  let wall = board.walls[hit.id];
+  let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.id) : wall.nextsector;
+  let type = getClosestSectorZ(board, sectorId, hit.x, hit.y, hit.z)[0];
+  return SectorEnt.create(sectorId, type);
+}
+
+let list = new Deck<MessageHandler>();
+let segment = new Deck<number>();
+export function getFromHitscan(ctx: BuildContext, hit: Hitscan, fullLoop = false): Deck<MessageHandler> {
+  list.clear();
+  let board = ctx.board;
+  let w = getClosestWall(board, hit, ctx);
+  if (w != -1) {
+    list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
+  } else if (isWall(hit.type)) {
+    if (fullLoop) {
+      list.push(WallSegmentsEnt.create(board, loopWalls(board, hit.id, sectorOfWall(board, hit.id))));
+    } else {
+      let w1 = nextwall(board, hit.id);
+      segment.clear().push(hit.id).push(w1);
+      list.push(WallSegmentsEnt.create(board, segment));
+    }
+  } else if (isSector(hit.type)) {
+    if (fullLoop) {
+      let firstWall = board.sectors[hit.id].wallptr;
+      list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, hit.id)));
+      list.push(SectorEnt.create(hit.id, hit.type == SubType.CEILING ? SubType.FLOOR : SubType.CEILING));
+    }
+    list.push(SectorEnt.create(hit.id, hit.type));
+  } else if (isSprite(hit.type)) {
+    list.push(SpriteEnt.create(hit.id));
+  }
+  return list;
+}
+
+
+export class Selection extends MessageHandlerReflective {
   private selection = new MessageHandlerList();
   private hit: Hitscan;
   private fulloop = false;
@@ -40,6 +83,7 @@ export class Selection extends MessageHandlerIml {
 
   public HitScan(msg: HitScan, ctx: BuildContext) {
     this.hit = msg.hit;
+    if (handle.isActive()) return;
     this.selection.clear();
     let list = getFromHitscan(ctx, msg.hit, this.fulloop);
     for (let i = 0; i < list.length(); i++) {
@@ -55,7 +99,7 @@ export class Selection extends MessageHandlerIml {
     if (this.selection.isEmpty()) return;
 
     if (this.activeMove(msg)) {
-      this.updateHandle(msg, ctx);
+      this.updateHandle(msg);
       this.updateMove(msg, ctx);
     } else {
       this.handleSelected(msg, ctx);
@@ -69,26 +113,23 @@ export class Selection extends MessageHandlerIml {
     return start || move || end;
   }
 
-  private updateHandle(msg: Input, ctx: BuildContext) {
+  private updateHandle(msg: Input) {
     let mod1 = msg.state.keys['SHIFT'];
     let mod2 = msg.state.keys['ALT'];
     let mod3 = msg.state.keys['CTRL'];
-    handle.update(mod1, mod2, mod3, this.hit, ctx.board);
+    handle.update(mod1, mod2, mod3, this.hit);
   }
 
   private updateMove(msg: Input, ctx: BuildContext) {
     if (!handle.isActive() && msg.state.mouseButtons[0]) {
-      console.log('start move');
       handle.start(this.hit);
       this.selection.handle(START_MOVE, ctx);
     } else if (!msg.state.mouseButtons[0]) {
       handle.stop();
-      console.log('end move');
       this.selection.handle(END_MOVE, ctx);
       return;
     }
 
-    console.log('move');
     this.selection.handle(MOVE, ctx);
   }
 
