@@ -43,12 +43,8 @@ export class Controller3D {
     return this.camera.forward();
   }
 
-  public getCamera(): camera.Camera {
-    return this.camera;
-  }
-
   public getForwardUnprojected(gl: WebGLRenderingContext, x: number, y: number): GLM.Vec3Array {
-    GLM.mat4.invert(invertTrans, this.getCamera().getTransformMatrix());
+    GLM.mat4.invert(invertTrans, this.getTransformMatrix());
     GLM.mat4.invert(invTP, this.getProjectionMatrix(gl));
     GLM.mat4.mul(invTP, invertTrans, invTP);
 
@@ -56,7 +52,7 @@ export class Controller3D {
     let dy = 2 * y / gl.drawingBufferHeight - 1;
     GLM.vec3.set(forward, dx, -dy, -1);
     GLM.vec3.transformMat4(forward, forward, invTP);
-    GLM.vec3.sub(forward, forward, this.getCamera().getPosition());
+    GLM.vec3.sub(forward, forward, this.getPosition());
     return GLM.vec3.normalize(forward, forward);
   }
 

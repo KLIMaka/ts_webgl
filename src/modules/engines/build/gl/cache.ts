@@ -172,7 +172,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   }
 
   private addWallPart(solid: Solid, mat: GLM.Mat4Array, wire: Renderable): Renderable {
-    if (!solid.renderable()) return NULL_RENDERABLE;
+    // if (!solid.renderable()) return NULL_RENDERABLE;
     let arr = new Array<Renderable>();
     arr.push(wire);
     let wallGrid = new GridRenderable();

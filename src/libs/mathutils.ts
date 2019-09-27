@@ -126,3 +126,11 @@ export function tuple3<T1, T2, T3>(value: [T1, T2, T3], v0: T1, v1: T2, v2: T3):
   value[2] = v2;
   return value;
 }
+
+export function tuple4<T1, T2, T3, T4>(value: [T1, T2, T3, T4], v0: T1, v1: T2, v2: T3, v3: T4): [T1, T2, T3, T4] {
+  value[0] = v0;
+  value[1] = v1;
+  value[2] = v2;
+  value[3] = v3;
+  return value;
+}

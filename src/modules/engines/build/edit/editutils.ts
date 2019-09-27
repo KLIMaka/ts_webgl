@@ -1,4 +1,4 @@
-import { int, len2d, tuple2 } from "../../../../libs/mathutils";
+import { int, len2d, tuple2, tuple4 } from "../../../../libs/mathutils";
 import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallLineInSector } from "../boardutils";
 import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
 import { Board } from "../structs";
@@ -23,27 +23,27 @@ export function getClosestWall(board: Board, hit: Hitscan, ctx: BuildContext): n
   return -1;
 }
 
-let snapResult: [number, number] = [0, 0];
-export function snap(hit: Hitscan, ctx: BuildContext): [number, number] {
+let snapResult: [number, number, number, SubType] = [0, 0, 0, null];
+export function snap(hit: Hitscan, ctx: BuildContext): [number, number, number, SubType] {
   let w = getClosestWall(ctx.board, hit, ctx);
   if (w != -1) {
     let wall = ctx.board.walls[w];
-    return [wall.x, wall.y];
+    return tuple4(snapResult, wall.x, wall.y, w, SubType.MID_WALL);
   } else if (isSector(hit.type)) {
     let w = closestWallLineInSector(ctx.board, hit.id, hit.x, hit.y, ctx.snapScale());
-    return w == -1 ? snapGrid(hit, ctx) : snapWall(w, hit, ctx);
+    return w == -1 ? snapGrid(hit, ctx, hit.id, hit.type) : snapWall(w, hit, ctx);
   } else if (isSprite(hit.type)) {
-    return snapGrid(hit, ctx);
+    return snapGrid(hit, ctx, hit.id, hit.type);
   } else if (isWall(hit.type)) {
     return snapWall(hit.id, hit, ctx);
   }
   return null;
 }
 
-function snapGrid(hit: Hitscan, ctx: BuildContext) {
+function snapGrid(hit: Hitscan, ctx: BuildContext, id: number, type: SubType) {
   let x = ctx.snap(hit.x);
   let y = ctx.snap(hit.y);
-  return tuple2(snapResult, x, y);
+  return tuple4(snapResult, x, y, id, type);
 }
 
 function snapWall(w: number, hit: Hitscan, ctx: BuildContext) {
@@ -59,7 +59,7 @@ function snapWall(w: number, hit: Hitscan, ctx: BuildContext) {
   let t = ctx.snap(dt * repeat) / repeat;
   let x = int(wall.x + (t * dx));
   let y = int(wall.y + (t * dy));
-  return tuple2(snapResult, x, y);
+  return tuple4(snapResult, x, y, w, SubType.MID_WALL);
 }
 
 let sectorZesult: [SubType, number] = [null, 0];

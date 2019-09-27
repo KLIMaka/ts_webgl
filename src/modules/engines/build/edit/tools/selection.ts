@@ -1,5 +1,5 @@
 import { BuildContext } from "../../api";
-import { insertSprite, loopWalls, nextwall } from "../../boardutils";
+import { insertSprite, loopWalls, nextwall, closestWallLineInSector } from "../../boardutils";
 import { Hitscan, isSector, SubType, isWall, isSprite } from "../../hitscan";
 import { MessageHandlerReflective, MessageHandlerList, MessageHandler } from "../../handlerapi";
 import { EndMove, Flip, HitScan, Input, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, ToggleParallax, Render, Highlight } from "../messages";
@@ -51,24 +51,33 @@ export function getFromHitscan(ctx: BuildContext, hit: Hitscan, fullLoop = false
   if (w != -1) {
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
   } else if (isWall(hit.type)) {
-    if (fullLoop) {
-      list.push(WallSegmentsEnt.create(board, loopWalls(board, hit.id, sectorOfWall(board, hit.id))));
-    } else {
-      let w1 = nextwall(board, hit.id);
-      segment.clear().push(hit.id).push(w1);
-      list.push(WallSegmentsEnt.create(board, segment));
-    }
+    wallSegment(fullLoop, board, hit.id);
   } else if (isSector(hit.type)) {
-    if (fullLoop) {
-      let firstWall = board.sectors[hit.id].wallptr;
-      list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, hit.id)));
-      list.push(SectorEnt.create(hit.id, hit.type == SubType.CEILING ? SubType.FLOOR : SubType.CEILING));
-    }
-    list.push(SectorEnt.create(hit.id, hit.type));
+    let w = closestWallLineInSector(board, hit.id, hit.x, hit.y, ctx.snapScale());
+    if (w != -1) wallSegment(fullLoop, board, w); else sector(fullLoop, board, hit);
   } else if (isSprite(hit.type)) {
     list.push(SpriteEnt.create(hit.id));
   }
   return list;
+}
+
+function sector(fullLoop: boolean, board: Board, hit: Hitscan) {
+  if (fullLoop) {
+    let firstWall = board.sectors[hit.id].wallptr;
+    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, hit.id)));
+    list.push(SectorEnt.create(hit.id, hit.type == SubType.CEILING ? SubType.FLOOR : SubType.CEILING));
+  }
+  list.push(SectorEnt.create(hit.id, hit.type));
+}
+
+function wallSegment(fullLoop: boolean, board: Board, w: number) {
+  if (fullLoop) {
+    list.push(WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))));
+  } else {
+    let w1 = nextwall(board, w);
+    segment.clear().push(w).push(w1);
+    list.push(WallSegmentsEnt.create(board, segment));
+  }
 }
 
 
@@ -248,3 +257,5 @@ export class Selection extends MessageHandlerReflective {
     }
   }
 }
+
+

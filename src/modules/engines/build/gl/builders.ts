@@ -286,14 +286,14 @@ export function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelp
     let nextceilingz = nextsector.ceilingz;
 
     let nextfloorheinum = nextsector.floorheinum;
-    let botcoords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true);
+    let botcoords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, true);
     if (botcoords != null) {
       bot = new Wireframe();
       genQuadWireframe(botcoords, null, (<Wireframe>bot).buff);
     }
 
     let nextceilingheinum = nextsector.ceilingheinum;
-    let topcoords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true);
+    let topcoords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, true);
     if (topcoords != null) {
       top = new Wireframe();
       genQuadWireframe(topcoords, null, (<Wireframe>top).buff);
@@ -478,13 +478,15 @@ export function updateSector(ctx: BuildContext, secId: number, renderable: Secto
 }
 
 function getWallCoords(x1: number, y1: number, x2: number, y2: number,
-  slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean): number[] {
+  slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean, line = false): number[] {
   let z1 = (slope(x1, y1, heinum) + z) / U.ZSCALE;
   let z2 = (slope(x2, y2, heinum) + z) / U.ZSCALE;
   let z3 = (nextslope(x2, y2, nextheinum) + nextz) / U.ZSCALE;
   let z4 = (nextslope(x1, y1, nextheinum) + nextz) / U.ZSCALE;
-  if (check && (z4 >= z1 && z3 >= z2))
-    return null;
+  if (check) {
+    if (line && (z4 > z1 && z3 > z2)) return null;
+    if (z4 >= z1 && z3 >= z2) return null;
+  }
   return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
 }
 

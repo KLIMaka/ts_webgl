@@ -1,101 +1,84 @@
 import camera = require('./camera');
 import GLM = require('../libs_js/glmatrix');
-import MU = require('../libs/mathutils');
+
+let pointer = GLM.vec2.create();
 
 export class Controller2D {
-
-  private gl:WebGLRenderingContext;
   private camera = new camera.Camera(0, 0, 0, 0, 0);
-  private drag = false;
-  private dragStartX = 0;
-  private dragStartY = 0;
-  private cameraX = 0;
-  private cameraY = 0;
+  private oldX = 0;
+  private oldY = 0;
   private scale = 1;
   private projection = GLM.mat4.create();
-  private dragButton = 1;
 
-  constructor(gl:WebGLRenderingContext) {
-    this.gl = gl;
-    var self = this;
-    this.gl.canvas.addEventListener('mousemove', (e:MouseEvent) => self.mousemove(e));
-    this.gl.canvas.addEventListener('mouseup', (e:MouseEvent) => self.mouseup(e));
-    this.gl.canvas.addEventListener('mousedown', (e:MouseEvent) => self.mousedown(e));
-    this.gl.canvas.addEventListener('wheel', (e:WheelEvent) => self.mousewheel(e));
-  }
-
-  private mousemove(e:MouseEvent):boolean {
-    if (this.drag) {
-      var dx = (e.clientX - this.dragStartX) * this.scale;
-      var dy = (e.clientY - this.dragStartY) * this.scale;
-      this.camera.setPositionXYZ(this.cameraX - dx, this.cameraY - dy, 0);
+  public track(x: number, y: number, move: boolean) {
+    if (move) {
+      var dx = (x - this.oldX) * this.scale;
+      var dy = (y - this.oldY) * this.scale;
+      let pos = this.camera.getPosition();
+      this.camera.setPositionXYZ(pos[0] - dx, 0, pos[2] - dy);
     }
-    return false;
+    this.oldX = x;
+    this.oldY = y;
   }
 
-  private mouseup(e:MouseEvent):boolean {
-    if (e.button != this.dragButton)
-      return;
-    this.drag = false;
-    return false;
-  }
+  // private mousewheel(e: WheelEvent): boolean {
+  //   var dx = e.clientX - this.gl.drawingBufferWidth / 2;
+  //   var dy = e.clientY - this.gl.drawingBufferHeight / 2;
 
-  private mousedown(e:MouseEvent):boolean {
-    if (e.button != this.dragButton)
-      return;
-    this.drag = true;
-    this.dragStartX = e.clientX;
-    this.dragStartY = e.clientY;
-    var campos = this.camera.getPosition();
-    this.cameraX = campos[0];
-    this.cameraY = campos[1];
-    return false;
-  }
+  //   var k = -MU.sign(e.deltaY) / 10;
+  //   this.scale *= k + 1;
 
-  private mousewheel(e:WheelEvent):boolean {
-    var dx = e.clientX - this.gl.drawingBufferWidth/2;
-    var dy = e.clientY - this.gl.drawingBufferHeight/2;
+  //   var campos = this.camera.getPosition();
+  //   var koef = this.scale * -(k / (k + 1));
+  //   var newX = campos[0] + dx * koef;
+  //   var newY = campos[1] + dy * koef;
+  //   this.camera.setPositionXYZ(newX, newY, 0);
+  //   return false;
+  // }
 
-    var k = -MU.sign(e.deltaY) / 10;
-    this.scale *= k + 1;
-
-    var campos = this.camera.getPosition();
-    var koef = this.scale * -(k/(k+1));
-    var newX = campos[0] + dx * koef;
-    var newY = campos[1] + dy * koef;
-    this.camera.setPositionXYZ(newX, newY, 0);
-    return false;
-  }
-
-  public setUnitsPerPixel(scale:number) {
+  public setUnitsPerPixel(scale: number) {
     this.scale = scale;
   }
 
-  public setPos(x:number, y:number):void {
-    this.camera.setPositionXYZ(x, y, 0);
+  public getUnitsPerPixel() {
+    return this.scale;
   }
 
-  public getMatrix():GLM.Mat4Array {
+  public setPos(x: number, y: number): void {
+    this.camera.setPositionXYZ(x, 16 * 1024, y);
+  }
+
+  public getForwardUnprojected(gl: WebGLRenderingContext, x: number, y: number): GLM.Vec3Array {
+    return [0, -1, 0];
+  }
+
+  public getPointerPosition(gl: WebGLRenderingContext, x: number, y: number) {
+    let hw = gl.drawingBufferWidth / 2;
+    let hh = gl.drawingBufferHeight / 2;
+    let pos = this.camera.getPosition();
+    return GLM.vec2.set(pointer, pos[0] + (x - hw) * this.scale, pos[2] + (y - hh) * this.scale);
+  }
+
+  public getTransformMatrix() {
+    return this.camera.getTransformMatrix();
+  }
+
+  public getProjectionMatrix(gl: WebGLRenderingContext) {
     var projection = this.projection;
-    var wscale = this.gl.drawingBufferWidth/2 * this.scale;
-    var hscale = this.gl.drawingBufferHeight/2 * this.scale;
+    var wscale = gl.drawingBufferWidth / 2 * this.scale;
+    var hscale = gl.drawingBufferHeight / 2 * this.scale;
+    GLM.mat4.identity(projection);
     GLM.mat4.ortho(projection, -wscale, wscale, hscale, -hscale, -0xFFFF, 0xFFFF);
-    GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
+    GLM.mat4.rotateX(projection, projection, -Math.PI / 2);
     return projection;
   }
 
-  public unproject(x:number, y:number):number[] {
-    var campos = this.camera.getPosition();
-    var dx = this.gl.drawingBufferWidth/2;
-    var dy = this.gl.drawingBufferHeight/2;
-    return [(x-dx)*this.scale + campos[0], (y-dy)*this.scale + campos[1]];
+  public getPosition() {
+    return this.camera.getPosition();
   }
 
-  public setDragButton(btn:number) {
-    this.dragButton = btn;
+  public getForward() {
+    return [0, -1, 0];
   }
-}
 
-export function create(gl:WebGLRenderingContext):Controller2D {
-  return new Controller2D(gl);
 }

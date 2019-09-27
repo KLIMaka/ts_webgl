@@ -25,13 +25,17 @@ export class SplitWall extends MessageHandlerReflective {
     splitWall(ctx.board, this.wallId, this.x, this.y, ctx.art, []);
     let s = sectorOfWall(ctx.board, this.wallId);
     invalidateSectorAndWalls(s, ctx);
+    let nextsector = ctx.board.walls[this.wallId].nextsector;
+    if (nextsector != -1) {
+      invalidateSectorAndWalls(nextsector, ctx);
+    }
   }
 
   public HitScan(msg: HitScan, ctx: BuildContext) {
     this.active = false;
     if (msg.hit.t != -1) {
-      let [x, y] = snap(msg.hit, ctx);
-      if (isWall(msg.hit.type)) this.update(x, y, msg.hit.id);
+      let [x, y, id, type] = snap(msg.hit, ctx);
+      if (isWall(type)) this.update(x, y, id);
     }
   }
 

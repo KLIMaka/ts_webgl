@@ -34,6 +34,7 @@ import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { Input } from './modules/engines/build/edit/messages';
 import { Message } from './modules/engines/build/handlerapi';
+import { Controller2D } from './modules/controller2d';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -151,30 +152,6 @@ class BuildArtProvider implements ArtProvider {
   public getShadowSteps() { return 64 }
 }
 
-function drawCompass(canvas: HTMLCanvasElement, eye: number[]) {
-  let ctx = canvas.getContext('2d');
-  let w = canvas.width;
-  let h = canvas.height;
-  let r = Math.min(w, h) / 2 - 1;
-  let x = r + eye[0] * r;
-  let y = r + eye[2] * r;
-  let z = r - eye[1] * r;
-  ctx.strokeStyle = 'black';
-  ctx.fillStyle = 'rgba(255,255,255,1)';
-  ctx.fillRect(0, 0, w, h);
-  ctx.beginPath();
-  ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(x, y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = 'black';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(w, z, 5, 0, Math.PI * 2);
-  ctx.fillStyle = 'black';
-  ctx.fill();
-}
-
 let loadPanel = UI.verticalPanel('loadPanel');
 document.body.appendChild(loadPanel.elem());
 let loaders = {};
@@ -193,9 +170,12 @@ function progress(fname: string) {
   }
 }
 
-function createViewPoint(board: BS.Board, control: controller.Controller3D) {
+function createViewPoint(board: BS.Board) {
   let playerstart = BU.getPlayerStart(board);
-  control.getCamera().setPositionXYZ(playerstart.x, playerstart.z / -16 + 1024, playerstart.y);
+  // let control = new controller.Controller3D();
+  // control.setFov(90);
+  // control.getCamera().setPositionXYZ(playerstart.x, playerstart.z / -16 + 1024, playerstart.y);
+  let control = new Controller2D();
 
   return {
     sec: playerstart.sectnum,
@@ -210,23 +190,32 @@ function createViewPoint(board: BS.Board, control: controller.Controller3D) {
     unproject(gl: WebGLRenderingContext, x: number, y: number) { return control.getForwardUnprojected(gl, x, y) },
 
     updatePosition() {
-      let pos = this.getPosition();
-      this.x = MU.int(pos[0]);
-      this.y = MU.int(pos[2]);
-      this.z = MU.int((pos[1]) * BU.ZSCALE);
-      if (!BU.inSector(board, this.x, this.y, this.sec))
-        this.sec = BU.findSector(board, this.x, this.y, this.sec);
-      control.getCamera().setPosition([this.x, this.z / -16, this.y]);
+      // let pos = this.getPosition();
+      // this.x = MU.int(pos[0]);
+      // this.y = MU.int(pos[2]);
+      // this.z = MU.int((pos[1]) * BU.ZSCALE);
+      // if (!BU.inSector(board, this.x, this.y, this.sec))
+      //   this.sec = BU.findSector(board, this.x, this.y, this.sec);
+      // control.setPos(this.x, this.y);
     },
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
       let msg = <Input>message;
-      if (msg.state.keys['W']) control.moveForward(msg.dt * 8000);
-      if (msg.state.keys['S']) control.moveForward(-msg.dt * 8000);
-      if (msg.state.keys['A']) control.moveSideway(-msg.dt * 8000);
-      if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
+      // if (msg.state.keys['W']) control.moveForward(msg.dt * 8000);
+      // if (msg.state.keys['S']) control.moveForward(-msg.dt * 8000);
+      // if (msg.state.keys['A']) control.moveSideway(-msg.dt * 8000);
+      // if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
+      // control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
+
+      if (msg.state.keys['W']) control.setUnitsPerPixel(control.getUnitsPerPixel() / 2);
+      if (msg.state.keys['S']) control.setUnitsPerPixel(control.getUnitsPerPixel() * 2);
       control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
+      let pointer = control.getPointerPosition(ctx.gl, msg.state.mouseX, msg.state.mouseY);
+      this.x = MU.int(pointer[0]);
+      this.y = MU.int(pointer[1]);
+      if (!BU.inSector(board, this.x, this.y, this.sec))
+        this.sec = BU.findSector(board, this.x, this.y, this.sec);
     }
   }
 }
@@ -279,8 +268,7 @@ function createBoard() {
 }
 
 let info = {}
-let compass = IU.createEmptyCanvas(50, 50);
-function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Controller3D) {
+function updateUi(props: UI.Properties, ms: BU.MoveStruct) {
   info['Frame Time:'] = (1000 / PROFILE.get(null).time).toFixed(0) + 'fps';
   info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
   info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
@@ -300,7 +288,6 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct, ctr: controller.Contr
   info['Y:'] = ms.y;
 
   props.refresh(info);
-  drawCompass(compass, ctr.getCamera().forward());
 }
 
 function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
@@ -310,18 +297,15 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let panel = UI.panel('Info');
   let props = UI.props();
   panel.append(props);
-  panel.append(new UI.Element(compass));
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  let board = createBoard();
-  // let board = loadBloodMap(stream);
+  // let board = createBoard();
+  let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
-  let control = new controller.Controller3D();
-  control.setFov(90);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  let view = createViewPoint(board, control);
+  let view = createViewPoint(board);
 
   let rorLinks = loadRorLinks(board);
   let impl: RENDERER.Implementation = {
@@ -352,7 +336,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
       HANDLER.handle(INPUT.get(), view, time);
       PROFILE.endProfile()
 
-      updateUi(props, view, control);
+      updateUi(props, view);
 
       INPUT.postFrame();
     });
