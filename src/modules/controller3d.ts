@@ -21,14 +21,14 @@ export class Controller3D {
     return this.fov;
   }
 
-  public getMatrix(gl: WebGLRenderingContext): GLM.Mat4Array {
-    let projection = this.getProjectionMatrix(gl);
+  public getMatrix(aspect: number): GLM.Mat4Array {
+    let projection = this.getProjectionMatrix(aspect);
     GLM.mat4.mul(projection, projection, this.camera.getTransformMatrix());
     return projection;
   }
 
-  public getProjectionMatrix(gl: WebGLRenderingContext): GLM.Mat4Array {
-    return GLM.mat4.perspective(this.projection, MU.deg2rad(this.fov), gl.drawingBufferWidth / gl.drawingBufferHeight, 1, 0xFFFF);
+  public getProjectionMatrix(aspect: number): GLM.Mat4Array {
+    return GLM.mat4.perspective(this.projection, MU.deg2rad(this.fov), aspect, 1, 0xFFFF);
   }
 
   public getTransformMatrix() {
@@ -43,14 +43,12 @@ export class Controller3D {
     return this.camera.forward();
   }
 
-  public getForwardUnprojected(gl: WebGLRenderingContext, x: number, y: number): GLM.Vec3Array {
+  public getForwardUnprojected(aspect: number, x: number, y: number): GLM.Vec3Array {
     GLM.mat4.invert(invertTrans, this.getTransformMatrix());
-    GLM.mat4.invert(invTP, this.getProjectionMatrix(gl));
+    GLM.mat4.invert(invTP, this.getProjectionMatrix(aspect));
     GLM.mat4.mul(invTP, invertTrans, invTP);
 
-    let dx = 2 * x / gl.drawingBufferWidth - 1;
-    let dy = 2 * y / gl.drawingBufferHeight - 1;
-    GLM.vec3.set(forward, dx, -dy, -1);
+    GLM.vec3.set(forward, x, -y, -1);
     GLM.vec3.transformMat4(forward, forward, invTP);
     GLM.vec3.sub(forward, forward, this.getPosition());
     return GLM.vec3.normalize(forward, forward);

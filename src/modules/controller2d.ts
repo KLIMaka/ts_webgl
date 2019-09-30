@@ -1,10 +1,10 @@
 import camera = require('./camera');
 import GLM = require('../libs_js/glmatrix');
 
-let pointer = GLM.vec2.create();
-
 export class Controller2D {
   private camera = new camera.Camera(0, 0, 0, 0, 0);
+  private width = 800;
+  private height = 600;
   private oldX = 0;
   private oldY = 0;
   private scale = 1;
@@ -19,6 +19,7 @@ export class Controller2D {
     }
     this.oldX = x;
     this.oldY = y;
+    this.camera.setAngles(45, 45);
   }
 
   // private mousewheel(e: WheelEvent): boolean {
@@ -36,6 +37,11 @@ export class Controller2D {
   //   return false;
   // }
 
+  public setSize(w: number, h: number) {
+    this.width = w;
+    this.height = h;
+  }
+
   public setUnitsPerPixel(scale: number) {
     this.scale = scale;
   }
@@ -44,29 +50,23 @@ export class Controller2D {
     return this.scale;
   }
 
-  public setPos(x: number, y: number): void {
+  public setPosition(x: number, y: number): void {
     this.camera.setPositionXYZ(x, 16 * 1024, y);
   }
 
-  public getForwardUnprojected(gl: WebGLRenderingContext, x: number, y: number): GLM.Vec3Array {
-    return [0, -1, 0];
-  }
-
-  public getPointerPosition(gl: WebGLRenderingContext, x: number, y: number) {
-    let hw = gl.drawingBufferWidth / 2;
-    let hh = gl.drawingBufferHeight / 2;
+  public getPointerPosition(pointer: GLM.Vec3Array, x: number, y: number) {
     let pos = this.camera.getPosition();
-    return GLM.vec2.set(pointer, pos[0] + (x - hw) * this.scale, pos[2] + (y - hh) * this.scale);
+    return GLM.vec3.set(pointer, pos[0] + (this.width / 2) * x * this.scale, 0, pos[2] + (this.height / 2) * y * this.scale);
   }
 
   public getTransformMatrix() {
     return this.camera.getTransformMatrix();
   }
 
-  public getProjectionMatrix(gl: WebGLRenderingContext) {
+  public getProjectionMatrix() {
     var projection = this.projection;
-    var wscale = gl.drawingBufferWidth / 2 * this.scale;
-    var hscale = gl.drawingBufferHeight / 2 * this.scale;
+    var wscale = this.width / 2 * this.scale;
+    var hscale = this.height / 2 * this.scale;
     GLM.mat4.identity(projection);
     GLM.mat4.ortho(projection, -wscale, wscale, hscale, -hscale, -0xFFFF, 0xFFFF);
     GLM.mat4.rotateX(projection, projection, -Math.PI / 2);
@@ -76,9 +76,4 @@ export class Controller2D {
   public getPosition() {
     return this.camera.getPosition();
   }
-
-  public getForward() {
-    return [0, -1, 0];
-  }
-
 }

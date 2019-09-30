@@ -11,11 +11,11 @@ export interface ArtProvider extends ArtInfoProvider {
 }
 
 export interface ViewPoint extends MoveStruct {
-  getProjectionMatrix(gl: WebGLRenderingContext): GLM.Mat4Array;
+  getProjectionMatrix(): GLM.Mat4Array;
   getTransformMatrix(): GLM.Mat4Array;
   getPosition(): GLM.Vec3Array;
   getForward(): GLM.Vec3Array;
-  unproject(gl: WebGLRenderingContext, x: number, y: number): GLM.Vec3Array;
+  unproject(x: number, y: number): GLM.Vec3Array;
 }
 
 export interface BoardInvalidator {
