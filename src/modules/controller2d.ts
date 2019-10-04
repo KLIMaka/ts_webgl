@@ -19,7 +19,6 @@ export class Controller2D {
     }
     this.oldX = x;
     this.oldY = y;
-    this.camera.setAngles(45, 45);
   }
 
   // private mousewheel(e: WheelEvent): boolean {

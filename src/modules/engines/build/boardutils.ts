@@ -1,15 +1,15 @@
 import * as MU from '../../../libs/mathutils';
 import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
-import { Collection, Deck, findFirst, reversed } from '../../deck';
+import { Collection, Deck, findFirst, reversed, IndexedDeck } from '../../deck';
 import { ArtInfoProvider } from './art';
 import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
-import { findSector, sectorOfWall } from './utils';
+import { findSector, sectorOfWall, sectorPicnum } from './utils';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
 
 let loop = new Deck<number>();
-export function loopWalls(board: Board, wallId: number, sectorId: number) {
+export function loopWalls(board: Board, wallId: number, sectorId: number): Collection<number> {
   let sec = board.sectors[sectorId];
   loop.clear();
   let loopFound = false;
@@ -528,7 +528,6 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
 
 export function connectedWalls(board: Board, wallId: number, result: Deck<number>): Deck<number> {
   let walls = board.walls;
-  result.push(wallId);
   let w = wallId;
   do {
     let wall = walls[w];
@@ -558,9 +557,7 @@ export function moveWall(board: Board, wallId: number, x: number, y: number): bo
   let wall = walls[wallId];
   if (wall.x == x && wall.y == y) return false;
   connectedWalls(board, wallId, wallsToMove.clear());
-  for (let i = 0; i < wallsToMove.length(); i++) {
-    doMoveWall(board, wallsToMove.get(i), x, y);
-  }
+  for (let i = 0; i < wallsToMove.length(); i++) doMoveWall(board, wallsToMove.get(i), x, y);
   return true;
 }
 
@@ -925,3 +922,51 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
   spr.sectnum = sectorId;
   return board.numsprites++;
 }
+
+export const deleteWall = (() => {
+  let wallsToDelete = new IndexedDeck<number>();
+
+  return (board: Board, wallId: number) => {
+    wallsToDelete.clear().push(wallId);
+    deleteWalls(board, wallsToDelete, sectorOfWall(board, wallId));
+  }
+})();
+
+export const deleteWalls = (() => {
+  let sectorWalls = new Deck<Wall>();
+  let sectorLoopPoints = new Deck<number>();
+
+  return (board: Board, wallIds: IndexedDeck<number>, sectorId: number) => {
+    let sector = board.sectors[sectorId];
+    let end = sector.wallptr + sector.wallnum;
+    sectorWalls.clear();
+    sectorLoopPoints.clear();
+    for (let w = sector.wallptr; w < end; w++) {
+      let wall = board.walls[w];
+      if (wallIds.indexOf(w) == -1) sectorWalls.push(wall);
+      if (wall.point2 < w) sectorLoopPoints.push(sectorWalls.length());
+    }
+    recreateSectorWalls(board, sectorId, sectorWalls, sectorLoopPoints);
+  }
+})();
+
+export const mergePoints = (() => {
+  let toDelete = new IndexedDeck<number>();
+  let connectedToDelete = new Deck<number>();
+
+  return (board: Board, wallId: number) => {
+    let cwalls = connectedWalls(board, wallId, connectedToDelete.clear());
+    for (let i = 0; i < cwalls.length(); i++) {
+      toDelete.clear();
+      let w = cwalls.get(i);
+      let wall = board.walls[w];
+      for (; ;) {
+        let wall2 = board.walls[wall.point2];
+        if (wall.x == wall2.x && wall.y == wall2.y) toDelete.push(wall.point2);
+        if (wall.point2 == w) break;
+        wall = board.walls[wall.point2];
+      }
+      if (toDelete.length() > 0) deleteWalls(board, toDelete, sectorOfWall(board, w));
+    }
+  }
+})();

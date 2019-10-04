@@ -2,7 +2,7 @@ import { List } from "../../../../libs/list";
 import { len2d, cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../deck";
-import { connectedWalls, moveWall, nextwall, prevwall } from "../boardutils";
+import { connectedWalls, moveWall, nextwall, prevwall, mergePoints } from "../boardutils";
 import { Hitscan } from "../hitscan";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
@@ -136,6 +136,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
 
   public EndMove(msg: EndMove, ctx: BuildContext) {
     this.active = false;
+    for (let i = 0; i < this.wallIds.length(); i++) mergePoints(ctx.board, this.wallIds.get(i));
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
