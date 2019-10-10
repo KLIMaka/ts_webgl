@@ -81,7 +81,7 @@ function drawGeometry(renderables: BuildRenderableProvider, view: ViewPoint) {
     : visible.visit(context.board, view, view.getForward());
   PROFILE.endProfile();
 
-  BGL.setProjectionMatrix(view.getProjectionMatrix(context.gl));
+  BGL.setProjectionMatrix(view.getProjectionMatrix());
   drawMirrors(renderables, result, view);
   drawRor(renderables, result, view);
 

@@ -124,13 +124,15 @@ export class DrawSector extends MessageHandlerReflective {
     if (this.predrawUpdate(ctx, hit)) return;
 
     let z = this.contour.getZ();
+    let x = 0, y = 0;
     let res = snap(hit, ctx);
     if (res == null) {
       let res1 = this.getIntersectionZPlane(ctx, hit);
-      if (res == null) return;
-      [res[0], res[1]] = res1;
+      if (res1 == null) return;
+      [x, y] = res1;
+    } else {
+      [x, y] = res;
     }
-    let [x, y] = res;
     GLM.vec3.set(this.pointer, x, y, z);
 
     if (this.isRect) {

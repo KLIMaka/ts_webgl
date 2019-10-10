@@ -28,6 +28,7 @@ import * as INPUT from './modules/input';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
+import * as GLM from './libs_js/glmatrix';
 import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
@@ -170,12 +171,14 @@ function progress(fname: string) {
   }
 }
 
-function createViewPoint(board: BS.Board) {
+function createViewPoint(gl: WebGLRenderingContext, board: BS.Board) {
   let playerstart = BU.getPlayerStart(board);
   // let control = new controller.Controller3D();
   // control.setFov(90);
-  // control.getCamera().setPositionXYZ(playerstart.x, playerstart.z / -16 + 1024, playerstart.y);
+  let pointer = GLM.vec3.create();
   let control = new Controller2D();
+  control.setPosition(playerstart.x, playerstart.y);
+  control.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
 
   return {
     sec: playerstart.sectnum,
@@ -183,21 +186,11 @@ function createViewPoint(board: BS.Board) {
     y: playerstart.y,
     z: playerstart.z,
 
-    getProjectionMatrix(gl: WebGLRenderingContext) { return control.getProjectionMatrix(gl) },
+    getProjectionMatrix() { return control.getProjectionMatrix() },
     getTransformMatrix() { return control.getTransformMatrix() },
-    getPosition() { return control.getPosition() },
-    getForward() { return control.getForward() },
-    unproject(gl: WebGLRenderingContext, x: number, y: number) { return control.getForwardUnprojected(gl, x, y) },
-
-    updatePosition() {
-      // let pos = this.getPosition();
-      // this.x = MU.int(pos[0]);
-      // this.y = MU.int(pos[2]);
-      // this.z = MU.int((pos[1]) * BU.ZSCALE);
-      // if (!BU.inSector(board, this.x, this.y, this.sec))
-      //   this.sec = BU.findSector(board, this.x, this.y, this.sec);
-      // control.setPos(this.x, this.y);
-    },
+    getPosition() { return pointer },
+    getForward() { return [0, -1, 0] },
+    unproject(x: number, y: number) { return [0, -1, 0] },
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
@@ -208,12 +201,15 @@ function createViewPoint(board: BS.Board) {
       // if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
       // control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
 
-      if (msg.state.keys['W']) control.setUnitsPerPixel(control.getUnitsPerPixel() / 2);
-      if (msg.state.keys['S']) control.setUnitsPerPixel(control.getUnitsPerPixel() * 2);
+      if (msg.state.keys['W']) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
+      if (msg.state.keys['S']) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
       control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
-      let pointer = control.getPointerPosition(ctx.gl, msg.state.mouseX, msg.state.mouseY);
-      this.x = MU.int(pointer[0]);
-      this.y = MU.int(pointer[1]);
+      let x = (msg.state.mouseX / ctx.gl.drawingBufferWidth) * 2 - 1;
+      let y = (msg.state.mouseY / ctx.gl.drawingBufferHeight) * 2 - 1;
+      let p = control.getPointerPosition(pointer, x, y);
+
+      this.x = MU.int(p[0]);
+      this.y = MU.int(p[2]);
       if (!BU.inSector(board, this.x, this.y, this.sec))
         this.sec = BU.findSector(board, this.x, this.y, this.sec);
     }
@@ -305,7 +301,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  let view = createViewPoint(board);
+  let view = createViewPoint(gl, board);
 
   let rorLinks = loadRorLinks(board);
   let impl: RENDERER.Implementation = {
@@ -329,7 +325,6 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       BGL.newFrame(gl);
-      view.updatePosition();
 
       PROFILE.start();
       RENDERER.draw(cache.geometry, view);
