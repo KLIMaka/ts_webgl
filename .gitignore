@@ -5,3 +5,4 @@ node_distr
 node_modules
 *.cfg
 package-lock.json
+.vscode
