@@ -1,4 +1,4 @@
-import { Deck } from "../../deck";
+import { Deck, Collection } from "../../deck";
 import { tuple2 } from "../../../libs/mathutils";
 
 export interface Message { }
@@ -25,30 +25,14 @@ export class MessageHandlerReflective {
   protected handleDefault(message: Message, ctx: Context) { }
 }
 
-export class MessageHandlerList implements MessageHandler {
-  private receivers: Deck<MessageHandler> = new Deck();
-
+export class MessageHandlerList extends Deck<MessageHandler> implements MessageHandler {
   handle(message: Message, ctx: Context) {
-    for (let i = 0; i < this.receivers.length(); i++) {
-      this.receivers.get(i).handle(message, ctx);
+    for (let i = 0; i < this.length(); i++) {
+      this.get(i).handle(message, ctx);
     }
   }
 
-  public clear() {
-    this.receivers.clear();
-  }
-
-  public isEmpty() {
-    return this.receivers.length() == 0;
-  }
-
-  public add(handler: MessageHandler) {
-    this.receivers.push(handler);
-  }
-
-  public clone(): MessageHandlerList {
-    let copy = new MessageHandlerList();
-    copy.receivers = this.receivers.clone();
-    return copy;
+  clone(): MessageHandlerList {
+    return <MessageHandlerList>super.clone();
   }
 }

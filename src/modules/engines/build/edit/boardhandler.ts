@@ -20,7 +20,7 @@ export function init(ctx: Context) {
 
 let handlers = new MessageHandlerList();
 export function addHandler(handler: MessageHandler) {
-  handlers.add(handler);
+  handlers.push(handler);
 }
 
 function refreshHitscan(state: InputState, view: ViewPoint) {
