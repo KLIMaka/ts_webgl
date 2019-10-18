@@ -20,19 +20,23 @@ export function handleReflective(obj: Object, message: Message, ctx: Context) {
   return false;
 }
 
+export function handleCollection(handlers: Collection<MessageHandler>, message: Message, ctx: Context) {
+  for (let i = 0; i < handlers.length(); i++) {
+    handlers.get(i).handle(message, ctx);
+  }
+}
+
 export class MessageHandlerReflective {
   public handle(message: Message, ctx: Context) { if (!handleReflective(this, message, ctx)) this.handleDefault(message, ctx) }
   protected handleDefault(message: Message, ctx: Context) { }
 }
 
-export class MessageHandlerList extends Deck<MessageHandler> implements MessageHandler {
-  handle(message: Message, ctx: Context) {
-    for (let i = 0; i < this.length(); i++) {
-      this.get(i).handle(message, ctx);
-    }
-  }
+export class MessageHandlerList implements MessageHandler {
+  constructor(
+    private handlers: Deck<MessageHandler> = new Deck<MessageHandler>()
+  ) { }
 
-  clone(): MessageHandlerList {
-    return <MessageHandlerList>super.clone();
-  }
+  handle(message: Message, ctx: Context) { handleCollection(this.handlers, message, ctx); }
+  list(): Deck<MessageHandler> { return this.handlers; }
+  clone(): MessageHandlerList { return new MessageHandlerList(this.handlers.clone()); }
 }

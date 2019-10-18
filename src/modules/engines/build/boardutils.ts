@@ -529,6 +529,7 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
 export function connectedWalls(board: Board, wallId: number, result: Deck<number>): Deck<number> {
   let walls = board.walls;
   let w = wallId;
+  result.push(w);
   do {
     let wall = walls[w];
     if (wall.nextwall != -1) {

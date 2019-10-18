@@ -171,10 +171,8 @@ function progress(fname: string) {
   }
 }
 
-function createViewPoint(gl: WebGLRenderingContext, board: BS.Board) {
+function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
   let playerstart = BU.getPlayerStart(board);
-  // let control = new controller.Controller3D();
-  // control.setFov(90);
   let pointer = GLM.vec3.create();
   let control = new Controller2D();
   control.setPosition(playerstart.x, playerstart.y);
@@ -195,11 +193,6 @@ function createViewPoint(gl: WebGLRenderingContext, board: BS.Board) {
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
       let msg = <Input>message;
-      // if (msg.state.keys['W']) control.moveForward(msg.dt * 8000);
-      // if (msg.state.keys['S']) control.moveForward(-msg.dt * 8000);
-      // if (msg.state.keys['A']) control.moveSideway(-msg.dt * 8000);
-      // if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
-      // control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
 
       if (msg.state.keys['W']) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
       if (msg.state.keys['S']) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
@@ -210,6 +203,44 @@ function createViewPoint(gl: WebGLRenderingContext, board: BS.Board) {
 
       this.x = MU.int(p[0]);
       this.y = MU.int(p[2]);
+      if (!BU.inSector(board, this.x, this.y, this.sec))
+        this.sec = BU.findSector(board, this.x, this.y, this.sec);
+    }
+  }
+}
+
+function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
+  let playerstart = BU.getPlayerStart(board);
+  let control = new controller.Controller3D();
+  control.setFov(90);
+  control.setPosition(playerstart.x, playerstart.z / BU.ZSCALE + 1024, playerstart.y);
+  let aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+
+  return {
+    sec: playerstart.sectnum,
+    x: playerstart.x,
+    y: playerstart.y,
+    z: playerstart.z,
+
+    getProjectionMatrix() { return control.getProjectionMatrix(aspect) },
+    getTransformMatrix() { return control.getTransformMatrix() },
+    getPosition() { return control.getPosition() },
+    getForward() { return control.getForward() },
+    unproject(x: number, y: number) { return control.getForwardUnprojected(aspect, x, y) },
+
+    handle(message: Message, ctx: Context) {
+      if (!(message instanceof Input)) return;
+      let msg = <Input>message;
+      if (msg.state.keys['W']) control.moveForward(msg.dt * 8000);
+      if (msg.state.keys['S']) control.moveForward(-msg.dt * 8000);
+      if (msg.state.keys['A']) control.moveSideway(-msg.dt * 8000);
+      if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
+      control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
+
+      let p = control.getPosition();
+      this.x = MU.int(p[0]);
+      this.y = MU.int(p[2]);
+      this.z = MU.int(p[1] * BU.ZSCALE);
       if (!BU.inSector(board, this.x, this.y, this.sec))
         this.sec = BU.findSector(board, this.x, this.y, this.sec);
     }
@@ -301,7 +332,9 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  let view = createViewPoint(gl, board);
+  let view3d = createViewPoint3d(gl, board);
+  let view2d = createViewPoint2d(gl, board);
+  let view = view3d;
 
   let rorLinks = loadRorLinks(board);
   let impl: RENDERER.Implementation = {
@@ -320,10 +353,13 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     HANDLER.addHandler(new JoinSectors());
     HANDLER.addHandler(new DrawSector());
     HANDLER.addHandler(context);
-    HANDLER.addHandler(view);
+    HANDLER.addHandler(view3d);
+    HANDLER.addHandler(view2d);
 
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
+      if (INPUT.get().keysPress['ENTER']) view = view == view3d ? view2d : view3d;
+
       BGL.newFrame(gl);
 
       PROFILE.start();
