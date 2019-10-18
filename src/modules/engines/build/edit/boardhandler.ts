@@ -20,13 +20,13 @@ export function init(ctx: Context) {
 
 let handlers = new MessageHandlerList();
 export function addHandler(handler: MessageHandler) {
-  handlers.add(handler);
+  handlers.list().push(handler);
 }
 
 function refreshHitscan(state: InputState, view: ViewPoint) {
   PROFILE.startProfile('hitscan');
-  let x = (context.gl.drawingBufferWidth / state.mouseX) * 2 - 1;
-  let y = (context.gl.drawingBufferHeight / state.mouseY) * 2 - 1;
+  let x = (state.mouseX / context.gl.drawingBufferWidth) * 2 - 1;
+  let y = (state.mouseY / context.gl.drawingBufferHeight) * 2 - 1;
   let [vx, vz, vy] = view.unproject(x, y);
   hitscan(context.board, context.art, view.x, view.y, view.z, view.sec, vx, vy, vz, HITSCAN.hit, 0);
   PROFILE.endProfile();

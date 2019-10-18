@@ -96,11 +96,7 @@ export class Selection extends MessageHandlerReflective {
   public HitScan(msg: HitScan, ctx: BuildContext) {
     this.hit = msg.hit;
     if (handle.isActive()) return;
-    this.selection.clear();
-    let list = getFromHitscan(ctx, msg.hit, this.fulloop);
-    for (let i = 0; i < list.length(); i++) {
-      this.selection.add(list.get(i));
-    }
+    this.selection.list().clear().pushAll(getFromHitscan(ctx, msg.hit, this.fulloop));
   }
 
   public Input(msg: Input, ctx: BuildContext) {
@@ -108,7 +104,7 @@ export class Selection extends MessageHandlerReflective {
 
     if (msg.state.mouseClicks[0]) this.print(ctx, this.hit.id, this.hit.type);
 
-    if (this.selection.isEmpty()) return;
+    if (this.selection.list().isEmpty()) return;
 
     if (this.activeMove(msg)) {
       this.updateHandle(msg);

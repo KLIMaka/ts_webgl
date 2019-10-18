@@ -42,6 +42,10 @@ export class Deck<T> implements Collection<T>{
     return this.pointer;
   }
 
+  public isEmpty() {
+    return this.pointer == 0;
+  }
+
   public clone() {
     let copy = new Deck<T>();
     copy.array = [...this.array];

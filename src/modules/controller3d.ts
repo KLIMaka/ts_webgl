@@ -39,6 +39,10 @@ export class Controller3D {
     return this.camera.getPosition();
   }
 
+  public setPosition(x: number, y: number, z: number) {
+    this.camera.setPosition([x, y, z]);
+  }
+
   public getForward() {
     return this.camera.forward();
   }

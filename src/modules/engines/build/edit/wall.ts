@@ -1,7 +1,7 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../deck";
-import { connectedWalls, moveWall, prevwall, insertWall } from "../boardutils";
+import { connectedWalls, moveWall, prevwall, insertWall, mergePoints } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
@@ -62,6 +62,7 @@ export class WallEnt extends MessageHandlerReflective {
 
   public EndMove(msg: EndMove, ctx: BuildContext) {
     this.active = false;
+    mergePoints(ctx.board, this.wallId);
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
