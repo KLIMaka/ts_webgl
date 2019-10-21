@@ -174,11 +174,9 @@ let pattern = null;
 let clock = new Clock();
 
 function onMIDISuccess(midiAccess: WebMidi.MIDIAccess) {
-  console.log("MIDI ready!");
+  document.writeln("MIDI ready!");
   midi = midiAccess;
-  console.log(midi);
-  out = midi.outputs.get('output-1');
-  console.log('Connected MIDI: ' + out.name);
+  document.writeln(midi);
 
   // pattern = new Pattern([0, 8, 16, 24], 4);
   // pattern.register(clock);
@@ -188,8 +186,9 @@ function onMIDISuccess(midiAccess: WebMidi.MIDIAccess) {
   let inputs = midiAccess.inputs;
   for (let inp of inputs.keys()) {
     let i = inputs.get(inp);
+    document.writeln('Connected MIDI Input: ' + i.name);
     i.onmidimessage = (e: WebMidi.MIDIMessageEvent): void => {
-      console.log(e.data);
+      document.writeln(e.data + '');
       for (let out of outs.keys()) {
         if (inp == out) continue;
         let o = outs.get(out);
@@ -200,7 +199,7 @@ function onMIDISuccess(midiAccess: WebMidi.MIDIAccess) {
 }
 
 function onMIDIFailure(msg) {
-  console.log("Failed to get MIDI access - " + msg);
+  document.writeln("Failed to get MIDI access - " + msg);
 }
 
 navigator['requestMIDIAccess']().then(onMIDISuccess, onMIDIFailure);
