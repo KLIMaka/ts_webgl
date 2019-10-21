@@ -484,8 +484,8 @@ function getWallCoords(x1: number, y1: number, x2: number, y2: number,
   let z3 = (nextslope(x2, y2, nextheinum) + nextz) / U.ZSCALE;
   let z4 = (nextslope(x1, y1, nextheinum) + nextz) / U.ZSCALE;
   if (check) {
-    if (line && (z4 > z1 && z3 > z2)) return null;
-    if (z4 >= z1 && z3 >= z2) return null;
+    if (line && z4 > z1 && z3 > z2) return null;
+    if (!line && z4 >= z1 && z3 >= z2) return null;
   }
   return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
 }

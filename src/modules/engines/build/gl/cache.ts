@@ -1,7 +1,7 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import { SubType } from '../hitscan';
 import { buildCeilingHinge, buildFloorHinge, buildSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
-import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable } from './renderable';
+import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable, Wireframe } from './renderable';
 import { BuildContext, BoardInvalidator } from '../api';
 
 class Entry<T> {
@@ -171,14 +171,22 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     return renderable;
   }
 
-  private addWallPart(solid: Solid, mat: GLM.Mat4Array, wire: Renderable): Renderable {
-    // if (!solid.renderable()) return NULL_RENDERABLE;
+  private addWallPoints(wallId: number, ceiling: boolean): Renderable {
+    let arr = new Array<Renderable>();
+    arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId) : updateWallPointFloor(this.ctx, wallId));
+    let wallId2 = this.ctx.board.walls[wallId].point2;
+    arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId2) : updateWallPointFloor(this.ctx, wallId2));
+    return new RenderableList(arr);
+  }
+
+  private addWallPart(solid: Solid, mat: GLM.Mat4Array, wire: Renderable, points: Renderable): Renderable {
     let arr = new Array<Renderable>();
     arr.push(wire);
     let wallGrid = new GridRenderable();
     wallGrid.gridTexMat = mat;
     wallGrid.solid = solid;
     arr.push(wallGrid);
+    arr.push(points);
     return new RenderableList(arr);
   }
 
@@ -188,9 +196,9 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     let wallWireframe = updateWallWireframe(this.ctx, wallId);
     let wallRenderable = this.cache.wall(wallId);
     let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL));
-    renderable.top = this.addWallPart(<Solid>wallRenderable.top, gridMatrix, wallWireframe.top);
-    renderable.mid = this.addWallPart(<Solid>wallRenderable.mid, gridMatrix, wallWireframe.mid);
-    renderable.bot = this.addWallPart(<Solid>wallRenderable.bot, gridMatrix, wallWireframe.bot);
+    renderable.top = this.addWallPart(<Solid>wallRenderable.top, gridMatrix, wallWireframe.top, this.addWallPoints(wallId, true));
+    renderable.mid = this.addWallPart(<Solid>wallRenderable.mid, gridMatrix, wallWireframe.mid, NULL_RENDERABLE);
+    renderable.bot = this.addWallPart(<Solid>wallRenderable.bot, gridMatrix, wallWireframe.bot, this.addWallPoints(wallId, false));
     return renderable;
   }
 

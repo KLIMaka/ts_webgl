@@ -179,16 +179,17 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
   control.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
 
   return {
-    sec: playerstart.sectnum,
-    x: playerstart.x,
-    y: playerstart.y,
-    z: playerstart.z,
+    get sec() { return playerstart.sectnum },
+    get x() { return playerstart.x },
+    get y() { return playerstart.y },
+    get z() { return playerstart.z },
 
     getProjectionMatrix() { return control.getProjectionMatrix() },
     getTransformMatrix() { return control.getTransformMatrix() },
     getPosition() { return pointer },
     getForward() { return [0, -1, 0] },
     unproject(x: number, y: number) { return [0, -1, 0] },
+    activate() { control.setPosition(playerstart.x, playerstart.y) },
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
@@ -201,10 +202,10 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
       let y = (msg.state.mouseY / ctx.gl.drawingBufferHeight) * 2 - 1;
       let p = control.getPointerPosition(pointer, x, y);
 
-      this.x = MU.int(p[0]);
-      this.y = MU.int(p[2]);
-      if (!BU.inSector(board, this.x, this.y, this.sec))
-        this.sec = BU.findSector(board, this.x, this.y, this.sec);
+      playerstart.x = MU.int(p[0]);
+      playerstart.y = MU.int(p[2]);
+      if (!BU.inSector(board, playerstart.x, playerstart.y, playerstart.sectnum))
+        playerstart.sectnum = BU.findSector(board, playerstart.x, playerstart.y, playerstart.sectnum);
     }
   }
 }
@@ -217,16 +218,17 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
   let aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
 
   return {
-    sec: playerstart.sectnum,
-    x: playerstart.x,
-    y: playerstart.y,
-    z: playerstart.z,
+    get sec() { return playerstart.sectnum },
+    get x() { return playerstart.x },
+    get y() { return playerstart.y },
+    get z() { return playerstart.z },
 
     getProjectionMatrix() { return control.getProjectionMatrix(aspect) },
     getTransformMatrix() { return control.getTransformMatrix() },
     getPosition() { return control.getPosition() },
     getForward() { return control.getForward() },
     unproject(x: number, y: number) { return control.getForwardUnprojected(aspect, x, y) },
+    activate() { control.setPosition(playerstart.x, playerstart.z / BU.ZSCALE + 1024, playerstart.y) },
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
@@ -238,12 +240,31 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
       control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
 
       let p = control.getPosition();
-      this.x = MU.int(p[0]);
-      this.y = MU.int(p[2]);
-      this.z = MU.int(p[1] * BU.ZSCALE);
-      if (!BU.inSector(board, this.x, this.y, this.sec))
-        this.sec = BU.findSector(board, this.x, this.y, this.sec);
+      playerstart.x = MU.int(p[0]);
+      playerstart.y = MU.int(p[2]);
+      playerstart.z = MU.int(p[1] * BU.ZSCALE);
+      if (!BU.inSector(board, playerstart.x, playerstart.y, playerstart.sectnum))
+        playerstart.sectnum = BU.findSector(board, playerstart.x, playerstart.y, playerstart.sectnum);
     }
+  }
+}
+
+function createView(gl: WebGLRenderingContext, board: BS.Board) {
+  let view2d = createViewPoint2d(gl, board);
+  let view3d = createViewPoint3d(gl, board);
+  let view = view3d;
+  return {
+    get sec() { return view.sec },
+    get x() { return view.x },
+    get y() { return view.y },
+    get z() { return view.z },
+    getProjectionMatrix() { return view.getProjectionMatrix() },
+    getTransformMatrix() { return view.getTransformMatrix() },
+    getPosition() { return view.getPosition() },
+    getForward() { return view.getForward() },
+    unproject(x: number, y: number) { return view.unproject(x, y) },
+    handle(message: Message, ctx: Context) { view.handle(message, ctx) },
+    swapView() { view = view == view3d ? view2d : view3d; view.activate() }
   }
 }
 
@@ -332,9 +353,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  let view3d = createViewPoint3d(gl, board);
-  let view2d = createViewPoint2d(gl, board);
-  let view = view3d;
+  let view = createView(gl, board);
 
   let rorLinks = loadRorLinks(board);
   let impl: RENDERER.Implementation = {
@@ -353,12 +372,11 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
     HANDLER.addHandler(new JoinSectors());
     HANDLER.addHandler(new DrawSector());
     HANDLER.addHandler(context);
-    HANDLER.addHandler(view3d);
-    HANDLER.addHandler(view2d);
+    HANDLER.addHandler(view);
 
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      if (INPUT.get().keysPress['ENTER']) view = view == view3d ? view2d : view3d;
+      if (INPUT.get().keysPress['ENTER']) view.swapView();
 
       BGL.newFrame(gl);
 
