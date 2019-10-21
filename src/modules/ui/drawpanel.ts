@@ -1,8 +1,6 @@
-import P = require('../pixelprovider');
-import MU = require('../../libs/mathutils');
-import IU = require('../../libs/imgutils');
-
-import PixelProvider = P.PixelProvider;
+import { PixelProvider, fromPal, fit } from "../pixelprovider";
+import { int } from "../../libs/mathutils";
+import { drawToCanvas } from "../../libs/imgutils";
 
 export class PixelDataProvider {
 
@@ -32,7 +30,7 @@ let noneImg = new Uint8Array([
 ]);
 
 let nonePal = new Uint8Array([255, 255, 255, 255, 0, 0]);
-let noneProvider = P.fromPal(noneImg, nonePal, 8, 8);
+let noneProvider = fromPal(noneImg, nonePal, 8, 8);
 
 export class DrawPanel {
 
@@ -48,10 +46,10 @@ export class DrawPanel {
     canvas.onclick = (e: MouseEvent) => {
       let x = e.offsetX;
       let y = e.offsetY;
-      let maxcx = MU.int(this.canvas.width / this.cellW);
-      let maxcy = MU.int(this.canvas.height / this.cellH);
-      let cx = MU.int(x / this.cellW);
-      let cy = MU.int(y / this.cellH);
+      let maxcx = int(this.canvas.width / this.cellW);
+      let maxcy = int(this.canvas.height / this.cellH);
+      let cx = int(x / this.cellW);
+      let cy = int(y / this.cellH);
       if (cx >= maxcx || cy >= maxcy) return;
       this.selectCallback(this.firstId + maxcx * cy + cx);
     }
@@ -67,14 +65,14 @@ export class DrawPanel {
   }
 
   public nextPage(): void {
-    let cells = MU.int(this.canvas.width / this.cellW) * MU.int(this.canvas.height / this.cellH);
+    let cells = int(this.canvas.width / this.cellW) * int(this.canvas.height / this.cellH);
     if (this.firstId + cells >= this.provider.size())
       return;
     this.firstId += cells;
   }
 
   public prevPage(): void {
-    let cells = MU.int(this.canvas.width / this.cellW) * MU.int(this.canvas.height / this.cellH);
+    let cells = int(this.canvas.width / this.cellW) * int(this.canvas.height / this.cellH);
     if (this.firstId - cells < 0)
       return;
     this.firstId -= cells;
@@ -86,8 +84,8 @@ export class DrawPanel {
     let w = canvas.width;
     let h = canvas.height;
     let ctx = canvas.getContext('2d');
-    let wcells = MU.int(w / this.cellW);
-    let hcells = MU.int(h / this.cellH);
+    let wcells = int(w / this.cellW);
+    let hcells = int(h / this.cellH);
     let cells = wcells * hcells;
     let firstId = this.firstId;
     let lastId = Math.min(firstId + cells, provider.size());
@@ -97,12 +95,12 @@ export class DrawPanel {
 
     for (let i = firstId; i < lastId; i++) {
       let x = ((i - firstId) % wcells) * this.cellW;
-      let y = MU.int((i - firstId) / wcells) * this.cellH;
+      let y = int((i - firstId) / wcells) * this.cellH;
       let img = provider.get(i);
       if (img == null)
         img = noneProvider;
-      let pixels = P.fit(this.cellW, this.cellH, img, new Uint8Array([0, 0, 0, 255]));
-      IU.drawToCanvas(pixels, canvas, x, y);
+      let pixels = fit(this.cellW, this.cellH, img, new Uint8Array([0, 0, 0, 255]));
+      drawToCanvas(pixels, canvas, x, y);
     }
   }
 

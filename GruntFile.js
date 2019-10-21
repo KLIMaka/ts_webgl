@@ -42,7 +42,7 @@ module.exports = function (grunt) {
       dest: 'distr/',
       options: {
         rootDir: 'src/',
-        module: 'amd',
+        module: 'es2015',
         target: 'es5',
         lib: ['es2015', 'dom'],
         downlevelIteration: true

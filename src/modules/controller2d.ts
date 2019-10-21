@@ -1,8 +1,8 @@
-import camera = require('./camera');
-import GLM = require('../libs_js/glmatrix');
+import * as GLM from '../libs_js/glmatrix';
+import { Camera } from "./camera";
 
 export class Controller2D {
-  private camera = new camera.Camera(0, 0, 0, 0, 0);
+  private camera = new Camera(0, 0, 0, 0, 0);
   private width = 800;
   private height = 600;
   private oldX = 0;
