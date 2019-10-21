@@ -96,7 +96,7 @@ export let tesselate = function(contours) {
   let vtx = buf;
   gluTessBeginPolygon(tess, 0);
   for (let i = 0; i < contours.length; i++) {
-    var c = contours[i];
+    let c = contours[i];
     gluTessBeginContour(tess);
     for (let v = 0; v < c.length/2; v++) {
       gluTessVertex(tess, vtx, vtx);
