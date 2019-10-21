@@ -15,17 +15,17 @@ export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
   }
 }
 
-export function getClosestWall(board: Board, hit: Hitscan, ctx: BuildContext): number {
+export function getClosestWall(board: Board, hit: Hitscan, d: number): number {
   if (isWall(hit.type))
-    return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, ctx.snapScale());
+    return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, d);
   else if (isSector(hit.type))
-    return closestWallInSector(board, hit.id, hit.x, hit.y, ctx.snapScale());
+    return closestWallInSector(board, hit.id, hit.x, hit.y, d);
   return -1;
 }
 
 let snapResult: [number, number, number, SubType] = [0, 0, 0, null];
 export function snap(hit: Hitscan, ctx: BuildContext): [number, number, number, SubType] {
-  let w = getClosestWall(ctx.board, hit, ctx);
+  let w = getClosestWall(ctx.board, hit, ctx.snapScale());
   if (w != -1) {
     let wall = ctx.board.walls[w];
     return tuple4(snapResult, wall.x, wall.y, w, SubType.MID_WALL);

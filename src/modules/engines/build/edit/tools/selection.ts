@@ -32,6 +32,10 @@ const FLIP = new Flip();
 const SPRITE_MODE = new SpriteMode();
 const HIGHLIGHT = new Highlight();
 
+const SNAP_RANGE = 16;
+const PAN_SCALE = 8;
+const SHADOW_SCALE = 8;
+
 let clipboardPicnum = new SetPicnum(0);
 let clipboardShade = new Shade(0, true);
 
@@ -47,13 +51,13 @@ let segment = new Deck<number>();
 export function getFromHitscan(ctx: BuildContext, hit: Hitscan, fullLoop = false): Deck<MessageHandler> {
   list.clear();
   let board = ctx.board;
-  let w = getClosestWall(board, hit, ctx);
+  let w = getClosestWall(board, hit, SNAP_RANGE);
   if (w != -1) {
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
   } else if (isWall(hit.type)) {
     wallSegment(fullLoop, board, hit.id);
   } else if (isSector(hit.type)) {
-    let w = closestWallLineInSector(board, hit.id, hit.x, hit.y, ctx.snapScale());
+    let w = closestWallLineInSector(board, hit.id, hit.x, hit.y, SNAP_RANGE);
     if (w != -1) wallSegment(fullLoop, board, w); else sector(fullLoop, board, hit);
   } else if (isSprite(hit.type)) {
     list.push(SpriteEnt.create(hit.id));
@@ -101,9 +105,7 @@ export class Selection extends MessageHandlerReflective {
 
   public Input(msg: Input, ctx: BuildContext) {
     this.fulloop = msg.state.keys['TAB'];
-
     if (msg.state.mouseClicks[0]) this.print(ctx, this.hit.id, this.hit.type);
-
     if (this.selection.list().isEmpty()) return;
 
     if (this.activeMove(msg)) {
@@ -168,19 +170,19 @@ export class Selection extends MessageHandlerReflective {
   }
 
   private sendShadeChange(msg: Input, ctx: BuildContext) {
-    SHADE_CHANGE.value = msg.state.wheel * (msg.state.keys['SHIFT'] ? 8 : 1);
+    SHADE_CHANGE.value = msg.state.wheel * (msg.state.keys['SHIFT'] ? SHADOW_SCALE : 1);
     this.selection.handle(SHADE_CHANGE, ctx);
   }
 
   private sendPanRepeat(msg: Input, ctx: BuildContext, x: number, y: number) {
     if (msg.state.keys['CTRL']) {
       PANREPEAT.xpan = PANREPEAT.ypan = 0;
-      PANREPEAT.xrepeat = x * (msg.state.keys['SHIFT'] ? 1 : 8);
-      PANREPEAT.yrepeat = y * (msg.state.keys['SHIFT'] ? 1 : 8);
+      PANREPEAT.xrepeat = x * (msg.state.keys['SHIFT'] ? 1 : PAN_SCALE);
+      PANREPEAT.yrepeat = y * (msg.state.keys['SHIFT'] ? 1 : PAN_SCALE);
     } else {
       PANREPEAT.xrepeat = PANREPEAT.yrepeat = 0;
-      PANREPEAT.xpan = x * (msg.state.keys['SHIFT'] ? 1 : 8);
-      PANREPEAT.ypan = y * (msg.state.keys['SHIFT'] ? 1 : 8);
+      PANREPEAT.xpan = x * (msg.state.keys['SHIFT'] ? 1 : PAN_SCALE);
+      PANREPEAT.ypan = y * (msg.state.keys['SHIFT'] ? 1 : PAN_SCALE);
     }
     this.selection.handle(PANREPEAT, ctx);
   }
