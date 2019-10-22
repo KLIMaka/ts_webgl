@@ -224,15 +224,15 @@ export class Selection extends MessageHandlerReflective {
     switch (type) {
       case SubType.CEILING:
       case SubType.FLOOR:
-        info(id); info(ctx.board.sectors[id]);
+        info(id, ctx.board.sectors[id]);
         break;
       case SubType.UPPER_WALL:
       case SubType.MID_WALL:
       case SubType.LOWER_WALL:
-        info(id); info(ctx.board.walls[id]);
+        info(id, ctx.board.walls[id]);
         break;
       case SubType.SPRITE:
-        info(id); info(ctx.board.sprites[id]);
+        info(id, ctx.board.sprites[id]);
         break;
     }
   }
