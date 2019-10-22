@@ -37,7 +37,7 @@ import { Input } from './modules/engines/build/edit/messages';
 import { Message } from './modules/engines/build/handlerapi';
 import { Controller2D } from './modules/controller2d';
 import { loadKeymap, action } from './modules/keymap';
-import { addLogAppender, CONSOLE } from './modules/logger';
+import { addLogAppender, CONSOLE, warning } from './modules/logger';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -88,7 +88,7 @@ class BuildArtProvider implements ArtProvider {
       infos[i] = this.arts.getInfo(picnum + i);
       if (i != 0) {
         if (infos[i].w != infos[i - 1].w || infos[i].h != infos[i - 1].h) {
-          console.warn('Invalid parallax texture #' + picnum);
+          warning(`Invalid parallax texture #${picnum}`);
           return this.get(0);
         }
       }

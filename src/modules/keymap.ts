@@ -1,4 +1,5 @@
 import { InputState } from "./input";
+import { warning } from "./logger";
 
 export type InputHandler = (state: InputState) => boolean;
 
@@ -17,7 +18,7 @@ export function action(name: string, state: InputState): boolean {
   let config = keymap[name];
   if (config == undefined) {
     if (!absentConfigSet.has(name)) {
-      console.warn(`Unbound action ${name}`);
+      warning(`Unbound action ${name}`);
       absentConfigSet.add(name);
     }
     return false;
