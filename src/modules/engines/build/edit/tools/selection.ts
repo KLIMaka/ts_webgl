@@ -15,6 +15,7 @@ import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { Board } from "../../structs";
 import { action } from "../../../../keymap";
+import { info } from "../../../../logger";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -148,36 +149,36 @@ export class Selection extends MessageHandlerReflective {
 
   private handleSelected(msg: Input, ctx: BuildContext) {
     if (action('set_picnum', msg.state)) this.setTexture(ctx);
-    if (action('toggle_parallax', msg.state)) this.selection.handle(TOGGLE_PARALLAX, ctx);
-    if (action('pan_y+', msg.state)) this.sendPan(msg, ctx, 0, 1);
-    if (action('pan_y-', msg.state)) this.sendPan(msg, ctx, 0, -1);
-    if (action('pan_x-', msg.state)) this.sendPan(msg, ctx, -1, 0);
-    if (action('pan_x+', msg.state)) this.sendPan(msg, ctx, 1, 0);
-    if (action('pan_y_scaled+', msg.state)) this.sendPan(msg, ctx, 0, PAN_SCALE);
-    if (action('pan_y_scaled-', msg.state)) this.sendPan(msg, ctx, 0, -PAN_SCALE);
-    if (action('pan_x_scaled-', msg.state)) this.sendPan(msg, ctx, -PAN_SCALE, 0);
-    if (action('pan_x_scaled+', msg.state)) this.sendPan(msg, ctx, PAN_SCALE, 0);
-    if (action('repeat_y+', msg.state)) this.sendRepeat(msg, ctx, 0, 1);
-    if (action('repeat_y-', msg.state)) this.sendRepeat(msg, ctx, 0, -1);
-    if (action('repeat_x-', msg.state)) this.sendRepeat(msg, ctx, -1, 0);
-    if (action('repeat_x+', msg.state)) this.sendRepeat(msg, ctx, 1, 0);
-    if (action('repeat_y_scaled+', msg.state)) this.sendRepeat(msg, ctx, 0, PAN_SCALE);
-    if (action('repeat_y_scaled-', msg.state)) this.sendRepeat(msg, ctx, 0, -PAN_SCALE);
-    if (action('repeat_x_scaled-', msg.state)) this.sendRepeat(msg, ctx, -PAN_SCALE, 0);
-    if (action('repeat_x_scaled+', msg.state)) this.sendRepeat(msg, ctx, PAN_SCALE, 0);
-    if (action('cycle_pal', msg.state)) this.selection.handle(PALETTE, ctx);
-    if (action('flip', msg.state)) this.selection.handle(FLIP, ctx);
-    if (action('insert_sprite', msg.state)) this.insertSprite(ctx);
-    if (action('swap_bottoms', msg.state)) this.selection.handle(SWAP_BOTTOMS, ctx);
-    if (action('align_bottom', msg.state)) this.selection.handle(ALIGN_BOTTOM, ctx);
-    if (action('sprite_mode', msg.state)) this.selection.handle(SPRITE_MODE, ctx);
-    if (action('copy', msg.state)) this.copy(msg, ctx);
-    if (action('paste_shade', msg.state)) this.selection.handle(clipboardShade, ctx);
-    if (action('paste_picnum', msg.state)) this.selection.handle(clipboardPicnum, ctx);
-    if (action('shade+', msg.state)) this.sendShadeChange(msg, 1, ctx);
-    if (action('shade-', msg.state)) this.sendShadeChange(msg, -1, ctx);
-    if (action('shade_scaled+', msg.state)) this.sendShadeChange(msg, SHADOW_SCALE, ctx);
-    if (action('shade_scaled-', msg.state)) this.sendShadeChange(msg, -SHADOW_SCALE, ctx);
+    else if (action('toggle_parallax', msg.state)) this.selection.handle(TOGGLE_PARALLAX, ctx);
+    else if (action('repeat_y_scaled+', msg.state)) this.sendRepeat(msg, ctx, 0, PAN_SCALE);
+    else if (action('repeat_y_scaled-', msg.state)) this.sendRepeat(msg, ctx, 0, -PAN_SCALE);
+    else if (action('repeat_x_scaled-', msg.state)) this.sendRepeat(msg, ctx, -PAN_SCALE, 0);
+    else if (action('repeat_x_scaled+', msg.state)) this.sendRepeat(msg, ctx, PAN_SCALE, 0);
+    else if (action('repeat_y+', msg.state)) this.sendRepeat(msg, ctx, 0, 1);
+    else if (action('repeat_y-', msg.state)) this.sendRepeat(msg, ctx, 0, -1);
+    else if (action('repeat_x-', msg.state)) this.sendRepeat(msg, ctx, -1, 0);
+    else if (action('repeat_x+', msg.state)) this.sendRepeat(msg, ctx, 1, 0);
+    else if (action('pan_y_scaled+', msg.state)) this.sendPan(msg, ctx, 0, PAN_SCALE);
+    else if (action('pan_y_scaled-', msg.state)) this.sendPan(msg, ctx, 0, -PAN_SCALE);
+    else if (action('pan_x_scaled-', msg.state)) this.sendPan(msg, ctx, -PAN_SCALE, 0);
+    else if (action('pan_x_scaled+', msg.state)) this.sendPan(msg, ctx, PAN_SCALE, 0);
+    else if (action('pan_y+', msg.state)) this.sendPan(msg, ctx, 0, 1);
+    else if (action('pan_y-', msg.state)) this.sendPan(msg, ctx, 0, -1);
+    else if (action('pan_x-', msg.state)) this.sendPan(msg, ctx, -1, 0);
+    else if (action('pan_x+', msg.state)) this.sendPan(msg, ctx, 1, 0);
+    else if (action('cycle_pal', msg.state)) this.selection.handle(PALETTE, ctx);
+    else if (action('flip', msg.state)) this.selection.handle(FLIP, ctx);
+    else if (action('insert_sprite', msg.state)) this.insertSprite(ctx);
+    else if (action('swap_bottoms', msg.state)) this.selection.handle(SWAP_BOTTOMS, ctx);
+    else if (action('align_bottom', msg.state)) this.selection.handle(ALIGN_BOTTOM, ctx);
+    else if (action('sprite_mode', msg.state)) this.selection.handle(SPRITE_MODE, ctx);
+    else if (action('copy', msg.state)) this.copy(msg, ctx);
+    else if (action('paste_shade', msg.state)) this.selection.handle(clipboardShade, ctx);
+    else if (action('paste_picnum', msg.state)) this.selection.handle(clipboardPicnum, ctx);
+    else if (action('shade+', msg.state)) this.sendShadeChange(msg, 1, ctx);
+    else if (action('shade-', msg.state)) this.sendShadeChange(msg, -1, ctx);
+    else if (action('shade_scaled+', msg.state)) this.sendShadeChange(msg, SHADOW_SCALE, ctx);
+    else if (action('shade_scaled-', msg.state)) this.sendShadeChange(msg, -SHADOW_SCALE, ctx);
   }
 
   private setTexture(ctx: BuildContext) {
@@ -223,15 +224,15 @@ export class Selection extends MessageHandlerReflective {
     switch (type) {
       case SubType.CEILING:
       case SubType.FLOOR:
-        console.log(id, ctx.board.sectors[id]);
+        info(id); info(ctx.board.sectors[id]);
         break;
       case SubType.UPPER_WALL:
       case SubType.MID_WALL:
       case SubType.LOWER_WALL:
-        console.log(id, ctx.board.walls[id]);
+        info(id); info(ctx.board.walls[id]);
         break;
       case SubType.SPRITE:
-        console.log(id, ctx.board.sprites[id]);
+        info(id); info(ctx.board.sprites[id]);
         break;
     }
   }

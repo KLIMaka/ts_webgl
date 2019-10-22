@@ -37,6 +37,7 @@ import { Input } from './modules/engines/build/edit/messages';
 import { Message } from './modules/engines/build/handlerapi';
 import { Controller2D } from './modules/controller2d';
 import { loadKeymap, action } from './modules/keymap';
+import { addLogAppender, CONSOLE } from './modules/logger';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -412,6 +413,7 @@ ab.wait((res) => {
 
   let cfg = CFG.create(res['cfg']);
   loadKeymap(CFG.create(res['keymap']));
+  addLogAppender(CONSOLE);
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
   let arts = [];
