@@ -5,6 +5,7 @@ import { BuildContext } from "../../api";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { HitScan, Input } from "../messages";
 import { isWall } from "../../hitscan";
+import { action } from "../../../../keymap";
 
 export class SplitWall extends MessageHandlerReflective {
   private x = 0;
@@ -39,6 +40,6 @@ export class SplitWall extends MessageHandlerReflective {
   }
 
   public Input(msg: Input, ctx: BuildContext) {
-    if (msg.state.keys['CTRL'] && msg.state.mouseClicks[0]) this.run(ctx);
+    if (action('split_wall', msg.state)) this.run(ctx);
   }
 }

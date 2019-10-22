@@ -36,6 +36,7 @@ import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { Input } from './modules/engines/build/edit/messages';
 import { Message } from './modules/engines/build/handlerapi';
 import { Controller2D } from './modules/controller2d';
+import { loadKeymap, action } from './modules/keymap';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -195,9 +196,9 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
       if (!(message instanceof Input)) return;
       let msg = <Input>message;
 
-      if (msg.state.keys['W']) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
-      if (msg.state.keys['S']) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
-      control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
+      if (action('zoom+', msg.state)) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
+      if (action('zoom-', msg.state)) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
+      control.track(msg.state.mouseX, msg.state.mouseY, action('lookaim', msg.state));
       let x = (msg.state.mouseX / ctx.gl.drawingBufferWidth) * 2 - 1;
       let y = (msg.state.mouseY / ctx.gl.drawingBufferHeight) * 2 - 1;
       let p = control.getPointerPosition(pointer, x, y);
@@ -233,11 +234,11 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
       let msg = <Input>message;
-      if (msg.state.keys['W']) control.moveForward(msg.dt * 8000);
-      if (msg.state.keys['S']) control.moveForward(-msg.dt * 8000);
-      if (msg.state.keys['A']) control.moveSideway(-msg.dt * 8000);
-      if (msg.state.keys['D']) control.moveSideway(msg.dt * 8000);
-      control.track(msg.state.mouseX, msg.state.mouseY, msg.state.mouseButtons[2]);
+      if (action('forward', msg.state)) control.moveForward(msg.dt * 8000);
+      if (action('backward', msg.state)) control.moveForward(-msg.dt * 8000);
+      if (action('strafe_left', msg.state)) control.moveSideway(-msg.dt * 8000);
+      if (action('strafe_right', msg.state)) control.moveSideway(msg.dt * 8000);
+      control.track(msg.state.mouseX, msg.state.mouseY, action('lookaim', msg.state));
 
       let p = control.getPosition();
       playerstart.x = MU.int(p[0]);
@@ -376,7 +377,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
 
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      if (INPUT.get().keysPress['ENTER']) view.swapView();
+      if (action('view_mode', INPUT.get())) view.swapView();
 
       BGL.newFrame(gl);
 
@@ -402,6 +403,7 @@ for (let a = 0; a < 18; a++) {
 }
 
 getter.preloadString(cfgFile, ab.callback('cfg'));
+getter.preloadString('builded_keymap.json', ab.callback('keymap'));
 getter.preload(rffFile, ab.callback('rff'), progress(rffFile));
 let gridcb = ab.callback('grid');
 IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
@@ -409,6 +411,7 @@ IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
 ab.wait((res) => {
 
   let cfg = CFG.create(res['cfg']);
+  loadKeymap(CFG.create(res['keymap']));
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
   let arts = [];

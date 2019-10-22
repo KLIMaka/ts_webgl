@@ -20,3 +20,5 @@ export class Flip implements Message { constructor() { } }
 export class SpriteMode implements Message { }
 export class Input implements Message { constructor(public state: InputState, public dt: number) { } }
 export class HitScan implements Message { constructor(public hit: Hitscan) { } }
+export class SetWallCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }
+export class SetSectorCstat implements Message { }

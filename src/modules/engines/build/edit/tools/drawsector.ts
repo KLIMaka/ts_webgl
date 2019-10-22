@@ -1,16 +1,16 @@
+import { tuple2 } from "../../../../../libs/mathutils";
+import * as GLM from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../deck";
+import { BuildContext } from "../../api";
+import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
+import { Renderable, RenderableList, Wireframe } from "../../gl/renderable";
+import { MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan, isSector, isSprite, isWall } from "../../hitscan";
 import { Board } from "../../structs";
-import { sectorOfWall, ZSCALE, findSector } from "../../utils";
-import { Context } from "../../gl/context";
-import { Wireframe, Renderable, RenderableList } from "../../gl/renderable";
-import { snap, getClosestSectorZ } from "../editutils";
-import * as GLM from "../../../../../libs_js/glmatrix";
-import { createInnerLoop, createNewSector, wallInSector, splitSector } from "../../boardutils";
-import { tuple2 } from "../../../../../libs/mathutils";
-import { BuildContext } from "../../api";
-import { MessageHandlerReflective } from "../../handlerapi";
-import { Input, HitScan, Highlight, Render } from "../messages";
+import { findSector, sectorOfWall, ZSCALE } from "../../utils";
+import { getClosestSectorZ, snap } from "../editutils";
+import { HitScan, Input, Render } from "../messages";
+import { action } from "../../../../keymap";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -276,9 +276,9 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   public Input(msg: Input, ctx: BuildContext) {
-    let state = msg.state;
-    if (state.keysPress['SPACE']) this.insertPoint(ctx, state.keys['SHIFT']);
-    if (state.keysPress['BACKSPACE']) this.popPoint();
+    if (action('draw_rect_wall', msg.state)) this.insertPoint(ctx, true);
+    else if (action('draw_wall', msg.state)) this.insertPoint(ctx, false);
+    else if (action('undo_draw_wall', msg.state)) this.popPoint();
   }
 
   public HitScan(msg: HitScan, ctx: BuildContext) {

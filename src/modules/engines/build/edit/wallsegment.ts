@@ -7,7 +7,7 @@ import { Hitscan } from "../hitscan";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip } from "./messages";
+import { EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip, SetWallCstat } from "./messages";
 import { invalidateSectorAndWalls } from "./editutils";
 import { BuildContext } from "../api";
 
@@ -83,13 +83,14 @@ function collectMotionSectors(board: Board, walls: Collection<number>): Set<numb
 export class WallSegmentsEnt extends MessageHandlerReflective {
   private static invalidatedSectors = new IndexedDeck<number>();
 
-  public static create(board: Board, ids: Collection<number>) {
-    return new WallSegmentsEnt(board, ids);
+  public static create(board: Board, ids: Collection<number>, bottom: boolean = false) {
+    return new WallSegmentsEnt(board, ids, bottom);
   }
 
   constructor(
     board: Board,
     public wallIds: Collection<number>,
+    public bottom: boolean,
     public origin = GLM.vec2.create(),
     public refwall = -1,
     public active = false,
@@ -161,13 +162,28 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
     }
   }
 
+  private getWall(w: number, ctx: BuildContext) {
+    let wall = ctx.board.walls[w];
+    return wall.cstat.swapBottoms && this.bottom && wall.nextwall != -1
+      ? ctx.board.walls[wall.nextwall]
+      : wall;
+  }
+
+  private invalidateWall(w: number, ctx: BuildContext) {
+    ctx.invalidator.invalidateWall(w);
+    let wall = ctx.board.walls[w];
+    if (wall.cstat.swapBottoms && wall.nextwall != -1 ||
+      wall.nextwall != -1 && ctx.board.walls[wall.nextwall].cstat.swapBottoms)
+      ctx.invalidator.invalidateWall(wall.nextwall);
+  }
+
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let hwalls = this.highlighted;
     for (let i = 0; i < hwalls.length(); i++) {
       let w = hwalls.get(i);
-      let wall = ctx.board.walls[w];
+      let wall = this.getWall(w, ctx);
       wall.picnum = msg.picnum;
-      ctx.invalidator.invalidateWall(w);
+      this.invalidateWall(w, ctx);
     }
   }
 
@@ -175,11 +191,11 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
     let hwalls = this.highlighted;
     for (let i = 0; i < hwalls.length(); i++) {
       let w = hwalls.get(i);
-      let wall = ctx.board.walls[w];
+      let wall = this.getWall(w, ctx);
       let shade = wall.shade;
       if (msg.absolute && shade == msg.value) return;
       if (msg.absolute) wall.shade = msg.value; else wall.shade += msg.value;
-      ctx.invalidator.invalidateWall(w);
+      this.invalidateWall(w, ctx);
     }
   }
 
@@ -187,7 +203,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
     let hwalls = this.highlighted;
     for (let i = 0; i < hwalls.length(); i++) {
       let w = hwalls.get(i);
-      let wall = ctx.board.walls[w];
+      let wall = this.getWall(w, ctx);
       if (msg.absolute) {
         if (wall.xpanning == msg.xpan && wall.ypanning == msg.ypan && wall.xrepeat == msg.xrepeat && wall.yrepeat == msg.yrepeat) return;
         wall.xpanning = msg.xpan;
@@ -200,7 +216,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
         wall.xrepeat += msg.xrepeat;
         wall.yrepeat += msg.yrepeat;
       }
-      ctx.invalidator.invalidateWall(w);
+      this.invalidateWall(w, ctx);
     }
   }
 
@@ -208,14 +224,14 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
     let hwalls = this.highlighted;
     for (let i = 0; i < hwalls.length(); i++) {
       let w = hwalls.get(i);
-      let wall = ctx.board.walls[w];
+      let wall = this.getWall(w, ctx);
       if (msg.absolute) {
         if (msg.value == wall.pal) return;
         wall.pal = msg.value;
       } else {
         wall.pal = cyclic(wall.pal + msg.value, msg.max);
       }
-      ctx.invalidator.invalidateWall(w);
+      this.invalidateWall(w, ctx);
     }
   }
 
@@ -223,12 +239,23 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
     let hwalls = this.highlighted;
     for (let i = 0; i < hwalls.length(); i++) {
       let w = hwalls.get(i);
-      let wall = ctx.board.walls[w];
+      let wall = this.getWall(w, ctx);
       let flip = wall.cstat.xflip + wall.cstat.yflip * 2;
       let nflip = cyclic(flip + 1, 4);
       wall.cstat.xflip = nflip & 1;
       wall.cstat.yflip = (nflip & 2) >> 1;
-      ctx.invalidator.invalidateWall(w);
+      this.invalidateWall(w, ctx);
+    }
+  }
+
+  public SetWallCstat(msg: SetWallCstat, ctx: BuildContext) {
+    let hwalls = this.highlighted;
+    for (let i = 0; i < hwalls.length(); i++) {
+      let w = hwalls.get(i);
+      let wall = msg.name == 'swapBottoms' ? ctx.board.walls[w] : this.getWall(w, ctx);
+      let stat = wall.cstat[msg.name];
+      wall.cstat[msg.name] = stat ? 0 : 1;
+      this.invalidateWall(w, ctx);
     }
   }
 }
