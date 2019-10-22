@@ -47,5 +47,8 @@
   "split_wall": "CTRL+mouse0",
   "draw_wall": "SPACE",
   "draw_rect_wall": "SHIFT+SPACE",
-  "undo_draw_wall": "BACKSPACE"
+  "undo_draw_wall": "BACKSPACE",
+  "grid+": "[",
+  "grid-": "]",
+  "join_sectors": "J"
 }

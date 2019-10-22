@@ -3,6 +3,7 @@ import { Hitscan } from "../../hitscan";
 import { BuildContext } from "../../api";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { HitScan, Input } from "../messages";
+import { action } from "../../../../keymap";
 
 export class JoinSectors extends MessageHandlerReflective {
   private sectorId1 = -1;
@@ -30,6 +31,6 @@ export class JoinSectors extends MessageHandlerReflective {
   }
 
   public Input(msg: Input, ctx: BuildContext) {
-    if (msg.state.keysPress['J']) this.join(this.hit, ctx);
+    if (action('join_sectors', msg.state)) this.join(this.hit, ctx);
   }
 }

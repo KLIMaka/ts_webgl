@@ -3,6 +3,7 @@ import { ArtProvider, BuildContext, BoardInvalidator } from '../api';
 import { Board } from '../structs';
 import { MessageHandlerReflective } from '../handlerapi';
 import { Input } from '../edit/messages';
+import { action } from '../../../keymap';
 
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -63,7 +64,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   Input(msg: Input, ctx: BuildContext) {
-    if (msg.state.keysPress['[']) this.incGridSize();
-    if (msg.state.keysPress[']']) this.decGridSize();
+    if (action('grid+', msg.state)) this.incGridSize();
+    if (action('grid-', msg.state)) this.decGridSize();
   }
 }
