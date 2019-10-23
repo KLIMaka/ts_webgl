@@ -235,10 +235,11 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Input)) return;
       let msg = <Input>message;
-      if (action('forward', msg.state)) control.moveForward(msg.dt * 8000);
-      if (action('backward', msg.state)) control.moveForward(-msg.dt * 8000);
-      if (action('strafe_left', msg.state)) control.moveSideway(-msg.dt * 8000);
-      if (action('strafe_right', msg.state)) control.moveSideway(msg.dt * 8000);
+      let dt = ctx.state.get<number>('frametime');
+      if (action('forward', msg.state)) control.moveForward(dt * 8000);
+      if (action('backward', msg.state)) control.moveForward(-dt * 8000);
+      if (action('strafe_left', msg.state)) control.moveSideway(-dt * 8000);
+      if (action('strafe_right', msg.state)) control.moveSideway(dt * 8000);
       control.track(msg.state.mouseX, msg.state.mouseY, action('lookaim', msg.state));
 
       let p = control.getPosition();

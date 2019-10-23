@@ -59,3 +59,17 @@ export function loadKeymap(json: { [index: string]: string }) {
     addActionHandlerParse(action, cmd);
   }
 }
+
+function canonizeBind(key: string, mods: string[]) {
+  key = key.toLowerCase();
+  mods = mods.map((s) => s.toLowerCase());
+  mods.sort();
+  return [...mods, key].join('+');
+}
+
+let binds: { [index: string]: Object } = {};
+
+export function addBind(key: string, ...mods: string[]) {
+  let bindName = canonizeBind(key, mods);
+  let cmds = binds[bindName];
+}

@@ -17,6 +17,10 @@ export class Deck<T> implements Collection<T>{
     return this.array[i];
   }
 
+  public set(i: number, value: T) {
+    this.array[i] = value;
+  }
+
   public push(value: T): Deck<T> {
     this.array[this.pointer++] = value;
     return this;

@@ -6,15 +6,20 @@ import { Context } from '../gl/context';
 import { hitscan, Hitscan } from '../hitscan';
 import { MessageHandler, MessageHandlerList } from '../handlerapi';
 import * as U from '../utils';
-import { HitScan, Input, Render } from './messages';
+import { HitScan, Input, Render, EventBus } from './messages';
 import { snap } from './editutils';
+import { EventQueue } from '../../../eventqueue';
+import { warning } from '../../../logger';
 
 const HITSCAN = new HitScan(new Hitscan());
-const INPUT = new Input(null, 0);
+const INPUT = new Input(null);
 const RENDER = new Render();
+const EVENT_BUS = new EventBus(new EventQueue());
+
 
 let context: Context;
 export function init(ctx: Context) {
+  ctx.state.register('frametime', 0);
   context = ctx;
 }
 
@@ -37,10 +42,23 @@ function refreshHitscan(state: InputState, view: ViewPoint) {
   return HITSCAN;
 }
 
-function refreshInput(state: InputState, dt: number) {
+function refreshInput(state: InputState) {
   INPUT.state = state;
-  INPUT.dt = dt;
   return INPUT;
+}
+
+function poolEvents(state: InputState): boolean {
+  let queue = EVENT_BUS.events;
+  // reportUnconsumed(queue);
+  queue.clear();
+  return queue.isEmpty();
+}
+
+function reportUnconsumed(queue: EventQueue) {
+  for (let i = queue.first(); i != -1; queue.next(i)) {
+    let e = queue.get(i);
+    warning(`Unconsumed event ${e}`);
+  }
 }
 
 function draw() {
@@ -54,7 +72,9 @@ function draw() {
 }
 
 export function handle(state: InputState, view: ViewPoint, dt: number) {
+  context.state.set('frametime', dt);
+  if (poolEvents(state)) handlers.handle(EVENT_BUS, context);
   handlers.handle(refreshHitscan(state, view), context);
-  handlers.handle(refreshInput(state, dt), context);
+  handlers.handle(refreshInput(state), context);
   draw();
 }

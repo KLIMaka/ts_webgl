@@ -25,11 +25,18 @@ export interface BoardInvalidator {
   invalidateSprite(id: number): void;
 }
 
+export interface State {
+  register<T>(name: string, defaultValue: T): void;
+  set<T>(name: string, value: T): void;
+  get<T>(name: string): T;
+}
+
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
   readonly invalidator: BoardInvalidator;
   readonly gl: WebGLRenderingContext;
+  readonly state: State;
 
   snap(x: number): number;
   snapScale(): number;

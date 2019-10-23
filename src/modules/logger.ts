@@ -3,7 +3,7 @@ export const WARN = 1;
 export const INFO = 2;
 export const TRACE = 3;
 
-export type Appender = (level: number, ...message: any) => void;
+export type Appender = (level: number, ...msg: any) => void;
 
 let appenders: Array<Appender> = [];
 
@@ -22,11 +22,11 @@ export function addLogAppender(appender: Appender) {
   appenders.push(appender);
 }
 
-export const CONSOLE: Appender = (level: number, ...message: any) => {
+export const CONSOLE: Appender = (level: number, ...msg: any) => {
   switch (level) {
-    case ERROR: console.error(...message); return;
-    case WARN: console.warn(...message); return;
-    case INFO: console.info(...message); return;
-    case TRACE: console.trace(...message); return;
+    case ERROR: console.error(...msg); return;
+    case WARN: console.warn(...msg); return;
+    case INFO: console.info(...msg); return;
+    case TRACE: console.trace(...msg); return;
   }
 }
