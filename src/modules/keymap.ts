@@ -1,5 +1,7 @@
 import { InputState } from "./input";
 import { warning } from "./logger";
+import { Binder, Event } from "./engines/build/api";
+import { Collection, Deck, EMPRTY_COLLECTION } from "./deck";
 
 export type InputHandler = (state: InputState) => boolean;
 
@@ -60,6 +62,22 @@ export function loadKeymap(json: { [index: string]: string }) {
   }
 }
 
+function parseMod(str: string): InputHandler {
+  if (str == 'mouse0') return mouseButton(0);
+  if (str == 'mouse1') return mouseButton(1);
+  if (str == 'mouse2') return mouseButton(2);
+  return key(str.toUpperCase());
+}
+
+function paseKey(str: string): InputHandler {
+  if (str == 'wheelup') return wheelUp;
+  if (str == 'wheeldown') return wheelDown;
+  if (str == 'mouse0') return mouseClick(0);
+  if (str == 'mouse1') return mouseClick(1);
+  if (str == 'mouse2') return mouseClick(2);
+  return keyPress(str.toUpperCase());
+}
+
 function canonizeBind(key: string, mods: string[]) {
   key = key.toLowerCase();
   mods = mods.map((s) => s.toLowerCase());
@@ -67,9 +85,82 @@ function canonizeBind(key: string, mods: string[]) {
   return [...mods, key].join('+');
 }
 
-let binds: { [index: string]: Object } = {};
+function createHandler(key: string, mods: string[]): InputHandler {
+  let handler = paseKey(key);
+  for (let i = 0; i < mods.length; i++) handler = combination(handler, parseMod(mods[i]));
+  return handler;
+}
+export class BinderImpl implements Binder {
+  private binds: string[] = [];
+  private handlers: InputHandler[] = [];
+  private events: Deck<Event>[] = [];
+  private sorttable: number[] = [];
 
-export function addBind(key: string, ...mods: string[]) {
-  let bindName = canonizeBind(key, mods);
-  let cmds = binds[bindName];
+  public addBind(event: Event, key: string, ...mods: string[]) {
+    let bindName = canonizeBind(key, mods);
+    let bindIdx = this.findBind(bindName, mods.length);
+    if (bindIdx == -1) {
+      let handler = createHandler(key, mods);
+      this.insertBind(bindName, handler, event, mods.length);
+    } else {
+      this.events[bindIdx].push(event);
+    }
+  }
+
+  public match(state: InputState): Collection<Event> {
+    for (let i = this.handlers.length - 1; i >= 0; i--) {
+      if (this.handlers[i](state))
+        return this.events[i];
+    }
+    return EMPRTY_COLLECTION;
+  }
+
+  private insertBind(bindName: string, handler: InputHandler, event: Event, mods: number): void {
+    this.ensureSortTable(mods);
+    let pos = this.sorttable[mods];
+    this.binds.splice(pos, 0, bindName);
+    this.handlers.splice(pos, 0, handler);
+    this.events.splice(pos, 0, new Deck().push(event));
+    for (let i = this.sorttable.length - 1; i >= mods; i--) {
+      this.sorttable[i]++;
+    }
+  }
+
+  private findBind(bindName: string, mods: number) {
+    this.ensureSortTable(mods);
+    let start = mods == 0 ? 0 : this.sorttable[mods - 1]
+    for (let i = start; i < this.sorttable[mods]; i++) {
+      if (this.binds[i] == bindName) return i;
+    }
+    return -1;
+  }
+
+  private ensureSortTable(mods: number) {
+    for (let i = mods; i >= 0; i--)
+      if (this.sorttable[i] == undefined)
+        this.sorttable[i] = this.binds.length;
+      else break;
+  }
+}
+
+export class StringEvent implements Event {
+  constructor(readonly name: String) { }
+}
+
+export function loadBinds(binds: string, binder: BinderImpl) {
+  let lines = binds.split(/\r?\n/);
+  for (let line of lines) {
+    line = line.trim();
+    let idx = line.indexOf(' ');
+    if (idx == -1) {
+      warning(`Skipping bind line: ${line}`);
+      continue;
+    }
+    let keys = line.substr(0, idx);
+    let event = new StringEvent(line.substr(idx + 1).trim());
+    let keyParts = keys.split('+');
+    let key = keyParts[keyParts.length - 1];
+    keyParts.pop();
+    binder.addBind(event, key, ...keyParts);
+  }
 }

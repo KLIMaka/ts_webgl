@@ -1,15 +1,14 @@
-import { InputState } from '../../../input';
-import * as PROFILE from '../../../profiler';
-import { ViewPoint } from '../api';
-import * as BGL from '../gl/buildgl';
-import { Context } from '../gl/context';
-import { hitscan, Hitscan } from '../hitscan';
-import { MessageHandler, MessageHandlerList } from '../handlerapi';
-import * as U from '../utils';
-import { HitScan, Input, Render, EventBus } from './messages';
-import { snap } from './editutils';
 import { EventQueue } from '../../../eventqueue';
-import { warning } from '../../../logger';
+import { InputState } from '../../../input';
+import { warning, info } from '../../../logger';
+import * as PROFILE from '../../../profiler';
+import { BuildContext, ViewPoint } from '../api';
+import * as BGL from '../gl/buildgl';
+import { MessageHandler, MessageHandlerList } from '../handlerapi';
+import { hitscan, Hitscan } from '../hitscan';
+import * as U from '../utils';
+import { snap } from './editutils';
+import { EventBus, HitScan, Input, Render } from './messages';
 
 const HITSCAN = new HitScan(new Hitscan());
 const INPUT = new Input(null);
@@ -17,8 +16,8 @@ const RENDER = new Render();
 const EVENT_BUS = new EventBus(new EventQueue());
 
 
-let context: Context;
-export function init(ctx: Context) {
+let context: BuildContext;
+export function init(ctx: BuildContext) {
   ctx.state.register('frametime', 0);
   context = ctx;
 }
@@ -51,6 +50,8 @@ function poolEvents(state: InputState): boolean {
   let queue = EVENT_BUS.events;
   // reportUnconsumed(queue);
   queue.clear();
+  let events = context.binder.match(state);
+  for (let i = 0; i < events.length(); i++) info(events.get(i));//queue.add(events.get(i));
   return queue.isEmpty();
 }
 

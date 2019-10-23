@@ -341,7 +341,7 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct) {
   props.refresh(info);
 }
 
-function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
+function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
   let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
   let artSelector = new Selector(640, 640, artFiles, pal);
 
@@ -365,6 +365,7 @@ function render(cfg: any, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Ar
   }
 
   let context = new Context(art, board, gl);
+  context.loadBinds(binds);
   let cache = new RenderablesCache(context);
   context.setBoardInvalidator(cache);
 
@@ -406,6 +407,7 @@ for (let a = 0; a < 18; a++) {
 
 getter.preloadString(cfgFile, ab.callback('cfg'));
 getter.preloadString('builded_keymap.json', ab.callback('keymap'));
+getter.preloadString('builded_binds.txt', ab.callback('binds'));
 getter.preload(rffFile, ab.callback('rff'), progress(rffFile));
 let gridcb = ab.callback('grid');
 IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
@@ -441,5 +443,5 @@ ab.wait((res) => {
   ];
 
   let map = rff.get(browser.getQueryVariable('map')).buffer;
-  render(cfg, map, artFiles, pal, PLUs, res['grid']);
+  render(cfg, res['binds'], map, artFiles, pal, PLUs, res['grid']);
 });

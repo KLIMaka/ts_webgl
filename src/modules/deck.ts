@@ -5,6 +5,11 @@ export interface Collection<T> {
   length(): number;
 }
 
+export const EMPRTY_COLLECTION: Collection<any> = {
+  get: (i: number) => undefined,
+  length: () => 0
+}
+
 export class Deck<T> implements Collection<T>{
   protected pointer = 0;
   protected array: T[];

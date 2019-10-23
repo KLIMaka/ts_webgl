@@ -4,6 +4,8 @@ import { Context } from "./handlerapi";
 import { Board } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import { MoveStruct } from "./utils";
+import { InputState } from "../../input";
+import { Collection } from "../../deck";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
@@ -31,12 +33,19 @@ export interface State {
   get<T>(name: string): T;
 }
 
+export interface Event { };
+
+export interface Binder {
+  match(input: InputState): Collection<Event>;
+}
+
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
   readonly invalidator: BoardInvalidator;
   readonly gl: WebGLRenderingContext;
   readonly state: State;
+  readonly binder: Binder;
 
   snap(x: number): number;
   snapScale(): number;

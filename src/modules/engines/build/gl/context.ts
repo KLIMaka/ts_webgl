@@ -3,7 +3,7 @@ import { ArtProvider, BuildContext, BoardInvalidator, State } from '../api';
 import { Board } from '../structs';
 import { MessageHandlerReflective } from '../handlerapi';
 import { Input } from '../edit/messages';
-import { action } from '../../../keymap';
+import { action, BinderImpl, loadBinds } from '../../../keymap';
 import { warning } from '../../../logger';
 
 
@@ -36,6 +36,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl();
+  readonly binder = new BinderImpl();
 
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
@@ -84,6 +85,14 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   scaledSnap(x: number, scale: number) {
     return snapGrid(x, this.gridSizes[this.gridSizeIdx] * scale);
+  }
+
+  addBind(event: Event, key: string, ...mods: string[]): void {
+    this.binder.addBind(event, key, ...mods);
+  }
+
+  loadBinds(binds: string) {
+    loadBinds(binds, this.binder);
   }
 
   Input(msg: Input, ctx: BuildContext) {
