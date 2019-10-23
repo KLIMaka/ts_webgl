@@ -1,6 +1,6 @@
-import { InputState } from "./input";
+import { InputState, bind } from "./input";
 import { warning } from "./logger";
-import { Binder, Event } from "./engines/build/api";
+import { Binder, Event, State } from "./engines/build/api";
 import { Collection, Deck, EMPRTY_COLLECTION } from "./deck";
 
 export type InputHandler = (state: InputState) => boolean;
@@ -69,7 +69,7 @@ function parseMod(str: string): InputHandler {
   return key(str.toUpperCase());
 }
 
-function paseKey(str: string): InputHandler {
+function parseKey(str: string): InputHandler {
   if (str == 'wheelup') return wheelUp;
   if (str == 'wheeldown') return wheelDown;
   if (str == 'mouse0') return mouseClick(0);
@@ -86,15 +86,52 @@ function canonizeBind(key: string, mods: string[]) {
 }
 
 function createHandler(key: string, mods: string[]): InputHandler {
-  let handler = paseKey(key);
+  let handler = parseKey(key);
   for (let i = 0; i < mods.length; i++) handler = combination(handler, parseMod(mods[i]));
   return handler;
 }
+
+
 export class BinderImpl implements Binder {
   private binds: string[] = [];
   private handlers: InputHandler[] = [];
   private events: Deck<Event>[] = [];
   private sorttable: number[] = [];
+
+  private stateBinds: string[] = [];
+  private stateHandlers: InputHandler[] = [];
+  private stateValues: [string, any, any][][] = [];
+
+  public match(state: InputState): Collection<Event> {
+    for (let i = this.handlers.length - 1; i >= 0; i--) {
+      if (this.handlers[i](state))
+        return this.events[i];
+    }
+    return EMPRTY_COLLECTION;
+  }
+
+  public updateState(input: InputState, state: State) {
+    for (let i = 0; i < this.stateHandlers.length; i++) {
+      for (let value of this.stateValues[i]) {
+        state.set(value[0], this.stateHandlers[i](input) ? value[1] : value[2]);
+      }
+    }
+  }
+
+  public addStateBind(name: string, enabled: any, disabled: any, ...keys: string[]) {
+    let last = keys.pop();
+    let bindName = canonizeBind(last, keys);
+    let idx = this.stateBinds.indexOf(bindName);
+    if (idx == -1) {
+      this.stateBinds.push(bindName);
+      let handler = parseMod(last);
+      for (let i = 0; i < keys.length; i++) handler = combination(handler, parseMod(keys[i]));
+      this.stateHandlers.push(handler);
+      this.stateValues.push([[name, enabled, disabled]]);
+    } else {
+      this.stateValues[idx].push([name, enabled, disabled]);
+    }
+  }
 
   public addBind(event: Event, key: string, ...mods: string[]) {
     let bindName = canonizeBind(key, mods);
@@ -107,13 +144,6 @@ export class BinderImpl implements Binder {
     }
   }
 
-  public match(state: InputState): Collection<Event> {
-    for (let i = this.handlers.length - 1; i >= 0; i--) {
-      if (this.handlers[i](state))
-        return this.events[i];
-    }
-    return EMPRTY_COLLECTION;
-  }
 
   private insertBind(bindName: string, handler: InputHandler, event: Event, mods: number): void {
     this.ensureSortTable(mods);
@@ -157,10 +187,16 @@ export function loadBinds(binds: string, binder: BinderImpl) {
       continue;
     }
     let keys = line.substr(0, idx);
-    let event = new StringEvent(line.substr(idx + 1).trim());
-    let keyParts = keys.split('+');
-    let key = keyParts[keyParts.length - 1];
-    keyParts.pop();
-    binder.addBind(event, key, ...keyParts);
+    if (keys.startsWith('+')) {
+      keys = keys.substr(1);
+      let keyParts = keys.split('+');
+      binder.addStateBind(line.substr(idx + 1).trim(), true, false, ...keyParts);
+    } else {
+      let event = new StringEvent(line.substr(idx + 1).trim());
+      let keyParts = keys.split('+');
+      let key = keyParts[keyParts.length - 1];
+      keyParts.pop();
+      binder.addBind(event, key, ...keyParts);
+    }
   }
 }

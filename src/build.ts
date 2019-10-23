@@ -173,7 +173,7 @@ function progress(fname: string) {
   }
 }
 
-function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
+function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
   let playerstart = BU.getPlayerStart(board);
   let pointer = GLM.vec3.create();
   let control = new Controller2D();
@@ -199,7 +199,7 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
 
       if (action('zoom+', msg.state)) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
       if (action('zoom-', msg.state)) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
-      control.track(msg.state.mouseX, msg.state.mouseY, action('lookaim', msg.state));
+      control.track(msg.state.mouseX, msg.state.mouseY, ctx.state.get<boolean>('lookaim'));
       let x = (msg.state.mouseX / ctx.gl.drawingBufferWidth) * 2 - 1;
       let y = (msg.state.mouseY / ctx.gl.drawingBufferHeight) * 2 - 1;
       let p = control.getPointerPosition(pointer, x, y);
@@ -212,7 +212,7 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board) {
   }
 }
 
-function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
+function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
   let playerstart = BU.getPlayerStart(board);
   let control = new controller.Controller3D();
   control.setFov(90);
@@ -240,7 +240,7 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
       if (action('backward', msg.state)) control.moveForward(-dt * 8000);
       if (action('strafe_left', msg.state)) control.moveSideway(-dt * 8000);
       if (action('strafe_right', msg.state)) control.moveSideway(dt * 8000);
-      control.track(msg.state.mouseX, msg.state.mouseY, action('lookaim', msg.state));
+      control.track(msg.state.mouseX, msg.state.mouseY, ctx.state.get<boolean>('lookaim'));
 
       let p = control.getPosition();
       playerstart.x = MU.int(p[0]);
@@ -252,9 +252,10 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board) {
   }
 }
 
-function createView(gl: WebGLRenderingContext, board: BS.Board) {
-  let view2d = createViewPoint2d(gl, board);
-  let view3d = createViewPoint3d(gl, board);
+function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
+  ctx.state.register('lookaim', false);
+  let view2d = createViewPoint2d(gl, board, ctx);
+  let view3d = createViewPoint3d(gl, board, ctx);
   let view = view3d;
   return {
     get sec() { return view.sec },
@@ -356,7 +357,6 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
-  let view = createView(gl, board);
 
   let rorLinks = loadRorLinks(board);
   let impl: RENDERER.Implementation = {
@@ -368,6 +368,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
   context.loadBinds(binds);
   let cache = new RenderablesCache(context);
   context.setBoardInvalidator(cache);
+  let view = createView(gl, board, context);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
     HANDLER.init(context);

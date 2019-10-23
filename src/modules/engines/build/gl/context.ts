@@ -96,6 +96,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   Input(msg: Input, ctx: BuildContext) {
+    this.binder.updateState(msg.state, this.state);
     if (action('grid+', msg.state)) this.incGridSize();
     if (action('grid-', msg.state)) this.decGridSize();
   }

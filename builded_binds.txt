@@ -1,2 +1,3 @@
 v set_picnum
 ctrl+v insert_sprite
++mouse2 lookaim
