@@ -1,11 +1,12 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { ArtProvider, BuildContext, BoardInvalidator, State } from '../api';
-import { Board } from '../structs';
-import { MessageHandlerReflective } from '../handlerapi';
-import { action, Binder, loadBinds, StringEvent } from '../../../keymap';
-import { warning } from '../../../logger';
 import { InputState } from '../../../input';
+import { warning } from '../../../logger';
+import { ArtProvider, BoardInvalidator, BuildContext, State } from '../api';
 import { EventBus } from '../edit/messages';
+import { MessageHandlerReflective } from '../handlerapi';
+import { Board } from '../structs';
+import { Binder, loadBinds } from '../keymap';
+import { multistringEventConsumer, eventParser } from '../events';
 
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -43,6 +44,14 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private gridSizeIdx = 3;
   private boardInt: Board;
   private invalidatorInt: BoardInvalidator;
+
+  private eventConsumer = multistringEventConsumer((name: string, ctx: BuildContext) => {
+    switch (name) {
+      case 'grid+': this.incGridSize(); return true;
+      case 'grid-': this.decGridSize(); return true;
+      default: return false;
+    }
+  })
 
   constructor(art: ArtProvider, board: Board, gl: WebGLRenderingContext) {
     super();
@@ -103,18 +112,10 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   loadBinds(binds: string) {
-    loadBinds(binds, this.binder);
+    loadBinds(binds, this.binder, eventParser);
   }
 
   EventBus(msg: EventBus, ctx: BuildContext) {
-    let events = msg.events;
-    for (let i = events.first(); i != -1; i = events.next(i)) {
-      let e = events.get(i);
-      if (!(e instanceof StringEvent)) return;
-      switch (e.name) {
-        case 'grid+': this.incGridSize(); events.consume(i); break;
-        case 'grid-': this.decGridSize(); events.consume(i); break;
-      }
-    }
+    msg.events.tryConsume(this.eventConsumer, ctx);
   }
 }

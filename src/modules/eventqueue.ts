@@ -1,9 +1,17 @@
 
 export interface Event { };
+export type EventConsumer<T> = (event: Event, ctx: T) => boolean;
 
 export class EventQueue {
   private events = new Array<Event>();
   private pointer = 0;
+
+  public tryConsume<T>(consumer: EventConsumer<T>, ctx: T) {
+    for (let i = this.first(); i != -1; i = this.next(i)) {
+      let e = this.get(i);
+      if (consumer(e, ctx)) this.consume(i)
+    }
+  }
 
   public get(idx: number): Event {
     return this.events[idx];
@@ -19,7 +27,7 @@ export class EventQueue {
   }
 
   public consume(idx: number) {
-    this.events[idx] = 0;
+    this.events[idx] = null;
   }
 
   public clear() {

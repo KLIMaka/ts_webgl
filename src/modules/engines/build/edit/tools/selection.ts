@@ -1,8 +1,7 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { Deck } from "../../../../deck";
-import { EventQueue } from "../../../../eventqueue";
-import { action, StringEvent } from "../../../../keymap";
 import { info } from "../../../../logger";
+import { Frame } from "../../../idtech/md2structs";
 import { BuildContext } from "../../api";
 import { closestWallLineInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { Context } from "../../gl/context";
@@ -13,12 +12,12 @@ import { Board } from "../../structs";
 import { sectorOfWall } from "../../utils";
 import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
 import { MovingHandle } from "../handle";
-import { EndMove, Flip, Highlight, HitScan, Move, Palette, PanRepeat, Render, SetPicnum, SetWallCstat, Shade, SpriteMode, StartMove, ToggleParallax, EventBus } from "../messages";
+import { EndMove, EventBus, Flip, Highlight, Move, Palette, PanRepeat, Render, SetPicnum, SetWallCstat, Shade, SpriteMode, StartMove, ToggleParallax } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
 import { WallSegmentsEnt } from "../wallsegment";
-import { Frame } from "../../../idtech/md2structs";
+import { multistringEventConsumer, StringEvent, MessageEvent } from "../../events";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -101,7 +100,6 @@ function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean
 
 export class Selection extends MessageHandlerReflective {
   private selection = new MessageHandlerList();
-  private hit: Hitscan;
 
   constructor(
     ctx: Context,
@@ -116,13 +114,8 @@ export class Selection extends MessageHandlerReflective {
     ctx.state.register(LOOP_STATE, false);
   }
 
-  public HitScan(msg: HitScan, ctx: BuildContext) {
-    this.hit = msg.hit;
-    if (handle.isActive()) return;
-    this.selection.list().clear().pushAll(getFromHitscan(ctx, msg.hit));
-  }
-
   public Frame(msg: Frame, ctx: BuildContext) {
+    if (!handle.isActive()) this.selection.list().clear().pushAll(getFromHitscan(ctx, ctx.state.get<Hitscan>('hitscan')));
     if (this.selection.list().isEmpty()) return;
     if (this.activeMove(ctx)) {
       this.updateHandle(ctx);
@@ -130,46 +123,50 @@ export class Selection extends MessageHandlerReflective {
     }
   }
 
-  public EventBus(msg: EventBus, ctx: BuildContext) {
-    let events = msg.events;
-    for (let i = events.first(); i != -1; i = events.next(i)) {
-      let e = events.get(i);
-      if (!(e instanceof StringEvent)) return;
+  private eventConsumer = (e: Event, ctx: BuildContext) => {
+    if (e instanceof StringEvent) {
       switch (e.name) {
-        case 'set_picnum': this.setTexture(ctx); events.consume(i); break;
-        case 'toggle_parallax': this.selection.handle(TOGGLE_PARALLAX, ctx); events.consume(i); break;
-        case 'repeat_y_scaled+': this.sendRepeat(ctx, 0, PAN_SCALE); events.consume(i); break;
-        case 'repeat_y_scaled-': this.sendRepeat(ctx, 0, -PAN_SCALE); events.consume(i); break;
-        case 'repeat_x_scaled-': this.sendRepeat(ctx, -PAN_SCALE, 0); events.consume(i); break;
-        case 'repeat_x_scaled+': this.sendRepeat(ctx, PAN_SCALE, 0); events.consume(i); break;
-        case 'repeat_y+': this.sendRepeat(ctx, 0, 1); events.consume(i); break;
-        case 'repeat_y-': this.sendRepeat(ctx, 0, -1); events.consume(i); break;
-        case 'repeat_x-': this.sendRepeat(ctx, -1, 0); events.consume(i); break;
-        case 'repeat_x+': this.sendRepeat(ctx, 1, 0); events.consume(i); break;
-        case 'pan_y_scaled+': this.sendPan(ctx, 0, PAN_SCALE); events.consume(i); break;
-        case 'pan_y_scaled-': this.sendPan(ctx, 0, -PAN_SCALE); events.consume(i); break;
-        case 'pan_x_scaled-': this.sendPan(ctx, -PAN_SCALE, 0); events.consume(i); break;
-        case 'pan_x_scaled+': this.sendPan(ctx, PAN_SCALE, 0); events.consume(i); break;
-        case 'pan_y+': this.sendPan(ctx, 0, 1); events.consume(i); break;
-        case 'pan_y-': this.sendPan(ctx, 0, -1); events.consume(i); break;
-        case 'pan_x-': this.sendPan(ctx, -1, 0); events.consume(i); break;
-        case 'pan_x+': this.sendPan(ctx, 1, 0); events.consume(i); break;
-        case 'cycle_pal': this.selection.handle(PALETTE, ctx); events.consume(i); break;
-        case 'flip': this.selection.handle(FLIP, ctx); events.consume(i); break;
-        case 'insert_sprite': this.insertSprite(ctx); events.consume(i); break;
-        case 'swap_bottoms': this.selection.handle(SWAP_BOTTOMS, ctx); events.consume(i); break;
-        case 'align_bottom': this.selection.handle(ALIGN_BOTTOM, ctx); events.consume(i); break;
-        case 'sprite_mode': this.selection.handle(SPRITE_MODE, ctx); events.consume(i); break;
-        case 'copy': this.copy(ctx); events.consume(i); break;
-        case 'paste_shade': this.selection.handle(clipboardShade, ctx); events.consume(i); break;
-        case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); events.consume(i); break;
-        case 'shade+': this.sendShadeChange(1, ctx); events.consume(i); break;
-        case 'shade-': this.sendShadeChange(-1, ctx); events.consume(i); break;
-        case 'shade_scaled+': this.sendShadeChange(SHADOW_SCALE, ctx); events.consume(i); break;
-        case 'shade_scaled-': this.sendShadeChange(-SHADOW_SCALE, ctx); events.consume(i); break;
-        case 'print_selected': this.print(ctx, this.hit.id, this.hit.type); events.consume(i); break;
+        case 'set_picnum': this.setTexture(ctx); return true;
+        case 'toggle_parallax': this.selection.handle(TOGGLE_PARALLAX, ctx); return true;
+        case 'repeat_y_scaled+': this.sendRepeat(ctx, 0, PAN_SCALE); return true;
+        case 'repeat_y_scaled-': this.sendRepeat(ctx, 0, -PAN_SCALE); return true;
+        case 'repeat_x_scaled-': this.sendRepeat(ctx, -PAN_SCALE, 0); return true;
+        case 'repeat_x_scaled+': this.sendRepeat(ctx, PAN_SCALE, 0); return true;
+        case 'repeat_y+': this.sendRepeat(ctx, 0, 1); return true;
+        case 'repeat_y-': this.sendRepeat(ctx, 0, -1); return true;
+        case 'repeat_x-': this.sendRepeat(ctx, -1, 0); return true;
+        case 'repeat_x+': this.sendRepeat(ctx, 1, 0); return true;
+        case 'pan_y_scaled+': this.sendPan(ctx, 0, PAN_SCALE); return true;
+        case 'pan_y_scaled-': this.sendPan(ctx, 0, -PAN_SCALE); return true;
+        case 'pan_x_scaled-': this.sendPan(ctx, -PAN_SCALE, 0); return true;
+        case 'pan_x_scaled+': this.sendPan(ctx, PAN_SCALE, 0); return true;
+        case 'pan_y+': this.sendPan(ctx, 0, 1); return true;
+        case 'pan_y-': this.sendPan(ctx, 0, -1); return true;
+        case 'pan_x-': this.sendPan(ctx, -1, 0); return true;
+        case 'pan_x+': this.sendPan(ctx, 1, 0); return true;
+        case 'cycle_pal': this.selection.handle(PALETTE, ctx); return true;
+        case 'flip': this.selection.handle(FLIP, ctx); return true;
+        case 'insert_sprite': this.insertSprite(ctx); return true;
+        case 'swap_bottoms': this.selection.handle(SWAP_BOTTOMS, ctx); return true;
+        case 'align_bottom': this.selection.handle(ALIGN_BOTTOM, ctx); return true;
+        case 'sprite_mode': this.selection.handle(SPRITE_MODE, ctx); return true;
+        case 'copy': this.copy(ctx); return true;
+        case 'paste_shade': this.selection.handle(clipboardShade, ctx); return true;
+        case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); return true;
+        case 'shade+': this.sendShadeChange(1, ctx); return true;
+        case 'shade-': this.sendShadeChange(-1, ctx); return true;
+        case 'shade_scaled+': this.sendShadeChange(SHADOW_SCALE, ctx); return true;
+        case 'shade_scaled-': this.sendShadeChange(-SHADOW_SCALE, ctx); return true;
+        case 'print_selected': this.print(ctx); return true;
+        default: return false;
       }
+    } else if (e instanceof MessageEvent) {
+      this.selection.handle(e.message, ctx);
     }
+  };
+
+  public EventBus(msg: EventBus, ctx: BuildContext) {
+    msg.events.tryConsume(this.eventConsumer, ctx);
   }
 
   private activeMove(ctx: BuildContext) {
@@ -183,12 +180,14 @@ export class Selection extends MessageHandlerReflective {
     let mod1 = ctx.state.get<boolean>(MOD1_STATE);
     let mod2 = ctx.state.get<boolean>(MOD2_STATE);
     let mod3 = ctx.state.get<boolean>(MOD3_STATE);
-    handle.update(mod1, mod2, mod3, this.hit);
+    let hit = ctx.state.get<Hitscan>('hitscan');
+    handle.update(mod1, mod2, mod3, hit);
   }
 
   private updateMove(ctx: BuildContext) {
     if (!handle.isActive() && ctx.state.get(MOVE_STATE)) {
-      handle.start(this.hit);
+      let hit = ctx.state.get<Hitscan>('hitscan');
+      handle.start(hit);
       this.selection.handle(START_MOVE, ctx);
     } else if (!ctx.state.get(MOVE_STATE)) {
       handle.stop();
@@ -228,9 +227,10 @@ export class Selection extends MessageHandlerReflective {
   }
 
   private insertSprite(ctx: BuildContext) {
-    let [x, y] = snap(this.hit, ctx);
-    let z = this.hit.z;
-    if (!isSector(this.hit.type)) return;
+    let [x, y] = snap(ctx);
+    let hit = ctx.state.get<Hitscan>('hitscan');
+    let z = hit.z;
+    if (!isSector(hit.type)) return;
     this.picnumSelector((picnum: number) => {
       if (picnum == -1) return;
       let spriteId = insertSprite(ctx.board, x, y, z);
@@ -238,43 +238,45 @@ export class Selection extends MessageHandlerReflective {
     });
   }
 
-  private print(ctx: BuildContext, id: number, type: SubType) {
-    switch (type) {
+  private print(ctx: BuildContext) {
+    let hit = ctx.state.get<Hitscan>('hitscan')
+    switch (hit.type) {
       case SubType.CEILING:
       case SubType.FLOOR:
-        info(id, ctx.board.sectors[id]);
+        info(hit.id, ctx.board.sectors[hit.id]);
         break;
       case SubType.UPPER_WALL:
       case SubType.MID_WALL:
       case SubType.LOWER_WALL:
-        info(id, ctx.board.walls[id]);
+        info(hit.id, ctx.board.walls[hit.id]);
         break;
       case SubType.SPRITE:
-        info(id, ctx.board.sprites[id]);
+        info(hit.id, ctx.board.sprites[hit.id]);
         break;
     }
   }
 
   private copy(ctx: BuildContext) {
-    if (this.hit.t == -1) return;
-    switch (this.hit.type) {
+    let hit = ctx.state.get<Hitscan>('hitscan')
+    if (hit.t == -1) return;
+    switch (hit.type) {
       case SubType.CEILING:
-        clipboardShade.value = ctx.board.sectors[this.hit.id].ceilingshade;
-        clipboardPicnum.picnum = ctx.board.sectors[this.hit.id].ceilingpicnum;
+        clipboardShade.value = ctx.board.sectors[hit.id].ceilingshade;
+        clipboardPicnum.picnum = ctx.board.sectors[hit.id].ceilingpicnum;
         break;
       case SubType.FLOOR:
-        clipboardShade.value = ctx.board.sectors[this.hit.id].floorshade;
-        clipboardPicnum.picnum = ctx.board.sectors[this.hit.id].floorpicnum;
+        clipboardShade.value = ctx.board.sectors[hit.id].floorshade;
+        clipboardPicnum.picnum = ctx.board.sectors[hit.id].floorpicnum;
         break;
       case SubType.LOWER_WALL:
       case SubType.MID_WALL:
       case SubType.UPPER_WALL:
-        clipboardShade.value = ctx.board.walls[this.hit.id].shade;
-        clipboardPicnum.picnum = ctx.board.walls[this.hit.id].picnum;
+        clipboardShade.value = ctx.board.walls[hit.id].shade;
+        clipboardPicnum.picnum = ctx.board.walls[hit.id].picnum;
         break;
       case SubType.SPRITE:
-        clipboardShade.value = ctx.board.sprites[this.hit.id].shade;
-        clipboardPicnum.picnum = ctx.board.sprites[this.hit.id].picnum;
+        clipboardShade.value = ctx.board.sprites[hit.id].shade;
+        clipboardPicnum.picnum = ctx.board.sprites[hit.id].picnum;
         break;
     }
   }

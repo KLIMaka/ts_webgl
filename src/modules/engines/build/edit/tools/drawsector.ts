@@ -9,8 +9,8 @@ import { Hitscan, isSector, isSprite, isWall } from "../../hitscan";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
 import { getClosestSectorZ, snap } from "../editutils";
-import { HitScan, Render, EventBus } from "../messages";
-import { action, StringEvent } from "../../../../keymap";
+import { Render, EventBus, Frame } from "../messages";
+import { multistringEventConsumer } from "../../events";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -119,15 +119,23 @@ export class DrawSector extends MessageHandlerReflective {
   private valid = false;
   private contour = new Contour();
   private isRect = true;
+  private eventConsumer = multistringEventConsumer((name: string, ctx: BuildContext) => {
+    switch (name) {
+      case 'draw_rect_wall': this.insertPoint(ctx, true); return true;
+      case 'draw_wall': this.insertPoint(ctx, false); return true;
+      case 'undo_draw_wall': this.popPoint(); return true;
+      default: return false;
+    }
+  });
 
-  private update(ctx: BuildContext, hit: Hitscan) {
-    if (this.predrawUpdate(ctx, hit)) return;
+  private update(ctx: BuildContext) {
+    if (this.predrawUpdate(ctx)) return;
 
     let z = this.contour.getZ();
     let x = 0, y = 0;
-    let res = snap(hit, ctx);
+    let res = snap(ctx);
     if (res == null) {
-      let res1 = this.getIntersectionZPlane(ctx, hit);
+      let res1 = this.getIntersectionZPlane(ctx);
       if (res1 == null) return;
       [x, y] = res1;
     } else {
@@ -154,13 +162,14 @@ export class DrawSector extends MessageHandlerReflective {
     }
   }
 
-  private predrawUpdate(ctx: BuildContext, hit: Hitscan) {
+  private predrawUpdate(ctx: BuildContext) {
     if (this.points.length() > 0) return false;
+    let hit = ctx.state.get<Hitscan>('hitscan');
     if (hit.t == -1) {
       this.valid = false;
     } else {
       this.valid = true;
-      let [x, y] = snap(hit, ctx);
+      let [x, y] = snap(ctx);
       let z = this.getPointerZ(ctx.board, hit, x, y);
       GLM.vec3.set(this.pointer, x, y, z);
       this.contour.setZ(z / ZSCALE);
@@ -172,8 +181,9 @@ export class DrawSector extends MessageHandlerReflective {
     return true;
   }
 
-  private getIntersectionZPlane(ctx: BuildContext, hit: Hitscan): [number, number] {
-    let snapped = snap(hit, ctx);
+  private getIntersectionZPlane(ctx: BuildContext): [number, number] {
+    let hit = ctx.state.get<Hitscan>('hitscan');
+    let snapped = snap(ctx);
     if (snapped != null) return tuple2(DrawSector.zintersect, snapped[0], snapped[1]);
     let z = this.contour.getZ();
     let dz = hit.start[2] / ZSCALE - z;
@@ -276,20 +286,11 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   public EventBus(msg: EventBus, ctx: BuildContext) {
-    let events = msg.events;
-    for (let i = events.first(); i != -1; i = events.next(i)) {
-      let e = events.get(i);
-      if (!(e instanceof StringEvent)) return;
-      switch (e.name) {
-        case 'draw_rect_wall': this.insertPoint(ctx, true); events.consume(i); break;
-        case 'draw_wall': this.insertPoint(ctx, false); events.consume(i); break;
-        case 'undo_draw_wall': this.popPoint(); events.consume(i); break;
-      }
-    }
+    msg.events.tryConsume(this.eventConsumer, ctx);
   }
 
-  public HitScan(msg: HitScan, ctx: BuildContext) {
-    this.update(ctx, msg.hit);
+  public Frame(msg: Frame, ctx: BuildContext) {
+    this.update(ctx);
   }
 
   public Render(msg: Render, ctx: BuildContext) {

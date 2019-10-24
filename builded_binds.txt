@@ -19,8 +19,8 @@ CTRL+SHIFT+DOWN repeat_y_scaled-
 O               cycle_pal
 F               flip
 I               insert_sprite
-K               swap_bottoms
-M               align_bottom
+K               msg wallcstat swap_bottoms true true
+M               msg wallcstat align_bottom true true
 R               sprite_mode
 1               copy
 2               paste_shade
@@ -38,6 +38,7 @@ BACKSPACE       undo_draw_wall
 [               grid+
 ]               grid-
 J               join_sectors
+\               msg panrepeat 0 0 8 8 true
 
 +mouse0         move
 +W              forward

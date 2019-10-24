@@ -5,39 +5,38 @@ import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as MU from './libs/mathutils';
 import * as data from './libs/stream';
+import * as GLM from './libs_js/glmatrix';
+import { Controller2D } from './modules/controller2d';
 import * as controller from './modules/controller3d';
 import { Deck } from './modules/deck';
 import * as DS from './modules/drawstruct';
+import { ArtProvider, BuildContext } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
-import { loadBloodMap } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
-import { ArtProvider, BuildContext } from './modules/engines/build/api';
+import { EventBus, Frame } from './modules/engines/build/edit/messages';
+import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
+import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
+import { Selection } from './modules/engines/build/edit/tools/selection';
+import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import * as RENDERER from './modules/engines/build/gl/boardrenderer';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
 import { Context } from './modules/engines/build/gl/context';
+import { Message } from './modules/engines/build/handlerapi';
 import * as RFF from './modules/engines/build/rff';
 import * as BS from './modules/engines/build/structs';
 import * as BU from './modules/engines/build/utils';
 import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
+import { addLogAppender, CONSOLE, warning } from './modules/logger';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import * as GLM from './libs_js/glmatrix';
-import { Selection } from './modules/engines/build/edit/tools/selection';
-import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
-import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
-import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
-import { Message } from './modules/engines/build/handlerapi';
-import { Controller2D } from './modules/controller2d';
-import { loadKeymap, action } from './modules/keymap';
-import { addLogAppender, CONSOLE, warning } from './modules/logger';
-import { EventBus, Frame } from './modules/engines/build/edit/messages';
+import { stringEventConsumer } from './modules/engines/build/events';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -263,6 +262,11 @@ function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
   let view2d = createViewPoint2d(gl, board, ctx);
   let view3d = createViewPoint3d(gl, board, ctx);
   let view = view3d;
+  let eventConsumer = stringEventConsumer('view_mode', (ctx: BuildContext) => {
+    view = view == view3d ? view2d : view3d;
+    view.activate();
+  });
+
   return {
     get sec() { return view.sec },
     get x() { return view.x },
@@ -273,8 +277,10 @@ function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
     getPosition() { return view.getPosition() },
     getForward() { return view.getForward() },
     unproject(x: number, y: number) { return view.unproject(x, y) },
-    handle(message: Message, ctx: Context) { view.handle(message, ctx) },
-    swapView() { view = view == view3d ? view2d : view3d; view.activate() }
+    handle(message: Message, ctx: Context) {
+      if (message instanceof EventBus) message.events.tryConsume(eventConsumer, ctx);
+      view.handle(message, ctx)
+    }
   }
 }
 
@@ -387,8 +393,6 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
 
     RENDERER.init(context, impl);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      if (action('view_mode', INPUT.get())) view.swapView();
-
       BGL.newFrame(gl);
 
       PROFILE.start();
@@ -422,7 +426,6 @@ IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
 ab.wait((res) => {
 
   let cfg = CFG.create(res['cfg']);
-  loadKeymap(CFG.create(res['keymap']));
   addLogAppender(CONSOLE);
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');

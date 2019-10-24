@@ -1,7 +1,8 @@
-import { InputState, bind } from "./input";
-import { warning } from "./logger";
-import { Event, State } from "./engines/build/api";
-import { Collection, Deck, EMPRTY_COLLECTION } from "./deck";
+import { Collection, Deck, EMPRTY_COLLECTION } from "../../deck";
+import { Event, State } from "./api";
+import { InputState } from "../../input";
+import { warning } from "../../logger";
+import { EventConsumer } from "../../eventqueue";
 
 export type InputHandler = (state: InputState) => boolean;
 
@@ -13,54 +14,6 @@ export function combination(lh: InputHandler, rh: InputHandler): InputHandler { 
 export const wheelUp: InputHandler = (state) => state.wheel > 0;
 export const wheelDown: InputHandler = (state) => state.wheel < 0;
 
-let keymap: { [index: string]: InputHandler } = {}
-let absentConfigSet = new Set<string>();
-
-export function action(name: string, state: InputState): boolean {
-  let config = keymap[name];
-  if (config == undefined) {
-    if (!absentConfigSet.has(name)) {
-      warning(`Unbound action ${name}`);
-      absentConfigSet.add(name);
-    }
-    return false;
-  }
-  return config(state);
-}
-
-export function addActionHandler(name: string, handler: InputHandler): InputHandler {
-  keymap[name] = handler;
-  return handler;
-}
-
-function parseHandler(cmd: string) {
-  if (cmd == 'wheel+') return wheelUp;
-  if (cmd == 'wheel-') return wheelDown;
-  if (cmd == 'mouse0') return mouseClick(0);
-  if (cmd == 'mouse1') return mouseClick(1);
-  if (cmd == 'mouse2') return mouseClick(2);
-  if (cmd == '+mouse0') return mouseButton(0);
-  if (cmd == '+mouse1') return mouseButton(1);
-  if (cmd == '+mouse2') return mouseButton(2);
-  if (cmd.startsWith('+')) return key(cmd.substr(1));
-  if (cmd.indexOf('+') != -1) {
-    let plus = cmd.indexOf('+');
-    let mod = cmd.substring(0, plus);
-    return combination(key(mod), parseHandler(cmd.substr(plus + 1)));
-  }
-  return keyPress(cmd);
-}
-
-export function addActionHandlerParse(name: string, cmd: string) {
-  return addActionHandler(name, parseHandler(cmd));
-}
-
-export function loadKeymap(json: { [index: string]: string }) {
-  for (let action in json) {
-    let cmd = json[action];
-    addActionHandlerParse(action, cmd);
-  }
-}
 
 function parseMod(str: string): InputHandler {
   if (str == 'mouse0') return mouseButton(0);
@@ -173,11 +126,9 @@ export class Binder {
   }
 }
 
-export class StringEvent implements Event {
-  constructor(readonly name: String) { }
-}
+export type EventParser = (str: string) => Event;
 
-export function loadBinds(binds: string, binder: Binder) {
+export function loadBinds(binds: string, binder: Binder, eventParser: EventParser) {
   let lines = binds.split(/\r?\n/);
   for (let line of lines) {
     line = line.trim().toLowerCase();
@@ -193,7 +144,8 @@ export function loadBinds(binds: string, binder: Binder) {
       let keyParts = keys.split('+');
       binder.addStateBind(line.substr(idx + 1).trim(), true, false, ...keyParts);
     } else {
-      let event = new StringEvent(line.substr(idx + 1).trim());
+      let event = eventParser(line.substr(idx + 1).trim());
+      if (event == null) continue;
       let keyParts = keys.split('+');
       let key = keyParts[keyParts.length - 1];
       keyParts.pop();

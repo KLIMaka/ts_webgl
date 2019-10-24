@@ -24,7 +24,8 @@ export function getClosestWall(board: Board, hit: Hitscan, d: number): number {
 }
 
 let snapResult: [number, number, number, SubType] = [0, 0, 0, null];
-export function snap(hit: Hitscan, ctx: BuildContext): [number, number, number, SubType] {
+export function snap(ctx: BuildContext): [number, number, number, SubType] {
+  let hit = ctx.state.get<Hitscan>('hitscan');
   let w = getClosestWall(ctx.board, hit, ctx.snapScale());
   if (w != -1) {
     let wall = ctx.board.walls[w];

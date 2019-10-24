@@ -2,7 +2,6 @@ import { Deck } from "../../../deck";
 import { EventQueue } from "../../../eventqueue";
 import { Renderable } from "../gl/renderable";
 import { Message } from "../handlerapi";
-import { Hitscan } from "../hitscan";
 import { MovingHandle } from "./handle";
 
 
@@ -20,6 +19,5 @@ export class Flip implements Message { constructor() { } }
 export class SpriteMode implements Message { }
 export class EventBus implements Message { constructor(public events: EventQueue) { } }
 export class Frame implements Message { constructor(public dt: number) { } }
-export class HitScan implements Message { constructor(public hit: Hitscan) { } }
 export class SetWallCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }
-export class SetSectorCstat implements Message { }
+export class SetSectorCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }

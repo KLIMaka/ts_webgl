@@ -1,17 +1,18 @@
-import { StringEvent } from "../../../../keymap";
 import { BuildContext } from "../../api";
 import { splitWall } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { isWall } from "../../hitscan";
+import { Hitscan, isWall } from "../../hitscan";
 import { sectorOfWall } from "../../utils";
 import { invalidateSectorAndWalls, snap } from "../editutils";
-import { EventBus, HitScan } from "../messages";
+import { EventBus, Frame } from "../messages";
+import { stringEventConsumer } from "../../events";
 
 export class SplitWall extends MessageHandlerReflective {
   private x = 0;
   private y = 0;
   private wallId = -1;
   private active = false;
+  private eventConsumer = stringEventConsumer('split_wall', (ctx: BuildContext) => this.run(ctx));
 
   private update(x: number, y: number, wallId: number) {
     this.active = true;
@@ -31,23 +32,16 @@ export class SplitWall extends MessageHandlerReflective {
     }
   }
 
-  public HitScan(msg: HitScan, ctx: BuildContext) {
+  public Frame(msg: Frame, ctx: BuildContext) {
     this.active = false;
-    if (msg.hit.t != -1) {
-      let [x, y, id, type] = snap(msg.hit, ctx);
+    let hit = ctx.state.get<Hitscan>('hitscan');
+    if (hit.t != -1) {
+      let [x, y, id, type] = snap(ctx);
       if (isWall(type)) this.update(x, y, id);
     }
   }
 
   public EventBus(msg: EventBus, ctx: BuildContext) {
-    let events = msg.events;
-    for (let i = events.first(); i != -1; i = events.next(i)) {
-      let e = events.get(i);
-      if (!(e instanceof StringEvent)) return;
-      if (e.name == 'split_wall') {
-        this.run(ctx);
-        events.consume(i);
-      }
-    }
+    msg.events.tryConsume(this.eventConsumer, ctx);
   }
 }
