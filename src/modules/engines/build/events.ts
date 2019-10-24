@@ -1,7 +1,18 @@
 import { Event, EventConsumer } from "../../eventqueue";
+import { Lexer, LexerRule } from "../../lex/lexer";
+import { Palette, PanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade } from "./edit/messages";
 import { Message } from "./handlerapi";
-import { SetPicnum, Shade, PanRepeat, Palette, SetWallCstat, SetSectorCstat } from "./edit/messages";
-import { error } from "../../logger";
+
+class Name { constructor(readonly name: string) { } };
+
+let lexer = new Lexer();
+lexer.addRule(new LexerRule(/^[ \t\r\v\n]+/, 'WS'));
+lexer.addRule(new LexerRule(/^[^ \t\r\v\n\(\)`"]+/, 'ID', 0, (s) => new Name(s)));
+lexer.addRule(new LexerRule(/^msg+/, 'MSG'));
+lexer.addRule(new LexerRule(/^(false|true)+/, 'BOOLEAN', 0, (s) => s == 'true'));
+lexer.addRule(new LexerRule(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, (s) => parseFloat(s)));
+lexer.addRule(new LexerRule(/^\-?[0-9]+/, 'INT', 0, (s) => parseInt(s)));
+lexer.addRule(new LexerRule(/^"([^"]*)"/, 'STRING', 1, (s) => s));
 
 
 export class StringEvent implements Event {
@@ -25,27 +36,35 @@ export function messageEventConsumer<T>(action: (message: Message, ctx: T) => vo
 }
 
 export function eventParser(str: string): Event {
-  let parts = str.split(/ +/);
-  let keyword = parts.shift();
-  if (keyword == 'msg') {
-    let message = parseMessage(parts);
-    if (message == null) {
-      error(`Cannot parse ${str}`);
-      return null;
-    }
-    return new MessageEvent(message);
-  }
-  return new StringEvent(str);
+  let event = tryParse(str);
+  if (event == null) return new StringEvent(str);
+  return new MessageEvent(event);
 }
 
-export function parseMessage(parts: string[]): Message {
-  let int = Number.parseInt;
-  let type = parts.shift();
-  if (type == 'picnum') return new SetPicnum(int(parts.shift()));
-  else if (type == 'shade') return new Shade(int(parts.shift()), parts.shift() == 'true');
-  else if (type == 'panrepeat') return new PanRepeat(int(parts.shift()), int(parts.shift()), int(parts.shift()), int(parts.shift()), parts.shift() == 'true');
-  else if (type == 'pal') return new Palette(int(parts.shift()), 15, parts.shift() == 'true');
-  else if (type == 'wallcstat') return new SetWallCstat(parts.shift(), parts.shift() == 'true', parts.shift() == 'true');
-  else if (type == 'sectorcstat') return new SetSectorCstat(parts.shift(), parts.shift() == 'true', parts.shift() == 'true');
-  return null;
+function get<T>(expected: string): T {
+  if (lexer.isEoi()) throw new Error();
+  for (; !lexer.isEoi() && lexer.next() == 'WS';);
+  if (lexer.rule().name == 'WS' && lexer.isEoi()) throw new Error();
+  let tokenId = lexer.rule().name;
+  if (tokenId != expected) throw new Error();
+  return lexer.value();
+}
+
+function tryParse(src: string) {
+  try {
+    lexer.setSource(src);
+    get<Name>('MSG');
+    let type = get<Name>('ID').name;
+    switch (type) {
+      case 'picnum': return new SetPicnum(get('INT'));
+      case 'shade': return new Shade(get('INT'), get('BOOLEAN'));
+      case 'panrepeat': return new PanRepeat(get('INT'), get('INT'), get('INT'), get('INT'), get('BOOLEAN'));
+      case 'pal': return new Palette(get('INT'), 15, get('BOOLEAN'));
+      case 'wallcstat': return new SetWallCstat(get<Name>('ID').name, get('BOOLEAN'), get('BOOLEAN'));
+      case 'sectorcstat': return new SetSectorCstat(get<Name>('ID').name, get('BOOLEAN'), get('BOOLEAN'));
+      default: return null;
+    }
+  } catch (e) {
+    return null;
+  }
 }

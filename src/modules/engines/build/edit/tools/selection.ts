@@ -162,6 +162,7 @@ export class Selection extends MessageHandlerReflective {
       }
     } else if (e instanceof MessageEvent) {
       this.selection.handle(e.message, ctx);
+      return true;
     }
   };
 

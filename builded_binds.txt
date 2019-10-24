@@ -19,8 +19,8 @@ CTRL+SHIFT+DOWN repeat_y_scaled-
 O               cycle_pal
 F               flip
 I               insert_sprite
-K               msg wallcstat swap_bottoms true true
-M               msg wallcstat align_bottom true true
+K               msg wallcstat swapBottoms true true
+M               msg wallcstat alignBottom true true
 R               sprite_mode
 1               copy
 2               paste_shade

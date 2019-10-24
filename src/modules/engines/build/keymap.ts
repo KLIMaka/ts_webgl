@@ -131,14 +131,14 @@ export type EventParser = (str: string) => Event;
 export function loadBinds(binds: string, binder: Binder, eventParser: EventParser) {
   let lines = binds.split(/\r?\n/);
   for (let line of lines) {
-    line = line.trim().toLowerCase();
+    line = line.trim();
     if (line.length == 0) continue;
     let idx = line.indexOf(' ');
     if (idx == -1) {
       warning(`Skipping bind line: ${line}`);
       continue;
     }
-    let keys = line.substr(0, idx);
+    let keys = line.substr(0, idx).toLowerCase();
     if (keys.startsWith('+')) {
       keys = keys.substr(1);
       let keyParts = keys.split('+');
