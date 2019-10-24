@@ -1,21 +1,24 @@
-import { BuildContext } from "../../api";
-import { insertSprite, loopWalls, nextwall, closestWallLineInSector } from "../../boardutils";
-import { Hitscan, isSector, SubType, isWall, isSprite } from "../../hitscan";
-import { MessageHandlerReflective, MessageHandlerList, MessageHandler } from "../../handlerapi";
-import { EndMove, Flip, HitScan, Input, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, ToggleParallax, Render, Highlight, SetWallCstat } from "../messages";
-import { snap, getClosestWall, getClosestSectorZ } from "../editutils";
-import { MovingHandle } from "../handle";
-import { BuildRenderableProvider } from "../../gl/renderable";
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { Deck } from "../../../../deck";
-import { WallSegmentsEnt } from "../wallsegment";
+import { EventQueue } from "../../../../eventqueue";
+import { action, StringEvent } from "../../../../keymap";
+import { info } from "../../../../logger";
+import { BuildContext } from "../../api";
+import { closestWallLineInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
+import { Context } from "../../gl/context";
+import { BuildRenderableProvider } from "../../gl/renderable";
+import { MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
+import { Hitscan, isSector, isSprite, isWall, SubType } from "../../hitscan";
+import { Board } from "../../structs";
 import { sectorOfWall } from "../../utils";
-import { WallEnt } from "../wall";
+import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
+import { MovingHandle } from "../handle";
+import { EndMove, Flip, Highlight, HitScan, Move, Palette, PanRepeat, Render, SetPicnum, SetWallCstat, Shade, SpriteMode, StartMove, ToggleParallax, EventBus } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
-import { Board } from "../../structs";
-import { action } from "../../../../keymap";
-import { info } from "../../../../logger";
+import { WallEnt } from "../wall";
+import { WallSegmentsEnt } from "../wallsegment";
+import { Frame } from "../../../idtech/md2structs";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -40,6 +43,12 @@ const SNAP_RANGE = 16;
 const PAN_SCALE = 8;
 const SHADOW_SCALE = 8;
 
+const MOVE_STATE = 'move';
+const MOD1_STATE = 'mod1';
+const MOD2_STATE = 'mod2';
+const MOD3_STATE = 'mod3';
+const LOOP_STATE = 'select_loop_mod';
+
 let clipboardPicnum = new SetPicnum(0);
 let clipboardShade = new Shade(0, true);
 
@@ -52,7 +61,8 @@ function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
 
 let list = new Deck<MessageHandler>();
 let segment = new Deck<number>();
-export function getFromHitscan(ctx: BuildContext, hit: Hitscan, fullLoop = false): Deck<MessageHandler> {
+export function getFromHitscan(ctx: BuildContext, hit: Hitscan): Deck<MessageHandler> {
+  let fullLoop = ctx.state.get<boolean>(LOOP_STATE);
   list.clear();
   let board = ctx.board;
   let w = getClosestWall(board, hit, SNAP_RANGE);
@@ -92,93 +102,101 @@ function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean
 export class Selection extends MessageHandlerReflective {
   private selection = new MessageHandlerList();
   private hit: Hitscan;
-  private fulloop = false;
 
   constructor(
+    ctx: Context,
     private picnumSelector: PicNumSelector,
     private renderables: BuildRenderableProvider
   ) {
     super();
+    ctx.state.register(MOVE_STATE, false);
+    ctx.state.register(MOD1_STATE, false);
+    ctx.state.register(MOD2_STATE, false);
+    ctx.state.register(MOD3_STATE, false);
+    ctx.state.register(LOOP_STATE, false);
   }
 
   public HitScan(msg: HitScan, ctx: BuildContext) {
     this.hit = msg.hit;
     if (handle.isActive()) return;
-    this.selection.list().clear().pushAll(getFromHitscan(ctx, msg.hit, this.fulloop));
+    this.selection.list().clear().pushAll(getFromHitscan(ctx, msg.hit));
   }
 
-  public Input(msg: Input, ctx: BuildContext) {
-    this.fulloop = action('select_loop_mod', msg.state)
-    if (action('print_selected', msg.state)) this.print(ctx, this.hit.id, this.hit.type);
+  public Frame(msg: Frame, ctx: BuildContext) {
     if (this.selection.list().isEmpty()) return;
-
-    if (this.activeMove(msg)) {
-      this.updateHandle(msg);
-      this.updateMove(msg, ctx);
-    } else {
-      this.handleSelected(msg, ctx);
+    if (this.activeMove(ctx)) {
+      this.updateHandle(ctx);
+      this.updateMove(ctx);
     }
   }
 
-  private activeMove(msg: Input) {
-    let start = !handle.isActive() && action('move', msg.state);
-    let move = handle.isActive() && action('move', msg.state);
-    let end = handle.isActive() && !action('move', msg.state);
+  public EventBus(msg: EventBus, ctx: BuildContext) {
+    let events = msg.events;
+    for (let i = events.first(); i != -1; i = events.next(i)) {
+      let e = events.get(i);
+      if (!(e instanceof StringEvent)) return;
+      switch (e.name) {
+        case 'set_picnum': this.setTexture(ctx); events.consume(i); break;
+        case 'toggle_parallax': this.selection.handle(TOGGLE_PARALLAX, ctx); events.consume(i); break;
+        case 'repeat_y_scaled+': this.sendRepeat(ctx, 0, PAN_SCALE); events.consume(i); break;
+        case 'repeat_y_scaled-': this.sendRepeat(ctx, 0, -PAN_SCALE); events.consume(i); break;
+        case 'repeat_x_scaled-': this.sendRepeat(ctx, -PAN_SCALE, 0); events.consume(i); break;
+        case 'repeat_x_scaled+': this.sendRepeat(ctx, PAN_SCALE, 0); events.consume(i); break;
+        case 'repeat_y+': this.sendRepeat(ctx, 0, 1); events.consume(i); break;
+        case 'repeat_y-': this.sendRepeat(ctx, 0, -1); events.consume(i); break;
+        case 'repeat_x-': this.sendRepeat(ctx, -1, 0); events.consume(i); break;
+        case 'repeat_x+': this.sendRepeat(ctx, 1, 0); events.consume(i); break;
+        case 'pan_y_scaled+': this.sendPan(ctx, 0, PAN_SCALE); events.consume(i); break;
+        case 'pan_y_scaled-': this.sendPan(ctx, 0, -PAN_SCALE); events.consume(i); break;
+        case 'pan_x_scaled-': this.sendPan(ctx, -PAN_SCALE, 0); events.consume(i); break;
+        case 'pan_x_scaled+': this.sendPan(ctx, PAN_SCALE, 0); events.consume(i); break;
+        case 'pan_y+': this.sendPan(ctx, 0, 1); events.consume(i); break;
+        case 'pan_y-': this.sendPan(ctx, 0, -1); events.consume(i); break;
+        case 'pan_x-': this.sendPan(ctx, -1, 0); events.consume(i); break;
+        case 'pan_x+': this.sendPan(ctx, 1, 0); events.consume(i); break;
+        case 'cycle_pal': this.selection.handle(PALETTE, ctx); events.consume(i); break;
+        case 'flip': this.selection.handle(FLIP, ctx); events.consume(i); break;
+        case 'insert_sprite': this.insertSprite(ctx); events.consume(i); break;
+        case 'swap_bottoms': this.selection.handle(SWAP_BOTTOMS, ctx); events.consume(i); break;
+        case 'align_bottom': this.selection.handle(ALIGN_BOTTOM, ctx); events.consume(i); break;
+        case 'sprite_mode': this.selection.handle(SPRITE_MODE, ctx); events.consume(i); break;
+        case 'copy': this.copy(ctx); events.consume(i); break;
+        case 'paste_shade': this.selection.handle(clipboardShade, ctx); events.consume(i); break;
+        case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); events.consume(i); break;
+        case 'shade+': this.sendShadeChange(1, ctx); events.consume(i); break;
+        case 'shade-': this.sendShadeChange(-1, ctx); events.consume(i); break;
+        case 'shade_scaled+': this.sendShadeChange(SHADOW_SCALE, ctx); events.consume(i); break;
+        case 'shade_scaled-': this.sendShadeChange(-SHADOW_SCALE, ctx); events.consume(i); break;
+        case 'print_selected': this.print(ctx, this.hit.id, this.hit.type); events.consume(i); break;
+      }
+    }
+  }
+
+  private activeMove(ctx: BuildContext) {
+    let start = !handle.isActive() && ctx.state.get(MOVE_STATE);
+    let move = handle.isActive() && ctx.state.get(MOVE_STATE);
+    let end = handle.isActive() && !ctx.state.get(MOVE_STATE);
     return start || move || end;
   }
 
-  private updateHandle(msg: Input) {
-    let mod1 = action('mod1', msg.state);
-    let mod2 = action('mod2', msg.state);
-    let mod3 = action('mod3', msg.state);
+  private updateHandle(ctx: BuildContext) {
+    let mod1 = ctx.state.get<boolean>(MOD1_STATE);
+    let mod2 = ctx.state.get<boolean>(MOD2_STATE);
+    let mod3 = ctx.state.get<boolean>(MOD3_STATE);
     handle.update(mod1, mod2, mod3, this.hit);
   }
 
-  private updateMove(msg: Input, ctx: BuildContext) {
-    if (!handle.isActive() && action('move', msg.state)) {
+  private updateMove(ctx: BuildContext) {
+    if (!handle.isActive() && ctx.state.get(MOVE_STATE)) {
       handle.start(this.hit);
       this.selection.handle(START_MOVE, ctx);
-    } else if (!action('move', msg.state)) {
+    } else if (!ctx.state.get(MOVE_STATE)) {
       handle.stop();
       this.selection.handle(END_MOVE, ctx);
       return;
     }
 
     this.selection.handle(MOVE, ctx);
-  }
-
-  private handleSelected(msg: Input, ctx: BuildContext) {
-    if (action('set_picnum', msg.state)) this.setTexture(ctx);
-    else if (action('toggle_parallax', msg.state)) this.selection.handle(TOGGLE_PARALLAX, ctx);
-    else if (action('repeat_y_scaled+', msg.state)) this.sendRepeat(msg, ctx, 0, PAN_SCALE);
-    else if (action('repeat_y_scaled-', msg.state)) this.sendRepeat(msg, ctx, 0, -PAN_SCALE);
-    else if (action('repeat_x_scaled-', msg.state)) this.sendRepeat(msg, ctx, -PAN_SCALE, 0);
-    else if (action('repeat_x_scaled+', msg.state)) this.sendRepeat(msg, ctx, PAN_SCALE, 0);
-    else if (action('repeat_y+', msg.state)) this.sendRepeat(msg, ctx, 0, 1);
-    else if (action('repeat_y-', msg.state)) this.sendRepeat(msg, ctx, 0, -1);
-    else if (action('repeat_x-', msg.state)) this.sendRepeat(msg, ctx, -1, 0);
-    else if (action('repeat_x+', msg.state)) this.sendRepeat(msg, ctx, 1, 0);
-    else if (action('pan_y_scaled+', msg.state)) this.sendPan(msg, ctx, 0, PAN_SCALE);
-    else if (action('pan_y_scaled-', msg.state)) this.sendPan(msg, ctx, 0, -PAN_SCALE);
-    else if (action('pan_x_scaled-', msg.state)) this.sendPan(msg, ctx, -PAN_SCALE, 0);
-    else if (action('pan_x_scaled+', msg.state)) this.sendPan(msg, ctx, PAN_SCALE, 0);
-    else if (action('pan_y+', msg.state)) this.sendPan(msg, ctx, 0, 1);
-    else if (action('pan_y-', msg.state)) this.sendPan(msg, ctx, 0, -1);
-    else if (action('pan_x-', msg.state)) this.sendPan(msg, ctx, -1, 0);
-    else if (action('pan_x+', msg.state)) this.sendPan(msg, ctx, 1, 0);
-    else if (action('cycle_pal', msg.state)) this.selection.handle(PALETTE, ctx);
-    else if (action('flip', msg.state)) this.selection.handle(FLIP, ctx);
-    else if (action('insert_sprite', msg.state)) this.insertSprite(ctx);
-    else if (action('swap_bottoms', msg.state)) this.selection.handle(SWAP_BOTTOMS, ctx);
-    else if (action('align_bottom', msg.state)) this.selection.handle(ALIGN_BOTTOM, ctx);
-    else if (action('sprite_mode', msg.state)) this.selection.handle(SPRITE_MODE, ctx);
-    else if (action('copy', msg.state)) this.copy(msg, ctx);
-    else if (action('paste_shade', msg.state)) this.selection.handle(clipboardShade, ctx);
-    else if (action('paste_picnum', msg.state)) this.selection.handle(clipboardPicnum, ctx);
-    else if (action('shade+', msg.state)) this.sendShadeChange(msg, 1, ctx);
-    else if (action('shade-', msg.state)) this.sendShadeChange(msg, -1, ctx);
-    else if (action('shade_scaled+', msg.state)) this.sendShadeChange(msg, SHADOW_SCALE, ctx);
-    else if (action('shade_scaled-', msg.state)) this.sendShadeChange(msg, -SHADOW_SCALE, ctx);
   }
 
   private setTexture(ctx: BuildContext) {
@@ -190,19 +208,19 @@ export class Selection extends MessageHandlerReflective {
     })
   }
 
-  private sendShadeChange(msg: Input, change: number, ctx: BuildContext) {
+  private sendShadeChange(change: number, ctx: BuildContext) {
     SHADE_CHANGE.value = change;
     this.selection.handle(SHADE_CHANGE, ctx);
   }
 
-  private sendPan(msg: Input, ctx: BuildContext, x: number, y: number) {
+  private sendPan(ctx: BuildContext, x: number, y: number) {
     PANREPEAT.xrepeat = PANREPEAT.yrepeat = 0;
     PANREPEAT.xpan = x;
     PANREPEAT.ypan = y;
     this.selection.handle(PANREPEAT, ctx);
   }
 
-  private sendRepeat(msg: Input, ctx: BuildContext, x: number, y: number) {
+  private sendRepeat(ctx: BuildContext, x: number, y: number) {
     PANREPEAT.xpan = PANREPEAT.ypan = 0;
     PANREPEAT.xrepeat = x;
     PANREPEAT.yrepeat = y;
@@ -237,7 +255,7 @@ export class Selection extends MessageHandlerReflective {
     }
   }
 
-  private copy(msg: Input, ctx: BuildContext) {
+  private copy(ctx: BuildContext) {
     if (this.hit.t == -1) return;
     switch (this.hit.type) {
       case SubType.CEILING:

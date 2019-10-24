@@ -33,11 +33,11 @@ import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
-import { Input } from './modules/engines/build/edit/messages';
 import { Message } from './modules/engines/build/handlerapi';
 import { Controller2D } from './modules/controller2d';
 import { loadKeymap, action } from './modules/keymap';
 import { addLogAppender, CONSOLE, warning } from './modules/logger';
+import { EventBus, Frame } from './modules/engines/build/edit/messages';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -179,6 +179,8 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
   let control = new Controller2D();
   control.setPosition(playerstart.x, playerstart.y);
   control.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
+  ctx.state.register('zoom+', false);
+  ctx.state.register('zoom-', false);
 
   return {
     get sec() { return playerstart.sectnum },
@@ -194,14 +196,13 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
     activate() { control.setPosition(playerstart.x, playerstart.y) },
 
     handle(message: Message, ctx: Context) {
-      if (!(message instanceof Input)) return;
-      let msg = <Input>message;
-
-      if (action('zoom+', msg.state)) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
-      if (action('zoom-', msg.state)) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
-      control.track(msg.state.mouseX, msg.state.mouseY, ctx.state.get<boolean>('lookaim'));
-      let x = (msg.state.mouseX / ctx.gl.drawingBufferWidth) * 2 - 1;
-      let y = (msg.state.mouseY / ctx.gl.drawingBufferHeight) * 2 - 1;
+      if (!(message instanceof Frame)) return;
+      let state = ctx.state;
+      if (state.get('zoom+')) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
+      if (state.get('zoom-')) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
+      control.track(state.get('mouseX'), state.get('mouseY'), state.get('lookaim'));
+      let x = (state.get<number>('mouseX') / ctx.gl.drawingBufferWidth) * 2 - 1;
+      let y = (state.get<number>('mouseY') / ctx.gl.drawingBufferHeight) * 2 - 1;
       let p = control.getPointerPosition(pointer, x, y);
 
       playerstart.x = MU.int(p[0]);
@@ -218,6 +219,10 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
   control.setFov(90);
   control.setPosition(playerstart.x, playerstart.z / BU.ZSCALE + 1024, playerstart.y);
   let aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+  ctx.state.register('forward', false);
+  ctx.state.register('backward', false);
+  ctx.state.register('strafe_left', false);
+  ctx.state.register('strafe_right', false);
 
   return {
     get sec() { return playerstart.sectnum },
@@ -233,14 +238,15 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
     activate() { control.setPosition(playerstart.x, playerstart.z / BU.ZSCALE + 1024, playerstart.y) },
 
     handle(message: Message, ctx: Context) {
-      if (!(message instanceof Input)) return;
-      let msg = <Input>message;
+      if (!(message instanceof Frame)) return;
+      let state = ctx.state;
       let dt = ctx.state.get<number>('frametime');
-      if (action('forward', msg.state)) control.moveForward(dt * 8000);
-      if (action('backward', msg.state)) control.moveForward(-dt * 8000);
-      if (action('strafe_left', msg.state)) control.moveSideway(-dt * 8000);
-      if (action('strafe_right', msg.state)) control.moveSideway(dt * 8000);
-      control.track(msg.state.mouseX, msg.state.mouseY, ctx.state.get<boolean>('lookaim'));
+
+      if (state.get('forward')) control.moveForward(dt * 8000);
+      if (state.get('backward')) control.moveForward(-dt * 8000);
+      if (state.get('strafe_left')) control.moveSideway(-dt * 8000);
+      if (state.get('strafe_right')) control.moveSideway(dt * 8000);
+      control.track(state.get('mouseX'), state.get('mouseY'), state.get('lookaim'));
 
       let p = control.getPosition();
       playerstart.x = MU.int(p[0]);
@@ -372,7 +378,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
     HANDLER.init(context);
-    HANDLER.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
+    HANDLER.addHandler(new Selection(context, (cb) => artSelector.modal(cb), cache.helpers));
     HANDLER.addHandler(new SplitWall());
     HANDLER.addHandler(new JoinSectors());
     HANDLER.addHandler(new DrawSector());

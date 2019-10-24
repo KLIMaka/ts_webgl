@@ -1,11 +1,11 @@
+import { StringEvent } from "../../../../keymap";
+import { BuildContext } from "../../api";
 import { splitWall } from "../../boardutils";
+import { MessageHandlerReflective } from "../../handlerapi";
+import { isWall } from "../../hitscan";
 import { sectorOfWall } from "../../utils";
 import { invalidateSectorAndWalls, snap } from "../editutils";
-import { BuildContext } from "../../api";
-import { MessageHandlerReflective } from "../../handlerapi";
-import { HitScan, Input } from "../messages";
-import { isWall } from "../../hitscan";
-import { action } from "../../../../keymap";
+import { EventBus, HitScan } from "../messages";
 
 export class SplitWall extends MessageHandlerReflective {
   private x = 0;
@@ -39,7 +39,15 @@ export class SplitWall extends MessageHandlerReflective {
     }
   }
 
-  public Input(msg: Input, ctx: BuildContext) {
-    if (action('split_wall', msg.state)) this.run(ctx);
+  public EventBus(msg: EventBus, ctx: BuildContext) {
+    let events = msg.events;
+    for (let i = events.first(); i != -1; i = events.next(i)) {
+      let e = events.get(i);
+      if (!(e instanceof StringEvent)) return;
+      if (e.name == 'split_wall') {
+        this.run(ctx);
+        events.consume(i);
+      }
+    }
   }
 }

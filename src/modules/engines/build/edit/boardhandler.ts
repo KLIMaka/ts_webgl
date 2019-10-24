@@ -8,12 +8,12 @@ import { MessageHandler, MessageHandlerList } from '../handlerapi';
 import { hitscan, Hitscan } from '../hitscan';
 import * as U from '../utils';
 import { snap } from './editutils';
-import { EventBus, HitScan, Input, Render } from './messages';
+import { EventBus, HitScan, Render, Frame } from './messages';
 
 const HITSCAN = new HitScan(new Hitscan());
-const INPUT = new Input(null);
 const RENDER = new Render();
 const EVENT_BUS = new EventBus(new EventQueue());
+const FRAME = new Frame(0);
 
 
 let context: BuildContext;
@@ -41,18 +41,17 @@ function refreshHitscan(state: InputState, view: ViewPoint) {
   return HITSCAN;
 }
 
-function refreshInput(state: InputState) {
-  INPUT.state = state;
-  return INPUT;
-}
-
 function poolEvents(state: InputState): boolean {
   let queue = EVENT_BUS.events;
   // reportUnconsumed(queue);
   queue.clear();
-  let events = context.binder.match(state);
-  for (let i = 0; i < events.length(); i++) info(events.get(i));//queue.add(events.get(i));
-  return queue.isEmpty();
+  let events = context.poolEvents(state);
+  for (let i = 0; i < events.length(); i++) {
+    let e = events.get(i);
+    info(e);
+    queue.add(e);
+  }
+  return !queue.isEmpty();
 }
 
 function reportUnconsumed(queue: EventQueue) {
@@ -74,8 +73,8 @@ function draw() {
 
 export function handle(state: InputState, view: ViewPoint, dt: number) {
   context.state.set('frametime', dt);
-  if (poolEvents(state)) handlers.handle(EVENT_BUS, context);
   handlers.handle(refreshHitscan(state, view), context);
-  handlers.handle(refreshInput(state), context);
+  handlers.handle(FRAME, context);
+  if (poolEvents(state)) handlers.handle(EVENT_BUS, context);
   draw();
 }

@@ -1,10 +1,10 @@
-import { action } from "../../../../keymap";
+import { action, StringEvent } from "../../../../keymap";
 import { trace } from "../../../../logger";
 import { BuildContext } from "../../api";
 import { joinSectors } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan } from "../../hitscan";
-import { HitScan, Input } from "../messages";
+import { HitScan, EventBus } from "../messages";
 
 export class JoinSectors extends MessageHandlerReflective {
   private sectorId1 = -1;
@@ -31,7 +31,15 @@ export class JoinSectors extends MessageHandlerReflective {
     this.hit = msg.hit;
   }
 
-  public Input(msg: Input, ctx: BuildContext) {
-    if (action('join_sectors', msg.state)) this.join(this.hit, ctx);
+  public EventBus(msg: EventBus, ctx: BuildContext) {
+    let events = msg.events;
+    for (let i = events.first(); i != -1; i = events.next(i)) {
+      let e = events.get(i);
+      if (!(e instanceof StringEvent)) return;
+      if (e.name == 'join_sectors') {
+        this.join(this.hit, ctx);
+        events.consume(i);
+      }
+    }
   }
 }

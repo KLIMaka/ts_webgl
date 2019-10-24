@@ -9,8 +9,8 @@ import { Hitscan, isSector, isSprite, isWall } from "../../hitscan";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
 import { getClosestSectorZ, snap } from "../editutils";
-import { HitScan, Input, Render } from "../messages";
-import { action } from "../../../../keymap";
+import { HitScan, Render, EventBus } from "../messages";
+import { action, StringEvent } from "../../../../keymap";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -275,10 +275,17 @@ export class DrawSector extends MessageHandlerReflective {
     this.contour.pushPoint(0, 0);
   }
 
-  public Input(msg: Input, ctx: BuildContext) {
-    if (action('draw_rect_wall', msg.state)) this.insertPoint(ctx, true);
-    else if (action('draw_wall', msg.state)) this.insertPoint(ctx, false);
-    else if (action('undo_draw_wall', msg.state)) this.popPoint();
+  public EventBus(msg: EventBus, ctx: BuildContext) {
+    let events = msg.events;
+    for (let i = events.first(); i != -1; i = events.next(i)) {
+      let e = events.get(i);
+      if (!(e instanceof StringEvent)) return;
+      switch (e.name) {
+        case 'draw_rect_wall': this.insertPoint(ctx, true); events.consume(i); break;
+        case 'draw_wall': this.insertPoint(ctx, false); events.consume(i); break;
+        case 'undo_draw_wall': this.popPoint(); events.consume(i); break;
+      }
+    }
   }
 
   public HitScan(msg: HitScan, ctx: BuildContext) {

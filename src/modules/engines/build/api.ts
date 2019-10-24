@@ -35,17 +35,14 @@ export interface State {
 
 export interface Event { };
 
-export interface Binder {
-  match(input: InputState): Collection<Event>;
-}
-
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
   readonly invalidator: BoardInvalidator;
   readonly gl: WebGLRenderingContext;
   readonly state: State;
-  readonly binder: Binder;
+
+  poolEvents(input: InputState): Collection<Event>;
 
   snap(x: number): number;
   snapScale(): number;

@@ -1,6 +1,6 @@
 import { InputState, bind } from "./input";
 import { warning } from "./logger";
-import { Binder, Event, State } from "./engines/build/api";
+import { Event, State } from "./engines/build/api";
 import { Collection, Deck, EMPRTY_COLLECTION } from "./deck";
 
 export type InputHandler = (state: InputState) => boolean;
@@ -92,7 +92,7 @@ function createHandler(key: string, mods: string[]): InputHandler {
 }
 
 
-export class BinderImpl implements Binder {
+export class Binder {
   private binds: string[] = [];
   private handlers: InputHandler[] = [];
   private events: Deck<Event>[] = [];
@@ -102,7 +102,7 @@ export class BinderImpl implements Binder {
   private stateHandlers: InputHandler[] = [];
   private stateValues: [string, any, any][][] = [];
 
-  public match(state: InputState): Collection<Event> {
+  public poolEvents(state: InputState): Collection<Event> {
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       if (this.handlers[i](state))
         return this.events[i];
@@ -177,10 +177,11 @@ export class StringEvent implements Event {
   constructor(readonly name: String) { }
 }
 
-export function loadBinds(binds: string, binder: BinderImpl) {
+export function loadBinds(binds: string, binder: Binder) {
   let lines = binds.split(/\r?\n/);
   for (let line of lines) {
-    line = line.trim();
+    line = line.trim().toLowerCase();
+    if (line.length == 0) continue;
     let idx = line.indexOf(' ');
     if (idx == -1) {
       warning(`Skipping bind line: ${line}`);

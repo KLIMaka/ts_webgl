@@ -2,9 +2,10 @@ import { cyclic } from '../../../../libs/mathutils';
 import { ArtProvider, BuildContext, BoardInvalidator, State } from '../api';
 import { Board } from '../structs';
 import { MessageHandlerReflective } from '../handlerapi';
-import { Input } from '../edit/messages';
-import { action, BinderImpl, loadBinds } from '../../../keymap';
+import { action, Binder, loadBinds, StringEvent } from '../../../keymap';
 import { warning } from '../../../logger';
+import { InputState } from '../../../input';
+import { EventBus } from '../edit/messages';
 
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -36,7 +37,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl();
-  readonly binder = new BinderImpl();
+  readonly binder = new Binder();
 
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
@@ -48,6 +49,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.art = art;
     this.boardInt = board;
     this.gl = gl;
+
+    this.state.register('mouseX', 0);
+    this.state.register('mouseY', 0);
   }
 
   get invalidator() {
@@ -65,6 +69,13 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   setBoardInvalidator(inv: BoardInvalidator) {
     this.invalidatorInt = inv;
+  }
+
+  poolEvents(input: InputState) {
+    this.state.set('mouseX', input.mouseX);
+    this.state.set('mouseY', input.mouseY);
+    this.binder.updateState(input, this.state);
+    return this.binder.poolEvents(input);
   }
 
   snapScale() {
@@ -95,9 +106,15 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     loadBinds(binds, this.binder);
   }
 
-  Input(msg: Input, ctx: BuildContext) {
-    this.binder.updateState(msg.state, this.state);
-    if (action('grid+', msg.state)) this.incGridSize();
-    if (action('grid-', msg.state)) this.decGridSize();
+  EventBus(msg: EventBus, ctx: BuildContext) {
+    let events = msg.events;
+    for (let i = events.first(); i != -1; i = events.next(i)) {
+      let e = events.get(i);
+      if (!(e instanceof StringEvent)) return;
+      switch (e.name) {
+        case 'grid+': this.incGridSize(); events.consume(i); break;
+        case 'grid-': this.decGridSize(); events.consume(i); break;
+      }
+    }
   }
 }
