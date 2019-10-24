@@ -3,17 +3,23 @@ import { Lexer, LexerRule } from "../../lex/lexer";
 import { Palette, PanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade } from "./edit/messages";
 import { Message } from "./handlerapi";
 
-class Name { constructor(readonly name: string) { } };
-
 let lexer = new Lexer();
 lexer.addRule(new LexerRule(/^[ \t\r\v\n]+/, 'WS'));
-lexer.addRule(new LexerRule(/^[^ \t\r\v\n\(\)`"]+/, 'ID', 0, (s) => new Name(s)));
+lexer.addRule(new LexerRule(/^[^ \t\r\v\n\(\)`"]+/, 'ID'));
 lexer.addRule(new LexerRule(/^msg+/, 'MSG'));
 lexer.addRule(new LexerRule(/^(false|true)+/, 'BOOLEAN', 0, (s) => s == 'true'));
 lexer.addRule(new LexerRule(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, (s) => parseFloat(s)));
 lexer.addRule(new LexerRule(/^\-?[0-9]+/, 'INT', 0, (s) => parseInt(s)));
-lexer.addRule(new LexerRule(/^"([^"]*)"/, 'STRING', 1, (s) => s));
+lexer.addRule(new LexerRule(/^"([^"]*)"/, 'STRING', 1));
 
+function get<T>(expected: string): T {
+  if (lexer.isEoi()) throw new Error();
+  for (; !lexer.isEoi() && lexer.next() == 'WS';);
+  if (lexer.rule().name == 'WS' && lexer.isEoi()) throw new Error();
+  let tokenId = lexer.rule().name;
+  if (tokenId != expected) throw new Error();
+  return lexer.value();
+}
 
 export class StringEvent implements Event {
   constructor(readonly name: string) { }
@@ -41,27 +47,18 @@ export function eventParser(str: string): Event {
   return new MessageEvent(event);
 }
 
-function get<T>(expected: string): T {
-  if (lexer.isEoi()) throw new Error();
-  for (; !lexer.isEoi() && lexer.next() == 'WS';);
-  if (lexer.rule().name == 'WS' && lexer.isEoi()) throw new Error();
-  let tokenId = lexer.rule().name;
-  if (tokenId != expected) throw new Error();
-  return lexer.value();
-}
-
 function tryParse(src: string) {
   try {
     lexer.setSource(src);
-    get<Name>('MSG');
-    let type = get<Name>('ID').name;
+    get('MSG');
+    let type = get('ID');
     switch (type) {
       case 'picnum': return new SetPicnum(get('INT'));
       case 'shade': return new Shade(get('INT'), get('BOOLEAN'));
       case 'panrepeat': return new PanRepeat(get('INT'), get('INT'), get('INT'), get('INT'), get('BOOLEAN'));
       case 'pal': return new Palette(get('INT'), 15, get('BOOLEAN'));
-      case 'wallcstat': return new SetWallCstat(get<Name>('ID').name, get('BOOLEAN'), get('BOOLEAN'));
-      case 'sectorcstat': return new SetSectorCstat(get<Name>('ID').name, get('BOOLEAN'), get('BOOLEAN'));
+      case 'wallcstat': return new SetWallCstat(get('ID'), get('BOOLEAN'), get('BOOLEAN'));
+      case 'sectorcstat': return new SetSectorCstat(get('ID'), get('BOOLEAN'), get('BOOLEAN'));
       default: return null;
     }
   } catch (e) {
