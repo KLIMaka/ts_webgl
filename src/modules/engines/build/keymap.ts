@@ -2,7 +2,6 @@ import { Collection, Deck, EMPRTY_COLLECTION } from "../../deck";
 import { Event, State } from "./api";
 import { InputState } from "../../input";
 import { warning } from "../../logger";
-import { EventConsumer } from "../../eventqueue";
 
 export type InputHandler = (state: InputState) => boolean;
 

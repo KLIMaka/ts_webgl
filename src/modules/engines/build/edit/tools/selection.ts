@@ -6,18 +6,17 @@ import { BuildContext } from "../../api";
 import { closestWallLineInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { Context } from "../../gl/context";
 import { BuildRenderableProvider } from "../../gl/renderable";
-import { MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
+import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan, isSector, isSprite, isWall, SubType } from "../../hitscan";
 import { Board } from "../../structs";
 import { sectorOfWall } from "../../utils";
 import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
 import { MovingHandle } from "../handle";
-import { EndMove, EventBus, Flip, Highlight, Move, Palette, PanRepeat, Render, SetPicnum, SetWallCstat, Shade, SpriteMode, StartMove, ToggleParallax } from "../messages";
+import { EndMove, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
 import { WallSegmentsEnt } from "../wallsegment";
-import { multistringEventConsumer, StringEvent, MessageEvent } from "../../events";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -27,20 +26,9 @@ const MOVE = new Move(handle);
 const START_MOVE = new StartMove(handle);
 const END_MOVE = new EndMove(handle);
 const SET_PICNUM = new SetPicnum(-1);
-const TOGGLE_PARALLAX = new ToggleParallax();
-const SHADE_CHANGE = new Shade(0);
-const PANREPEAT = new PanRepeat(0, 0, 0, 0);
-const RESET_PANREPEAT = new PanRepeat(0, 0, 0, 0, true);
-const PALETTE = new Palette(1, 14);
-const FLIP = new Flip();
-const SPRITE_MODE = new SpriteMode();
 const HIGHLIGHT = new Highlight();
-const SWAP_BOTTOMS = new SetWallCstat('swapBottoms');
-const ALIGN_BOTTOM = new SetWallCstat('alignBottom');
 
 const SNAP_RANGE = 16;
-const PAN_SCALE = 8;
-const SHADOW_SCALE = 8;
 
 const MOVE_STATE = 'move';
 const MOD1_STATE = 'mod1';
@@ -123,51 +111,19 @@ export class Selection extends MessageHandlerReflective {
     }
   }
 
-  private eventConsumer = (e: Event, ctx: BuildContext) => {
-    if (e instanceof StringEvent) {
-      switch (e.name) {
-        case 'set_picnum': this.setTexture(ctx); return true;
-        case 'toggle_parallax': this.selection.handle(TOGGLE_PARALLAX, ctx); return true;
-        case 'repeat_y_scaled+': this.sendRepeat(ctx, 0, PAN_SCALE); return true;
-        case 'repeat_y_scaled-': this.sendRepeat(ctx, 0, -PAN_SCALE); return true;
-        case 'repeat_x_scaled-': this.sendRepeat(ctx, -PAN_SCALE, 0); return true;
-        case 'repeat_x_scaled+': this.sendRepeat(ctx, PAN_SCALE, 0); return true;
-        case 'repeat_y+': this.sendRepeat(ctx, 0, 1); return true;
-        case 'repeat_y-': this.sendRepeat(ctx, 0, -1); return true;
-        case 'repeat_x-': this.sendRepeat(ctx, -1, 0); return true;
-        case 'repeat_x+': this.sendRepeat(ctx, 1, 0); return true;
-        case 'pan_y_scaled+': this.sendPan(ctx, 0, PAN_SCALE); return true;
-        case 'pan_y_scaled-': this.sendPan(ctx, 0, -PAN_SCALE); return true;
-        case 'pan_x_scaled-': this.sendPan(ctx, -PAN_SCALE, 0); return true;
-        case 'pan_x_scaled+': this.sendPan(ctx, PAN_SCALE, 0); return true;
-        case 'pan_y+': this.sendPan(ctx, 0, 1); return true;
-        case 'pan_y-': this.sendPan(ctx, 0, -1); return true;
-        case 'pan_x-': this.sendPan(ctx, -1, 0); return true;
-        case 'pan_x+': this.sendPan(ctx, 1, 0); return true;
-        case 'cycle_pal': this.selection.handle(PALETTE, ctx); return true;
-        case 'flip': this.selection.handle(FLIP, ctx); return true;
-        case 'insert_sprite': this.insertSprite(ctx); return true;
-        case 'swap_bottoms': this.selection.handle(SWAP_BOTTOMS, ctx); return true;
-        case 'align_bottom': this.selection.handle(ALIGN_BOTTOM, ctx); return true;
-        case 'sprite_mode': this.selection.handle(SPRITE_MODE, ctx); return true;
-        case 'copy': this.copy(ctx); return true;
-        case 'paste_shade': this.selection.handle(clipboardShade, ctx); return true;
-        case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); return true;
-        case 'shade+': this.sendShadeChange(1, ctx); return true;
-        case 'shade-': this.sendShadeChange(-1, ctx); return true;
-        case 'shade_scaled+': this.sendShadeChange(SHADOW_SCALE, ctx); return true;
-        case 'shade_scaled-': this.sendShadeChange(-SHADOW_SCALE, ctx); return true;
-        case 'print_selected': this.print(ctx); return true;
-        default: return false;
-      }
-    } else if (e instanceof MessageEvent) {
-      this.selection.handle(e.message, ctx);
-      return true;
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    switch (msg.name) {
+      case 'set_picnum': this.setTexture(ctx); return;
+      case 'insert_sprite': this.insertSprite(ctx); return;
+      case 'copy': this.copy(ctx); return;
+      case 'paste_shade': this.selection.handle(clipboardShade, ctx); return;
+      case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); return;
+      case 'print_selected': this.print(ctx); return;
     }
-  };
+  }
 
-  public EventBus(msg: EventBus, ctx: BuildContext) {
-    msg.events.tryConsume(this.eventConsumer, ctx);
+  public handleDefault(msg: Message, ctx: BuildContext) {
+    this.selection.handle(msg, ctx);
   }
 
   private activeMove(ctx: BuildContext) {
@@ -206,25 +162,6 @@ export class Selection extends MessageHandlerReflective {
       SET_PICNUM.picnum = picnum;
       sel.handle(SET_PICNUM, ctx);
     })
-  }
-
-  private sendShadeChange(change: number, ctx: BuildContext) {
-    SHADE_CHANGE.value = change;
-    this.selection.handle(SHADE_CHANGE, ctx);
-  }
-
-  private sendPan(ctx: BuildContext, x: number, y: number) {
-    PANREPEAT.xrepeat = PANREPEAT.yrepeat = 0;
-    PANREPEAT.xpan = x;
-    PANREPEAT.ypan = y;
-    this.selection.handle(PANREPEAT, ctx);
-  }
-
-  private sendRepeat(ctx: BuildContext, x: number, y: number) {
-    PANREPEAT.xpan = PANREPEAT.ypan = 0;
-    PANREPEAT.xrepeat = x;
-    PANREPEAT.yrepeat = y;
-    this.selection.handle(PANREPEAT, ctx);
   }
 
   private insertSprite(ctx: BuildContext) {

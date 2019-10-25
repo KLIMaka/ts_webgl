@@ -10,14 +10,14 @@ import { Controller2D } from './modules/controller2d';
 import * as controller from './modules/controller3d';
 import { Deck } from './modules/deck';
 import * as DS from './modules/drawstruct';
-import { ArtProvider, BuildContext } from './modules/engines/build/api';
+import { ArtProvider } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
-import { EventBus, Frame } from './modules/engines/build/edit/messages';
+import { Frame, NamedMessage } from './modules/engines/build/edit/messages';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { Selection } from './modules/engines/build/edit/tools/selection';
@@ -36,7 +36,6 @@ import { addLogAppender, CONSOLE, warning } from './modules/logger';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import { stringEventConsumer } from './modules/engines/build/events';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -262,10 +261,6 @@ function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
   let view2d = createViewPoint2d(gl, board, ctx);
   let view3d = createViewPoint3d(gl, board, ctx);
   let view = view3d;
-  let eventConsumer = stringEventConsumer('view_mode', (ctx: BuildContext) => {
-    view = view == view3d ? view2d : view3d;
-    view.activate();
-  });
 
   return {
     get sec() { return view.sec },
@@ -278,7 +273,10 @@ function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
     getForward() { return view.getForward() },
     unproject(x: number, y: number) { return view.unproject(x, y) },
     handle(message: Message, ctx: Context) {
-      if (message instanceof EventBus) message.events.tryConsume(eventConsumer, ctx);
+      if (message instanceof NamedMessage && message.name == 'view_mode') {
+        view = view == view3d ? view2d : view3d;
+        view.activate();
+      }
       view.handle(message, ctx)
     }
   }

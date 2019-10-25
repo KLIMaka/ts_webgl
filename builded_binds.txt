@@ -1,34 +1,34 @@
 V               set_picnum
-P               toggle_parallax
-SHIFT+RIGHT     pan_x+
-SHIFT+LEFT      pan_x-
-SHIFT+UP        pan_y+
-SHIFT+DOWN      pan_y-
-RIGHT           pan_x_scaled+
-LEFT            pan_x_scaled-
-UP              pan_y_scaled+
-DOWN            pan_y_scaled-
-CTRL+RIGHT      repeat_x+
-CTRL+LEFT       repeat_x-
-CTRL+UP         repeat_y+
-CTRL+DOWN       repeat_y-
-CTRL+SHIFT+RIGHT repeat_x_scaled+
-CTRL+SHIFT+LEFT repeat_x_scaled-
-CTRL+SHIFT+UP   repeat_y_scaled+
-CTRL+SHIFT+DOWN repeat_y_scaled-
-O               cycle_pal
-F               flip
+P               msg sectorcstat parallaxing true true
+SHIFT+RIGHT     msg panrepeat 1 0 0 0 false
+SHIFT+LEFT      msg panrepeat -1 0 0 0 false
+SHIFT+UP        msg panrepeat 0 1 0 0 false
+SHIFT+DOWN      msg panrepeat 0 -1 0 0 false
+RIGHT           msg panrepeat 8 0 0 0 false
+LEFT            msg panrepeat -8 0 0 0 false
+UP              msg panrepeat 0 8 0 0 false
+DOWN            msg panrepeat 0 -8 0 0 false
+CTRL+RIGHT      msg panrepeat 0 0 1 0 false
+CTRL+LEFT       msg panrepeat 0 0 -1 0 false
+CTRL+UP         msg panrepeat 0 0 0 1 false
+CTRL+DOWN       msg panrepeat 0 0 0 -1 false
+CTRL+SHIFT+RIGHT msg panrepeat 0 0 8 0 false
+CTRL+SHIFT+LEFT msg panrepeat 0 0 -8 0 false
+CTRL+SHIFT+UP   msg panrepeat 0 0 0 8 false
+CTRL+SHIFT+DOWN msg panrepeat 0 0 0 -8 false
+O               msg pal 1 false
+F               msg flip
 I               insert_sprite
 K               msg wallcstat swapBottoms true true
 M               msg wallcstat alignBottom true true
-R               sprite_mode
+R               msg sprite_mode
 1               copy
 2               paste_shade
 3               paste_picnum
-wheelUp         shade+
-wheelDown       shade-
-SHIFT+wheelUp   shade_scaled+
-SHIFT+wheelDown shade_scaled-
+wheelUp         msg shade 1 false
+wheelDown       msg shade -1 false
+SHIFT+wheelUp   msg shade 8 false
+SHIFT+wheelDown msg shade -8 false
 ENTER           view_mode
 mouse0          print_selected
 CTRL+mouse0     split_wall

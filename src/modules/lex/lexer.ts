@@ -1,15 +1,16 @@
 
-var id = (s: string) => s;
-
 export class LexerRule {
   public id: number = null;
-  constructor(public pattern: RegExp, public name: string, public mid = 0, public conv: (string) => any = id) { }
+  constructor(
+    public pattern: RegExp,
+    public name: string,
+    public mid = 0,
+    public conv: (s: string) => any = (s: string) => s
+  ) { }
 }
 
 export class Lexer {
-
-  private rulesByName = {};
-  private rulesByPatt = {};
+  private rulesIndex: { [index: string]: LexerRule } = {};
   private rules: LexerRule[] = [];
   private src: string;
   private offset = 0;
@@ -20,7 +21,7 @@ export class Lexer {
   private matchedValue = null;
 
   public addRule(rule: LexerRule): Lexer {
-    var r = this.rulesByName[rule.name];
+    let r = this.rulesIndex[rule.name];
     if (r == undefined) {
       rule.id = this.rules.length;
       this.rules.push(rule);
@@ -28,8 +29,7 @@ export class Lexer {
       throw new Error('Rule ' + rule.name + ' already exist');
     }
 
-    this.rulesByName[rule.name] = rule;
-    //this.rulesByPatt[rule.pattern] = rule;
+    this.rulesIndex[rule.name] = rule;
     return this;
   }
 
@@ -54,13 +54,13 @@ export class Lexer {
     if (this.eoi)
       return null;
 
-    var len = 0;
-    var matchedValue = null;
-    var matchedRule: LexerRule = null;
-    var subsrc = this.src.substr(this.offset);
-    for (var i = 0; i < this.rules.length; i++) {
-      var rule = this.rules[i];
-      var match = rule.pattern.exec(subsrc);
+    let len = 0;
+    let matchedValue = null;
+    let matchedRule: LexerRule = null;
+    let subsrc = this.src.substr(this.offset);
+    for (let i = 0; i < this.rules.length; i++) {
+      let rule = this.rules[i];
+      let match = rule.pattern.exec(subsrc);
       if (match != null && match[0].length >= len) {
         matchedValue = match;
         matchedRule = rule;

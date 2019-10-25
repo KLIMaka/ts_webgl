@@ -1,6 +1,5 @@
-import { Event, EventConsumer } from "../../eventqueue";
 import { Lexer, LexerRule } from "../../lex/lexer";
-import { Palette, PanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade } from "./edit/messages";
+import { Flip, NamedMessage, Palette, PanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade, SpriteMode } from "./edit/messages";
 import { Message } from "./handlerapi";
 
 let lexer = new Lexer();
@@ -21,30 +20,11 @@ function get<T>(expected: string): T {
   return lexer.value();
 }
 
-export class StringEvent implements Event {
-  constructor(readonly name: string) { }
-}
 
-export function stringEventConsumer<T>(name: string, action: (ctx: T) => void): EventConsumer<T> {
-  return (e: Event, ctx: T) => { if (e instanceof StringEvent && e.name == name) { action(ctx); return true } return false }
-}
-
-export function multistringEventConsumer<T>(action: (name: string, ctx: T) => boolean): EventConsumer<T> {
-  return (e: Event, ctx: T) => e instanceof StringEvent && action(e.name, ctx);
-}
-
-export class MessageEvent implements Event {
-  constructor(readonly message: Message) { }
-}
-
-export function messageEventConsumer<T>(action: (message: Message, ctx: T) => void): EventConsumer<T> {
-  return (e: Event, ctx: T) => { if (e instanceof MessageEvent) { action(e.message, ctx); return true } return false }
-}
-
-export function eventParser(str: string): Event {
-  let event = tryParse(str);
-  if (event == null) return new StringEvent(str);
-  return new MessageEvent(event);
+export function messageParser(str: string): Message {
+  let message = tryParse(str);
+  if (message == null) return new NamedMessage(str);
+  return message;
 }
 
 function tryParse(src: string) {
@@ -59,6 +39,8 @@ function tryParse(src: string) {
       case 'pal': return new Palette(get('INT'), 15, get('BOOLEAN'));
       case 'wallcstat': return new SetWallCstat(get('ID'), get('BOOLEAN'), get('BOOLEAN'));
       case 'sectorcstat': return new SetSectorCstat(get('ID'), get('BOOLEAN'), get('BOOLEAN'));
+      case 'flip': return new Flip();
+      case 'sprite_mode': return new SpriteMode();
       default: return null;
     }
   } catch (e) {

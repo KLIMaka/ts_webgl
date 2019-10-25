@@ -3,13 +3,11 @@ import { BuildContext } from "../../api";
 import { joinSectors } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan } from "../../hitscan";
-import { EventBus } from "../messages";
-import { stringEventConsumer } from "../../events";
+import { NamedMessage } from "../messages";
 
 export class JoinSectors extends MessageHandlerReflective {
   private sectorId1 = -1;
   private sectorId2 = -1;
-  private eventConsumer = stringEventConsumer('join_sectors', (ctx: BuildContext) => this.join(ctx));
 
   private join(ctx: BuildContext) {
     let hit = ctx.state.get<Hitscan>('hitscan');
@@ -28,7 +26,7 @@ export class JoinSectors extends MessageHandlerReflective {
     }
   }
 
-  public EventBus(msg: EventBus, ctx: BuildContext) {
-    msg.events.tryConsume(this.eventConsumer, ctx);
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    if (msg.name == 'join_sectors') this.join(ctx);
   }
 }

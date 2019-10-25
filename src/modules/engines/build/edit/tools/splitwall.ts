@@ -4,15 +4,13 @@ import { MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan, isWall } from "../../hitscan";
 import { sectorOfWall } from "../../utils";
 import { invalidateSectorAndWalls, snap } from "../editutils";
-import { EventBus, Frame } from "../messages";
-import { stringEventConsumer } from "../../events";
+import { Frame, NamedMessage } from "../messages";
 
 export class SplitWall extends MessageHandlerReflective {
   private x = 0;
   private y = 0;
   private wallId = -1;
   private active = false;
-  private eventConsumer = stringEventConsumer('split_wall', (ctx: BuildContext) => this.run(ctx));
 
   private update(x: number, y: number, wallId: number) {
     this.active = true;
@@ -41,7 +39,7 @@ export class SplitWall extends MessageHandlerReflective {
     }
   }
 
-  public EventBus(msg: EventBus, ctx: BuildContext) {
-    msg.events.tryConsume(this.eventConsumer, ctx);
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    if (msg.name == 'split_wall') this, this.run(ctx);
   }
 }

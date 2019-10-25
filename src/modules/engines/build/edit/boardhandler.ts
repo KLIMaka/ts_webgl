@@ -1,6 +1,5 @@
-import { EventQueue } from '../../../eventqueue';
 import { InputState } from '../../../input';
-import { info, warning } from '../../../logger';
+import { info } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { BuildContext, ViewPoint } from '../api';
 import * as BGL from '../gl/buildgl';
@@ -8,11 +7,10 @@ import { MessageHandler, MessageHandlerList } from '../handlerapi';
 import { hitscan, Hitscan } from '../hitscan';
 import * as U from '../utils';
 import { snap } from './editutils';
-import { EventBus, Frame, Render } from './messages';
+import { Frame, Render } from './messages';
 
 const hit = new Hitscan();
 const RENDER = new Render();
-const EVENT_BUS = new EventBus(new EventQueue());
 const FRAME = new Frame(0);
 
 
@@ -41,23 +39,12 @@ function refreshHitscan(state: InputState, view: ViewPoint): void {
   }
 }
 
-function poolEvents(state: InputState): boolean {
-  let queue = EVENT_BUS.events;
-  reportUnconsumed(queue);
-  queue.clear();
-  let events = context.poolEvents(state);
+function poolMessages(state: InputState): void {
+  let events = context.poolMessages(state);
   for (let i = 0; i < events.length(); i++) {
     let e = events.get(i);
     info(e);
-    queue.add(e);
-  }
-  return !queue.isEmpty();
-}
-
-function reportUnconsumed(queue: EventQueue) {
-  for (let i = queue.first(); i != -1; i = queue.next(i)) {
-    let e = queue.get(i);
-    warning(`Unconsumed event ${e}`);
+    handlers.handle(e, context);
   }
 }
 
@@ -75,6 +62,6 @@ export function handle(state: InputState, view: ViewPoint, dt: number) {
   context.state.set('frametime', dt);
   refreshHitscan(state, view)
   handlers.handle(FRAME, context);
-  if (poolEvents(state)) handlers.handle(EVENT_BUS, context);
+  poolMessages(state)
   draw();
 }

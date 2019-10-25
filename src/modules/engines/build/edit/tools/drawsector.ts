@@ -9,8 +9,7 @@ import { Hitscan, isSector, isSprite, isWall } from "../../hitscan";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
 import { getClosestSectorZ, snap } from "../editutils";
-import { Render, EventBus, Frame } from "../messages";
-import { multistringEventConsumer } from "../../events";
+import { Frame, NamedMessage, Render } from "../messages";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -119,14 +118,6 @@ export class DrawSector extends MessageHandlerReflective {
   private valid = false;
   private contour = new Contour();
   private isRect = true;
-  private eventConsumer = multistringEventConsumer((name: string, ctx: BuildContext) => {
-    switch (name) {
-      case 'draw_rect_wall': this.insertPoint(ctx, true); return true;
-      case 'draw_wall': this.insertPoint(ctx, false); return true;
-      case 'undo_draw_wall': this.popPoint(); return true;
-      default: return false;
-    }
-  });
 
   private update(ctx: BuildContext) {
     if (this.predrawUpdate(ctx)) return;
@@ -285,8 +276,12 @@ export class DrawSector extends MessageHandlerReflective {
     this.contour.pushPoint(0, 0);
   }
 
-  public EventBus(msg: EventBus, ctx: BuildContext) {
-    msg.events.tryConsume(this.eventConsumer, ctx);
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    switch (msg.name) {
+      case 'draw_rect_wall': this.insertPoint(ctx, true); return;
+      case 'draw_wall': this.insertPoint(ctx, false); return;
+      case 'undo_draw_wall': this.popPoint(); return;
+    }
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {

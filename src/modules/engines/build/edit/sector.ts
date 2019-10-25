@@ -1,11 +1,11 @@
-import * as GLM from "../../../../libs_js/glmatrix";
-import { isSector, SubType } from "../hitscan";
-import { MessageHandlerReflective } from "../handlerapi";
-import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
-import { Highlight, Move, SetPicnum, StartMove, ToggleParallax, Shade, PanRepeat, Palette } from "./messages";
 import { cyclic, tuple } from "../../../../libs/mathutils";
-import { invalidateSectorAndWalls } from "./editutils";
+import * as GLM from "../../../../libs_js/glmatrix";
 import { BuildContext } from "../api";
+import { MessageHandlerReflective } from "../handlerapi";
+import { isSector, SubType } from "../hitscan";
+import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
+import { invalidateSectorAndWalls } from "./editutils";
+import { Highlight, Move, Palette, PanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove } from "./messages";
 
 export class SectorEnt extends MessageHandlerReflective {
 
@@ -56,13 +56,6 @@ export class SectorEnt extends MessageHandlerReflective {
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     if (setSectorPicnum(ctx.board, this.sectorId, this.type, msg.picnum))
       ctx.invalidator.invalidateSector(this.sectorId);
-  }
-
-  public ToggleParallax(msg: ToggleParallax, ctx: BuildContext) {
-    let sector = ctx.board.sectors[this.sectorId];
-    let stat = this.type == SubType.CEILING ? sector.ceilingstat : sector.floorstat;
-    stat.parallaxing = stat.parallaxing == 1 ? 0 : 1;
-    ctx.invalidator.invalidateSector(this.sectorId);
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
@@ -117,6 +110,19 @@ export class SectorEnt extends MessageHandlerReflective {
       } else {
         sector.floorpal = cyclic(sector.floorpal + msg.value, msg.max);
       }
+    }
+    ctx.invalidator.invalidateSector(this.sectorId);
+  }
+
+  public SetSectorCstat(msg: SetSectorCstat, ctx: BuildContext) {
+    let sector = ctx.board.sectors[this.sectorId];
+    let stat = this.type == SubType.CEILING ? sector.ceilingstat[msg.name] : sector.floorstat[msg.name];
+    if (msg.toggle) {
+      let nstat = stat ? 0 : 1;
+      if (this.type == SubType.CEILING) sector.ceilingstat[msg.name] = nstat; else sector.floorstat[msg.name] = nstat;
+    } else {
+      if (stat == msg.value) return;
+      if (this.type == SubType.CEILING) sector.ceilingstat[msg.name] = msg.value; else sector.floorstat[msg.name] = msg.value;
     }
     ctx.invalidator.invalidateSector(this.sectorId);
   }

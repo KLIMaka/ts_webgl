@@ -1,6 +1,6 @@
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
-import { Context } from "./handlerapi";
+import { Context, Message } from "./handlerapi";
 import { Board } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import { MoveStruct } from "./utils";
@@ -42,7 +42,7 @@ export interface BuildContext extends Context {
   readonly gl: WebGLRenderingContext;
   readonly state: State;
 
-  poolEvents(input: InputState): Collection<Event>;
+  poolMessages(input: InputState): Collection<Message>;
 
   snap(x: number): number;
   snapScale(): number;
