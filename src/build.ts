@@ -415,7 +415,6 @@ for (let a = 0; a < 18; a++) {
 }
 
 getter.preloadString(cfgFile, ab.callback('cfg'));
-getter.preloadString('builded_keymap.json', ab.callback('keymap'));
 getter.preloadString('builded_binds.txt', ab.callback('binds'));
 getter.preload(rffFile, ab.callback('rff'), progress(rffFile));
 let gridcb = ab.callback('grid');

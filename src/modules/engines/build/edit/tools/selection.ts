@@ -23,18 +23,19 @@ export type PicNumSelector = (cb: PicNumCallback) => void;
 
 let handle = new MovingHandle();
 const MOVE = new Move(handle);
-const START_MOVE = new StartMove(handle);
-const END_MOVE = new EndMove(handle);
+const START_MOVE = new StartMove();
+const END_MOVE = new EndMove();
 const SET_PICNUM = new SetPicnum(-1);
 const HIGHLIGHT = new Highlight();
 
 const SNAP_RANGE = 16;
 
 const MOVE_STATE = 'move';
-const MOD1_STATE = 'mod1';
-const MOD2_STATE = 'mod2';
-const MOD3_STATE = 'mod3';
 const LOOP_STATE = 'select_loop_mod';
+
+export const MOVE_COPY = 'move.copy';
+export const MOVE_VERTICAL = 'move.vertical';
+export const MOVE_PARALLEL = 'move.parallel';
 
 let clipboardPicnum = new SetPicnum(0);
 let clipboardShade = new Shade(0, true);
@@ -95,10 +96,11 @@ export class Selection extends MessageHandlerReflective {
     private renderables: BuildRenderableProvider
   ) {
     super();
+
     ctx.state.register(MOVE_STATE, false);
-    ctx.state.register(MOD1_STATE, false);
-    ctx.state.register(MOD2_STATE, false);
-    ctx.state.register(MOD3_STATE, false);
+    ctx.state.register(MOVE_COPY, false);
+    ctx.state.register(MOVE_VERTICAL, false);
+    ctx.state.register(MOVE_PARALLEL, false);
     ctx.state.register(LOOP_STATE, false);
   }
 
@@ -134,11 +136,10 @@ export class Selection extends MessageHandlerReflective {
   }
 
   private updateHandle(ctx: BuildContext) {
-    let mod1 = ctx.state.get<boolean>(MOD1_STATE);
-    let mod2 = ctx.state.get<boolean>(MOD2_STATE);
-    let mod3 = ctx.state.get<boolean>(MOD3_STATE);
+    let vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
+    let parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
     let hit = ctx.state.get<Hitscan>('hitscan');
-    handle.update(mod1, mod2, mod3, hit);
+    handle.update(vertical, parallel, hit);
   }
 
   private updateMove(ctx: BuildContext) {

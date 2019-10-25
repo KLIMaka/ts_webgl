@@ -220,7 +220,7 @@ export function walllen(board: Board, wallId: number) {
   return MU.len2d(dx, dy);
 }
 
-function fixxrepeat(board: Board, wallId: number, reprate: number = DEFAULT_REPEAT_RATE) {
+export function fixxrepeat(board: Board, wallId: number, reprate: number = DEFAULT_REPEAT_RATE) {
   let wall = board.walls[wallId];
   wall.xrepeat = Math.min(255, Math.max(1, Math.round((walllen(board, wallId) + 0.5) / reprate)))
 }

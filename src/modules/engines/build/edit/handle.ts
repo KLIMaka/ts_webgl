@@ -2,32 +2,27 @@ import { len2d } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Hitscan } from "../hitscan";
 import { ZSCALE } from "../utils";
+import { Mover } from "./messages";
 
-export class MovingHandle {
+export class MovingHandle implements Mover {
   private startPoint = GLM.vec3.create();
   private currentPoint = GLM.vec3.create();
   private dzoff = 0;
   private active = false;
-  public mod1 = false;
-  public mod2 = false;
-  public mod3 = false;
-  public hit: Hitscan;
+  private vertical = false;
+  private parallel = false;
 
   public start(hit: Hitscan) {
-    this.hit = hit;
     GLM.vec3.set(this.startPoint, hit.x, hit.z / ZSCALE, hit.y);
     GLM.vec3.copy(this.currentPoint, this.startPoint);
     this.dzoff = 0;
     this.active = true;
   }
 
-  public update(mod1: boolean, mod2: boolean, mod3: boolean, hit: Hitscan) {
-    this.mod1 = mod1;
-    this.mod2 = mod2;
-    this.mod3 = mod3;
-    this.hit = hit;
-
-    if (mod2) {
+  public update(vertical: boolean, parallel: boolean, hit: Hitscan) {
+    this.parallel = parallel;
+    this.vertical = vertical;
+    if (vertical) {
       let dx = this.currentPoint[0] - hit.startzscaled[0];
       let dy = this.currentPoint[2] - hit.startzscaled[2];
       let t = len2d(dx, dy) / len2d(hit.veczscaled[0], hit.veczscaled[2]);
@@ -44,9 +39,9 @@ export class MovingHandle {
 
   public isActive() { return this.active; }
   public stop() { this.active = false; }
-  public dx() { return this.mod1 && Math.abs(this.dx_()) < Math.abs(this.dy_()) ? 0 : this.dx_(); }
-  public dy() { return this.mod1 && Math.abs(this.dy_()) < Math.abs(this.dx_()) ? 0 : this.dy_(); }
-  public dz() { return this.mod2 ? this.currentPoint[1] - this.startPoint[1] + this.dzoff : 0; }
+  public get dx() { return this.parallel && Math.abs(this.dx_()) < Math.abs(this.dy_()) ? 0 : this.dx_(); }
+  public get dy() { return this.parallel && Math.abs(this.dy_()) < Math.abs(this.dx_()) ? 0 : this.dy_(); }
+  public get dz() { return this.vertical ? this.currentPoint[1] - this.startPoint[1] + this.dzoff : 0; }
   private dx_() { return this.currentPoint[0] - this.startPoint[0]; }
   private dy_() { return this.currentPoint[2] - this.startPoint[2]; }
 }

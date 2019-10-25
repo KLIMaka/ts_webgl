@@ -11,7 +11,7 @@ import { Frame, Render } from './messages';
 
 const hit = new Hitscan();
 const RENDER = new Render();
-const FRAME = new Frame(0);
+const FRAME = new Frame();
 
 
 let context: BuildContext;

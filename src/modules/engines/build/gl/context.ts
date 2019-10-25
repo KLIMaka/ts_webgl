@@ -6,7 +6,7 @@ import { MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { Board } from '../structs';
 import { NamedMessage } from '../edit/messages';
-import { messageParser } from '../events';
+import { messageParser } from '../messageparser';
 
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -97,10 +97,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   scaledSnap(x: number, scale: number) {
     return snapGrid(x, this.gridSizes[this.gridSizeIdx] * scale);
-  }
-
-  addBind(event: Event, key: string, ...mods: string[]): void {
-    this.binder.addBind(event, key, ...mods);
   }
 
   loadBinds(binds: string) {

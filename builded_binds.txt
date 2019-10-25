@@ -1,4 +1,3 @@
-V               set_picnum
 P               msg sectorcstat parallaxing true true
 SHIFT+RIGHT     msg panrepeat 1 0 0 0 false
 SHIFT+LEFT      msg panrepeat -1 0 0 0 false
@@ -16,19 +15,29 @@ CTRL+SHIFT+RIGHT msg panrepeat 0 0 8 0 false
 CTRL+SHIFT+LEFT msg panrepeat 0 0 -8 0 false
 CTRL+SHIFT+UP   msg panrepeat 0 0 0 8 false
 CTRL+SHIFT+DOWN msg panrepeat 0 0 0 -8 false
+\               msg reset_panrepeat
 O               msg pal 1 false
 F               msg flip
-I               insert_sprite
-K               msg wallcstat swapBottoms true true
-M               msg wallcstat alignBottom true true
-R               msg sprite_mode
-1               copy
-2               paste_shade
-3               paste_picnum
 wheelUp         msg shade 1 false
 wheelDown       msg shade -1 false
 SHIFT+wheelUp   msg shade 8 false
 SHIFT+wheelDown msg shade -8 false
+K               msg wallcstat swapBottoms true true
+M               msg wallcstat alignBottom true true
+R               msg sprite_mode
+R               msg sectorcstat alignToFirstWall true true
+E               msg sectorcstat doubleSmooshiness true true
+UP              msg start_move, move 0 128 0, end_move
+DOWN            msg start_move, move 0 128 0, end_move
+LEFT            msg start_move, move -128 0 0, end_move
+RIGHT           msg start_move, move 128 0 0, end_move
+
+
+V               set_picnum
+I               insert_sprite
+1               copy
+2               paste_shade
+3               paste_picnum
 ENTER           view_mode
 mouse0          print_selected
 CTRL+mouse0     split_wall
@@ -38,9 +47,7 @@ BACKSPACE       undo_draw_wall
 [               grid+
 ]               grid-
 J               join_sectors
-\               msg panrepeat 0 0 8 8 true
 
-+mouse0         move
 +W              forward
 +S              backward
 +A              strafe_left
@@ -49,6 +56,7 @@ J               join_sectors
 +W              zoom+
 +S              zoom-
 +TAB            select_loop_mod
-+SHIFT          mod1
-+ALT            mod2
-+CTRL           mod3
++mouse0         move
++SHIFT          move.parallel
++ALT            move.vertical
++CTRL           move.copy

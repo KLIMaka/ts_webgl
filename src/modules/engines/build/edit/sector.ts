@@ -2,10 +2,13 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { BuildContext } from "../api";
 import { MessageHandlerReflective } from "../handlerapi";
-import { isSector, SubType } from "../hitscan";
+import { isSector, SubType, Hitscan } from "../hitscan";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { Highlight, Move, Palette, PanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove } from "./messages";
+import { Highlight, Move, Palette, PanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove, ResetPanRepeat } from "./messages";
+import { MOVE_VERTICAL } from "./tools/selection";
+
+const resetPanrepeat = new PanRepeat(0, 0, 0, 0, true);
 
 export class SectorEnt extends MessageHandlerReflective {
 
@@ -21,8 +24,8 @@ export class SectorEnt extends MessageHandlerReflective {
   ) { super() }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
-    let x = msg.handle.hit.x;
-    let y = msg.handle.hit.y;
+    let x = ctx.state.get<Hitscan>('hitscan').x;
+    let y = ctx.state.get<Hitscan>('hitscan').y;
     // let sec = ctx.board.sectors[this.sectorId];
     // let slope = createSlopeCalculator(sec, ctx.board.walls);
     // this.originz = slope(x, y, this.type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum) + sectorZ(ctx.board, this.sectorId, this.type)) / ZSCALE;
@@ -31,19 +34,18 @@ export class SectorEnt extends MessageHandlerReflective {
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    if (!msg.handle.mod2)
-      return;
-    if (msg.handle.mod1) {
+    if (ctx.state.get(MOVE_VERTICAL)) {
       let x = this.origin[0];
       let y = this.origin[1];
-      let z = ctx.snap(this.originz + msg.handle.dz() * ZSCALE);
+      let z = ctx.snap(this.originz + msg.mover.dz * ZSCALE);
       let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
       if (setSectorHeinum(ctx.board, this.sectorId, this.type, h))
         invalidateSectorAndWalls(this.sectorId, ctx);
     } else {
-      let z = isSector(msg.handle.hit.type) && msg.handle.hit.id != this.sectorId
-        ? sectorZ(ctx.board, msg.handle.hit.id, msg.handle.hit.type) / ZSCALE
-        : ctx.snap(this.originz + msg.handle.dz());
+      let hit = ctx.state.get<Hitscan>('hitscan');
+      let z = isSector(hit.type) && hit.id != this.sectorId
+        ? sectorZ(ctx.board, hit.id, hit.type) / ZSCALE
+        : ctx.snap(this.originz + msg.mover.dz);
       if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE))
         invalidateSectorAndWalls(this.sectorId, ctx);
     }
@@ -68,6 +70,10 @@ export class SectorEnt extends MessageHandlerReflective {
       if (this.type == SubType.CEILING) sector.ceilingshade += msg.value; else sector.floorshade += msg.value;
     }
     ctx.invalidator.invalidateSector(this.sectorId);
+  }
+
+  public ResetPanRepeat(msg: ResetPanRepeat, ctx: BuildContext) {
+    this.PanRepeat(resetPanrepeat, ctx);
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {

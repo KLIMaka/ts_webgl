@@ -33,8 +33,6 @@ export interface State {
   get<T>(name: string): T;
 }
 
-export interface Event { };
-
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;

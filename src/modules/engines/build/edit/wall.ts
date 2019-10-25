@@ -8,6 +8,7 @@ import { sectorOfWall } from "../utils";
 import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./messages";
 import { invalidateSectorAndWalls } from "./editutils";
 import { BuildContext } from "../api";
+import { MOVE_COPY } from "./tools/selection";
 
 function collectConnectedWalls(board: Board, wallId: number) {
   let result = new Deck<number>();
@@ -31,7 +32,7 @@ export class WallEnt extends MessageHandlerReflective {
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
-    if (msg.handle.mod3) {
+    if (ctx.state.get(MOVE_COPY)) {
       this.wallId = insertWall(ctx.board, this.wallId, wall.x, wall.y, ctx.art, []);
       this.connectedWalls = collectConnectedWalls(ctx.board, this.wallId);
     }
@@ -53,8 +54,8 @@ export class WallEnt extends MessageHandlerReflective {
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    let x = ctx.snap(this.origin[0] + msg.handle.dx());
-    let y = ctx.snap(this.origin[1] + msg.handle.dy());
+    let x = ctx.snap(this.origin[0] + msg.mover.dx);
+    let y = ctx.snap(this.origin[1] + msg.mover.dy);
     if (moveWall(ctx.board, this.wallId, x, y)) {
       this.invalidate(ctx);
     }

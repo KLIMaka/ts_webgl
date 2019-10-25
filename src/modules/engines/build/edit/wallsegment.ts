@@ -1,15 +1,15 @@
 import { List } from "../../../../libs/list";
-import { len2d, cyclic, tuple } from "../../../../libs/mathutils";
+import { cyclic, len2d, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../deck";
-import { connectedWalls, moveWall, nextwall, prevwall, mergePoints } from "../boardutils";
-import { Hitscan } from "../hitscan";
+import { BuildContext } from "../api";
+import { connectedWalls, fixxrepeat, mergePoints, moveWall, nextwall, prevwall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
+import { Hitscan } from "../hitscan";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Highlight, Move, SetPicnum, StartMove, Shade, PanRepeat, Palette, Flip, SetWallCstat } from "./messages";
 import { invalidateSectorAndWalls } from "./editutils";
-import { BuildContext } from "../api";
+import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetWallCstat, Shade, StartMove } from "./messages";
 
 function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
   if (ids.length() == 1) return ids.get(0);
@@ -112,15 +112,16 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
   }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
-    this.refwall = getClosestWallByIds(ctx.board, msg.handle.hit, this.wallIds);
+    let hit = ctx.state.get<Hitscan>('hitscan');
+    this.refwall = getClosestWallByIds(ctx.board, hit, this.wallIds);
     let wall = ctx.board.walls[this.refwall];
     GLM.vec2.set(this.origin, wall.x, wall.y);
     this.active = true;
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    let x = ctx.snap(this.origin[0] + msg.handle.dx());
-    let y = ctx.snap(this.origin[1] + msg.handle.dy());
+    let x = ctx.snap(this.origin[0] + msg.mover.dx);
+    let y = ctx.snap(this.origin[1] + msg.mover.dy);
     let refwall = ctx.board.walls[this.refwall];
     let dx = x - refwall.x;
     let dy = y - refwall.y;
@@ -195,6 +196,19 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
       let shade = wall.shade;
       if (msg.absolute && shade == msg.value) return;
       if (msg.absolute) wall.shade = msg.value; else wall.shade += msg.value;
+      this.invalidateWall(w, ctx);
+    }
+  }
+
+  public ResetPanRepeat(msg: ResetPanRepeat, ctx: BuildContext) {
+    let hwalls = this.highlighted;
+    for (let i = 0; i < hwalls.length(); i++) {
+      let w = hwalls.get(i);
+      let wall = this.getWall(w, ctx);
+      wall.xpanning = 0;
+      wall.ypanning = 0;
+      wall.yrepeat = 8;
+      fixxrepeat(ctx.board, w);
       this.invalidateWall(w, ctx);
     }
   }

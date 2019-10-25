@@ -5,6 +5,7 @@ import { MessageHandlerReflective } from "../handlerapi";
 import { ZSCALE } from "../utils";
 import { Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./messages";
 import { BuildContext } from "../api";
+import { MOVE_COPY, MOVE_VERTICAL } from "./tools/selection";
 
 export class SpriteEnt extends MessageHandlerReflective {
 
@@ -19,20 +20,20 @@ export class SpriteEnt extends MessageHandlerReflective {
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
-    if (msg.handle.mod3) this.spriteId = insertSprite(ctx.board, spr.x, spr.y, spr.z, spr);
+    if (ctx.state.get(MOVE_COPY)) this.spriteId = insertSprite(ctx.board, spr.x, spr.y, spr.z, spr);
     GLM.vec3.set(this.origin, spr.x, spr.z / ZSCALE, spr.y);
     this.origAng = spr.ang;
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    if (msg.handle.mod1) {
+    if (ctx.state.get(MOVE_VERTICAL)) {
       let spr = ctx.board.sprites[this.spriteId];
-      spr.ang = ctx.snap(this.origAng + msg.handle.dz());
+      spr.ang = ctx.snap(this.origAng + msg.mover.dz);
       ctx.invalidator.invalidateSprite(this.spriteId);
     } else {
-      let x = ctx.snap(this.origin[0] + msg.handle.dx());
-      let y = ctx.snap(this.origin[2] + msg.handle.dy());
-      let z = ctx.snap(this.origin[1] + msg.handle.dz()) * ZSCALE;
+      let x = ctx.snap(this.origin[0] + msg.mover.dx);
+      let y = ctx.snap(this.origin[2] + msg.mover.dy);
+      let z = ctx.snap(this.origin[1] + msg.mover.dz) * ZSCALE;
       if (moveSprite(ctx.board, this.spriteId, x, y, z)) {
         ctx.invalidator.invalidateSprite(this.spriteId);
       }

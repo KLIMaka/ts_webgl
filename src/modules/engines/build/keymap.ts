@@ -1,12 +1,13 @@
 import { Collection, Deck, EMPRTY_COLLECTION } from "../../deck";
-import { Event, State } from "./api";
 import { InputState } from "../../input";
 import { warning } from "../../logger";
+import { State } from "./api";
+import { Message } from "./handlerapi";
 
 export type InputHandler = (state: InputState) => boolean;
 
-export function keyPress(key: string | number): InputHandler { return (state) => state.keysPress[key]; }
-export function key(key: string | number): InputHandler { return (state) => state.keys[key]; }
+export function keyPress(key: string): InputHandler { return (state) => state.keysPress[key]; }
+export function key(key: string): InputHandler { return (state) => state.keys[key]; }
 export function mouseClick(button: number): InputHandler { return (state) => state.mouseClicks[button]; }
 export function mouseButton(button: number): InputHandler { return (state) => state.mouseButtons[button]; }
 export function combination(lh: InputHandler, rh: InputHandler): InputHandler { return (state) => lh(state) && rh(state) }
@@ -43,18 +44,17 @@ function createHandler(key: string, mods: string[]): InputHandler {
   return handler;
 }
 
-
 export class Binder {
   private binds: string[] = [];
   private handlers: InputHandler[] = [];
-  private events: Deck<Event>[] = [];
+  private events: Deck<Message>[] = [];
   private sorttable: number[] = [];
 
   private stateBinds: string[] = [];
   private stateHandlers: InputHandler[] = [];
   private stateValues: [string, any, any][][] = [];
 
-  public poolEvents(state: InputState): Collection<Event> {
+  public poolEvents(state: InputState): Collection<Message> {
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       if (this.handlers[i](state))
         return this.events[i];
@@ -85,24 +85,23 @@ export class Binder {
     }
   }
 
-  public addBind(event: Event, key: string, ...mods: string[]) {
+  public addBind(messages: Collection<Message>, key: string, ...mods: string[]) {
     let bindName = canonizeBind(key, mods);
     let bindIdx = this.findBind(bindName, mods.length);
     if (bindIdx == -1) {
       let handler = createHandler(key, mods);
-      this.insertBind(bindName, handler, event, mods.length);
+      this.insertBind(bindName, handler, messages, mods.length);
     } else {
-      this.events[bindIdx].push(event);
+      this.events[bindIdx].pushAll(messages);
     }
   }
 
-
-  private insertBind(bindName: string, handler: InputHandler, event: Event, mods: number): void {
+  private insertBind(bindName: string, handler: InputHandler, messages: Collection<Message>, mods: number): void {
     this.ensureSortTable(mods);
     let pos = this.sorttable[mods];
     this.binds.splice(pos, 0, bindName);
     this.handlers.splice(pos, 0, handler);
-    this.events.splice(pos, 0, new Deck().push(event));
+    this.events.splice(pos, 0, new Deck().pushAll(messages));
     for (let i = this.sorttable.length - 1; i >= mods; i--) {
       this.sorttable[i]++;
     }
@@ -125,7 +124,7 @@ export class Binder {
   }
 }
 
-export type EventParser = (str: string) => Event;
+export type EventParser = (str: string) => Collection<Message>;
 
 export function loadBinds(binds: string, binder: Binder, eventParser: EventParser) {
   let lines = binds.split(/\r?\n/);
@@ -146,9 +145,7 @@ export function loadBinds(binds: string, binder: Binder, eventParser: EventParse
       let event = eventParser(line.substr(idx + 1).trim());
       if (event == null) continue;
       let keyParts = keys.split('+');
-      let key = keyParts[keyParts.length - 1];
-      keyParts.pop();
-      binder.addBind(event, key, ...keyParts);
+      binder.addBind(event, keyParts.pop(), ...keyParts);
     }
   }
 }
