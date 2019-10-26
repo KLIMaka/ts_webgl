@@ -40,9 +40,8 @@ function refreshHitscan(state: InputState, view: ViewPoint): void {
 }
 
 function poolMessages(state: InputState): void {
-  let events = context.poolMessages(state);
-  for (let i = 0; i < events.length(); i++) {
-    let e = events.get(i);
+  for (let contextedMessage of context.poolMessages(state)) {
+    let e = contextedMessage(context);
     info(e);
     handlers.handle(e, context);
   }

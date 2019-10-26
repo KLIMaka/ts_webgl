@@ -2,12 +2,8 @@ import { Deck, Collection } from "../../collections";
 import { tuple2 } from "../../../libs/mathutils";
 
 export interface Message { }
-
 export interface Context { }
-
-export interface MessageHandler {
-  handle(message: Message, ctx: Context): void;
-}
+export interface MessageHandler { handle(message: Message, ctx: Context): void; }
 
 let args: [Message, Context] = [null, null];
 export function handleReflective(obj: Object, message: Message, ctx: Context) {

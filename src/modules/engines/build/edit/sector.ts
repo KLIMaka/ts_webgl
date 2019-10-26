@@ -2,11 +2,11 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { BuildContext } from "../api";
 import { MessageHandlerReflective } from "../handlerapi";
-import { isSector, SubType, Hitscan } from "../hitscan";
+import { Hitscan, isSector, SubType } from "../hitscan";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { Highlight, Move, Palette, PanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove, ResetPanRepeat } from "./messages";
-import { MOVE_VERTICAL } from "./tools/selection";
+import { Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove } from "./messages";
+import { MOVE_ROTATE, MOVE_VERTICAL } from "./tools/selection";
 
 const resetPanrepeat = new PanRepeat(0, 0, 0, 0, true);
 
@@ -34,18 +34,18 @@ export class SectorEnt extends MessageHandlerReflective {
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    if (ctx.state.get(MOVE_VERTICAL)) {
+    if (ctx.state.get(MOVE_ROTATE)) {
       let x = this.origin[0];
       let y = this.origin[1];
-      let z = ctx.snap(this.originz + msg.mover.dz * ZSCALE);
+      let z = ctx.snap(this.originz + msg.dz * ZSCALE);
       let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
       if (setSectorHeinum(ctx.board, this.sectorId, this.type, h))
         invalidateSectorAndWalls(this.sectorId, ctx);
-    } else {
+    } else if (ctx.state.get(MOVE_VERTICAL)) {
       let hit = ctx.state.get<Hitscan>('hitscan');
       let z = isSector(hit.type) && hit.id != this.sectorId
         ? sectorZ(ctx.board, hit.id, hit.type) / ZSCALE
-        : ctx.snap(this.originz + msg.mover.dz);
+        : ctx.snap(this.originz + msg.dz);
       if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE))
         invalidateSectorAndWalls(this.sectorId, ctx);
     }

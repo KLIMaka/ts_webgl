@@ -1,4 +1,4 @@
-import { Iterator, ForwardIterator, BackIterator, WriteIterator } from "../modules/iterator";
+import { TERMINAL_ITERATOR_RESULT, EMPTY_ITERATOR } from "../modules/collections";
 
 export class Node<T> {
   constructor(
@@ -8,7 +8,7 @@ export class Node<T> {
   }
 }
 
-export class List<T> {
+export class List<T> implements Iterable<T>{
 
   private nil = new Node<T>();
 
@@ -86,21 +86,21 @@ export class List<T> {
     this.nil.next = this.nil;
     this.nil.prev = this.nil;
   }
-}
 
-export class ListIterator<T> implements Iterator<T>, ForwardIterator, BackIterator, WriteIterator<T> {
-  constructor(private node: Node<T>) { }
-  get(): T { return this.node.obj; }
-  set(value: T): void { this.node.obj = value; }
-  next(): void { this.node = this.node.next; }
-  back(): void { this.node = this.node.prev; }
-  eq(iter: ListIterator<T>): boolean { return this.node === iter.node; }
-}
-
-export function startList<T>(list: List<T>): Iterator<T> {
-  return new ListIterator<T>(list.first());
-}
-
-export function endList<T>(list: List<T>): Iterator<T> {
-  return new ListIterator<T>(list.terminator());
+  public [Symbol.iterator]() {
+    let pointer = this.first();
+    return pointer == this.terminator()
+      ? EMPTY_ITERATOR
+      : {
+        next: () => {
+          if (pointer == this.terminator())
+            return TERMINAL_ITERATOR_RESULT;
+          else {
+            let obj = pointer.obj;
+            pointer = pointer.next;
+            return { done: false, value: obj }
+          }
+        }
+      }
+  }
 }

@@ -1,7 +1,7 @@
 import { Collection, Deck, EMPRTY_COLLECTION } from "../../collections";
 import { InputState } from "../../input";
 import { warning, debug } from "../../logger";
-import { State } from "./api";
+import { State, ContextedValue } from "./api";
 import { Message } from "./handlerapi";
 
 export type InputHandler = (state: InputState) => boolean;
@@ -47,17 +47,17 @@ function createHandler(key: string, mods: string[]): InputHandler {
 export class Binder {
   private binds: string[] = [];
   private handlers: InputHandler[] = [];
-  private events: Deck<Message>[] = [];
+  private messages: Deck<ContextedValue<Message>>[] = [];
   private sorttable: number[] = [];
 
   private stateBinds: string[] = [];
   private stateHandlers: InputHandler[] = [];
   private stateValues: [string, any, any][][] = [];
 
-  public poolEvents(state: InputState): Collection<Message> {
+  public poolEvents(state: InputState): Collection<ContextedValue<Message>> {
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       if (this.handlers[i](state))
-        return this.events[i];
+        return this.messages[i];
     }
     return EMPRTY_COLLECTION;
   }
@@ -77,7 +77,7 @@ export class Binder {
     if (idx == -1) {
       this.stateBinds.push(bindName);
       let handler = parseMod(last);
-      for (let i = 0; i < keys.length; i++) handler = combination(handler, parseMod(keys[i]));
+      for (let key of keys) handler = combination(handler, parseMod(key));
       this.stateHandlers.push(handler);
       this.stateValues.push([[name, enabled, disabled]]);
     } else {
@@ -85,23 +85,23 @@ export class Binder {
     }
   }
 
-  public addBind(messages: Collection<Message>, key: string, ...mods: string[]) {
+  public addBind(messages: Collection<ContextedValue<Message>>, key: string, ...mods: string[]) {
     let bindName = canonizeBind(key, mods);
     let bindIdx = this.findBind(bindName, mods.length);
     if (bindIdx == -1) {
       let handler = createHandler(key, mods);
       this.insertBind(bindName, handler, messages, mods.length);
     } else {
-      this.events[bindIdx].pushAll(messages);
+      this.messages[bindIdx].pushAll(messages);
     }
   }
 
-  private insertBind(bindName: string, handler: InputHandler, messages: Collection<Message>, mods: number): void {
+  private insertBind(bindName: string, handler: InputHandler, messages: Collection<ContextedValue<Message>>, mods: number): void {
     this.ensureSortTable(mods);
     let pos = this.sorttable[mods];
     this.binds.splice(pos, 0, bindName);
     this.handlers.splice(pos, 0, handler);
-    this.events.splice(pos, 0, new Deck().pushAll(messages));
+    this.messages.splice(pos, 0, new Deck<ContextedValue<Message>>().pushAll(messages));
     for (let i = this.sorttable.length - 1; i >= mods; i--) {
       this.sorttable[i]++;
     }
@@ -124,7 +124,7 @@ export class Binder {
   }
 }
 
-export type EventParser = (str: string) => Collection<Message>;
+export type EventParser = (str: string) => Collection<ContextedValue<Message>>;
 
 export function loadBinds(binds: string, binder: Binder, messageParser: EventParser) {
   let lines = binds.split(/\r?\n/);

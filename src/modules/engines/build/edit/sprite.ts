@@ -1,11 +1,11 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { moveSprite, insertSprite } from "../boardutils";
+import { BuildContext } from "../api";
+import { insertSprite, moveSprite } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { ZSCALE } from "../utils";
 import { Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./messages";
-import { BuildContext } from "../api";
-import { MOVE_COPY, MOVE_VERTICAL } from "./tools/selection";
+import { MOVE_COPY, MOVE_ROTATE } from "./tools/selection";
 
 export class SpriteEnt extends MessageHandlerReflective {
 
@@ -26,14 +26,14 @@ export class SpriteEnt extends MessageHandlerReflective {
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    if (ctx.state.get(MOVE_VERTICAL)) {
+    if (ctx.state.get(MOVE_ROTATE)) {
       let spr = ctx.board.sprites[this.spriteId];
-      spr.ang = ctx.snap(this.origAng + msg.mover.dz);
+      spr.ang = ctx.snap(this.origAng + msg.dz);
       ctx.invalidator.invalidateSprite(this.spriteId);
     } else {
-      let x = ctx.snap(this.origin[0] + msg.mover.dx);
-      let y = ctx.snap(this.origin[2] + msg.mover.dy);
-      let z = ctx.snap(this.origin[1] + msg.mover.dz) * ZSCALE;
+      let x = ctx.snap(this.origin[0] + msg.dx);
+      let y = ctx.snap(this.origin[2] + msg.dy);
+      let z = ctx.snap(this.origin[1] + msg.dz) * ZSCALE;
       if (moveSprite(ctx.board, this.spriteId, x, y, z)) {
         ctx.invalidator.invalidateSprite(this.spriteId);
       }

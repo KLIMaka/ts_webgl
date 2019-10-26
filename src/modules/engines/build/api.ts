@@ -33,6 +33,10 @@ export interface State {
   get<T>(name: string): T;
 }
 
+export type ContextedValue<T> = (ctx: BuildContext) => T;
+export const constCtxValue = <T>(value: T) => (ctx: BuildContext) => value
+export const stateCtxValue = <T>(name: string) => (ctx: BuildContext) => ctx.state.get(name)
+
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
@@ -40,7 +44,7 @@ export interface BuildContext extends Context {
   readonly gl: WebGLRenderingContext;
   readonly state: State;
 
-  poolMessages(input: InputState): Collection<Message>;
+  poolMessages(input: InputState): Collection<ContextedValue<Message>>;
 
   snap(x: number): number;
   snapScale(): number;

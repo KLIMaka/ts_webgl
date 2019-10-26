@@ -1,14 +1,16 @@
 export interface Collection<T> extends Iterable<T> {
   get(i: number): T;
   length(): number;
+  isEmpty(): boolean;
 }
 
-const TERMINAL_ITERATOR_RESULT: IteratorResult<any> = { value: null, done: true };
-const EMPTY_ITERATOR = { next: () => TERMINAL_ITERATOR_RESULT };
+export const TERMINAL_ITERATOR_RESULT: IteratorResult<any> = { value: null, done: true };
+export const EMPTY_ITERATOR = { next: () => TERMINAL_ITERATOR_RESULT };
 export const EMPRTY_COLLECTION: Collection<any> = {
   get: (i: number) => undefined,
   length: () => 0,
-  [Symbol.iterator]: () => EMPTY_ITERATOR
+  [Symbol.iterator]: () => EMPTY_ITERATOR,
+  isEmpty: () => true
 }
 
 export class Deck<T> implements Collection<T>{
@@ -106,6 +108,7 @@ export function reversed<T>(collection: Collection<T>): Collection<T> {
   return {
     get: (i: number) => collection.get(length - 1 - i),
     length: () => length,
+    isEmpty: () => length == 0,
     [Symbol.iterator]: () => { return { next: () => i == 0 ? TERMINAL_ITERATOR_RESULT : { done: false, value: collection.get(i) } } }
   }
 }

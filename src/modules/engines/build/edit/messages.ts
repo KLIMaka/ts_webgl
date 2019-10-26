@@ -6,7 +6,7 @@ export interface Mover { readonly dx: number; readonly dy: number; readonly dz: 
 
 export class NamedMessage implements Message { constructor(public name: string) { } }
 export class StartMove implements Message { }
-export class Move implements Message { constructor(public mover: Mover) { } }
+export class Move implements Message { constructor(public dx: number, public dy: number, public dz: number) { } }
 export class EndMove implements Message { }
 export class Highlight implements Message { constructor(public set: Set<number> = new Set()) { } }
 export class Render implements Message { constructor(public list: Deck<Renderable> = new Deck()) { } }

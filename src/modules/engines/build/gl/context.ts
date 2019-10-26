@@ -16,6 +16,8 @@ function snapGrid(coord: number, gridSize: number): number {
 class StateImpl implements State {
   private state: { [index: string]: any } = {};
 
+  constructor(readonly ctx: Context) { }
+
   register<T>(name: string, defaultValue: T): void {
     let prevState = this.state[name];
     if (prevState != undefined) warning(`Redefining state ${name}`);
@@ -37,7 +39,7 @@ class StateImpl implements State {
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
-  readonly state = new StateImpl();
+  readonly state = new StateImpl(this);
   readonly binder = new Binder();
 
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
@@ -53,6 +55,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
     this.state.register('mouseX', 0);
     this.state.register('mouseY', 0);
+    this.state.register('gridSize', 128);
   }
 
   get invalidator() {
@@ -85,10 +88,12 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   incGridSize() {
     this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length);
+    this.state.set('gridSize', this.snapScale());
   }
 
   decGridSize() {
     this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length);
+    this.state.set('gridSize', this.snapScale());
   }
 
   snap(x: number) {

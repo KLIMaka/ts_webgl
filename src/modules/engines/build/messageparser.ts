@@ -1,8 +1,9 @@
-import { Lexer, LexerRule } from "../../lex/lexer";
-import { Flip, NamedMessage, Palette, PanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade, SpriteMode, ResetPanRepeat, StartMove, EndMove, Move } from "./edit/messages";
-import { Message } from "./handlerapi";
 import { Collection, Deck } from "../../collections";
-import { debug } from "../../logger";
+import { Lexer, LexerRule } from "../../lex/lexer";
+import { EndMove, Flip, Move, NamedMessage, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade, SpriteMode, StartMove } from "./edit/messages";
+import { Message } from "./handlerapi";
+import { ContextedValue, constCtxValue, BuildContext, stateCtxValue } from "./api";
+import { error } from "../../logger";
 
 class MessageParser {
   private lexer = new Lexer();
@@ -15,6 +16,7 @@ class MessageParser {
     this.lexer.addRule(new LexerRule(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, (s) => parseFloat(s)));
     this.lexer.addRule(new LexerRule(/^\-?[0-9]+/, 'INT', 0, (s) => parseInt(s)));
     this.lexer.addRule(new LexerRule(/^"([^"]*)"/, 'STRING', 1));
+    this.lexer.addRule(new LexerRule(/^\{([^\}]*)\}/, 'MACRO', 1));
   }
 
   public setSource(src: string): void {
@@ -30,38 +32,80 @@ class MessageParser {
     return this.lexer.value();
   }
 
-
+  public tryGet<T>(expected: string, value: T = null): T {
+    let mark = this.lexer.mark();
+    try {
+      return this.get(expected, value);
+    } catch (e) {
+      this.lexer.reset(mark);
+      return null;
+    }
+  }
 }
-
 let parser = new MessageParser();
 
-function tryParseMessage(): Message {
-  switch (parser.get('ID')) {
-    case 'picnum': return new SetPicnum(parser.get('INT'));
-    case 'shade': return new Shade(parser.get('INT'), parser.get('BOOLEAN'));
-    case 'panrepeat': return new PanRepeat(parser.get('INT'), parser.get('INT'), parser.get('INT'), parser.get('INT'), parser.get('BOOLEAN'));
-    case 'pal': return new Palette(parser.get('INT'), 15, parser.get('BOOLEAN'));
-    case 'wallcstat': return new SetWallCstat(parser.get('ID'), parser.get('BOOLEAN'), parser.get('BOOLEAN'));
-    case 'sectorcstat': return new SetSectorCstat(parser.get('ID'), parser.get('BOOLEAN'), parser.get('BOOLEAN'));
-    case 'flip': return new Flip();
-    case 'sprite_mode': return new SpriteMode();
-    case 'reset_panrepeat': return new ResetPanRepeat();
-    case 'start_move': return new StartMove();
-    case 'end_move': return new EndMove();
-    case 'move': return new Move({ dx: parser.get('INT'), dy: parser.get('INT'), dz: parser.get('INT') });
-    default: return null;
+function createMacro(macro: string): ContextedValue<any> {
+  return <ContextedValue<any>>Function('ctx', macro);
+}
+
+function parseArgs(...types: string[]) {
+  let args = new Deck<ContextedValue<any>>();
+  for (let type of types) {
+    let macro = parser.tryGet<string>('MACRO');
+    if (macro != null) args.push(createMacro(macro))
+    else args.push(constCtxValue(parser.get(type)));
+  }
+  return args;
+}
+
+const NOOP_MESSAGE: Message = {};
+let factArgs = new Deck<any>();
+function createMessage(constr: Function, ...types: string[]) {
+  let args = parseArgs(...types);
+  return (ctx: BuildContext) => {
+    factArgs.clear();
+    for (let v of args) factArgs.push(v(ctx));
+    try {
+      return Reflect.construct(constr, [...factArgs]);
+    } catch (e) {
+      error(`Invalid message constructor ${constr.name} (${types})`, factArgs);
+      return NOOP_MESSAGE;
+    }
   }
 }
 
-function tryParse(src: string, messages: Deck<Message>): Collection<Message> {
+let parsdMessages = new Deck<ContextedValue<Message>>();
+function tryParseMessage(): Collection<ContextedValue<Message>> {
+  parsdMessages.clear();
+  switch (parser.get('ID')) {
+    case 'picnum': return parsdMessages.push(createMessage(SetPicnum, 'INT'));
+    case 'shade': return parsdMessages.push(createMessage(Shade, 'INT', 'BOOLEAN'));
+    case 'panrepeat': return parsdMessages.push(createMessage(PanRepeat, 'INT', 'INT', 'INT', 'INT', 'BOOLEAN'));
+    case 'pal': return parsdMessages.push(createMessage(Palette, 'INT', 'INT', 'BOOLEAN'));
+    case 'wallcstat': return parsdMessages.push(createMessage(SetWallCstat, 'ID', 'BOOLEAN', 'BOOLEAN'));
+    case 'sectorcstat': return parsdMessages.push(createMessage(SetSectorCstat, 'ID', 'BOOLEAN', 'BOOLEAN'));
+    case 'flip': return parsdMessages.push(constCtxValue(new Flip()));
+    case 'sprite_mode': return parsdMessages.push(constCtxValue(new SpriteMode()));
+    case 'reset_panrepeat': return parsdMessages.push(constCtxValue(new ResetPanRepeat()));
+    case 'move': return parsdMessages
+      .push(constCtxValue(new StartMove()))
+      .push(createMessage(Move, 'INT', 'INT', 'INT'))
+      .push(constCtxValue(new EndMove()));
+    default: return parsdMessages;
+  }
+
+
+}
+
+function tryParse(src: string, messages: Deck<ContextedValue<Message>>): Collection<ContextedValue<Message>> {
   try {
     parser.setSource(src);
     parser.get('ID', 'msg');
-    let msg = tryParseMessage();
-    while (msg != null) {
-      messages.push(msg);
+    let parsedMessages = tryParseMessage();
+    while (!parsedMessages.isEmpty()) {
+      messages.pushAll(parsedMessages);
       try { parser.get('COMA') } catch (e) { break }
-      msg = tryParseMessage();
+      parsedMessages = tryParseMessage();
     }
     return messages;
   } catch (e) {
@@ -69,9 +113,9 @@ function tryParse(src: string, messages: Deck<Message>): Collection<Message> {
   }
 }
 
-let messages = new Deck<Message>();
-export function messageParser(str: string): Collection<Message> {
+let messages = new Deck<ContextedValue<Message>>();
+export function messageParser(str: string): Collection<ContextedValue<Message>> {
   let result = tryParse(str, messages.clear());
-  if (result.length() == 0) return messages.push(new NamedMessage(str));
+  if (result.length() == 0) return messages.push(constCtxValue(new NamedMessage(str)));
   return result;
 }

@@ -21,8 +21,8 @@ import { WallSegmentsEnt } from "../wallsegment";
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
 
-let handle = new MovingHandle();
-const MOVE = new Move(handle);
+const handle = new MovingHandle();
+const MOVE = new Move(0, 0, 0);
 const START_MOVE = new StartMove();
 const END_MOVE = new EndMove();
 const SET_PICNUM = new SetPicnum(-1);
@@ -36,6 +36,7 @@ const LOOP_STATE = 'select_loop_mod';
 export const MOVE_COPY = 'move.copy';
 export const MOVE_VERTICAL = 'move.vertical';
 export const MOVE_PARALLEL = 'move.parallel';
+export const MOVE_ROTATE = 'move.rotate';
 
 let clipboardPicnum = new SetPicnum(0);
 let clipboardShade = new Shade(0, true);
@@ -101,6 +102,7 @@ export class Selection extends MessageHandlerReflective {
     ctx.state.register(MOVE_COPY, false);
     ctx.state.register(MOVE_VERTICAL, false);
     ctx.state.register(MOVE_PARALLEL, false);
+    ctx.state.register(MOVE_ROTATE, false);
     ctx.state.register(LOOP_STATE, false);
   }
 
@@ -153,6 +155,9 @@ export class Selection extends MessageHandlerReflective {
       return;
     }
 
+    MOVE.dx = handle.dx;
+    MOVE.dy = handle.dy;
+    MOVE.dz = handle.dz;
     this.selection.handle(MOVE, ctx);
   }
 

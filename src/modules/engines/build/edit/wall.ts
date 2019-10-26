@@ -54,8 +54,8 @@ export class WallEnt extends MessageHandlerReflective {
   }
 
   public Move(msg: Move, ctx: BuildContext) {
-    let x = ctx.snap(this.origin[0] + msg.mover.dx);
-    let y = ctx.snap(this.origin[1] + msg.mover.dy);
+    let x = ctx.snap(this.origin[0] + msg.dx);
+    let y = ctx.snap(this.origin[1] + msg.dy);
     if (moveWall(ctx.board, this.wallId, x, y)) {
       this.invalidate(ctx);
     }

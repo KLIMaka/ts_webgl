@@ -16,7 +16,7 @@ CTRL+SHIFT+LEFT msg panrepeat 0 0 -8 0 false
 CTRL+SHIFT+UP   msg panrepeat 0 0 0 8 false
 CTRL+SHIFT+DOWN msg panrepeat 0 0 0 -8 false
 \               msg reset_panrepeat
-O               msg pal 1 false
+O               msg pal 1 14 false
 F               msg flip
 wheelUp         msg shade 1 false
 wheelDown       msg shade -1 false
@@ -27,10 +27,10 @@ M               msg wallcstat alignBottom true true
 R               msg sprite_mode
 R               msg sectorcstat alignToFirstWall true true
 E               msg sectorcstat doubleSmooshiness true true
-UP              msg start_move, move 0 -128 0, end_move
-DOWN            msg start_move, move 0 128 0, end_move
-LEFT            msg start_move, move -128 0 0, end_move
-RIGHT           msg start_move, move 128 0 0, end_move
+RIGHT           msg move {return ctx.state.get('gridSize')} 0 0 true
+LEFT            msg move {return -ctx.state.get('gridSize')} 0 0 true
+UP              msg move 0 {return -ctx.state.get('gridSize')} 0 true
+DOWN            msg move 0 {return ctx.state.get('gridSize')}  0 true
 
 
 V               set_picnum
@@ -59,4 +59,5 @@ J               join_sectors
 +mouse0         move
 +SHIFT          move.parallel
 +ALT            move.vertical
++ALT+SHIFT      move.rotate
 +CTRL           move.copy
