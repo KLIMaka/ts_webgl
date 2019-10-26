@@ -1,13 +1,14 @@
-import { Iterator, ForwardIterator, BackIterator } from "./iterator";
-
-export interface Collection<T> {
+export interface Collection<T> extends Iterable<T> {
   get(i: number): T;
   length(): number;
 }
 
+const TERMINAL_ITERATOR_RESULT: IteratorResult<any> = { value: null, done: true };
+const EMPTY_ITERATOR = { next: () => TERMINAL_ITERATOR_RESULT };
 export const EMPRTY_COLLECTION: Collection<any> = {
   get: (i: number) => undefined,
-  length: () => 0
+  length: () => 0,
+  [Symbol.iterator]: () => EMPTY_ITERATOR
 }
 
 export class Deck<T> implements Collection<T>{
@@ -23,6 +24,7 @@ export class Deck<T> implements Collection<T>{
   }
 
   public set(i: number, value: T) {
+    if (i >= this.pointer) throw new Error(`Invalid set position: ${i} >= ${this.pointer}`);
     this.array[i] = value;
   }
 
@@ -32,8 +34,7 @@ export class Deck<T> implements Collection<T>{
   }
 
   public pushAll(values: Collection<T>): Deck<T> {
-    for (let i = 0; i < values.length(); i++)
-      this.push(values.get(i));
+    for (let val of values) this.push(val);
     return this;
   }
 
@@ -61,6 +62,13 @@ export class Deck<T> implements Collection<T>{
     copy.pointer = this.pointer;
     return copy;
   }
+
+  public [Symbol.iterator]() {
+    let i = 0;
+    return this.pointer == 0
+      ? EMPTY_ITERATOR
+      : { next: () => { return i == this.pointer ? TERMINAL_ITERATOR_RESULT : { done: false, value: this.array[i++] } } }
+  }
 }
 
 export class IndexedDeck<T> extends Deck<T>{
@@ -84,13 +92,6 @@ export class IndexedDeck<T> extends Deck<T>{
   }
 }
 
-export class DeckIterator<T> implements Iterator<T>, ForwardIterator, BackIterator {
-  constructor(private deck: Deck<T>, private idx: number = 0) { }
-  get(): T { return this.deck.get(this.idx); }
-  next(): void { this.idx++; }
-  back(): void { this.idx--; }
-  eq(iter: DeckIterator<T>): boolean { return this.deck === iter.deck && this.idx === iter.idx; }
-}
 
 export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
   for (let i = start; i < collection.length(); i++) {
@@ -101,8 +102,10 @@ export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
 
 export function reversed<T>(collection: Collection<T>): Collection<T> {
   let length = collection.length();
+  let i = length - 1;
   return {
-    get: (i: number) => { return collection.get(length - 1 - i) },
-    length: () => { return length }
+    get: (i: number) => collection.get(length - 1 - i),
+    length: () => length,
+    [Symbol.iterator]: () => { return { next: () => i == 0 ? TERMINAL_ITERATOR_RESULT : { done: false, value: collection.get(i) } } }
   }
 }

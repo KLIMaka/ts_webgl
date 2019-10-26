@@ -1,6 +1,6 @@
 import { tuple2 } from "../../../../../libs/mathutils";
 import * as GLM from "../../../../../libs_js/glmatrix";
-import { Deck } from "../../../../deck";
+import { Deck } from "../../../../collections";
 import { BuildContext } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
 import { Renderable, RenderableList, Wireframe } from "../../gl/renderable";

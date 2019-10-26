@@ -1,4 +1,4 @@
-import { Deck } from "../../../deck";
+import { Deck } from "../../../collections";
 import { Renderable } from "../gl/renderable";
 import { Message } from "../handlerapi";
 

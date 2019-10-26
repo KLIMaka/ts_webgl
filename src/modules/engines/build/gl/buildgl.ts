@@ -1,6 +1,6 @@
 import * as AB from '../../../../libs/asyncbarrier';
 import * as GLM from '../../../../libs_js/glmatrix';
-import { Collection } from '../../../deck';
+import { Collection } from '../../../collections';
 import * as DS from '../../../drawstruct';
 import * as SHADER from '../../../shaders';
 import { State } from '../../../stategl';

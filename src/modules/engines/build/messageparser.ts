@@ -1,52 +1,66 @@
 import { Lexer, LexerRule } from "../../lex/lexer";
 import { Flip, NamedMessage, Palette, PanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade, SpriteMode, ResetPanRepeat, StartMove, EndMove, Move } from "./edit/messages";
 import { Message } from "./handlerapi";
-import { Collection, Deck } from "../../deck";
+import { Collection, Deck } from "../../collections";
+import { debug } from "../../logger";
 
-let lexer = new Lexer();
-lexer.addRule(new LexerRule(/^[ \t\r\v\n]+/, 'WS'));
-lexer.addRule(new LexerRule(/^[^ \t\r\v\n\(\)`"]+/, 'ID'));
-lexer.addRule(new LexerRule(/^,/, 'COMA'));
-lexer.addRule(new LexerRule(/^(false|true)/, 'BOOLEAN', 0, (s) => s == 'true'));
-lexer.addRule(new LexerRule(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, (s) => parseFloat(s)));
-lexer.addRule(new LexerRule(/^\-?[0-9]+/, 'INT', 0, (s) => parseInt(s)));
-lexer.addRule(new LexerRule(/^"([^"]*)"/, 'STRING', 1));
+class MessageParser {
+  private lexer = new Lexer();
 
-function get<T>(expected: string): T {
-  if (lexer.isEoi()) throw new Error();
-  for (; !lexer.isEoi() && lexer.next() == 'WS';);
-  if (lexer.rule().name == 'WS' && lexer.isEoi()) throw new Error();
-  let tokenId = lexer.rule().name;
-  if (tokenId != expected) throw new Error();
-  return lexer.value();
+  constructor() {
+    this.lexer.addRule(new LexerRule(/^[ \t\r\v\n]+/, 'WS'));
+    this.lexer.addRule(new LexerRule(/^[a-zA-Z_][a-zA-Z0-9_]+/, 'ID'));
+    this.lexer.addRule(new LexerRule(/^,/, 'COMA'));
+    this.lexer.addRule(new LexerRule(/^(false|true)/, 'BOOLEAN', 0, (s) => s == 'true'));
+    this.lexer.addRule(new LexerRule(/^\-?[0-9]*(\.[0-9]+)?([eE][\+\-][0-9]+)?/, 'FLOAT', 0, (s) => parseFloat(s)));
+    this.lexer.addRule(new LexerRule(/^\-?[0-9]+/, 'INT', 0, (s) => parseInt(s)));
+    this.lexer.addRule(new LexerRule(/^"([^"]*)"/, 'STRING', 1));
+  }
+
+  public setSource(src: string): void {
+    this.lexer.setSource(src);
+  }
+
+  public get<T>(expected: string, value: T = null): T {
+    for (; this.lexer.next() == 'WS';);
+    if (this.lexer.isEoi()) throw new Error();
+    let tokenId = this.lexer.rule().name;
+    let actual = this.lexer.value();
+    if (tokenId != expected || value != null && value != actual) throw new Error();
+    return this.lexer.value();
+  }
+
+
 }
 
+let parser = new MessageParser();
+
 function tryParseMessage(): Message {
-  switch (get('ID')) {
-    case 'picnum': return new SetPicnum(get('INT'));
-    case 'shade': return new Shade(get('INT'), get('BOOLEAN'));
-    case 'panrepeat': return new PanRepeat(get('INT'), get('INT'), get('INT'), get('INT'), get('BOOLEAN'));
-    case 'pal': return new Palette(get('INT'), 15, get('BOOLEAN'));
-    case 'wallcstat': return new SetWallCstat(get('ID'), get('BOOLEAN'), get('BOOLEAN'));
-    case 'sectorcstat': return new SetSectorCstat(get('ID'), get('BOOLEAN'), get('BOOLEAN'));
+  switch (parser.get('ID')) {
+    case 'picnum': return new SetPicnum(parser.get('INT'));
+    case 'shade': return new Shade(parser.get('INT'), parser.get('BOOLEAN'));
+    case 'panrepeat': return new PanRepeat(parser.get('INT'), parser.get('INT'), parser.get('INT'), parser.get('INT'), parser.get('BOOLEAN'));
+    case 'pal': return new Palette(parser.get('INT'), 15, parser.get('BOOLEAN'));
+    case 'wallcstat': return new SetWallCstat(parser.get('ID'), parser.get('BOOLEAN'), parser.get('BOOLEAN'));
+    case 'sectorcstat': return new SetSectorCstat(parser.get('ID'), parser.get('BOOLEAN'), parser.get('BOOLEAN'));
     case 'flip': return new Flip();
     case 'sprite_mode': return new SpriteMode();
     case 'reset_panrepeat': return new ResetPanRepeat();
     case 'start_move': return new StartMove();
     case 'end_move': return new EndMove();
-    case 'move': return new Move({ dx: get('INT'), dy: get('INT'), dz: get('INT') });
+    case 'move': return new Move({ dx: parser.get('INT'), dy: parser.get('INT'), dz: parser.get('INT') });
     default: return null;
   }
 }
 
 function tryParse(src: string, messages: Deck<Message>): Collection<Message> {
   try {
-    lexer.setSource(src);
-    if (get('ID') != 'msg') throw new Error();
+    parser.setSource(src);
+    parser.get('ID', 'msg');
     let msg = tryParseMessage();
     while (msg != null) {
       messages.push(msg);
-      try { get('COMA') } catch (e) { break }
+      try { parser.get('COMA') } catch (e) { break }
       msg = tryParseMessage();
     }
     return messages;

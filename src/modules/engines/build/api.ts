@@ -5,7 +5,7 @@ import { Board } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import { MoveStruct } from "./utils";
 import { InputState } from "../../input";
-import { Collection } from "../../deck";
+import { Collection } from "../../collections";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;

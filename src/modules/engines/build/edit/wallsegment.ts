@@ -1,7 +1,7 @@
 import { List } from "../../../../libs/list";
 import { cyclic, len2d, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { Collection, Deck, IndexedDeck } from "../../../deck";
+import { Collection, Deck, IndexedDeck } from "../../../collections";
 import { BuildContext } from "../api";
 import { connectedWalls, fixxrepeat, mergePoints, moveWall, nextwall, prevwall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";

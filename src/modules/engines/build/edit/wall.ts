@@ -1,6 +1,6 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
-import { Deck, IndexedDeck } from "../../../deck";
+import { Deck, IndexedDeck } from "../../../collections";
 import { connectedWalls, moveWall, prevwall, insertWall, mergePoints } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";

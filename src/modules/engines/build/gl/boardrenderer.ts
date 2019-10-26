@@ -2,7 +2,7 @@ import * as MU from '../../../../libs/mathutils';
 import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as PROFILE from '../../../../modules/profiler';
-import { Deck } from '../../../deck';
+import { Deck } from '../../../collections';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
 import { Board } from '../structs';

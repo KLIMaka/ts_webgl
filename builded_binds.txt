@@ -27,7 +27,7 @@ M               msg wallcstat alignBottom true true
 R               msg sprite_mode
 R               msg sectorcstat alignToFirstWall true true
 E               msg sectorcstat doubleSmooshiness true true
-UP              msg start_move, move 0 128 0, end_move
+UP              msg start_move, move 0 -128 0, end_move
 DOWN            msg start_move, move 0 128 0, end_move
 LEFT            msg start_move, move -128 0 0, end_move
 RIGHT           msg start_move, move 128 0 0, end_move

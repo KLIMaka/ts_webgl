@@ -3,7 +3,7 @@ import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
 import { SubType } from './hitscan';
 import { Board, Sector, Sprite, Wall } from './structs';
-import { Collection, Deck } from '../../deck';
+import { Collection, Deck } from '../../collections';
 
 export const ZSCALE = -16;
 

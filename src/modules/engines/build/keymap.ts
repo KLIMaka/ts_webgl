@@ -1,6 +1,6 @@
-import { Collection, Deck, EMPRTY_COLLECTION } from "../../deck";
+import { Collection, Deck, EMPRTY_COLLECTION } from "../../collections";
 import { InputState } from "../../input";
-import { warning } from "../../logger";
+import { warning, debug } from "../../logger";
 import { State } from "./api";
 import { Message } from "./handlerapi";
 
@@ -126,7 +126,7 @@ export class Binder {
 
 export type EventParser = (str: string) => Collection<Message>;
 
-export function loadBinds(binds: string, binder: Binder, eventParser: EventParser) {
+export function loadBinds(binds: string, binder: Binder, messageParser: EventParser) {
   let lines = binds.split(/\r?\n/);
   for (let line of lines) {
     line = line.trim();
@@ -142,10 +142,15 @@ export function loadBinds(binds: string, binder: Binder, eventParser: EventParse
       let keyParts = keys.split('+');
       binder.addStateBind(line.substr(idx + 1).trim(), true, false, ...keyParts);
     } else {
-      let event = eventParser(line.substr(idx + 1).trim());
-      if (event == null) continue;
+      let str = line.substr(idx + 1).trim();
+      let messages = messageParser(str);
+      if (messages == null) {
+        warning(`'${str}' failed to parse`);
+        continue;
+      }
+      debug(`'${str}' parsed to:`, ...messages);
       let keyParts = keys.split('+');
-      binder.addBind(event, keyParts.pop(), ...keyParts);
+      binder.addBind(messages, keyParts.pop(), ...keyParts);
     }
   }
 }

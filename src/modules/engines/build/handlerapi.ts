@@ -1,4 +1,4 @@
-import { Deck, Collection } from "../../deck";
+import { Deck, Collection } from "../../collections";
 import { tuple2 } from "../../../libs/mathutils";
 
 export interface Message { }

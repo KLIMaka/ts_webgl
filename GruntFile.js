@@ -43,9 +43,8 @@ module.exports = function (grunt) {
       options: {
         rootDir: 'src/',
         module: 'es2015',
-        target: 'es5',
+        target: 'es6',
         lib: ['es2015', 'dom'],
-        downlevelIteration: true
       }
     });
     grunt.config(['watch', module], {

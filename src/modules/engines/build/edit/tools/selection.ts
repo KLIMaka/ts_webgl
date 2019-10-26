@@ -1,5 +1,5 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
-import { Deck } from "../../../../deck";
+import { Deck } from "../../../../collections";
 import { info } from "../../../../logger";
 import { Frame } from "../../../idtech/md2structs";
 import { BuildContext } from "../../api";

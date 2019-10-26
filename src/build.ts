@@ -8,7 +8,7 @@ import * as data from './libs/stream';
 import * as GLM from './libs_js/glmatrix';
 import { Controller2D } from './modules/controller2d';
 import * as controller from './modules/controller3d';
-import { Deck } from './modules/deck';
+import { Deck } from './modules/collections';
 import * as DS from './modules/drawstruct';
 import { ArtProvider } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';

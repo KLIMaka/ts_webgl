@@ -1,6 +1,6 @@
 import * as MU from '../../../libs/mathutils';
 import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
-import { Collection, Deck, findFirst, reversed, IndexedDeck } from '../../deck';
+import { Collection, Deck, findFirst, reversed, IndexedDeck } from '../../collections';
 import { ArtInfoProvider } from './art';
 import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, sectorPicnum } from './utils';

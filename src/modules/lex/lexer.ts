@@ -51,8 +51,8 @@ export class Lexer {
   }
 
   private exec(): string {
-    if (this.eoi)
-      return null;
+    if (this.offset >= this.src.length) this.eoi = true;
+    if (this.eoi) return null;
 
     let len = 0;
     let matchedValue = null;
@@ -72,9 +72,6 @@ export class Lexer {
     this.matchedValue = matchedValue;
     this.lastOffset = this.offset;
     this.offset += len;
-
-    if (this.offset >= this.src.length)
-      this.eoi = true;
 
     if (matchedRule == null)
       throw new Error('Unexpected input "' + subsrc.substr(0, 10) + '..."');

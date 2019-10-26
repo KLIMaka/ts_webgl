@@ -1,6 +1,6 @@
 import { arcsIntersects, monoatan2, dot2d } from '../../../libs/mathutils';
 import * as GLM from '../../../libs_js/glmatrix';
-import { Deck, IndexedDeck } from '../../deck';
+import { Deck, IndexedDeck } from '../../collections';
 import * as PROFILE from '../../profiler';
 import { nextwall, packWallSectorId, unpackSectorId, unpackWallId } from './boardutils';
 import { Board } from './structs';

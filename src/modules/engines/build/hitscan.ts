@@ -1,7 +1,7 @@
 import { Board, Sector, FACE, WALL, FLOOR } from "./structs";
 import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE, inPolygon, spriteAngle } from "./utils";
 import { ArtInfoProvider, ArtInfo } from "./art";
-import { IndexedDeck, Deck } from "../../deck";
+import { IndexedDeck, Deck } from "../../collections";
 import { int, len2d, cross2d, sqrLen2d, dot2d, PI2, sign } from "../../../libs/mathutils";
 import * as GLM from "../../../libs_js/glmatrix";
 

@@ -3,7 +3,7 @@ import * as VEC from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { Controller3D } from '../../../../modules/controller3d';
 import * as PROFILE from '../../../../modules/profiler';
-import { Deck } from '../../../deck';
+import { Deck } from '../../../collections';
 import * as BU from '../boardutils';
 import * as VIS from '../boardvisitor';
 import { Board } from '../structs';
