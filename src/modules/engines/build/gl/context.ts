@@ -40,8 +40,8 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl(this);
-  readonly binder = new Binder();
 
+  readonly binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
   private boardInt: Board;
@@ -82,26 +82,22 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     return this.binder.poolEvents(input);
   }
 
-  snapScale() {
+  gridScale() {
     return this.gridSizes[this.gridSizeIdx];
   }
 
   incGridSize() {
     this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length);
-    this.state.set('gridSize', this.snapScale());
+    this.state.set('gridSize', this.gridScale());
   }
 
   decGridSize() {
     this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length);
-    this.state.set('gridSize', this.snapScale());
+    this.state.set('gridSize', this.gridScale());
   }
 
   snap(x: number) {
-    return snapGrid(x, this.snapScale());
-  }
-
-  scaledSnap(x: number, scale: number) {
-    return snapGrid(x, this.gridSizes[this.gridSizeIdx] * scale);
+    return snapGrid(x, this.gridScale());
   }
 
   loadBinds(binds: string) {

@@ -45,8 +45,6 @@ export interface BuildContext extends Context {
   readonly state: State;
 
   poolMessages(input: InputState): Collection<ContextedValue<Message>>;
-
   snap(x: number): number;
-  snapScale(): number;
-  scaledSnap(x: number, scale: number): number;
+  gridScale(): number;
 }

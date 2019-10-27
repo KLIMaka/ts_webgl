@@ -1,9 +1,9 @@
 import { Collection, Deck } from "../../collections";
 import { Lexer, LexerRule } from "../../lex/lexer";
+import { error } from "../../logger";
+import { BuildContext, constCtxValue, ContextedValue } from "./api";
 import { EndMove, Flip, Move, NamedMessage, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetSectorCstat, SetWallCstat, Shade, SpriteMode, StartMove } from "./edit/messages";
 import { Message } from "./handlerapi";
-import { ContextedValue, constCtxValue, BuildContext, stateCtxValue } from "./api";
-import { error } from "../../logger";
 
 class MessageParser {
   private lexer = new Lexer();

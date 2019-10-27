@@ -26,12 +26,12 @@ export function getClosestWall(board: Board, hit: Hitscan, d: number): number {
 let snapResult: [number, number, number, SubType] = [0, 0, 0, null];
 export function snap(ctx: BuildContext): [number, number, number, SubType] {
   let hit = ctx.state.get<Hitscan>('hitscan');
-  let w = getClosestWall(ctx.board, hit, ctx.snapScale());
+  let w = getClosestWall(ctx.board, hit, ctx.gridScale());
   if (w != -1) {
     let wall = ctx.board.walls[w];
     return tuple4(snapResult, wall.x, wall.y, w, SubType.MID_WALL);
   } else if (isSector(hit.type)) {
-    let w = closestWallLineInSector(ctx.board, hit.id, hit.x, hit.y, ctx.snapScale());
+    let w = closestWallLineInSector(ctx.board, hit.id, hit.x, hit.y, ctx.gridScale());
     return w == -1 ? snapGrid(hit, ctx, hit.id, hit.type) : snapWall(w, hit, ctx);
   } else if (isSprite(hit.type)) {
     return snapGrid(hit, ctx, hit.id, hit.type);
