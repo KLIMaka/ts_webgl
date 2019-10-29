@@ -45,6 +45,48 @@ class CacheMap<T extends Renderable> {
   }
 }
 
+export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider {
+  private sectors = new CacheMap(updateSector);
+  private walls = new CacheMap(updateWall);
+  private sprites = new CacheMap(updateSprite);
+
+  constructor(readonly ctx: BuildContext) { }
+
+  sector(id: number): SectorRenderable {
+    return this.sectors.get(id, this.ctx);
+  }
+
+  wall(id: number): WallRenderable {
+    return this.walls.get(id, this.ctx);
+  }
+
+  wallPoint(id: number): Renderable {
+    throw new Error('Cant render points');
+  }
+
+  sprite(id: number): Renderable {
+    return this.sprites.get(id, this.ctx);
+  }
+
+  invalidateSector(id: number) {
+    this.sectors.invalidate(id);
+  }
+
+  invalidateWall(id: number) {
+    this.walls.invalidate(id);
+  }
+
+  invalidateSprite(id: number) {
+    this.sprites.invalidate(id);
+  }
+
+  invalidateAll() {
+    this.sectors.invalidateAll();
+    this.walls.invalidateAll();
+    this.sprites.invalidateAll();
+  }
+}
+
 export class CachedBuildRenderableProvider implements BuildRenderableProvider {
   private sectors = new CacheMap(updateSector);
   private walls = new CacheMap(updateWall);

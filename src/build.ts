@@ -22,7 +22,8 @@ import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
-import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import * as RENDERER2D from './modules/engines/build/gl/boardrenderer2d';
+import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
 import { Context } from './modules/engines/build/gl/context';
@@ -171,7 +172,7 @@ function progress(fname: string) {
   }
 }
 
-function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
+function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
   let playerstart = BU.getPlayerStart(board);
   let pointer = GLM.vec3.create();
   let control = new Controller2D();
@@ -195,6 +196,11 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Frame)) return;
+      let max = control.getPointerPosition(pointer, 1, 1);
+      let campos = control.getPosition();
+      let dist = MU.len2d(max[0] - campos[0], max[2] - campos[2]);
+      RENDERER2D.draw(renderables.geometry, this, dist);
+
       let state = ctx.state;
       if (state.get('zoom+')) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
       if (state.get('zoom-')) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
@@ -211,7 +217,7 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
   }
 }
 
-function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
+function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
   let playerstart = BU.getPlayerStart(board);
   let control = new controller.Controller3D();
   control.setFov(90);
@@ -237,6 +243,8 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Frame)) return;
+      RENDERER3D.draw(renderables.geometry, this);
+
       let state = ctx.state;
       let dt = ctx.state.get<number>('frametime');
 
@@ -256,10 +264,10 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
   }
 }
 
-function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context) {
+function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
   ctx.state.register('lookaim', false);
-  let view2d = createViewPoint2d(gl, board, ctx);
-  let view3d = createViewPoint3d(gl, board, ctx);
+  let view2d = createViewPoint2d(gl, board, ctx, renderables);
+  let view3d = createViewPoint3d(gl, board, ctx, renderables);
   let view = view3d;
 
   return {
@@ -369,7 +377,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
 
   let rorLinks = loadRorLinks(board);
-  let impl: RENDERER.Implementation = {
+  let impl: RENDERER3D.Implementation = {
     isMirrorPic(picnum: number) { return picnum == MIRROR_PIC },
     rorLinks() { return rorLinks }
   }
@@ -378,7 +386,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
   context.loadBinds(binds);
   let cache = new RenderablesCache(context);
   context.setBoardInvalidator(cache);
-  let view = createView(gl, board, context);
+  let view = createView(gl, board, context, cache);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
     HANDLER.init(context);
@@ -389,12 +397,12 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
     HANDLER.addHandler(context);
     HANDLER.addHandler(view);
 
-    RENDERER.init(context, impl);
+    RENDERER3D.init(context, impl);
+    RENDERER2D.init(context);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       BGL.newFrame(gl);
 
       PROFILE.start();
-      RENDERER.draw(cache.geometry, view);
       HANDLER.handle(INPUT.get(), view, time);
       PROFILE.endProfile()
 

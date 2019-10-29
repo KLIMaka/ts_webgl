@@ -6,7 +6,7 @@ import { walllen } from '../boardutils';
 import { isSector, isWall, SubType } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
 import * as U from '../utils';
-import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid } from './renderable';
+import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid, SectorRenderable } from './renderable';
 import { State } from '../../../stategl';
 import { BuildContext } from '../api';
 
@@ -78,6 +78,10 @@ export class WallHelper implements Renderable {
     this.mid.reset();
     this.bot.reset();
   }
+}
+
+export function updateSector2d(ctx: BuildContext, sectorId: number): SectorRenderable {
+
 }
 
 let tmp = GLM.vec4.create();

@@ -1,5 +1,5 @@
 import { BloodBoard } from "./bloodstructs";
-import { RorLink, RorLinks } from "./gl/boardrenderer";
+import { RorLink, RorLinks } from "./gl/boardrenderer3d";
 import { Sprite } from "./structs";
 
 export const MIRROR_PIC = 504;
