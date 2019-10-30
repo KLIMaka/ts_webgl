@@ -6,7 +6,7 @@ import { walllen } from '../boardutils';
 import { isSector, isWall, SubType } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
 import * as U from '../utils';
-import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid } from './renderable';
+import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid, SectorRenderable, WallRenderable } from './renderable';
 import { State } from '../../../stategl';
 import { BuildContext } from '../api';
 
@@ -14,9 +14,9 @@ export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
   public floor: Solid = new Solid();
 
-  draw(gl: WebGLRenderingContext, state: State) {
-    this.ceiling.draw(gl, state);
-    this.floor.draw(gl, state);
+  draw(ctx: BuildContext, state: State) {
+    this.ceiling.draw(ctx, state);
+    this.floor.draw(ctx, state);
   }
 
   reset() {
@@ -30,10 +30,10 @@ export class WallSolid implements Renderable {
   public mid: Solid = new Solid();
   public bot: Solid = new Solid();
 
-  draw(gl: WebGLRenderingContext, state: State) {
-    this.top.draw(gl, state);
-    this.mid.draw(gl, state);
-    this.bot.draw(gl, state);
+  draw(ctx: BuildContext, state: State) {
+    this.top.draw(ctx, state);
+    this.mid.draw(ctx, state);
+    this.bot.draw(ctx, state);
   }
 
   reset() {
@@ -49,9 +49,9 @@ export class SectorHelper implements Renderable {
     public floor: Renderable = NULL_RENDERABLE
   ) { }
 
-  draw(gl: WebGLRenderingContext, state: State) {
-    this.ceiling.draw(gl, state);
-    this.floor.draw(gl, state);
+  draw(ctx: BuildContext, state: State) {
+    this.ceiling.draw(ctx, state);
+    this.floor.draw(ctx, state);
   }
 
   reset() {
@@ -67,10 +67,10 @@ export class WallHelper implements Renderable {
     public bot: Renderable = NULL_RENDERABLE
   ) { }
 
-  draw(gl: WebGLRenderingContext, state: State) {
-    this.top.draw(gl, state);
-    this.mid.draw(gl, state);
-    this.bot.draw(gl, state);
+  draw(ctx: BuildContext, state: State) {
+    this.top.draw(ctx, state);
+    this.mid.draw(ctx, state);
+    this.bot.draw(ctx, state);
   }
 
   reset() {
@@ -78,6 +78,38 @@ export class WallHelper implements Renderable {
     this.mid.reset();
     this.bot.reset();
   }
+}
+
+const NULL_SECTOR_RENDERAABLE: SectorRenderable = {
+  floor: NULL_RENDERABLE,
+  ceiling: NULL_RENDERABLE,
+  draw: () => { },
+  reset: () => { }
+}
+
+export function updateSector2d(ctx: BuildContext, sectorId: number, SectorRenderable: SectorRenderable): SectorRenderable {
+  return NULL_SECTOR_RENDERAABLE;
+}
+
+let white = GLM.vec4.fromValues(1, 1, 1, 1);
+let red = GLM.vec4.fromValues(1, 0, 0, 1);
+let blue = GLM.vec4.fromValues(0, 0, 1, 1);
+export function updateWall2d(ctx: BuildContext, wallId: number, renderable: WallHelper): WallRenderable {
+  renderable = renderable == null ? new WallHelper() : renderable;
+  renderable.mid.reset();
+  let line = new Wireframe()
+  renderable.mid = line;
+
+  let board = ctx.board;
+  let buff = line.buff;
+  buff.allocate(2, 2);
+  let wall = board.walls[wallId];
+  let wall2 = board.walls[wall.point2];
+  buff.writePos(0, wall.x, 0, wall.y);
+  buff.writePos(1, wall2.x, 0, wall2.y);
+  buff.writeLine(0, 0, 1);
+  GLM.vec4.copy(line.color, wall.cstat.masking ? blue : wall.nextwall == -1 ? white : red);
+  return renderable;
 }
 
 let tmp = GLM.vec4.create();
@@ -230,7 +262,7 @@ function fillBuffersForSectorWireframe(sec: Sector, heinum: number, z: number, b
     }
   }
 }
-export function buildSectorWireframe(ctx: BuildContext, secId: number): SectorHelper {
+export function updateSectorWireframe(ctx: BuildContext, secId: number): SectorHelper {
   let board = ctx.board;
   let ceiling = new Wireframe();
   let floor = new Wireframe();

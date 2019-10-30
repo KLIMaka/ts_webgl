@@ -2,7 +2,6 @@ import { len2d } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Hitscan } from "../hitscan";
 import { ZSCALE } from "../utils";
-import { Move } from "./messages";
 
 export class MovingHandle {
   private startPoint = GLM.vec3.create();

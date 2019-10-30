@@ -1,4 +1,4 @@
-import { arcsIntersects, monoatan2, dot2d } from '../../../libs/mathutils';
+import { arcsIntersects, monoatan2, dot2d, len2d } from '../../../libs/mathutils';
 import * as GLM from '../../../libs_js/glmatrix';
 import { Deck, IndexedDeck } from '../../collections';
 import * as PROFILE from '../../profiler';
@@ -7,7 +7,7 @@ import { Board } from './structs';
 import * as U from './utils';
 import { ViewPoint } from './api';
 
-export interface Result {
+export interface VisResult {
   forSector<T>(ctx: T, secv: SectorVisitor<T>): void;
   forWall<T>(ctx: T, wallv: WallVisitor<T>): void;
   forSprite<T>(ctx: T, sprv: SpriteVisitor<T>): void;
@@ -84,10 +84,10 @@ export function createSpriteCollector<T>(pred: SpritePredicate<T>) {
 }
 
 
-export class AllBoardVisitorResult implements Result {
+export class AllBoardVisitorResult implements VisResult {
   private board: Board;
 
-  visit(board: Board): Result {
+  visit(board: Board): VisResult {
     this.board = board;
     return this;
   }
@@ -112,6 +112,66 @@ export class AllBoardVisitorResult implements Result {
   }
 }
 
+export class TopDownBoardVisitorResult implements VisResult {
+  private board: Board;
+  private cx: number;
+  private cy: number;
+  private dist: number;
+  private visibleSectors = new Set<number>();
+
+  visit(board: Board, campos: GLM.Vec3Array, dist: number): VisResult {
+    this.board = board;
+    this.cx = campos[0];
+    this.cy = campos[2];
+    this.dist = dist;
+    this.prescan();
+    return this;
+  }
+
+  private prescan() {
+    this.visibleSectors.clear();
+    for (let s = 0; s < this.board.numsectors; s++) {
+      if (U.inSector(this.board, this.cx, this.cy, s)) {
+        this.visibleSectors.add(s);
+        continue;
+      }
+      let sec = this.board.sectors[s];
+      let end = sec.wallptr + sec.wallnum;
+      for (let w = sec.wallptr; w < end; w++) {
+        let wall = this.board.walls[w];
+        if (len2d(this.cx - wall.x, this.cy - wall.y) < this.dist) {
+          this.visibleSectors.add(s);
+          break;
+        }
+      }
+    }
+  }
+
+  forSector<T>(ctx: T, secv: SectorVisitor<T>): void {
+    for (let s of this.visibleSectors.keys()) secv(ctx, s);
+  }
+
+  forWall<T>(ctx: T, wallv: WallVisitor<T>): void {
+    for (let s of this.visibleSectors.keys()) {
+      let sec = this.board.sectors[s];
+      let end = sec.wallptr + sec.wallnum;
+      for (let w = sec.wallptr; w < end; w++) {
+        let wall = this.board.walls[w];
+        if (len2d(this.cx - wall.x, this.cy - wall.y) < this.dist) {
+          wallv(ctx, w, s);
+        }
+      }
+    }
+  }
+
+  forSprite<T>(ctx: T, sprv: SpriteVisitor<T>): void {
+    for (let s = 0; s < this.board.numsprites; s++) {
+      let spr = this.board.sprites[s];
+      if (len2d(this.cx - spr.x, this.cy - spr.y) < this.dist) sprv(ctx, s);
+    }
+  }
+}
+
 function wallBehind(board: Board, wallId: number, ms: U.MoveStruct, fwd: GLM.Mat3Array) {
   // return false;
   let wall1 = board.walls[wallId];
@@ -121,7 +181,7 @@ function wallBehind(board: Board, wallId: number, ms: U.MoveStruct, fwd: GLM.Mat
   return dot2d(dx1, dy1, fwd[0], fwd[2]) < 0 && dot2d(dx2, dy2, fwd[0], fwd[2]) < 0;
 }
 
-export class PvsBoardVisitorResult implements Result {
+export class PvsBoardVisitorResult implements VisResult {
   private sectors = new Deck<number>();
   private walls = new Deck<number>();
   private sprites = new Deck<number>();
@@ -209,7 +269,7 @@ export class PvsBoardVisitorResult implements Result {
   }
 
 
-  public visit(board: Board, ms: U.MoveStruct, fwd: GLM.Mat3Array): Result {
+  public visit(board: Board, ms: U.MoveStruct, fwd: GLM.Mat3Array): VisResult {
     this.init(board, ms.sec);
     this.fillPVS(ms, fwd);
     PROFILE.get(null).inc('pvs', this.prepvs.length());

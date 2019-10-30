@@ -5,7 +5,7 @@ import * as MU from './libs/mathutils';
 import * as controller from './modules/controller3d';
 import * as DS from './modules/drawstruct';
 import * as ART from './modules/engines/build/art';
-import * as RENDERER from './modules/engines/build/gl/boardrenderer';
+import * as RENDERER from './modules/engines/build/gl/boardrenderer3d';
 import * as GRP from './modules/engines/build/grp';
 import * as BUILDLOADER from './modules/engines/build/loader';
 import * as BS from './modules/engines/build/structs';

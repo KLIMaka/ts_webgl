@@ -6,6 +6,7 @@ import * as SHADER from '../../../shaders';
 import { State } from '../../../stategl';
 import * as BUFF from './buffers';
 import { Renderable } from './renderable';
+import { BuildContext } from '../api';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state: State;
@@ -65,18 +66,17 @@ export function setClipPlane(x: number, y: number, z: number, w: number) {
   state.setUniform('clipPlane', clipPlane);
 }
 
-export function draw(gl: WebGLRenderingContext, renderable: Renderable) {
+export function draw(ctx: BuildContext, renderable: Renderable) {
   if (renderable == null) return;
-  renderable.draw(gl, state);
+  renderable.draw(ctx, state);
 }
 
-export function drawAll(gl: WebGLRenderingContext, renderables: Collection<Renderable>) {
-  for (let i = 0; i < renderables.length(); i++) {
-    draw(gl, renderables.get(i));
-  }
+export function drawAll(ctx: BuildContext, renderables: Collection<Renderable>) {
+  for (let r of renderables) draw(ctx, r);
 }
 
-export function newFrame(gl: WebGLRenderingContext) {
+export function newFrame(ctx: BuildContext) {
+  let gl = ctx.gl;
   gl.clearColor(0.2, 0.2, 0.2, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);

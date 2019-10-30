@@ -4,6 +4,7 @@ import * as DS from '../../../drawstruct';
 import { State } from '../../../stategl';
 import * as PROFILE from '../../../profiler';
 import * as BUFF from './buffers';
+import { BuildContext } from '../api';
 
 export class Buffer {
   private ptr: Pointer;
@@ -58,31 +59,38 @@ export enum Type {
 }
 
 export interface Renderable {
-  draw(gl: WebGLRenderingContext, state: State): void;
+  draw(ctx: BuildContext, state: State): void;
   reset(): void;
 }
 
 export const NULL_RENDERABLE: Renderable = {
-  draw: (gl: WebGLRenderingContext, state: State) => { },
+  draw: (ctx: BuildContext, state: State) => { },
   reset: () => { }
 }
+
+export class StateRenderable implements Renderable {
+  constructor(readonly renderable: Renderable, readonly pred: (cts: BuildContext) => boolean) { }
+  public draw(ctx: BuildContext, state: State): void { if (this.pred(ctx)) this.renderable.draw(ctx, state) }
+  public reset() { this.renderable.reset() }
+}
+
+export function wrapState(state: string, rend: Renderable) {
+  return new StateRenderable(rend, statePred(state));
+}
+
+export function wrapStatePred(pred: (cts: BuildContext) => boolean, rend: Renderable) {
+  return new StateRenderable(rend, pred);
+}
+
+export function statePred(name: string): (cts: BuildContext) => boolean { return (ctx: BuildContext) => ctx.state.get(name) };
+export function notStatePred(name: string): (cts: BuildContext) => boolean { return (ctx: BuildContext) => !ctx.state.get(name) };
 
 export class RenderableList implements Renderable {
   constructor(
     private renderables: Array<Renderable>
   ) { }
-
-  public draw(gl: WebGLRenderingContext, state: State): void {
-    for (let i = 0; i < this.renderables.length; i++) {
-      this.renderables[i].draw(gl, state);
-    }
-  }
-
-  public reset() {
-    for (let i = 0; i < this.renderables.length; i++) {
-      this.renderables[i].reset();
-    }
-  }
+  public draw(ctx: BuildContext, state: State): void { for (let r of this.renderables) r.draw(ctx, state) }
+  public reset() { for (let r of this.renderables) r.reset() }
 }
 
 export interface SectorRenderable extends Renderable {
@@ -114,7 +122,7 @@ export class Solid implements Renderable {
   public parallax: number = 0;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
-  public draw(gl: WebGLRenderingContext, state: State) {
+  public draw(ctx: BuildContext, state: State) {
     if (!this.renderable()) return;
     let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
@@ -127,7 +135,7 @@ export class Solid implements Renderable {
     state.setUniform('pluN', this.pal);
     state.setUniform('shade', this.shade);
     state.setDrawElements(this.buff.get());
-    state.draw(gl);
+    state.draw(ctx.gl);
     PROFILE.get(null).inc('draws');
   }
 
@@ -147,7 +155,7 @@ export class GridRenderable implements Renderable {
   public solid: Solid;
   public gridTexMat: GLM.Mat4Array;
 
-  public draw(gl: WebGLRenderingContext, state: State) {
+  public draw(ctx: BuildContext, state: State) {
     if (!this.renderable()) return;
     let ptr = this.solid.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
@@ -157,7 +165,7 @@ export class GridRenderable implements Renderable {
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
-    state.draw(gl);
+    state.draw(ctx.gl);
     PROFILE.get(null).inc('draws');
   }
 
@@ -175,7 +183,7 @@ export class Wireframe implements Renderable {
   public mode: number = WebGLRenderingContext.LINES;
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
-  public draw(gl: WebGLRenderingContext, state: State) {
+  public draw(ctx: BuildContext, state: State) {
     if (!this.renderable()) return;
     let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
@@ -185,7 +193,7 @@ export class Wireframe implements Renderable {
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
-    state.draw(gl, this.mode);
+    state.draw(ctx.gl, this.mode);
     PROFILE.get(null).inc('draws');
   }
 

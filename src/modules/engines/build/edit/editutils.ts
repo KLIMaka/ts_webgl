@@ -1,5 +1,5 @@
 import { int, len2d, tuple2, tuple4 } from "../../../../libs/mathutils";
-import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallLineInSector } from "../boardutils";
+import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallLineInSector, closestWall } from "../boardutils";
 import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
 import { Board } from "../structs";
 import { slope, sectorOfWall } from "../utils";
@@ -15,8 +15,11 @@ export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
   }
 }
 
-export function getClosestWall(board: Board, hit: Hitscan, d: number): number {
-  if (isWall(hit.type))
+export function getClosestWall(board: Board, hit: Hitscan, d: number, twod: boolean): number {
+  if (twod) {
+    let [w, dist] = closestWall(board, hit.start[0], hit.start[1], -1);
+    return dist <= d ? w : -1;
+  } else if (isWall(hit.type))
     return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, d);
   else if (isSector(hit.type))
     return closestWallInSector(board, hit.id, hit.x, hit.y, d);
@@ -26,7 +29,7 @@ export function getClosestWall(board: Board, hit: Hitscan, d: number): number {
 let snapResult: [number, number, number, SubType] = [0, 0, 0, null];
 export function snap(ctx: BuildContext): [number, number, number, SubType] {
   let hit = ctx.state.get<Hitscan>('hitscan');
-  let w = getClosestWall(ctx.board, hit, ctx.gridScale());
+  let w = getClosestWall(ctx.board, hit, ctx.gridScale(), ctx.state.get('view_2d'));
   if (w != -1) {
     let wall = ctx.board.walls[w];
     return tuple4(snapResult, wall.x, wall.y, w, SubType.MID_WALL);

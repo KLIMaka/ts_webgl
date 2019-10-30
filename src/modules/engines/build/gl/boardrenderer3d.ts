@@ -1,18 +1,18 @@
-import * as MU from '../../../../libs/mathutils';
-import * as VEC from '../../../../libs/vecmath';
+import { dot2d } from '../../../../libs/mathutils';
+import { mirrorBasis, normal2d, reflectPoint3d } from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
-import * as PROFILE from '../../../../modules/profiler';
+import * as PROFILE from '../../../profiler';
 import { Deck } from '../../../collections';
-import * as BU from '../boardutils';
-import * as VIS from '../boardvisitor';
-import { Board } from '../structs';
-import * as U from '../utils';
-import * as BGL from './buildgl';
-import { Renderable, BuildRenderableProvider } from './renderable';
 import { BuildContext, ViewPoint } from '../api';
+import { unpackWallId } from '../boardutils';
+import { AllBoardVisitorResult, createSectorCollector, createWallCollector, PvsBoardVisitorResult, VisResult } from '../boardvisitor';
+import { Board } from '../structs';
+import { wallVisible, ZSCALE } from '../utils';
+import * as BGL from './buildgl';
+import { BuildRenderableProvider, Renderable } from './renderable';
 
 export class RorLink {
-  constructor(public srcSpriteId: number, public dstSpriteId: number) { }
+  constructor(readonly srcSpriteId: number, readonly dstSpriteId: number) { }
 }
 
 export class RorLinks {
@@ -72,8 +72,8 @@ function writeAll() {
   context.gl.colorMask(true, true, true, true);
 }
 
-let visible = new VIS.PvsBoardVisitorResult();
-let all = new VIS.AllBoardVisitorResult();
+let visible = new PvsBoardVisitorResult();
+let all = new AllBoardVisitorResult();
 function drawGeometry(renderables: BuildRenderableProvider, view: ViewPoint) {
   PROFILE.startProfile('processing');
   let result = view.sec == -1
@@ -90,11 +90,11 @@ function drawGeometry(renderables: BuildRenderableProvider, view: ViewPoint) {
   drawRooms(renderables, result);
 }
 
-let rorViss = new Map<RorLink, VIS.PvsBoardVisitorResult>();
+let rorViss = new Map<RorLink, PvsBoardVisitorResult>();
 function getLinkVis(link: RorLink) {
   let vis = rorViss.get(link);
   if (vis == undefined) {
-    vis = new VIS.PvsBoardVisitorResult();
+    vis = new PvsBoardVisitorResult();
     rorViss.set(link, vis);
   }
   return vis;
@@ -113,18 +113,18 @@ function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   writeStencilOnly(stencilValue);
-  BGL.draw(context.gl, surface);
+  BGL.draw(context, surface);
 
   let src = context.board.sprites[link.srcSpriteId];
   let dst = context.board.sprites[link.dstSpriteId];
-  GLM.vec3.set(srcPos, src.x, src.z / U.ZSCALE, src.y);
-  GLM.vec3.set(dstPos, dst.x, dst.z / U.ZSCALE, dst.y);
+  GLM.vec3.set(srcPos, src.x, src.z / ZSCALE, src.y);
+  GLM.vec3.set(dstPos, dst.x, dst.z / ZSCALE, dst.y);
   GLM.vec3.sub(diff, srcPos, dstPos);
   GLM.mat4.copy(stackTransform, view.getTransformMatrix());
   GLM.mat4.translate(stackTransform, stackTransform, diff);
   GLM.vec3.sub(npos, view.getPosition(), diff);
 
-  mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1] * U.ZSCALE;
+  mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1] * ZSCALE;
   BGL.setViewMatrix(stackTransform);
   BGL.setPosition(npos);
   writeStenciledOnly(stencilValue);
@@ -133,12 +133,12 @@ function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   writeDepthOnly();
-  BGL.draw(context.gl, surface);
+  BGL.draw(context, surface);
 }
 
-let rorSectorCollector = VIS.createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
+let rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 
-function drawRor(renderables: BuildRenderableProvider, result: VIS.Result, view: ViewPoint) {
+function drawRor(renderables: BuildRenderableProvider, result: VisResult, view: ViewPoint) {
   result.forSector(context.board, rorSectorCollector.visit());
   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
@@ -153,20 +153,20 @@ function drawRor(renderables: BuildRenderableProvider, result: VIS.Result, view:
   writeAll();
 }
 
-let mirrorWallsCollector = VIS.createWallCollector((board: Board, wallId: number, sectorId: number) => implementation.isMirrorPic(board.walls[wallId].picnum));
-let mirrorVis = new VIS.PvsBoardVisitorResult();
+let mirrorWallsCollector = createWallCollector((board: Board, wallId: number, sectorId: number) => implementation.isMirrorPic(board.walls[wallId].picnum));
+let mirrorVis = new PvsBoardVisitorResult();
 let wallNormal = GLM.vec2.create();
 let mirrorNormal = GLM.vec3.create();
 let mirroredTransform = GLM.mat4.create();
 let mpos = GLM.vec3.create();
 
-function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, view: ViewPoint) {
+function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, view: ViewPoint) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
-    let w = BU.unpackWallId(mirrorWallsCollector.walls.get(i));
-    if (!U.wallVisible(context.board, w, view))
+    let w = unpackWallId(mirrorWallsCollector.walls.get(i));
+    if (!wallVisible(context.board, w, view))
       continue;
 
     // draw mirror surface into stencil
@@ -174,22 +174,22 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, v
     BGL.setViewMatrix(view.getTransformMatrix());
     BGL.setPosition(view.getPosition());
     writeStencilOnly(i + 127);
-    BGL.draw(context.gl, r);
+    BGL.draw(context, r);
 
     // draw reflections in stenciled area
     let w1 = context.board.walls[w]; let w2 = context.board.walls[w1.point2];
     GLM.vec2.set(wallNormal, w2.x - w1.x, w2.y - w1.y);
-    VEC.normal2d(wallNormal, wallNormal);
+    normal2d(wallNormal, wallNormal);
     GLM.vec3.set(mirrorNormal, wallNormal[0], 0, wallNormal[1]);
-    let mirrorrD = -MU.dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
-    VEC.mirrorBasis(mirroredTransform, view.getTransformMatrix(), view.getPosition(), mirrorNormal, mirrorrD);
+    let mirrorrD = -dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
+    mirrorBasis(mirroredTransform, view.getTransformMatrix(), view.getPosition(), mirrorNormal, mirrorrD);
 
     BGL.setViewMatrix(mirroredTransform);
     BGL.setClipPlane(mirrorNormal[0], mirrorNormal[1], mirrorNormal[2], mirrorrD);
     context.gl.cullFace(WebGLRenderingContext.FRONT);
     let [sx, sy, sz] = view.getPosition();
     GLM.vec3.set(mpos, sx, sy, sz);
-    VEC.reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
+    reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     mstmp.sec = view.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
     writeStenciledOnly(i + 127);
     drawRooms(renderables, mirrorVis.visit(context.board, mstmp, view.getForward()));
@@ -199,7 +199,7 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VIS.Result, v
     BGL.setViewMatrix(view.getTransformMatrix());
     writeDepthOnly();
     BGL.setClipPlane(0, 0, 0, 0);
-    BGL.draw(context.gl, r);
+    BGL.draw(context, r);
   }
   context.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll();
@@ -249,7 +249,7 @@ function spriteVisitor(board: Board, spriteId: number) {
   PROFILE.incCount('sprites');
 }
 
-function drawRooms(r: BuildRenderableProvider, result: VIS.Result) {
+function drawRooms(r: BuildRenderableProvider, result: VisResult) {
   PROFILE.startProfile('processing');
   renderables = r;
   clearDrawLists();
@@ -259,17 +259,17 @@ function drawRooms(r: BuildRenderableProvider, result: VIS.Result) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.drawAll(context.gl, surfaces);
+  BGL.drawAll(context, surfaces);
 
   context.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context.gl, sprites);
+  BGL.drawAll(context, sprites);
   context.gl.polygonOffset(0, 0);
 
   context.gl.enable(WebGLRenderingContext.BLEND);
-  BGL.drawAll(context.gl, surfacesTrans);
+  BGL.drawAll(context, surfacesTrans);
 
   context.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context.gl, spritesTrans);
+  BGL.drawAll(context, spritesTrans);
   context.gl.polygonOffset(0, 0);
   context.gl.disable(WebGLRenderingContext.BLEND);
   PROFILE.endProfile();

@@ -28,10 +28,10 @@ const END_MOVE = new EndMove();
 const SET_PICNUM = new SetPicnum(-1);
 const HIGHLIGHT = new Highlight();
 
-const SNAP_RANGE = 16;
 
 const MOVE_STATE = 'move';
 const LOOP_STATE = 'select_loop_mod';
+const SNAP_DIST = 'select.snap_dist';
 
 export const MOVE_COPY = 'move.copy';
 export const MOVE_VERTICAL = 'move.vertical';
@@ -54,13 +54,13 @@ export function getFromHitscan(ctx: BuildContext, hit: Hitscan): Deck<MessageHan
   let fullLoop = ctx.state.get<boolean>(LOOP_STATE);
   list.clear();
   let board = ctx.board;
-  let w = getClosestWall(board, hit, SNAP_RANGE);
+  let w = getClosestWall(board, hit, ctx.state.get(SNAP_DIST), ctx.state.get('view_2d'));
   if (w != -1) {
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
   } else if (isWall(hit.type)) {
     wallSegment(fullLoop, board, hit.id, hit.type == SubType.LOWER_WALL);
   } else if (isSector(hit.type)) {
-    let w = closestWallLineInSector(board, hit.id, hit.x, hit.y, SNAP_RANGE);
+    let w = closestWallLineInSector(board, hit.id, hit.x, hit.y, ctx.state.get(SNAP_DIST));
     if (w != -1) wallSegment(fullLoop, board, w, hit.type == SubType.FLOOR); else sector(fullLoop, board, hit);
   } else if (isSprite(hit.type)) {
     list.push(SpriteEnt.create(hit.id));
@@ -104,6 +104,7 @@ export class Selection extends MessageHandlerReflective {
     ctx.state.register(MOVE_PARALLEL, false);
     ctx.state.register(MOVE_ROTATE, false);
     ctx.state.register(LOOP_STATE, false);
+    ctx.state.register(SNAP_DIST, 64);
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {

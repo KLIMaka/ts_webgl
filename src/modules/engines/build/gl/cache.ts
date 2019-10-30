@@ -1,7 +1,7 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import { SubType } from '../hitscan';
-import { buildCeilingHinge, buildFloorHinge, buildSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
-import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable, Wireframe } from './renderable';
+import { buildCeilingHinge, buildFloorHinge, updateSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSector2d, updateWall2d } from './builders';
+import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable, Wireframe, wrapState, notStatePred, wrapStatePred } from './renderable';
 import { BuildContext, BoardInvalidator } from '../api';
 
 class Entry<T> {
@@ -42,6 +42,48 @@ class CacheMap<T extends Renderable> {
     for (let id in this.cache) {
       this.invalidate(<any>id);
     }
+  }
+}
+
+export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider {
+  private sectors = new CacheMap(updateSector2d);
+  private walls = new CacheMap(updateWall2d);
+  private sprites = new CacheMap(updateSprite);
+
+  constructor(readonly ctx: BuildContext) { }
+
+  sector(id: number): SectorRenderable {
+    return this.sectors.get(id, this.ctx);
+  }
+
+  wall(id: number): WallRenderable {
+    return this.walls.get(id, this.ctx);
+  }
+
+  wallPoint(id: number): Renderable {
+    throw new Error('Cant render points');
+  }
+
+  sprite(id: number): Renderable {
+    return this.sprites.get(id, this.ctx);
+  }
+
+  invalidateSector(id: number) {
+    this.sectors.invalidate(id);
+  }
+
+  invalidateWall(id: number) {
+    this.walls.invalidate(id);
+  }
+
+  invalidateSprite(id: number) {
+    this.sprites.invalidate(id);
+  }
+
+  invalidateAll() {
+    this.sectors.invalidateAll();
+    this.walls.invalidateAll();
+    this.sprites.invalidateAll();
   }
 }
 
@@ -140,34 +182,38 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   private updateSectorHelper(secId: number, renderable: SectorHelper): SectorHelper {
     if (renderable == null) renderable = new SectorHelper();
     renderable.reset();
-    let ceiling = new Array<Renderable>();
-    let floor = new Array<Renderable>();
 
+
+    let ceiling2d = new Array<Renderable>();
+    let floor2d = new Array<Renderable>();
     let sectorRenderable = this.cache.sector(secId);
     let ceilingGrid = new GridRenderable();
     let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, SubType.CEILING));
     ceilingGrid.gridTexMat = gridMatrix;
     ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
-    ceiling.push(ceilingGrid);
+    ceiling2d.push(ceilingGrid);
     let floorGrid = new GridRenderable();
     floorGrid.gridTexMat = gridMatrix;
     floorGrid.solid = <Solid>sectorRenderable.floor;
-    floor.push(floorGrid);
-
-    let sectorWireframe = buildSectorWireframe(this.ctx, secId);
-    ceiling.push(sectorWireframe.ceiling);
-    floor.push(sectorWireframe.floor);
+    floor2d.push(floorGrid);
 
     let sec = this.ctx.board.sectors[secId];
     let end = sec.wallptr + sec.wallnum;
     for (let w = sec.wallptr; w < end; w++) {
-      ceiling.push(updateWallPointCeiling(this.ctx, w));
-      floor.push(updateWallPointFloor(this.ctx, w));
+      ceiling2d.push(updateWallPointCeiling(this.ctx, w));
+      floor2d.push(updateWallPointFloor(this.ctx, w));
     }
+
+    let ceiling = new Array<Renderable>();
+    let floor = new Array<Renderable>();
+    let sectorWireframe = updateSectorWireframe(this.ctx, secId);
+    ceiling.push(sectorWireframe.ceiling);
+    floor.push(sectorWireframe.floor);
     ceiling.push(buildCeilingHinge(this.ctx, secId));
     floor.push(buildFloorHinge(this.ctx, secId));
-    renderable.ceiling = new RenderableList(ceiling);
-    renderable.floor = new RenderableList(floor);
+
+    renderable.ceiling = new RenderableList([...ceiling2d, wrapStatePred(notStatePred('view_2d'), new RenderableList(ceiling))]);
+    renderable.floor = new RenderableList([...floor2d, wrapStatePred(notStatePred('view_2d'), new RenderableList(floor))]);
     return renderable;
   }
 
@@ -223,30 +269,36 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
 export class RenderablesCache implements BoardInvalidator {
   readonly geometry: CachedBuildRenderableProvider;
   readonly helpers: CachedHelperBuildRenderableProvider;
+  readonly topdown: CachedTopDownBuildRenderableProvider;
 
   constructor(ctx: BuildContext) {
     this.geometry = new CachedBuildRenderableProvider(ctx);
     this.helpers = new CachedHelperBuildRenderableProvider(this.geometry, ctx);
+    this.topdown = new CachedTopDownBuildRenderableProvider(ctx);
   }
 
   invalidateAll(): void {
     this.geometry.invalidateAll();
     this.helpers.invalidateAll();
+    this.topdown.invalidateAll();
   }
 
   invalidateSector(id: number): void {
     this.geometry.invalidateSector(id);
     this.helpers.invalidateSector(id);
+    this.topdown.invalidateSector(id);
   }
 
   invalidateWall(id: number): void {
     this.geometry.invalidateWall(id);
     this.helpers.invalidateWall(id);
+    this.topdown.invalidateWall(id);
   }
 
   invalidateSprite(id: number): void {
     this.geometry.invalidateSprite(id);
     this.helpers.invalidateSprite(id);
+    this.topdown.invalidateSprite(id);
   }
 }
 
