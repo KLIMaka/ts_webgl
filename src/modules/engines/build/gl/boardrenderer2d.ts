@@ -3,6 +3,7 @@ import { BuildRenderableProvider, Renderable } from './renderable';
 import { TopDownBoardVisitorResult, VisResult } from '../boardvisitor';
 import * as PROFILE from '../../../profiler';
 import * as BGL from './buildgl';
+import * as GLM from '../../../../libs_js/glmatrix';
 import { Deck } from '../../../collections';
 import { Board } from '../structs';
 
@@ -19,9 +20,9 @@ export function init(ctx: BuildContext) {
 }
 
 let visible = new TopDownBoardVisitorResult();
-export function draw(renderables: BuildRenderableProvider, view: ViewPoint, dist: number) {
+export function draw(renderables: BuildRenderableProvider, view: ViewPoint, campos: GLM.Vec3Array, dist: number) {
   PROFILE.startProfile('processing');
-  let result = visible.visit(context.board, view, dist);
+  let result = visible.visit(context.board, campos, dist);
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(view.getProjectionMatrix());
@@ -65,6 +66,6 @@ function drawRooms(r: BuildRenderableProvider, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.drawAll(context.gl, surfaces);
+  BGL.drawAll(context, surfaces);
   PROFILE.endProfile();
 }

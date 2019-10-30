@@ -113,7 +113,7 @@ function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   writeStencilOnly(stencilValue);
-  BGL.draw(context.gl, surface);
+  BGL.draw(context, surface);
 
   let src = context.board.sprites[link.srcSpriteId];
   let dst = context.board.sprites[link.dstSpriteId];
@@ -133,7 +133,7 @@ function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   writeDepthOnly();
-  BGL.draw(context.gl, surface);
+  BGL.draw(context, surface);
 }
 
 let rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
@@ -174,7 +174,7 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, vi
     BGL.setViewMatrix(view.getTransformMatrix());
     BGL.setPosition(view.getPosition());
     writeStencilOnly(i + 127);
-    BGL.draw(context.gl, r);
+    BGL.draw(context, r);
 
     // draw reflections in stenciled area
     let w1 = context.board.walls[w]; let w2 = context.board.walls[w1.point2];
@@ -199,7 +199,7 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, vi
     BGL.setViewMatrix(view.getTransformMatrix());
     writeDepthOnly();
     BGL.setClipPlane(0, 0, 0, 0);
-    BGL.draw(context.gl, r);
+    BGL.draw(context, r);
   }
   context.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll();
@@ -259,17 +259,17 @@ function drawRooms(r: BuildRenderableProvider, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.drawAll(context.gl, surfaces);
+  BGL.drawAll(context, surfaces);
 
   context.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context.gl, sprites);
+  BGL.drawAll(context, sprites);
   context.gl.polygonOffset(0, 0);
 
   context.gl.enable(WebGLRenderingContext.BLEND);
-  BGL.drawAll(context.gl, surfacesTrans);
+  BGL.drawAll(context, surfacesTrans);
 
   context.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context.gl, spritesTrans);
+  BGL.drawAll(context, spritesTrans);
   context.gl.polygonOffset(0, 0);
   context.gl.disable(WebGLRenderingContext.BLEND);
   PROFILE.endProfile();

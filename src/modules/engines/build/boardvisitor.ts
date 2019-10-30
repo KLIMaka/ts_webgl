@@ -119,10 +119,10 @@ export class TopDownBoardVisitorResult implements VisResult {
   private dist: number;
   private visibleSectors = new Set<number>();
 
-  visit(board: Board, view: ViewPoint, dist: number): VisResult {
+  visit(board: Board, campos: GLM.Vec3Array, dist: number): VisResult {
     this.board = board;
-    this.cx = view.x;
-    this.cy = view.y;
+    this.cx = campos[0];
+    this.cy = campos[2];
     this.dist = dist;
     this.prescan();
     return this;

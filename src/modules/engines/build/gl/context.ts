@@ -36,6 +36,8 @@ class StateImpl implements State {
   }
 }
 
+export const VIEW_2D = 'view_2d';
+
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
@@ -56,6 +58,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.state.register('mouseX', 0);
     this.state.register('mouseY', 0);
     this.state.register('gridSize', 128);
+    this.state.register(VIEW_2D, false);
   }
 
   get invalidator() {
@@ -80,6 +83,11 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.state.set('mouseY', input.mouseY);
     this.binder.updateState(input, this.state);
     return this.binder.poolEvents(input);
+  }
+
+  switchViewMode() {
+    let mode = this.state.get(VIEW_2D);
+    this.state.set(VIEW_2D, !mode);
   }
 
   gridScale() {
@@ -108,6 +116,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     switch (msg.name) {
       case 'grid+': this.incGridSize(); return;
       case 'grid-': this.decGridSize(); return;
+      case 'view_mode': this.switchViewMode(); return;
     }
   }
 }

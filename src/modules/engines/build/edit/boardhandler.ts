@@ -52,7 +52,7 @@ function draw() {
   context.gl.enable(WebGLRenderingContext.BLEND);
   RENDER.list.clear();
   handlers.handle(RENDER, context);
-  BGL.drawAll(context.gl, RENDER.list);
+  BGL.drawAll(context, RENDER.list);
   context.gl.disable(WebGLRenderingContext.BLEND);
   context.gl.enable(WebGLRenderingContext.DEPTH_TEST);
 }

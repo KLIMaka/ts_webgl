@@ -26,7 +26,7 @@ import * as RENDERER2D from './modules/engines/build/gl/boardrenderer2d';
 import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
-import { Context } from './modules/engines/build/gl/context';
+import { Context, VIEW_2D } from './modules/engines/build/gl/context';
 import { Message } from './modules/engines/build/handlerapi';
 import * as RFF from './modules/engines/build/rff';
 import * as BS from './modules/engines/build/structs';
@@ -37,6 +37,7 @@ import { addLogAppender, CONSOLE, warning } from './modules/logger';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
+import { loadBloodMap } from './modules/engines/build/bloodloader';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -199,7 +200,7 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
       let max = control.getPointerPosition(pointer, 1, 1);
       let campos = control.getPosition();
       let dist = MU.len2d(max[0] - campos[0], max[2] - campos[2]);
-      RENDERER2D.draw(renderables.geometry, this, dist);
+      RENDERER2D.draw(renderables.topdown, this, campos, dist);
 
       let state = ctx.state;
       if (state.get('zoom+')) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
@@ -282,7 +283,7 @@ function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, re
     unproject(x: number, y: number) { return view.unproject(x, y) },
     handle(message: Message, ctx: Context) {
       if (message instanceof NamedMessage && message.name == 'view_mode') {
-        view = view == view3d ? view2d : view3d;
+        view = ctx.state.get(VIEW_2D) ? view2d : view3d;
         view.activate();
       }
       view.handle(message, ctx)
@@ -361,7 +362,7 @@ function updateUi(props: UI.Properties, ms: BU.MoveStruct) {
 }
 
 function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
-  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: true, stencil: true });
+  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: false, stencil: true });
   let artSelector = new Selector(640, 640, artFiles, pal);
 
   let panel = UI.panel('Info');
@@ -400,7 +401,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
     RENDERER3D.init(context, impl);
     RENDERER2D.init(context);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      BGL.newFrame(gl);
+      BGL.newFrame(context);
 
       PROFILE.start();
       HANDLER.handle(INPUT.get(), view, time);
