@@ -54,7 +54,7 @@ export function getFromHitscan(ctx: BuildContext, hit: Hitscan): Deck<MessageHan
   let fullLoop = ctx.state.get<boolean>(LOOP_STATE);
   list.clear();
   let board = ctx.board;
-  let w = getClosestWall(board, hit, ctx.state.get(SNAP_DIST));
+  let w = getClosestWall(board, hit, ctx.state.get(SNAP_DIST), ctx.state.get('view_2d'));
   if (w != -1) {
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
   } else if (isWall(hit.type)) {
@@ -104,7 +104,7 @@ export class Selection extends MessageHandlerReflective {
     ctx.state.register(MOVE_PARALLEL, false);
     ctx.state.register(MOVE_ROTATE, false);
     ctx.state.register(LOOP_STATE, false);
-    ctx.state.register(SNAP_DIST, 32);
+    ctx.state.register(SNAP_DIST, 64);
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {

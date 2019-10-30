@@ -106,7 +106,7 @@ export function wallInSector(board: Board, secId: number, x: number, y: number) 
   return -1;
 }
 
-export function closestWall(board: Board, x: number, y: number, secId: number): number[] {
+export function closestWall(board: Board, x: number, y: number, secId: number): [number, number] {
   secId = findSector(board, x, y, secId);
   let mindist = Number.MAX_VALUE;
   if (secId != -1) {
