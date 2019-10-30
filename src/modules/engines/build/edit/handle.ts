@@ -12,7 +12,8 @@ export class MovingHandle {
   private parallel = false;
 
   public start(hit: Hitscan) {
-    GLM.vec3.set(this.startPoint, hit.x, hit.z / ZSCALE, hit.y);
+    if (hit.t == -1) GLM.vec3.copy(this.startPoint, hit.startzscaled);
+    else GLM.vec3.set(this.startPoint, hit.x, hit.z / ZSCALE, hit.y);
     GLM.vec3.copy(this.currentPoint, this.startPoint);
     this.dzoff = 0;
     this.active = true;
