@@ -26,7 +26,8 @@ module.exports = function (grunt) {
     'mapper',
     'sketch',
     'parser',
-    'midi'
+    'midi',
+    'midi_echo'
   ];
 
   var nodemodules = [
