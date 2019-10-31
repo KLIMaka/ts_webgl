@@ -1,5 +1,5 @@
 import { int, len2d, tuple2, tuple4 } from "../../../../libs/mathutils";
-import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallLineInSector, closestWall } from "../boardutils";
+import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallLineInSector, closestWall, closestWallPoint } from "../boardutils";
 import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
 import { Board } from "../structs";
 import { slope, sectorOfWall } from "../utils";
@@ -17,7 +17,7 @@ export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
 
 export function getClosestWall(board: Board, hit: Hitscan, d: number, twod: boolean): number {
   if (twod) {
-    let [w, dist] = closestWall(board, hit.start[0], hit.start[1], -1);
+    let [w, dist] = closestWallPoint(board, hit.start[0], hit.start[1]);
     return dist <= d ? w : -1;
   } else if (isWall(hit.type))
     return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, d);

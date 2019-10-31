@@ -35,7 +35,7 @@ export function pointOnWall(board: Board, wallId: number, x: number, y: number):
   return MU.dot2d(dx, dy, wx, wy) / MU.dot2d(wx, wy, wx, wy);
 }
 
-function distanceToWall(board: Board, wallId: number, x: number, y: number): number {
+function distanceToWallSegment(board: Board, wallId: number, x: number, y: number): number {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   let wx = wall2.x - wall.x;
@@ -52,6 +52,25 @@ function distanceToWall(board: Board, wallId: number, x: number, y: number): num
   let bx = wall.x + wx * b;
   let by = wall.y + wy * b;
   return MU.len2d(x - bx, y - by);
+}
+
+function distanceToWallPoint(board: Board, wallId: number, x: number, y: number): number {
+  let wall = board.walls[wallId];
+  return MU.len2d(x - wall.x, y - wall.y);
+}
+
+let closestWallRes: [number, number] = [0, 0];
+export function closestWallPoint(board: Board, x: number, y: number): [number, number] {
+  let closestWall = -1;
+  let mindist = Number.MAX_VALUE;
+  for (let w = 0; w < board.numwalls; w++) {
+    let dist = distanceToWallPoint(board, w, x, y);
+    if (dist < mindist) {
+      closestWall = w;
+      mindist = dist;
+    }
+  }
+  return MU.tuple2(closestWallRes, closestWall, mindist);
 }
 
 export function closestWallOnWall(board: Board, w1: number, x: number, y: number): number {
@@ -112,9 +131,9 @@ export function closestWall(board: Board, x: number, y: number, secId: number): 
   if (secId != -1) {
     let start = board.sectors[secId].wallptr;
     let end = start + board.sectors[secId].wallnum;
-    let wallId = start;
+    let wallId = -1;
     for (let w = start; w < end; w++) {
-      let dist = distanceToWall(board, w, x, y);
+      let dist = distanceToWallSegment(board, w, x, y);
       if (dist <= mindist) {
         mindist = dist;
         wallId = w;
@@ -122,12 +141,12 @@ export function closestWall(board: Board, x: number, y: number, secId: number): 
     }
     return [wallId, mindist];
   } else {
-    let wallId = 0;
+    let wallId = -1;
     for (let w = 0; w < board.numwalls; w++) {
       let wall = board.walls[w];
       if (wall.nextwall != -1)
         continue;
-      let dist = distanceToWall(board, w, x, y);
+      let dist = distanceToWallSegment(board, w, x, y);
       if (dist <= mindist) {
         mindist = dist;
         wallId = w;

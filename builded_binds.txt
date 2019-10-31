@@ -33,6 +33,7 @@ UP              msg move 0 {return -ctx.state.get('gridSize')} 0 true
 DOWN            msg move 0 {return ctx.state.get('gridSize')}  0 true
 
 
+T               start_push_wall
 V               set_picnum
 I               insert_sprite
 1               copy

@@ -104,7 +104,7 @@ export class Selection extends MessageHandlerReflective {
     ctx.state.register(MOVE_PARALLEL, false);
     ctx.state.register(MOVE_ROTATE, false);
     ctx.state.register(LOOP_STATE, false);
-    ctx.state.register(SNAP_DIST, 64);
+    ctx.state.register(SNAP_DIST, 32);
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {

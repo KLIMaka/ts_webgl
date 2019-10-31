@@ -38,6 +38,7 @@ import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
 import { loadBloodMap } from './modules/engines/build/bloodloader';
+import { PushWall } from './modules/engines/build/edit/tools/pushwall';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let cfgFile = 'build.cfg';
@@ -395,6 +396,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
     HANDLER.addHandler(new SplitWall());
     HANDLER.addHandler(new JoinSectors());
     HANDLER.addHandler(new DrawSector());
+    HANDLER.addHandler(new PushWall());
     HANDLER.addHandler(context);
     HANDLER.addHandler(view);
 
