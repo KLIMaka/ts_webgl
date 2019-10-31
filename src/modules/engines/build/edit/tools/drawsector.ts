@@ -247,8 +247,7 @@ export class DrawSector extends MessageHandlerReflective {
 
   private findContainingSector(ctx: BuildContext) {
     let sectorId = this.hintSector;
-    for (let i = 0; i < this.points.length(); i++) {
-      let p = this.points.get(i);
+    for (let p of this.points) {
       let w = wallInSector(ctx.board, this.hintSector, p[0], p[1]);
       let s = findSector(ctx.board, p[0], p[1], sectorId);
       if (w == -1 && s != sectorId) return -1;

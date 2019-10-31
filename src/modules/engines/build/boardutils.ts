@@ -867,6 +867,13 @@ export function createInnerLoop(board: Board, sectorId: number, points: Collecti
   }
 }
 
+function insertPolygon(board: Board, sectorId: number, polygon: Collection<[number, number]>) {
+  let sector = board.sectors[sectorId];
+  let end = sector.wallptr + sector.wallnum;
+  for (let w = sector.wallptr; w < end; w++) {
+    let wall = board.walls[w];
+  }
+}
 
 let newLoops = new Deck<Wall>();
 let restLoop = new Deck<Wall>();
@@ -934,6 +941,8 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   updateSpriteSector(board, sectorId);
   return newSectorId;
 }
+
+
 
 export function insertSprite(board: Board, x: number, y: number, z: number, sprite: Sprite = newSprite(0, 0, 0)) {
   let sectorId = findSector(board, x, y, -1);
