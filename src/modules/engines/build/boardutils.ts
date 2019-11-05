@@ -1,9 +1,9 @@
 import * as MU from '../../../libs/mathutils';
-import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
-import { Collection, Deck, findFirst, reversed, IndexedDeck, indexedIterator, cyclicPairs } from '../../collections';
+import { cross2d, cyclic } from '../../../libs/mathutils';
+import { Collection, cyclicPairs, Deck, findFirst, IndexedDeck, indexedIterator, reversed } from '../../collections';
 import { ArtInfoProvider } from './art';
 import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
-import { findSector, sectorOfWall, sectorPicnum, inSector } from './utils';
+import { findSector, sectorOfWall } from './utils';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -669,6 +669,45 @@ function updateSpriteSector(board: Board, fromSector: number) {
   }
 }
 
+let nullWall = new Wall();
+function resizeWalls(board: Board, sectorId: number, newSize: number) {
+  let sec = board.sectors[sectorId];
+  let dw = newSize - sec.wallnum;
+  if (dw > 0) {
+    moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, []);
+  } else {
+    let from = sec.wallptr + newSize;
+    let end = from - dw;
+    for (let w = from; w < end; w++)
+      board.walls[w] = nullWall;
+    moveWalls(board, sectorId, sec.wallptr + newSize, dw, [])
+  }
+}
+
+function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>) {
+  resizeWalls(board, sectorId, nwalls.length());
+  let sec = board.sectors[sectorId];
+  let loopId = 0;
+  let loopStart = sec.wallptr;
+  let loopEnd = looppoints.get(loopId++);
+  for (let [wall, i] of indexedIterator(nwalls)) {
+    let w = i + sec.wallptr;
+    board.walls[w] = wall;
+    if (loopEnd == i + 1) {
+      wall.point2 = loopStart;
+      loopStart = w + 1;
+      loopEnd = looppoints.get(loopId++);
+    } else {
+      wall.point2 = w + 1;
+    }
+    if (wall.nextwall != -1) {
+      let nextwall = board.walls[wall.nextwall];
+      nextwall.nextsector = sectorId;
+      nextwall.nextwall = w;
+    }
+  }
+}
+
 let newsectorwalls = new Deck<Wall>();
 let loopPoints = new Deck<number>();
 function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Collection<Wall>, Collection<number>] {
@@ -700,45 +739,6 @@ function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Collection<
   return [newsectorwalls, loopPoints];
 }
 
-function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>) {
-  resizeWalls(board, sectorId, nwalls.length());
-  let sec = board.sectors[sectorId];
-  let loopId = 0;
-  let loopStart = sec.wallptr;
-  let loopEnd = looppoints.get(loopId++);
-  for (let [wall, i] of indexedIterator(nwalls)) {
-    let w = i + sec.wallptr;
-    board.walls[w] = wall;
-    if (loopEnd == i + 1) {
-      wall.point2 = loopStart;
-      loopStart = w + 1;
-      loopEnd = looppoints.get(loopId++);
-    } else {
-      wall.point2 = w + 1;
-    }
-    if (wall.nextwall != -1) {
-      let nextwall = board.walls[wall.nextwall];
-      nextwall.nextsector = sectorId;
-      nextwall.nextwall = w;
-    }
-  }
-}
-
-let nullWall = new Wall();
-function resizeWalls(board: Board, sectorId: number, newSize: number) {
-  let sec = board.sectors[sectorId];
-  let dw = newSize - sec.wallnum;
-  if (dw > 0) {
-    moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, []);
-  } else {
-    let from = sec.wallptr + newSize;
-    let end = from - dw;
-    for (let w = from; w < end; w++)
-      board.walls[w] = nullWall;
-    moveWalls(board, sectorId, sec.wallptr + newSize, dw, [])
-  }
-}
-
 export function joinSectors(board: Board, s1: number, s2: number) {
   if (isJoinedSectors(board, s1, s2) == -1) return -1;
   let [nwalls, looppoints] = getJoinedWallsLoops(board, s1, s2);
@@ -749,18 +749,6 @@ export function joinSectors(board: Board, s1: number, s2: number) {
   return 0;
 }
 
-export function pushWallToSector(board: Board, wallId: number) {
-  let wall = board.walls[wallId];
-  let s = sectorOfWall(board, wallId);
-  let sec = board.sectors[s];
-  if (wall.nextsector == -1) {
-    let nsec = copySector(sec);
-    insertSector(board, nsec);
-    nsec.wallptr = board.numwalls;
-    resizeWalls(board, board.numsectors - 1, 4);
-
-  }
-}
 
 function clockwise(walls: Collection<[number, number]>): boolean {
   let minx = Number.MAX_VALUE;
@@ -783,6 +771,11 @@ function clockwise(walls: Collection<[number, number]>): boolean {
   return cross2d(wall0[0] - wall1[0], wall0[1] - wall1[1], wall2[0] - wall1[0], wall2[1] - wall1[1]) < 0;
 }
 
+function order(points: Collection<[number, number]>, cw = true): Collection<[number, number]> {
+  let actual = clockwise(points);
+  return actual == cw ? points : reversed(points);
+}
+
 function searchMatchWall(board: Board, p1: [number, number], p2: [number, number]): [number, number] {
   for (let s = 0; s < board.numsectors; s++) {
     let sec = board.sectors[s];
@@ -799,11 +792,6 @@ function searchMatchWall(board: Board, p1: [number, number], p2: [number, number
   return null;
 }
 
-function order(points: Collection<[number, number]>, cw = true) {
-  let actualCw = clockwise(points);
-  return cw == actualCw ? points : reversed(points);
-}
-
 function matchWalls(board: Board, points: Collection<[number, number]>) {
   let walls = Array<[number, number]>(points.length());
   for (let [w1, w2] of cyclicPairs(points.length())) {
@@ -815,21 +803,6 @@ function matchWalls(board: Board, points: Collection<[number, number]>) {
 function commonSectorWall(board: Board, matched: [number, number][]): [Sector, Wall] {
   for (let m of matched) if (m != null) return [board.sectors[m[0]], board.walls[m[1]]];
   return [newSector(), newWall(0, 0)];
-}
-
-function createNewWalls(points: Collection<[number, number]>, mwalls: [number, number][], commonWall: Wall, board: Board) {
-  let walls = new Deck<Wall>();
-  for (let [p, i] of indexedIterator(points)) {
-    let m = mwalls[i];
-    let baseWall = m == null ? commonWall : board.walls[m[1]];
-    let wall = copyWall(baseWall, p[0], p[1]);
-    if (m != null) {
-      wall.nextwall = m[1];
-      wall.nextsector = m[0];
-    }
-    walls.push(wall);
-  }
-  return walls;
 }
 
 export function createNewSector(board: Board, points: Collection<[number, number]>) {
@@ -845,6 +818,22 @@ export function createNewSector(board: Board, points: Collection<[number, number
   for (let w = sector.wallptr; w < sector.wallptr + sector.wallnum; w++) {
     fixxrepeat(board, w);
   }
+}
+
+function createNewWalls(points: Collection<[number, number]>, mwalls: [number, number][], commonWall: Wall, board: Board) {
+  let walls = new Deck<Wall>();
+  for (let i = 0; i < points.length(); i++) {
+    let m = mwalls[i];
+    let p = points.get(i);
+    let baseWall = m == null ? commonWall : board.walls[m[1]];
+    let wall = copyWall(baseWall, p[0], p[1]);
+    if (m != null) {
+      wall.nextwall = m[1];
+      wall.nextsector = m[0];
+    }
+    walls.push(wall);
+  }
+  return walls;
 }
 
 
@@ -983,6 +972,8 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   updateSpriteSector(board, sectorId);
   return newSectorId;
 }
+
+
 
 export function insertSprite(board: Board, x: number, y: number, z: number, sprite: Sprite = newSprite(0, 0, 0)) {
   let sectorId = findSector(board, x, y, -1);

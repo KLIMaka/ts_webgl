@@ -254,6 +254,7 @@ export class PvsBoardVisitorResult implements VisResult {
   }
 
   private visibleFromEntryWalls(wallId: number, entryWalls: Deck<number>, ms: U.MoveStruct) {
+    return true;
     if (entryWalls.length() == 0)
       return true;
     for (let i = 0; i < entryWalls.length(); i++) {
@@ -271,7 +272,7 @@ export class PvsBoardVisitorResult implements VisResult {
 
   public visit(board: Board, ms: U.MoveStruct, fwd: GLM.Mat3Array): VisResult {
     this.init(board, ms.sec);
-    this.fillPVS(ms, fwd);
+    // this.fillPVS(ms, fwd);
     PROFILE.get(null).inc('pvs', this.prepvs.length());
     let sectors = board.sectors;
     let sec2spr = U.groupSprites(board);
