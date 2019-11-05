@@ -1,4 +1,4 @@
-import { len2d, int, dot2d } from "../../../../../libs/mathutils";
+import { dot2d } from "../../../../../libs/mathutils";
 import { vec3 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
@@ -6,8 +6,10 @@ import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan, isWall } from "../../hitscan";
 import { sectorOfWall, slope, wallNormal, ZSCALE } from "../../utils";
+import { snap } from "../editutils";
 import { MovingHandle } from "../handle";
 import { Frame, NamedMessage, Render } from "../messages";
+import { cyclicPairs } from "../../../../collections";
 
 let wallNormal_ = vec3.create();
 let wallNormal1_ = vec3.create();
@@ -18,8 +20,11 @@ export class PushWall extends MessageHandlerReflective {
 
   private start(ctx: BuildContext) {
     let hit = ctx.state.get<Hitscan>('hitscan');
-    if (!isWall(hit.type)) return;
-    this.wallId = hit.id;
+    let snapresult = snap(ctx);
+    if (snapresult == null) return;
+    let [, , id, type] = snapresult;
+    if (!isWall(type)) return;
+    this.wallId = id;
     this.movingHandle.start(hit);
   }
 
@@ -33,7 +38,7 @@ export class PushWall extends MessageHandlerReflective {
   private getDistance(ctx: BuildContext): number {
     let dx = this.movingHandle.dx;
     let dy = this.movingHandle.dy;
-    let [nx, _, ny] = wallNormal(wallNormal1_, ctx.board, this.wallId);
+    let [nx, , ny] = wallNormal(wallNormal1_, ctx.board, this.wallId);
     return ctx.snap(dot2d(nx, ny, dx, dy));
   }
 
@@ -61,7 +66,7 @@ export class PushWall extends MessageHandlerReflective {
     let buff = this.wireframe.buff;
     buff.allocate(4, 8);
     let normal = wallNormal(wallNormal_, ctx.board, this.wallId);
-    let [nx, _, ny] = vec3.scale(normal, normal, this.getDistance(ctx));
+    let [nx, , ny] = vec3.scale(normal, normal, this.getDistance(ctx));
     let wall = ctx.board.walls[this.wallId];
     let wall2 = ctx.board.walls[wall.point2];
     let sectorId = sectorOfWall(ctx.board, this.wallId);
@@ -76,9 +81,6 @@ export class PushWall extends MessageHandlerReflective {
     buff.writePos(1, x1, z2 / ZSCALE, y1);
     buff.writePos(2, x2, z3 / ZSCALE, y2);
     buff.writePos(3, x2, z4 / ZSCALE, y2);
-    buff.writeLine(0, 0, 1);
-    buff.writeLine(2, 1, 2);
-    buff.writeLine(4, 2, 3);
-    buff.writeLine(6, 3, 0);
+    for (let [i1, i2] of cyclicPairs(4)) buff.writeLine(i1 * 2, i1, i2);
   }
 }
