@@ -1,4 +1,4 @@
-import { Collection, Deck, EMPRTY_COLLECTION } from "../../collections";
+import { Collection, Deck, EMPTY_COLLECTION } from "../../collections";
 import { InputState } from "../../input";
 import { warning, debug } from "../../logger";
 import { State, ContextedValue } from "./api";
@@ -59,7 +59,7 @@ export class Binder {
       if (this.handlers[i](state))
         return this.messages[i];
     }
-    return EMPRTY_COLLECTION;
+    return EMPTY_COLLECTION;
   }
 
   public updateState(input: InputState, state: State) {

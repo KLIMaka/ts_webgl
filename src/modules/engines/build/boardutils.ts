@@ -1,6 +1,6 @@
 import * as MU from '../../../libs/mathutils';
 import { cross2d, cyclic, reverse } from '../../../libs/mathutils';
-import { Collection, Deck, findFirst, reversed, IndexedDeck } from '../../collections';
+import { Collection, Deck, findFirst, reversed, IndexedDeck, indexedIterator, cyclicPairs } from '../../collections';
 import { ArtInfoProvider } from './art';
 import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, sectorPicnum, inSector } from './utils';
@@ -706,9 +706,8 @@ function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<
   let loopId = 0;
   let loopStart = sec.wallptr;
   let loopEnd = looppoints.get(loopId++);
-  for (let i = 0; i < nwalls.length(); i++) {
-    let w = sec.wallptr + i;
-    let wall = nwalls.get(i);
+  for (let [wall, i] of indexedIterator(nwalls)) {
+    let w = i + sec.wallptr;
     board.walls[w] = wall;
     if (loopEnd == i + 1) {
       wall.point2 = loopStart;
@@ -806,27 +805,22 @@ function order(points: Collection<[number, number]>, cw = true) {
 }
 
 function matchWalls(board: Board, points: Collection<[number, number]>) {
-  let walls = Array<[number, number]>();
-  for (let i = 0; i < points.length(); i++) {
-    let i2 = cyclic(i + 1, points.length());
-    walls[i] = searchMatchWall(board, points.get(i), points.get(i2));
+  let walls = Array<[number, number]>(points.length());
+  for (let [w1, w2] of cyclicPairs(points.length())) {
+    walls[w1] = searchMatchWall(board, points.get(w1), points.get(w2));
   }
   return walls;
 }
 
-function commonSectorWall(board: Board, matched: Array<[number, number]>): [Sector, Wall] {
-  for (let i = 0; i < matched.length; i++) {
-    let m = matched[i];
-    if (m != null) return [board.sectors[m[0]], board.walls[m[1]]];
-  }
+function commonSectorWall(board: Board, matched: [number, number][]): [Sector, Wall] {
+  for (let m of matched) if (m != null) return [board.sectors[m[0]], board.walls[m[1]]];
   return [newSector(), newWall(0, 0)];
 }
 
 function createNewWalls(points: Collection<[number, number]>, mwalls: [number, number][], commonWall: Wall, board: Board) {
   let walls = new Deck<Wall>();
-  for (let i = 0; i < points.length(); i++) {
+  for (let [p, i] of indexedIterator(points)) {
     let m = mwalls[i];
-    let p = points.get(i);
     let baseWall = m == null ? commonWall : board.walls[m[1]];
     let wall = copyWall(baseWall, p[0], p[1]);
     if (m != null) {
@@ -860,8 +854,7 @@ export function createInnerLoop(board: Board, sectorId: number, points: Collecti
   let wallPtr = sector.wallptr + sector.wallnum - points.length();
   let firstWall = board.walls[sector.wallptr];
   points = order(points, false);
-  for (let i = 0; i < points.length(); i++) {
-    let p = points.get(i);
+  for (let [p, i] of indexedIterator(points)) {
     let wall = copyWall(firstWall, p[0], p[1]);
     wall.point2 = i == points.length() - 1 ? wallPtr : wallPtr + i + 1;
     wall.nextsector = wall.nextwall = -1;
@@ -884,10 +877,7 @@ function polygonSector(board: Board, points: Collection<[number, number]>, hintS
 
 function matchPoints(board: Board, points: Collection<[number, number]>, sectorId: number): [number[], number[]] {
   let pmap = {};
-  for (let i = 0; i < points.length(); i++) {
-    let p = points.get(i);
-    pmap[`${p[0]},${p[0]}`] = i;
-  }
+  for (let [p, i] of indexedIterator(points)) pmap[`${p[0]},${p[1]}`] = i;
   let wmap = {};
   let sector = board.sectors[sectorId];
   for (let i = 0; i < sector.wallnum; i++) {
@@ -896,7 +886,7 @@ function matchPoints(board: Board, points: Collection<[number, number]>, sectorI
     wmap[`${wall.x},${wall.y}`] = i;
   }
   let p2w: number[] = [];
-  for (let p of points) p2w.push(wmap[`${p[0]},${p[0]}`] | -1);
+  for (let p of points) p2w.push(wmap[`${p[0]},${p[1]}`] | -1);
   let w2p: number[] = [];
   for (let i = 0; i < sector.wallnum; i++) {
     let w = sector.wallptr + i;
@@ -914,16 +904,16 @@ export function insertPolygon(board: Board, points: Collection<[number, number]>
   let [p2w, w2p] = matchPoints(board, points, sectorId);
   let sector = board.sectors[sectorId];
 
-  let w = 
+  // let w =
 
 
-  for (let i = 0; i < sector.wallnum; i++) {
-    let w = sector.wallptr + i;
-    if (w2p[i] != -1) {
-      let j = w2p[i];
-      while (p2w[j] == -1) j = cyclic(j + 1, points.length());
-    }
-  }
+  // for (let i = 0; i < sector.wallnum; i++) {
+  //   let w = sector.wallptr + i;
+  //   if (w2p[i] != -1) {
+  //     let j = w2p[i];
+  //     while (p2w[j] == -1) j = cyclic(j + 1, points.length());
+  //   }
+  // }
 }
 
 

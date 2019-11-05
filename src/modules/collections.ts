@@ -1,3 +1,5 @@
+import { cyclic } from "../libs/mathutils";
+
 export interface Collection<T> extends Iterable<T> {
   get(i: number): T;
   length(): number;
@@ -6,11 +8,15 @@ export interface Collection<T> extends Iterable<T> {
 
 export const TERMINAL_ITERATOR_RESULT: IteratorResult<any> = { value: null, done: true };
 export const EMPTY_ITERATOR = { next: () => TERMINAL_ITERATOR_RESULT };
-export const EMPRTY_COLLECTION: Collection<any> = {
+export const EMPTY_COLLECTION: Collection<any> = {
   get: (i: number) => undefined,
   length: () => 0,
   [Symbol.iterator]: () => EMPTY_ITERATOR,
   isEmpty: () => true
+}
+
+function iteratorResult<T>(isDone: boolean, val: T): IteratorResult<T> {
+  return isDone ? TERMINAL_ITERATOR_RESULT : { done: false, value: val };
 }
 
 export class Deck<T> implements Collection<T>{
@@ -69,7 +75,7 @@ export class Deck<T> implements Collection<T>{
     let i = 0;
     return this.pointer == 0
       ? EMPTY_ITERATOR
-      : { next: () => { return i == this.pointer ? TERMINAL_ITERATOR_RESULT : { done: false, value: this.array[i++] } } }
+      : { next: () => { return iteratorResult(i == this.pointer, this.array[i++]) } }
   }
 }
 
@@ -94,7 +100,6 @@ export class IndexedDeck<T> extends Deck<T>{
   }
 }
 
-
 export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
   for (let i = start; i < collection.length(); i++) {
     if (collection.get(i) == value) return i;
@@ -105,10 +110,27 @@ export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
 export function reversed<T>(collection: Collection<T>): Collection<T> {
   let length = collection.length();
   let i = length - 1;
-  return {
-    get: (i: number) => collection.get(length - 1 - i),
-    length: () => length,
-    isEmpty: () => length == 0,
-    [Symbol.iterator]: () => { return { next: () => i == 0 ? TERMINAL_ITERATOR_RESULT : { done: false, value: collection.get(i) } } }
-  }
+  return length == 0
+    ? EMPTY_COLLECTION
+    : {
+      get: (i: number) => collection.get(length - 1 - i),
+      length: () => length,
+      isEmpty: () => length == 0,
+      [Symbol.iterator]: () => { return { next: () => iteratorResult(i < 0, collection.get(i--)) } }
+    }
+}
+
+export function indexedIterator<T>(c: Collection<T>): Iterable<[T, number]> {
+  let length = c.length();
+  let i = 0;
+  return length == 0
+    ? EMPTY_COLLECTION
+    : { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, [c.get(i), i++]) } } }
+}
+
+export function cyclicPairs<T>(length: number): Iterable<[number, number]> {
+  let i = 0;
+  return length == 0
+    ? EMPTY_COLLECTION
+    : { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, [i++, cyclic(i, length)]) } } }
 }
