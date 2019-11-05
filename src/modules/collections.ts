@@ -1,3 +1,5 @@
+import { cyclic } from "../libs/mathutils";
+
 export interface Collection<T> extends Iterable<T> {
   get(i: number): T;
   length(): number;
@@ -109,6 +111,12 @@ export function reversed<T>(collection: Collection<T>): Collection<T> {
     get: (i: number) => collection.get(length - 1 - i),
     length: () => length,
     isEmpty: () => length == 0,
-    [Symbol.iterator]: () => { return { next: () => i == 0 ? TERMINAL_ITERATOR_RESULT : { done: false, value: collection.get(i) } } }
+    [Symbol.iterator]: () => { return { next: () => i < 0 ? TERMINAL_ITERATOR_RESULT : { done: false, value: collection.get(i--) } } }
   }
+}
+
+export function cyclicPairs<T>(collection: Collection<T>): Iterable<[T, T]> {
+  let length = collection.length();
+  let i = 0;
+  return { [Symbol.iterator]: () => { return { next: () => i == length ? TERMINAL_ITERATOR_RESULT : { done: false, value: [collection.get(i), collection.get(cyclic(i++, length))] } } } };
 }
