@@ -21,6 +21,8 @@ export function isSprite(type: SubType) {
   return type == SubType.SPRITE;
 }
 
+const SPRITE_OFF = 0.1;
+
 export class Hitscan {
   constructor(
     public x: number = -1,
@@ -183,7 +185,7 @@ function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, hit: Hi
   z += spr.cstat.realCenter ? h >> 1 : 0;
   z -= info.attrs.yoff * (spr.yrepeat << 2);
   if ((iz > z) || (iz < z - h)) return;
-  hit.hit(ix, iy, iz, it, sprId, SubType.SPRITE);
+  hit.hit(ix, iy, iz, it - SPRITE_OFF, sprId, SubType.SPRITE);
 }
 
 let xss = new Deck<number>();
@@ -223,7 +225,7 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, hit: H
   let ix = xs + int(vx * t);
   let iy = ys + int(vy * t);
   if (!inPolygon(ix, iy, xss, yss)) return;
-  hit.hit(ix, iy, z, t, sprId, SubType.SPRITE);
+  hit.hit(ix, iy, z, t - SPRITE_OFF, sprId, SubType.SPRITE);
 }
 
 
