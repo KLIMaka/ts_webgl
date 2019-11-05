@@ -3,7 +3,7 @@ import { Deck } from "../../../../collections";
 import { info } from "../../../../logger";
 import { Frame } from "../../../idtech/md2structs";
 import { BuildContext } from "../../api";
-import { closestWallLineInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
+import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { Context } from "../../gl/context";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
@@ -60,7 +60,7 @@ export function getFromHitscan(ctx: BuildContext, hit: Hitscan): Deck<MessageHan
   } else if (isWall(hit.type)) {
     wallSegment(fullLoop, board, hit.id, hit.type == SubType.LOWER_WALL);
   } else if (isSector(hit.type)) {
-    let w = closestWallLineInSector(board, hit.id, hit.x, hit.y, ctx.state.get(SNAP_DIST));
+    let w = closestWallSegmentInSector(board, hit.id, hit.x, hit.y, ctx.state.get(SNAP_DIST));
     if (w != -1) wallSegment(fullLoop, board, w, hit.type == SubType.FLOOR); else sector(fullLoop, board, hit);
   } else if (isSprite(hit.type)) {
     list.push(SpriteEnt.create(hit.id));

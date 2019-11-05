@@ -49,9 +49,9 @@ export function lenPointToLine(px: number, py: number, l1x: number, l1y: number,
   let pdx = px - l1x;
   let pdy = py - l1y;
   let dot = dot2d(ldx, ldy, pdx, pdy);
-  let llensqr = sqrLen2d(ldx, ldy);
   if (dot <= 0) return len2d(pdx, pdy);
-  else if (dot >= llensqr) return len2d(px - l2x, py - l2y);
+  let llensqr = sqrLen2d(ldx, ldy);
+  if (dot >= llensqr) return len2d(px - l2x, py - l2y);
   let t = dot / llensqr;
   return len2d(px - (l1x + ldx * t), py - (l1y + ldy * t));
 }

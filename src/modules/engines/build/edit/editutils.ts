@@ -1,5 +1,5 @@
 import { int, len2d, tuple2, tuple4 } from "../../../../libs/mathutils";
-import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallLineInSector, closestWall, closestWallPoint } from "../boardutils";
+import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallSegmentInSector, closestWallSegment, closestWallPoint } from "../boardutils";
 import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
 import { Board } from "../structs";
 import { slope, sectorOfWall } from "../utils";
@@ -34,7 +34,7 @@ export function snap(ctx: BuildContext): [number, number, number, SubType] {
     let wall = ctx.board.walls[w];
     return tuple4(snapResult, wall.x, wall.y, w, SubType.MID_WALL);
   } else if (isSector(hit.type)) {
-    let w = closestWallLineInSector(ctx.board, hit.id, hit.x, hit.y, ctx.gridScale());
+    let w = closestWallSegmentInSector(ctx.board, hit.id, hit.x, hit.y, ctx.gridScale());
     return w == -1 ? snapGrid(hit, ctx, hit.id, hit.type) : snapWall(w, hit, ctx);
   } else if (isSprite(hit.type)) {
     return snapGrid(hit, ctx, hit.id, hit.type);
