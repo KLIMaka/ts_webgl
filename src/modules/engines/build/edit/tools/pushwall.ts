@@ -1,6 +1,6 @@
 import { dot2d } from "../../../../../libs/mathutils";
 import { vec3 } from "../../../../../libs_js/glmatrix";
-import { cyclicPairs } from "../../../../collections";
+import { cyclicPairs, EMPTY_COLLECTION } from "../../../../collections";
 import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";
@@ -29,7 +29,7 @@ export class PushWall extends MessageHandlerReflective {
   }
 
   private stop(ctx: BuildContext, copy: boolean) {
-    pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, [], copy);
+    pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, EMPTY_COLLECTION, copy);
     ctx.invalidator.invalidateAll();
     this.wallId = -1;
     this.movingHandle.stop();

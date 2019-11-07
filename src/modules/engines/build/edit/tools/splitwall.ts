@@ -21,7 +21,7 @@ export class SplitWall extends MessageHandlerReflective {
 
   private run(ctx: BuildContext) {
     if (!this.active) return;
-    splitWall(ctx.board, this.wallId, this.x, this.y, ctx.art, []);
+    splitWall(ctx.board, this.wallId, this.x, this.y, ctx.art);
     let s = sectorOfWall(ctx.board, this.wallId);
     invalidateSectorAndWalls(s, ctx);
     let nextsector = ctx.board.walls[this.wallId].nextsector;

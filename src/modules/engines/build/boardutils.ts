@@ -1,5 +1,5 @@
 import { cross2d, cyclic, len2d, dot2d, tuple2, lenPointToLine, int } from '../../../libs/mathutils';
-import { Collection, cyclicPairs, Deck, findFirst, IndexedDeck, indexedIterator, reversed } from '../../collections';
+import { Collection, cyclicPairs, Deck, findFirst, IndexedDeck, indexedIterator, reversed, MutableCollection, EMPTY_COLLECTION } from '../../collections';
 import { ArtInfoProvider } from './art';
 import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
@@ -167,7 +167,7 @@ function addSector(board: Board, sector: Sector) {
   return idx;
 }
 
-function moveWalls(board: Board, secId: number, afterWallId: number, size: number, wallptrs: number[]) {
+function moveWalls(board: Board, secId: number, afterWallId: number, size: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   if (size == 0) return;
 
   for (let w = 0; w < board.numwalls; w++) {
@@ -177,11 +177,12 @@ function moveWalls(board: Board, secId: number, afterWallId: number, size: numbe
     if (wall.nextwall > afterWallId)
       wall.nextwall += size;
   }
-  for (let w = 0; w < wallptrs.length; w++) {
-    if (size < 0 && wallptrs[w] >= afterWallId && wallptrs[w] < afterWallId - size) {
-      wallptrs[w] = -1;
+  for (let i = 0; i < wallptrs.length(); i++) {
+    let w = wallptrs.get(i);
+    if (size < 0 && w >= afterWallId && w < afterWallId - size) {
+      wallptrs.set(i, -1);
     } else if (wallptrs[w] > 0 && wallptrs[w] > afterWallId) {
-      wallptrs[w] += size;
+      wallptrs.set(i, w + size);
     }
   }
   if (size > 0) {
@@ -229,7 +230,7 @@ function fixpoint2xpan(board: Board, wallId: number, art: ArtInfoProvider) {
   wall2.xpanning = ((wall.xpanning + (wall.xrepeat << 3)) % art.getInfo(wall.picnum).w) & 0xff;
 }
 
-export function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
+export function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: MutableCollection<number> = EMPTY_COLLECTION): number {
   let secId = sectorOfWall(board, wallId);
   let wall = board.walls[wallId];
   let lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
@@ -479,7 +480,7 @@ function copySprite(sprite: Sprite, x: number, y: number, z: number): Sprite {
   return nsprite;
 }
 
-export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: number[]): number {
+export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, wallptrs: MutableCollection<number> = EMPTY_COLLECTION): number {
   let wall = board.walls[wallId];
   insertWall(board, wallId, x, y, art, wallptrs);
   if (wall.nextwall != -1) {
@@ -560,7 +561,7 @@ export function moveSprite(board: Board, sprId: number, x: number, y: number, z:
 }
 
 let wallNormal_ = vec3.create();
-export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: number[], alwaysNewPoints = false): number {
+export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: MutableCollection<number> = EMPTY_COLLECTION, alwaysNewPoints = false): number {
   if (len == 0) return wallId;
   let w1 = wallId; let wall1 = board.walls[w1];
   let w2 = wall1.point2; let wall2 = board.walls[w2];
@@ -647,22 +648,22 @@ function updateSpriteSector(board: Board, fromSector: number) {
 }
 
 let nullWall = new Wall();
-function resizeWalls(board: Board, sectorId: number, newSize: number) {
+function resizeWalls(board: Board, sectorId: number, newSize: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sec = board.sectors[sectorId];
   let dw = newSize - sec.wallnum;
   if (dw > 0) {
-    moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, []);
+    moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, wallptrs);
   } else {
     let from = sec.wallptr + newSize;
     let end = from - dw;
     for (let w = from; w < end; w++)
       board.walls[w] = nullWall;
-    moveWalls(board, sectorId, sec.wallptr + newSize, dw, [])
+    moveWalls(board, sectorId, sec.wallptr + newSize, dw, wallptrs)
   }
 }
 
-function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>) {
-  resizeWalls(board, sectorId, nwalls.length());
+function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
+  resizeWalls(board, sectorId, nwalls.length(), wallptrs);
   let sec = board.sectors[sectorId];
   let loopId = 0;
   let loopStart = sec.wallptr;
@@ -716,12 +717,12 @@ function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Collection<
   return [newsectorwalls, loopPoints];
 }
 
-export function joinSectors(board: Board, s1: number, s2: number) {
+export function joinSectors(board: Board, s1: number, s2: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   if (isJoinedSectors(board, s1, s2) == -1) return -1;
   let [nwalls, looppoints] = getJoinedWallsLoops(board, s1, s2);
-  recreateSectorWalls(board, s1, nwalls, looppoints);
+  recreateSectorWalls(board, s1, nwalls, looppoints, wallptrs);
   updateSpriteSector(board, s2);
-  resizeWalls(board, s2, 0);
+  resizeWalls(board, s2, 0, wallptrs);
   deleteSectorImpl(board, s2);
   return 0;
 }
@@ -782,7 +783,7 @@ function commonSectorWall(board: Board, matched: [number, number][]): [Sector, W
   return [newSector(), newWall(0, 0)];
 }
 
-export function createNewSector(board: Board, points: Collection<[number, number]>) {
+export function createNewSector(board: Board, points: Collection<[number, number]>, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   points = order(points);
   let mwalls = matchWalls(board, points);
   let [commonSector, commonWall] = commonSectorWall(board, mwalls);
@@ -791,7 +792,7 @@ export function createNewSector(board: Board, points: Collection<[number, number
   let walls = createNewWalls(points, mwalls, commonWall, board);
 
   loopPoints.clear().push(points.length());
-  recreateSectorWalls(board, sectorId, walls, loopPoints);
+  recreateSectorWalls(board, sectorId, walls, loopPoints, wallptrs);
   for (let w = sector.wallptr; w < sector.wallptr + sector.wallnum; w++) {
     fixxrepeat(board, w);
   }
@@ -814,9 +815,9 @@ function createNewWalls(points: Collection<[number, number]>, mwalls: [number, n
 }
 
 
-export function createInnerLoop(board: Board, sectorId: number, points: Collection<[number, number]>) {
+export function createInnerLoop(board: Board, sectorId: number, points: Collection<[number, number]>, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sector = board.sectors[sectorId];
-  resizeWalls(board, sectorId, sector.wallnum + points.length());
+  resizeWalls(board, sectorId, sector.wallnum + points.length(), wallptrs);
   let wallPtr = sector.wallptr + sector.wallnum - points.length();
   let firstWall = board.walls[sector.wallptr];
   points = order(points, false);
@@ -914,7 +915,7 @@ function sliceSector(board: Board, sectorId: number, points: Collection<[number,
   return [newLoops, newLoopLooppoints, restLoop];
 }
 
-export function splitSector(board: Board, sectorId: number, points: Collection<[number, number]>) {
+export function splitSector(board: Board, sectorId: number, points: Collection<[number, number]>, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let firstPoint = points.get(0);
   let lastPoint = points.get(points.length() - 1);
   let firstWall = wallInSector(board, sectorId, firstPoint[0], firstPoint[1]);
@@ -923,7 +924,7 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   if (findFirst(loop, lastWall) == -1) return -1;
   [firstWall, lastWall, points] = firstWall > lastWall ? [lastWall, firstWall, reversed(points)] : [firstWall, lastWall, points];
   let [nwalls, looppoints, rest] = sliceSector(board, sectorId, points, firstWall, lastWall);
-  recreateSectorWalls(board, sectorId, nwalls, looppoints);
+  recreateSectorWalls(board, sectorId, nwalls, looppoints, wallptrs);
   let sector = copySector(board.sectors[sectorId]);
   let newSectorId = addSector(board, sector);
 
@@ -945,12 +946,10 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
 
   nwalls.pushAll(rest);
   looppoints.clear().push(nwalls.length());
-  recreateSectorWalls(board, newSectorId, nwalls, looppoints);
+  recreateSectorWalls(board, newSectorId, nwalls, looppoints, wallptrs);
   updateSpriteSector(board, sectorId);
   return newSectorId;
 }
-
-
 
 export function insertSprite(board: Board, x: number, y: number, z: number, sprite: Sprite = newSprite(0, 0, 0)) {
   let sectorId = findSector(board, x, y, -1);
@@ -960,7 +959,7 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
   return board.numsprites++;
 }
 
-function deleteWall(board: Board, wallId: number) {
+function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sectorId = sectorOfWall(board, wallId);
   let sector = board.sectors[sectorId];
   if (sector.wallnum < 4) throw new Error(`Sector ${sectorId} need to have 3 walls minimum`);
@@ -975,13 +974,13 @@ function deleteWall(board: Board, wallId: number) {
     wall2.nextsector = -1;
     wall.nextwall = -1;
     wall.nextsector = -1;
-    moveWalls(board, sectorId2, wall2Id, -1, []);
+    moveWalls(board, sectorId2, wall2Id, -1, wallptrs);
   }
-  moveWalls(board, sectorId, wallId, -1, []);
+  moveWalls(board, sectorId, wallId, -1, wallptrs);
 }
 
-export function mergePoints(board: Board, wallId: number) {
+export function mergePoints(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
-  if (wall.x == wall2.x && wall.y == wall2.y) deleteWall(board, wallId);
+  if (wall.x == wall2.x && wall.y == wall2.y) deleteWall(board, wallId, wallptrs);
 }

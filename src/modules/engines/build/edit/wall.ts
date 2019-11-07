@@ -1,13 +1,13 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../collections";
-import { connectedWalls, moveWall, prevwall, insertWall, mergePoints, splitWall } from "../boardutils";
+import { BuildContext } from "../api";
+import { connectedWalls, mergePoints, moveWall, prevwall, splitWall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
-import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./messages";
 import { invalidateSectorAndWalls } from "./editutils";
-import { BuildContext } from "../api";
+import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./messages";
 import { MOVE_COPY } from "./tools/selection";
 
 function collectConnectedWalls(board: Board, wallId: number) {
@@ -33,7 +33,7 @@ export class WallEnt extends MessageHandlerReflective {
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     if (ctx.state.get(MOVE_COPY)) {
-      this.wallId = splitWall(ctx.board, this.wallId, wall.x, wall.y, ctx.art, []);
+      this.wallId = splitWall(ctx.board, this.wallId, wall.x, wall.y, ctx.art);
       this.connectedWalls = collectConnectedWalls(ctx.board, this.wallId);
     }
     GLM.vec2.set(this.origin, wall.x, wall.y);

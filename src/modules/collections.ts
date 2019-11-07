@@ -6,20 +6,25 @@ export interface Collection<T> extends Iterable<T> {
   isEmpty(): boolean;
 }
 
+export interface MutableCollection<T> extends Collection<T> {
+  set(idx: number, value: T): void;
+}
+
 export const TERMINAL_ITERATOR_RESULT: IteratorResult<any> = { value: null, done: true };
 export const EMPTY_ITERATOR = { next: () => TERMINAL_ITERATOR_RESULT };
-export const EMPTY_COLLECTION: Collection<any> = {
+export const EMPTY_COLLECTION: MutableCollection<any> = {
   get: (i: number) => undefined,
   length: () => 0,
   [Symbol.iterator]: () => EMPTY_ITERATOR,
-  isEmpty: () => true
+  isEmpty: () => true,
+  set: (i: number, v: any) => { }
 }
 
 function iteratorResult<T>(isDone: boolean, val: T): IteratorResult<T> {
   return isDone ? TERMINAL_ITERATOR_RESULT : { done: false, value: val };
 }
 
-export class Deck<T> implements Collection<T>{
+export class Deck<T> implements MutableCollection<T>{
   protected pointer = 0;
   protected array: T[];
 
