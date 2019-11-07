@@ -206,9 +206,10 @@ export function slope(board: Board, sectorId: number, x: number, y: number, hein
   return MU.int(heinum * ANGSCALE * k * ZSCALE);
 }
 
-export function createSlopeCalculator(sector: Sector, walls: Wall[]) {
-  let wall1 = walls[sector.wallptr];
-  let wall2 = walls[wall1.point2];
+export function createSlopeCalculator(board: Board, sectorId: number) {
+  let sector = board.sectors[sectorId];
+  let wall1 = board.walls[sector.wallptr];
+  let wall2 = board.walls[wall1.point2];
   let dx = wall2.x - wall1.x;
   let dy = wall2.y - wall1.y;
   let ln = MU.len2d(dx, dy);

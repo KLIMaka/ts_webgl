@@ -1,15 +1,15 @@
 import { dot2d } from "../../../../../libs/mathutils";
 import { vec3 } from "../../../../../libs_js/glmatrix";
+import { cyclicPairs } from "../../../../collections";
 import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan, isWall } from "../../hitscan";
-import { sectorOfWall, slope, wallNormal, ZSCALE } from "../../utils";
+import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { snap } from "../editutils";
 import { MovingHandle } from "../handle";
 import { Frame, NamedMessage, Render } from "../messages";
-import { cyclicPairs } from "../../../../collections";
 
 let wallNormal_ = vec3.create();
 let wallNormal1_ = vec3.create();
@@ -64,7 +64,7 @@ export class PushWall extends MessageHandlerReflective {
 
   private updateWireframe(ctx: BuildContext) {
     let buff = this.wireframe.buff;
-    buff.allocate(4, 8);
+    buff.allocate(8, 16);
     let normal = wallNormal(wallNormal_, ctx.board, this.wallId);
     let [nx, , ny] = vec3.scale(normal, normal, this.getDistance(ctx));
     let wall = ctx.board.walls[this.wallId];
@@ -73,14 +73,24 @@ export class PushWall extends MessageHandlerReflective {
     let sector = ctx.board.sectors[sectorId];
     let x1 = wall.x + nx, y1 = wall.y + ny;
     let x2 = wall2.x + nx, y2 = wall2.y + ny;
-    const z1 = slope(ctx.board, sectorId, x1, y1, sector.floorheinum) + sector.floorz;
-    const z2 = slope(ctx.board, sectorId, x1, y1, sector.ceilingheinum) + sector.ceilingz;
-    const z3 = slope(ctx.board, sectorId, x2, y2, sector.ceilingheinum) + sector.ceilingz;
-    const z4 = slope(ctx.board, sectorId, x2, y2, sector.floorheinum) + sector.floorz;
+    const slopeCalc = createSlopeCalculator(ctx.board, sectorId);
+    const z1 = slopeCalc(x1, y1, sector.floorheinum) + sector.floorz;
+    const z2 = slopeCalc(x1, y1, sector.ceilingheinum) + sector.ceilingz;
+    const z3 = slopeCalc(x2, y2, sector.ceilingheinum) + sector.ceilingz;
+    const z4 = slopeCalc(x2, y2, sector.floorheinum) + sector.floorz;
+    const z5 = slopeCalc(wall.x, wall.y, sector.floorheinum) + sector.floorz;
+    const z6 = slopeCalc(wall.x, wall.y, sector.ceilingheinum) + sector.ceilingz;
+    const z7 = slopeCalc(wall2.x, wall2.y, sector.ceilingheinum) + sector.ceilingz;
+    const z8 = slopeCalc(wall2.x, wall2.y, sector.floorheinum) + sector.floorz;
     buff.writePos(0, x1, z1 / ZSCALE, y1);
     buff.writePos(1, x1, z2 / ZSCALE, y1);
     buff.writePos(2, x2, z3 / ZSCALE, y2);
     buff.writePos(3, x2, z4 / ZSCALE, y2);
+    buff.writePos(4, wall.x, z5 / ZSCALE, wall.y);
+    buff.writePos(5, wall.x, z6 / ZSCALE, wall.y);
+    buff.writePos(6, wall2.x, z7 / ZSCALE, wall2.y);
+    buff.writePos(7, wall2.x, z8 / ZSCALE, wall2.y);
     for (let [i1, i2] of cyclicPairs(4)) buff.writeLine(i1 * 2, i1, i2);
+    for (let i = 0; i < 4; i++) buff.writeLine(8 + i * 2, i, i + 4);
   }
 }

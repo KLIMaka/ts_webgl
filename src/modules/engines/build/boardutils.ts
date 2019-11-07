@@ -960,6 +960,13 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
   return board.numsprites++;
 }
 
+function deleteWall1(board: Board, wallId: number) {
+  let sectorId = sectorOfWall(board, wallId);
+  let sector = board.sectors[sectorId];
+  if (sector.wallnum < 4) throw new Error('Sector need to have 3walls minimum');
+
+}
+
 export const deleteWall = (() => {
   let wallsToDelete = new IndexedDeck<number>();
 

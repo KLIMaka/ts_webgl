@@ -229,6 +229,7 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
   ctx.state.register('backward', false);
   ctx.state.register('strafe_left', false);
   ctx.state.register('strafe_right', false);
+  const CAM_SPEED = 8000;
 
   return {
     get sec() { return playerstart.sectnum },
@@ -250,10 +251,10 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
       let state = ctx.state;
       let dt = ctx.state.get<number>('frametime');
 
-      if (state.get('forward')) control.moveForward(dt * 8000);
-      if (state.get('backward')) control.moveForward(-dt * 8000);
-      if (state.get('strafe_left')) control.moveSideway(-dt * 8000);
-      if (state.get('strafe_right')) control.moveSideway(dt * 8000);
+      if (state.get('forward')) control.moveForward(dt * CAM_SPEED);
+      if (state.get('backward')) control.moveForward(-dt * CAM_SPEED);
+      if (state.get('strafe_left')) control.moveSideway(-dt * CAM_SPEED);
+      if (state.get('strafe_right')) control.moveSideway(dt * CAM_SPEED);
       control.track(state.get('mouseX'), state.get('mouseY'), state.get('lookaim'));
 
       let p = control.getPosition();
