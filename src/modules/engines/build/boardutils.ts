@@ -960,57 +960,28 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
   return board.numsprites++;
 }
 
-function deleteWall1(board: Board, wallId: number) {
+function deleteWall(board: Board, wallId: number) {
   let sectorId = sectorOfWall(board, wallId);
   let sector = board.sectors[sectorId];
-  if (sector.wallnum < 4) throw new Error('Sector need to have 3walls minimum');
-
+  if (sector.wallnum < 4) throw new Error(`Sector ${sectorId} need to have 3 walls minimum`);
+  let wall = board.walls[wallId];
+  if (wall.nextsector != -1 && board.sectors[wall.nextsector].wallnum < 4)
+    throw new Error(`Sector ${board.sectors[wall.nextsector].wallnum} need to have 3 walls minimum`);
+  if (wall.nextwall != -1) {
+    let wall2 = board.walls[wall.nextwall];
+    let sectorId2 = wall.nextsector;
+    let wall2Id = wall.nextwall;
+    wall2.nextwall = -1;
+    wall2.nextsector = -1;
+    wall.nextwall = -1;
+    wall.nextsector = -1;
+    moveWalls(board, sectorId2, wall2Id, -1, []);
+  }
+  moveWalls(board, sectorId, wallId, -1, []);
 }
 
-export const deleteWall = (() => {
-  let wallsToDelete = new IndexedDeck<number>();
-
-  return (board: Board, wallId: number) => {
-    wallsToDelete.clear().push(wallId);
-    deleteWalls(board, wallsToDelete, sectorOfWall(board, wallId));
-  }
-})();
-
-export const deleteWalls = (() => {
-  let sectorWalls = new Deck<Wall>();
-  let sectorLoopPoints = new Deck<number>();
-
-  return (board: Board, wallIds: IndexedDeck<number>, sectorId: number) => {
-    let sector = board.sectors[sectorId];
-    let end = sector.wallptr + sector.wallnum;
-    sectorWalls.clear();
-    sectorLoopPoints.clear();
-    for (let w = sector.wallptr; w < end; w++) {
-      let wall = board.walls[w];
-      if (wallIds.indexOf(w) == -1) sectorWalls.push(wall);
-      if (wall.point2 < w) sectorLoopPoints.push(sectorWalls.length());
-    }
-    recreateSectorWalls(board, sectorId, sectorWalls, sectorLoopPoints);
-  }
-})();
-
-export const mergePoints = (() => {
-  let toDelete = new IndexedDeck<number>();
-  let connectedToDelete = new Deck<number>();
-
-  return (board: Board, wallId: number) => {
-    let cwalls = connectedWalls(board, wallId, connectedToDelete.clear());
-    for (let i = 0; i < cwalls.length(); i++) {
-      toDelete.clear();
-      let w = cwalls.get(i);
-      let wall = board.walls[w];
-      for (; ;) {
-        let wall2 = board.walls[wall.point2];
-        if (wall.x == wall2.x && wall.y == wall2.y) toDelete.push(wall.point2);
-        if (wall.point2 == w) break;
-        wall = board.walls[wall.point2];
-      }
-      if (toDelete.length() > 0) deleteWalls(board, toDelete, sectorOfWall(board, w));
-    }
-  }
-})();
+export function mergePoints(board: Board, wallId: number) {
+  let wall = board.walls[wallId];
+  let wall2 = board.walls[wall.point2];
+  if (wall.x == wall2.x && wall.y == wall2.y) deleteWall(board, wallId);
+}
