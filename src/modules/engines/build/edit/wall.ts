@@ -2,7 +2,7 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../collections";
 import { BuildContext } from "../api";
-import { connectedWalls, mergePoints, moveWall, prevwall, splitWall } from "../boardutils";
+import { connectedWalls, mergePoints, moveWall, lastwall, splitWall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
@@ -72,7 +72,7 @@ export class WallEnt extends MessageHandlerReflective {
       for (let i = 0; i < cwalls.length(); i++) {
         let w = cwalls.get(i);
         let s = sectorOfWall(ctx.board, w);
-        let p = prevwall(ctx.board, w);
+        let p = lastwall(ctx.board, w);
         msg.set.add(tuple(2, w));
         msg.set.add(tuple(3, w));
         msg.set.add(tuple(2, p));

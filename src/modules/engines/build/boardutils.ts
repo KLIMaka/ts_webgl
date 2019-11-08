@@ -496,7 +496,7 @@ export function splitWall(board: Board, wallId: number, x: number, y: number, ar
   return wallId;
 }
 
-export function prevwall(board: Board, wallId: number): number {
+export function lastwall(board: Board, wallId: number): number {
   if (wallId > 0 && board.walls[wallId - 1].point2 == wallId)
     return wallId - 1;
   for (let w = wallId; ; w = board.walls[w].point2) {
@@ -513,33 +513,33 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
   board.walls[w].x = x;
   board.walls[w].y = y;
   fixxrepeat(board, w);
-  fixxrepeat(board, prevwall(board, w));
+  fixxrepeat(board, lastwall(board, w));
 }
 
 export function connectedWalls(board: Board, wallId: number, result: Deck<number>): Deck<number> {
   let walls = board.walls;
   let w = wallId;
-  result.push(w);
+  let added = false;
   do {
     let wall = walls[w];
     if (wall.nextwall != -1) {
       w = nextwall(board, wall.nextwall);
       result.push(w);
+      added = true;
     } else {
       w = wallId;
       do {
-        let p = prevwall(board, w);
+        let p = lastwall(board, w);
         let wall = walls[p];
         if (wall.nextwall != -1) {
           w = wall.nextwall;
           result.push(w);
-        } else {
-          break;
-        }
+          added = true;
+        } else break;
       } while (w != wallId)
     }
   } while (w != wallId)
-  return result;
+  return added ? result : result.push(wallId);
 }
 
 let wallsToMove = new Deck<number>();
@@ -548,7 +548,7 @@ export function moveWall(board: Board, wallId: number, x: number, y: number): bo
   let wall = walls[wallId];
   if (wall.x == x && wall.y == y) return false;
   connectedWalls(board, wallId, wallsToMove.clear());
-  for (let i = 0; i < wallsToMove.length(); i++) doMoveWall(board, wallsToMove.get(i), x, y);
+  for (let w of wallsToMove) doMoveWall(board, w, x, y);
   return true;
 }
 
@@ -561,11 +561,11 @@ export function moveSprite(board: Board, sprId: number, x: number, y: number, z:
 }
 
 let wallNormal_ = vec3.create();
-export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, wallptrs: MutableCollection<number> = EMPTY_COLLECTION, alwaysNewPoints = false): number {
+export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, alwaysNewPoints = false, wallptrs: MutableCollection<number> = EMPTY_COLLECTION): number {
   if (len == 0) return wallId;
   let w1 = wallId; let wall1 = board.walls[w1];
   let w2 = wall1.point2; let wall2 = board.walls[w2];
-  let p1 = prevwall(board, w1); let prev1 = board.walls[p1];
+  let p1 = lastwall(board, w1); let prev1 = board.walls[p1];
   let n2 = wall2.point2; let next2 = board.walls[n2];
   let normal = wallNormal(wallNormal_, board, wallId);
   vec3.scale(normal, normal, len);

@@ -44,7 +44,3 @@ export class SeqIterrator implements Iterator<number>, ForwardIterator, BackIter
 export function seq(idx: number) {
   return new SeqIterrator(idx);
 }
-
-for (let i = seq(0), end = seq(10); !i.eq(end); i.next()) {
-  console.log(i.get());
-}

@@ -24,6 +24,42 @@ function iteratorResult<T>(isDone: boolean, val: T): IteratorResult<T> {
   return isDone ? TERMINAL_ITERATOR_RESULT : { done: false, value: val };
 }
 
+export class ArrayWrapper<T> implements MutableCollection<T> {
+  constructor(private array: T[], private len: number = array.length) { };
+  get(i: number) { return this.array[i] }
+  length() { return this.len }
+  [Symbol.iterator]() { return this.array.values(); }
+  isEmpty() { return this.len == 0 }
+  set(i: number, value: T) { this.array[i] = value }
+}
+export function wrap<T>(array: T[], len: number = array.length) { return new ArrayWrapper(array, len) }
+
+export class DecoratedCollection<T, U> implements Collection<T> {
+  constructor(protected values: Collection<U>, private getter: (o: U) => T) { }
+  get(i: number) { return this.getter(this.values.get(i)) }
+  length() { return this.values.length() }
+  isEmpty() { return this.values.isEmpty() }
+  [Symbol.iterator]() {
+    let i = 0;
+    return this.length() == 0
+      ? EMPTY_ITERATOR
+      : { next: () => { return iteratorResult(i == this.length(), this.get(i++)) } }
+  }
+}
+export function decorate<T, U>(values: Collection<U>, getter: (o: U) => T): DecoratedCollection<T, U> {
+  return new DecoratedCollection(values, getter);
+}
+
+export class DecoratedMutableCollection<T, U> extends DecoratedCollection<T, U> implements MutableCollection<T> {
+  constructor(values: Collection<U>, getter: (o: U) => T, private setter: (o: U, v: T) => void) { super(values, getter) }
+  set(i: number, value: T) { this.setter(this.values.get(i), value) }
+}
+export function decorateMutable<T, U>(values: Collection<U>, getter: (o: U) => T, setter: (o: U, v: T) => void): DecoratedMutableCollection<T, U> {
+  return new DecoratedMutableCollection(values, getter, setter);
+}
+
+
+
 export class Deck<T> implements MutableCollection<T>{
   protected pointer = 0;
   protected array: T[];
@@ -113,15 +149,24 @@ export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
 }
 
 export function reversed<T>(collection: Collection<T>): Collection<T> {
-  let length = collection.length();
-  let i = length - 1;
+  return collection.isEmpty()
+    ? EMPTY_COLLECTION
+    : {
+      get: (i: number) => collection.get(collection.length() - 1 - i),
+      length: () => collection.length(),
+      isEmpty: () => collection.length() == 0,
+      [Symbol.iterator]: () => { let i = collection.length() - 1; return { next: () => iteratorResult(i < 0, collection.get(i--)) } }
+    }
+}
+
+export function sub<T>(collection: Collection<T>, start: number, length: number): Collection<T> {
   return length == 0
     ? EMPTY_COLLECTION
     : {
-      get: (i: number) => collection.get(length - 1 - i),
+      get: (i: number) => collection.get(start + i),
       length: () => length,
       isEmpty: () => length == 0,
-      [Symbol.iterator]: () => { return { next: () => iteratorResult(i < 0, collection.get(i--)) } }
+      [Symbol.iterator]: () => { let i = 0; return { next: () => iteratorResult(i == length, collection.get(start + i++)) } }
     }
 }
 

@@ -3,7 +3,7 @@ import { cyclic, len2d, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../collections";
 import { BuildContext } from "../api";
-import { connectedWalls, fixxrepeat, mergePoints, moveWall, nextwall, prevwall } from "../boardutils";
+import { connectedWalls, fixxrepeat, mergePoints, moveWall, nextwall, lastwall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Hitscan } from "../hitscan";
 import { Board } from "../structs";
@@ -37,7 +37,7 @@ function collectHighlightedWalls(board: Board, walls: Collection<number>): Colle
         chain.insertBefore(w);
         partOfOldChain = true;
         break;
-      } else if (prevwall(board, w) == chain.last().obj) {
+      } else if (lastwall(board, w) == chain.last().obj) {
         chain.insertAfter(w);
         partOfOldChain = true;
         break;
@@ -135,7 +135,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
       let cwalls = this.connectedWalls;
       for (let w of cwalls) {
         let s = sectorOfWall(ctx.board, w);
-        let p = prevwall(ctx.board, w);
+        let p = lastwall(ctx.board, w);
         msg.set.add(tuple(2, w));
         msg.set.add(tuple(3, w));
         msg.set.add(tuple(2, p));

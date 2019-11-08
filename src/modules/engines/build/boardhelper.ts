@@ -1,6 +1,6 @@
 import { Board, Sprite } from "./structs";
 import { List, Node } from "../../../libs/list";
-import { prevwall, nextwall } from "./boardutils";
+import { lastwall, nextwall } from "./boardutils";
 
 export type Pointer = Node<number>;
 
@@ -114,7 +114,7 @@ export class BoardHelper {
   public prevwall(wallId: number): number {
     let prev = this.prevWallCache.get(wallId);
     if (prev == undefined) {
-      prev = prevwall(this.board, wallId);
+      prev = lastwall(this.board, wallId);
       this.prevWallCache.set(wallId, prev);
     }
     return prev;

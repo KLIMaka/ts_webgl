@@ -1,9 +1,9 @@
 import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
+import { Collection, wrap, sub, decorate, cyclicPairs } from '../../collections';
 import { SubType } from './hitscan';
 import { Board, Sector, Sprite, Wall } from './structs';
-import { Collection, Deck } from '../../collections';
 
 export const ZSCALE = -16;
 
@@ -29,18 +29,19 @@ export function getSector(board: Board, ms: MoveStruct): number {
   return -1;
 }
 
+
+
 export function inPolygon(x: number, y: number, xs: Collection<number>, ys: Collection<number>) {
   let inter = 0;
-  for (let i = 0; i < xs.length(); i++) {
-    let x1 = xs.get(i);
-    let y1 = ys.get(i);
-    let x2 = xs.get(MU.cyclic(i + 1, xs.length()));
-    let y2 = ys.get(MU.cyclic(i + 1, ys.length()));
-    let dy1 = y1 - y;
-    let dy2 = y2 - y;
+  for (let [i1, i2] of cyclicPairs(xs.length())) {
+    let dy1 = ys.get(i1) - y;
+    let dy2 = ys.get(i2) - y;
+    let dx1 = xs.get(i1) - x;
+    let dx2 = xs.get(i2) - x;
+    if (dx1 == 0 && dx2 == 0 && (dy1 == 0 || dy2 == 0 || (dy1 ^ dy2) < 0)) return true;
+    if (dy1 == 0 && dy2 == 0 && (dx1 == 0 || dx2 == 0 || (dx1 ^ dx2) < 0)) return true;
+
     if ((dy1 ^ dy2) < 0) {
-      let dx1 = x1 - x;
-      let dx2 = x2 - x;
       if ((dx1 ^ dx2) >= 0)
         inter ^= dx1;
       else
@@ -55,24 +56,9 @@ export function inSector(board: Board, x: number, y: number, secnum: number): bo
   y = MU.int(y);
   let sec = board.sectors[secnum];
   if (!sec) return false;
-  let inter = 0;
-  for (let w = 0; w < sec.wallnum; w++) {
-    let wallidx = w + sec.wallptr;
-    let wall = board.walls[wallidx];
-    let wall2 = board.walls[wall.point2];
-    let dy1 = wall.y - y;
-    let dy2 = wall2.y - y;
-    let dx1 = wall.x - x;
-    let dx2 = wall2.x - x;
-    if (dx1 == 0 && dx2 == 0 && (dy1 == 0 || dy2 == 0 || (dy1 ^ dy2) < 0)) return true;
-    if (dy1 == 0 && dy2 == 0 && (dx1 == 0 || dx2 == 0 || (dx1 ^ dx2) < 0)) return true;
-
-    if ((dy1 ^ dy2) < 0) {
-      if ((dx1 ^ dx2) >= 0) inter ^= dx1;
-      else inter ^= MU.cross2d(dx1, dy1, dx2, dy2) ^ dy2;
-    }
-  }
-  return (inter >>> 31) == 1;
+  let wallx = decorate(sub(wrap(board.walls, board.numwalls), sec.wallptr, sec.wallnum), (w: Wall) => w.x);
+  let wally = decorate(sub(wrap(board.walls, board.numwalls), sec.wallptr, sec.wallnum), (w: Wall) => w.y);
+  return inPolygon(x, y, wallx, wally);
 }
 
 export function sectorOfWall(board: Board, wallId: number): number {
