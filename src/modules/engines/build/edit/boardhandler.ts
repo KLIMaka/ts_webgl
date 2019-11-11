@@ -1,5 +1,5 @@
 import { InputState } from '../../../input';
-import { info } from '../../../logger';
+import { info, error } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { BuildContext, ViewPoint } from '../api';
 import * as BGL from '../gl/buildgl';
@@ -11,12 +11,11 @@ import { Frame, Render } from './messages';
 
 const hit = new Hitscan();
 const RENDER = new Render();
-const FRAME = new Frame();
+const FRAME = new Frame(0);
 
 
 let context: BuildContext;
 export function init(ctx: BuildContext) {
-  ctx.state.register('frametime', 0);
   ctx.state.register('hitscan', hit);
   context = ctx;
 }
@@ -41,9 +40,15 @@ function refreshHitscan(state: InputState, view: ViewPoint): void {
 
 function poolMessages(state: InputState): void {
   for (let contextedMessage of context.poolMessages(state)) {
-    let e = contextedMessage(context);
-    info(e);
-    handlers.handle(e, context);
+    let message = contextedMessage(context);
+    try {
+      context.backup();
+      info(message);
+      handlers.handle(message, context);
+    } catch (e) {
+      error(e);
+      context.restore();
+    }
   }
 }
 
@@ -58,8 +63,8 @@ function draw() {
 }
 
 export function handle(state: InputState, view: ViewPoint, dt: number) {
-  context.state.set('frametime', dt);
-  refreshHitscan(state, view)
+  refreshHitscan(state, view);
+  FRAME.dt = dt;
   handlers.handle(FRAME, context);
   poolMessages(state)
   draw();

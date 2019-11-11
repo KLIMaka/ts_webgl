@@ -125,3 +125,37 @@ export function loadBuildMap(stream: Stream): Board {
   brd.sprites = array(spriteStruct, brd.numsprites).read(stream);
   return brd;
 }
+
+export function cloneSector(sector: Sector): Sector {
+  let sectorCopy = new Sector();
+  Object.assign(sectorCopy, sector);
+  Object.assign(sectorCopy.floorstat, sector.floorstat);
+  Object.assign(sectorCopy.ceilingstat, sector.ceilingstat);
+  return sectorCopy;
+}
+
+export function cloneWall(wall: Wall): Wall {
+  let wallCopy = new Wall();
+  Object.assign(wallCopy, wall);
+  Object.assign(wallCopy.cstat, wall.cstat);
+  return wallCopy;
+}
+
+export function cloneSprite(sprite: Sprite): Sprite {
+  let spriteCopy = new Sprite();
+  Object.assign(spriteCopy, sprite);
+  Object.assign(spriteCopy.cstat, sprite.cstat);
+  return spriteCopy;
+}
+
+export function cloneBoard(board: Board): Board {
+  let copy = new Board();
+  Object.assign(copy, board);
+  copy.sectors = [];
+  copy.walls = [];
+  copy.sprites = [];
+  for (let i = 0; i < board.numsectors; i++)    copy.sectors[i] = cloneSector(board.sectors[i]);
+  for (let i = 0; i < board.numwalls; i++)    copy.walls[i] = cloneWall(board.walls[i]);
+  for (let i = 0; i < board.numsprites; i++)    copy.sprites[i] = cloneSprite(board.sprites[i]);
+  return copy;
+}

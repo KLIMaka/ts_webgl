@@ -148,7 +148,6 @@ export function loadBinds(binds: string, binder: Binder, messageParser: EventPar
         warning(`'${str}' failed to parse`);
         continue;
       }
-      debug(`'${str}' parsed to:`, ...messages);
       let keyParts = keys.split('+');
       binder.addBind(messages, keyParts.pop(), ...keyParts);
     }

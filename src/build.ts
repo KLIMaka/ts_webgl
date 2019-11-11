@@ -37,7 +37,7 @@ import { addLogAppender, CONSOLE, warning } from './modules/logger';
 import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import { loadBloodMap } from './modules/engines/build/bloodloader';
+import { loadBloodMap, cloneBoard } from './modules/engines/build/bloodloader';
 import { PushWall } from './modules/engines/build/edit/tools/pushwall';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
@@ -249,7 +249,7 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
       RENDERER3D.draw(renderables.geometry, this);
 
       let state = ctx.state;
-      let dt = ctx.state.get<number>('frametime');
+      let dt = message.dt;
 
       if (state.get('forward')) control.moveForward(dt * CAM_SPEED);
       if (state.get('backward')) control.moveForward(-dt * CAM_SPEED);
@@ -336,6 +336,7 @@ function createBoard() {
   sprite.lotag = 1;
   sprite.sectnum = 0;
   sprite.cstat = new BS.SpriteStats();
+  sprite.extra = -1;
   board.sprites.push(sprite);
   return board;
 }
@@ -385,7 +386,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
     rorLinks() { return rorLinks }
   }
 
-  let context = new Context(art, board, gl);
+  let context = new Context(art, board, { cloneBoard }, gl);
   context.loadBinds(binds);
   let cache = new RenderablesCache(context);
   context.setBoardInvalidator(cache);
