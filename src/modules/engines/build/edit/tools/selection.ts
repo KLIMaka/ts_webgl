@@ -161,6 +161,7 @@ export class Selection extends MessageHandlerReflective {
     } else if (!ctx.state.get(MOVE_STATE)) {
       handle.stop();
       this.selection.handle(END_MOVE, ctx);
+      ctx.commit();
       return;
     }
 

@@ -151,6 +151,9 @@ export function cloneSprite(sprite: Sprite): Sprite {
 export function cloneBoard(board: Board): Board {
   let copy = new Board();
   Object.assign(copy, board);
+  copy.sectors = [];
+  copy.walls = [];
+  copy.sprites = [];
   for (let i = 0; i < board.numsectors; i++)    copy.sectors[i] = cloneSector(board.sectors[i]);
   for (let i = 0; i < board.numwalls; i++)    copy.walls[i] = cloneWall(board.walls[i]);
   for (let i = 0; i < board.numsprites; i++)    copy.sprites[i] = cloneSprite(board.sprites[i]);

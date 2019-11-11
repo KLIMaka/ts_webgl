@@ -16,7 +16,6 @@ const FRAME = new Frame(0);
 
 let context: BuildContext;
 export function init(ctx: BuildContext) {
-  ctx.state.register('frametime', 0);
   ctx.state.register('hitscan', hit);
   context = ctx;
 }

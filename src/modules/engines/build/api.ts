@@ -53,6 +53,7 @@ export interface BuildContext extends Context {
   snap(x: number): number;
   gridScale(): number;
 
+  commit(): void;
   backup(): void;
   restore(): void;
 }

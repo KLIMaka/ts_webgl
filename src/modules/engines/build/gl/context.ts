@@ -49,7 +49,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private gridSizeIdx = 3;
   private boardInt: Board;
   private invalidatorInt: BoardInvalidator;
-  private boardBak: Board;
+  private boardBak: Board = null;
+  private boardLast: Board = null;
+  private boardLast1: Board = null;
 
   constructor(art: ArtProvider, board: Board, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
     super();
@@ -57,6 +59,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.boardInt = board;
     this.gl = gl;
     this.boardManipulator = manipulator;
+    this.commit();
 
     this.state.register('mouseX', 0);
     this.state.register('mouseY', 0);
@@ -115,6 +118,19 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     loadBinds(binds, this.binder, messageParser);
   }
 
+  commit() {
+    this.boardLast1 = this.boardLast;
+    this.boardLast = this.boardManipulator.cloneBoard(this.boardInt);
+  }
+
+  backToLast() {
+    if (this.boardLast1 == null) return;
+    this.boardInt = this.boardLast1;
+    this.invalidator.invalidateAll();
+    this.boardLast = this.boardLast1;
+    this.boardLast1 = null;
+  }
+
   backup() {
     this.boardBak = this.boardManipulator.cloneBoard(this.boardInt);
   }
@@ -131,7 +147,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
       case 'grid+': this.incGridSize(); return;
       case 'grid-': this.decGridSize(); return;
       case 'view_mode': this.switchViewMode(); return;
-      case 'undo': throw new Error('dddd');
+      case 'undo': this.backToLast(); return;
     }
   }
 }

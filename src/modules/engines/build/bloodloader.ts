@@ -319,8 +319,11 @@ export function cloneSprite(sprite: BloodSprite): BloodSprite {
 export function cloneBoard(board: BloodBoard): BloodBoard {
   let copy = new BloodBoard();
   Object.assign(copy, board);
-  for (let i = 0; i < board.numsectors; i++)    copy.sectors[i] = cloneSector(board.sectors[i]);
-  for (let i = 0; i < board.numwalls; i++)    copy.walls[i] = cloneWall(board.walls[i]);
-  for (let i = 0; i < board.numsprites; i++)    copy.sprites[i] = cloneSprite(board.sprites[i]);
+  copy.sectors = [];
+  copy.walls = [];
+  copy.sprites = [];
+  for (let i = 0; i < board.numsectors; i++)  copy.sectors[i] = cloneSector(board.sectors[i]);
+  for (let i = 0; i < board.numwalls; i++)  copy.walls[i] = cloneWall(board.walls[i]);
+  for (let i = 0; i < board.numsprites; i++)  copy.sprites[i] = cloneSprite(board.sprites[i]);
   return copy;
 }
