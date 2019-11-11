@@ -1,7 +1,6 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { Deck } from "../../../../collections";
-import { info } from "../../../../logger";
-import { Frame } from "../../../idtech/md2structs";
+import { info, error } from "../../../../logger";
 import { BuildContext } from "../../api";
 import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { Context } from "../../gl/context";
@@ -12,7 +11,7 @@ import { Board } from "../../structs";
 import { sectorOfWall } from "../../utils";
 import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
 import { MovingHandle } from "../handle";
-import { EndMove, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
+import { EndMove, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove, Frame } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
@@ -50,7 +49,8 @@ function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
 
 let list = new Deck<MessageHandler>();
 let segment = new Deck<number>();
-export function getFromHitscan(ctx: BuildContext, hit: Hitscan): Deck<MessageHandler> {
+export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
+  let hit = ctx.state.get<Hitscan>('hitscan')
   let fullLoop = ctx.state.get<boolean>(LOOP_STATE);
   list.clear();
   let board = ctx.board;
@@ -90,6 +90,7 @@ function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean
 
 export class Selection extends MessageHandlerReflective {
   private selection = new MessageHandlerList();
+  private valid = true;
 
   constructor(
     ctx: Context,
@@ -108,11 +109,17 @@ export class Selection extends MessageHandlerReflective {
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {
-    if (!handle.isActive()) this.selection.list().clear().pushAll(getFromHitscan(ctx, ctx.state.get<Hitscan>('hitscan')));
+    if (!handle.isActive()) this.selection.list().clear().pushAll(getFromHitscan(ctx));
     if (this.selection.list().isEmpty()) return;
     if (this.activeMove(ctx)) {
       this.updateHandle(ctx);
-      this.updateMove(ctx);
+      try {
+        this.updateMove(ctx);
+      } catch (e) {
+        this.valid = false;
+        ctx.restore();
+        error(e);
+      }
     }
   }
 
@@ -133,9 +140,10 @@ export class Selection extends MessageHandlerReflective {
 
   private activeMove(ctx: BuildContext) {
     let start = !handle.isActive() && ctx.state.get(MOVE_STATE);
+    if (this.valid == false && start) this.valid = true;
     let move = handle.isActive() && ctx.state.get(MOVE_STATE);
     let end = handle.isActive() && !ctx.state.get(MOVE_STATE);
-    return start || move || end;
+    return this.valid && (start || move || end);
   }
 
   private updateHandle(ctx: BuildContext) {

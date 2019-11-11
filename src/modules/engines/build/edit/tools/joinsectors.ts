@@ -1,4 +1,3 @@
-import { trace } from "../../../../logger";
 import { BuildContext } from "../../api";
 import { joinSectors } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
@@ -18,7 +17,6 @@ export class JoinSectors extends MessageHandlerReflective {
     }
 
     if (this.sectorId1 != -1 && this.sectorId2 != -1) {
-      trace('joining ' + this.sectorId1 + ' and ' + this.sectorId2);
       let result = joinSectors(ctx.board, this.sectorId1, this.sectorId2);
       if (result == 0) ctx.invalidator.invalidateAll();
       this.sectorId1 = -1;

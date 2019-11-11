@@ -1,7 +1,7 @@
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
 import { Context, Message } from "./handlerapi";
-import { Board } from "./structs";
+import { Board, Sector, Wall } from "./structs";
 import * as GLM from "../../../libs_js/glmatrix";
 import { MoveStruct } from "./utils";
 import { InputState } from "../../input";
@@ -27,6 +27,10 @@ export interface BoardInvalidator {
   invalidateSprite(id: number): void;
 }
 
+export interface BoardManipulator {
+  cloneBoard(board: Board): Board;
+}
+
 export interface State {
   register<T>(name: string, defaultValue: T): void;
   set<T>(name: string, value: T): void;
@@ -40,6 +44,7 @@ export const stateCtxValue = <T>(name: string) => (ctx: BuildContext) => ctx.sta
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
+  readonly boardManipulator: BoardManipulator;
   readonly invalidator: BoardInvalidator;
   readonly gl: WebGLRenderingContext;
   readonly state: State;
@@ -47,4 +52,7 @@ export interface BuildContext extends Context {
   poolMessages(input: InputState): Collection<ContextedValue<Message>>;
   snap(x: number): number;
   gridScale(): number;
+
+  backup(): void;
+  restore(): void;
 }

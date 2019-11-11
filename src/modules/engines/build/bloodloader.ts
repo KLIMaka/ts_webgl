@@ -290,3 +290,37 @@ export function loadBloodMap(stream: Stream): BloodBoard {
 
   return createBoard(version, header1, header3, sectors, walls, sprites);
 }
+
+export function cloneSector(sector: BloodSector): BloodSector {
+  let sectorCopy = new BloodSector();
+  Object.assign(sectorCopy, sector);
+  Object.assign(sectorCopy.floorstat, sector.floorstat);
+  Object.assign(sectorCopy.ceilingstat, sector.ceilingstat);
+  if (sector.extra != -1) Object.assign(sectorCopy.extraData, sector.extraData);
+  return sectorCopy;
+}
+
+export function cloneWall(wall: BloodWall): BloodWall {
+  let wallCopy = new BloodWall();
+  Object.assign(wallCopy, wall);
+  Object.assign(wallCopy.cstat, wall.cstat);
+  if (wall.extra != -1) Object.assign(wallCopy.extraData, wall.extraData);
+  return wallCopy;
+}
+
+export function cloneSprite(sprite: BloodSprite): BloodSprite {
+  let spriteCopy = new BloodSprite();
+  Object.assign(spriteCopy, sprite);
+  Object.assign(spriteCopy.cstat, sprite.cstat);
+  if (sprite.extra != -1) Object.assign(spriteCopy.extraData, sprite.extraData);
+  return spriteCopy;
+}
+
+export function cloneBoard(board: BloodBoard): BloodBoard {
+  let copy = new BloodBoard();
+  Object.assign(copy, board);
+  for (let i = 0; i < board.numsectors; i++)    copy.sectors[i] = cloneSector(board.sectors[i]);
+  for (let i = 0; i < board.numwalls; i++)    copy.walls[i] = cloneWall(board.walls[i]);
+  for (let i = 0; i < board.numsprites; i++)    copy.sprites[i] = cloneSprite(board.sprites[i]);
+  return copy;
+}

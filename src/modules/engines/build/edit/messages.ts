@@ -17,6 +17,6 @@ export class ResetPanRepeat implements Message { }
 export class Palette implements Message { constructor(public value: number, public max: number, public absolute = false) { } }
 export class Flip implements Message { constructor() { } }
 export class SpriteMode implements Message { }
-export class Frame implements Message { }
+export class Frame implements Message { constructor(public dt: number) { } }
 export class SetWallCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }
 export class SetSectorCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }

@@ -96,16 +96,6 @@ class Contour {
       buff.writeLine(i * 2, i, i + 1);
     }
     buff.writePos(size, this.points[size][0], this.z, this.points[size][1]);
-
-    // let x = this.points[size][0];
-    // let y = this.points[size][1];
-    // let off = size + 1;
-    // off = buff.writePos(off, x, this.z, -32 * 1024);
-    // off = buff.writePos(off, x, this.z, 32 * 1024);
-    // buff.writeLine(size * 2, off - 1, off - 2);
-    // off = buff.writePos(off, -32 * 1024, this.z, y);
-    // off = buff.writePos(off, 32 * 1024, this.z, y);
-    // buff.writeLine(size * 2 + 2, off - 1, off - 2);
   }
 }
 

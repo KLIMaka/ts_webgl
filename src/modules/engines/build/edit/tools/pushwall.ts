@@ -1,6 +1,6 @@
 import { dot2d } from "../../../../../libs/mathutils";
 import { vec3 } from "../../../../../libs_js/glmatrix";
-import { cyclicPairs, EMPTY_COLLECTION } from "../../../../collections";
+import { cyclicPairs } from "../../../../collections";
 import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";

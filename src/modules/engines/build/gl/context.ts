@@ -1,7 +1,7 @@
 import { cyclic } from '../../../../libs/mathutils';
 import { InputState } from '../../../input';
 import { warning } from '../../../logger';
-import { ArtProvider, BoardInvalidator, BuildContext, State } from '../api';
+import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator } from '../api';
 import { MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { Board } from '../structs';
@@ -42,18 +42,21 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl(this);
+  readonly boardManipulator: BoardManipulator;
 
   readonly binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
   private boardInt: Board;
   private invalidatorInt: BoardInvalidator;
+  private boardBak: Board;
 
-  constructor(art: ArtProvider, board: Board, gl: WebGLRenderingContext) {
+  constructor(art: ArtProvider, board: Board, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
     super();
     this.art = art;
     this.boardInt = board;
     this.gl = gl;
+    this.boardManipulator = manipulator;
 
     this.state.register('mouseX', 0);
     this.state.register('mouseY', 0);
@@ -112,11 +115,23 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     loadBinds(binds, this.binder, messageParser);
   }
 
+  backup() {
+    this.boardBak = this.boardManipulator.cloneBoard(this.boardInt);
+  }
+
+  restore() {
+    if (this.boardBak == null) return;
+    this.boardInt = this.boardBak;
+    this.invalidator.invalidateAll();
+    this.boardBak = null;
+  }
+
   NamedMessage(msg: NamedMessage, ctx: BuildContext) {
     switch (msg.name) {
       case 'grid+': this.incGridSize(); return;
       case 'grid-': this.decGridSize(); return;
       case 'view_mode': this.switchViewMode(); return;
+      case 'undo': throw new Error('dddd');
     }
   }
 }
