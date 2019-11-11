@@ -314,7 +314,7 @@ function newWall(x: number, y: number): Wall {
   wall.ypanning = 0;
   wall.lotag = 0;
   wall.hitag = 0
-  wall.extra = -1;
+  wall.extra = 65535;
   return wall;
 }
 
@@ -379,7 +379,7 @@ function newSector(): Sector {
   sector.ceilingxpanning = 0;
   sector.ceilingypanning = 0;
   sector.ceilingz = -(32 << 8);
-  sector.extra = -1;
+  sector.extra = 65535;
   sector.floorheinum = 0;
   sector.floorpal = 0;
   sector.floorpicnum = 0;
@@ -417,7 +417,7 @@ function newSprite(x: number, y: number, z: number): Sprite {
   sprite.ang = 0;
   sprite.clipdist = 0;
   sprite.cstat = newSpriteStats();
-  sprite.extra = -1;
+  sprite.extra = 65535;
   sprite.hitag = 0;
   sprite.lotag = 0;
   sprite.owner = -1;

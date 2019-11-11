@@ -92,6 +92,10 @@ export class Deck<T> implements MutableCollection<T>{
     return this;
   }
 
+  public top(): T {
+    return this.array[this.pointer - 1];
+  }
+
   public clear(): Deck<T> {
     this.pointer = 0;
     return this;

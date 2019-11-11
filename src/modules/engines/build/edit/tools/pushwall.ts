@@ -30,6 +30,7 @@ export class PushWall extends MessageHandlerReflective {
 
   private stop(ctx: BuildContext, copy: boolean) {
     pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, copy);
+    ctx.commit();
     ctx.invalidator.invalidateAll();
     this.wallId = -1;
     this.movingHandle.stop();

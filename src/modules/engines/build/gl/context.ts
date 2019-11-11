@@ -7,6 +7,15 @@ import { Binder, loadBinds } from '../keymap';
 import { Board } from '../structs';
 import { NamedMessage } from '../edit/messages';
 import { messageParser } from '../messageparser';
+import { Deck } from '../../../collections';
+
+class History {
+  private history: Deck<Board> = new Deck();
+
+  public push(board: Board) { this.history.push(board) }
+  public pop() { if (this.history.length() > 1) this.history.pop() }
+  public top() { return this.history.top() }
+}
 
 
 function snapGrid(coord: number, gridSize: number): number {
@@ -47,18 +56,17 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
-  private boardInt: Board;
   private invalidatorInt: BoardInvalidator;
-  private boardBak: Board = null;
-  private boardLast: Board = null;
-  private boardLast1: Board = null;
+  private history: History = new History();
+  private activeBoard: Board;
+  private backupBoard: Board;
 
   constructor(art: ArtProvider, board: Board, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
     super();
     this.art = art;
-    this.boardInt = board;
     this.gl = gl;
     this.boardManipulator = manipulator;
+    this.activeBoard = board;
     this.commit();
 
     this.state.register('mouseX', 0);
@@ -72,12 +80,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   get board() {
-    return this.boardInt;
-  }
-
-  setBoard(board: Board) {
-    this.boardInt = board;
-    this.invalidatorInt.invalidateAll();
+    return this.activeBoard;
   }
 
   setBoardInvalidator(inv: BoardInvalidator) {
@@ -119,27 +122,24 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   commit() {
-    this.boardLast1 = this.boardLast;
-    this.boardLast = this.boardManipulator.cloneBoard(this.boardInt);
+    this.history.push(this.boardManipulator.cloneBoard(this.activeBoard));
   }
 
-  backToLast() {
-    if (this.boardLast1 == null) return;
-    this.boardInt = this.boardLast1;
+  undo() {
+    this.history.pop();
+    this.activeBoard = this.boardManipulator.cloneBoard(this.history.top());
     this.invalidator.invalidateAll();
-    this.boardLast = this.boardLast1;
-    this.boardLast1 = null;
   }
 
   backup() {
-    this.boardBak = this.boardManipulator.cloneBoard(this.boardInt);
+    this.backupBoard = this.boardManipulator.cloneBoard(this.activeBoard);
   }
 
   restore() {
-    if (this.boardBak == null) return;
-    this.boardInt = this.boardBak;
+    if (this.backupBoard == null) return;
+    this.activeBoard = this.backupBoard;
     this.invalidator.invalidateAll();
-    this.boardBak = null;
+    this.backupBoard = null;
   }
 
   NamedMessage(msg: NamedMessage, ctx: BuildContext) {
@@ -147,7 +147,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
       case 'grid+': this.incGridSize(); return;
       case 'grid-': this.decGridSize(); return;
       case 'view_mode': this.switchViewMode(); return;
-      case 'undo': this.backToLast(); return;
+      case 'undo': this.undo(); return;
     }
   }
 }

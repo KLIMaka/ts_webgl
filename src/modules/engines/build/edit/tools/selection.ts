@@ -125,17 +125,18 @@ export class Selection extends MessageHandlerReflective {
 
   public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
     switch (msg.name) {
-      case 'set_picnum': this.setTexture(ctx); return;
-      case 'insert_sprite': this.insertSprite(ctx); return;
+      case 'set_picnum': this.setTexture(ctx); ctx.commit(); return;
+      case 'insert_sprite': this.insertSprite(ctx); ctx.commit(); return;
       case 'copy': this.copy(ctx); return;
-      case 'paste_shade': this.selection.handle(clipboardShade, ctx); return;
-      case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); return;
+      case 'paste_shade': this.selection.handle(clipboardShade, ctx); ctx.commit(); return;
+      case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); ctx.commit(); return;
       case 'print_selected': this.print(ctx); return;
     }
   }
 
   public handleDefault(msg: Message, ctx: BuildContext) {
     this.selection.handle(msg, ctx);
+    ctx.commit();
   }
 
   private activeMove(ctx: BuildContext) {

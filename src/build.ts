@@ -336,7 +336,7 @@ function createBoard() {
   sprite.lotag = 1;
   sprite.sectnum = 0;
   sprite.cstat = new BS.SpriteStats();
-  sprite.extra = -1;
+  sprite.extra = 65535;
   board.sprites.push(sprite);
   return board;
 }
@@ -374,8 +374,8 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
   document.body.appendChild(panel.elem());
 
   let stream = new data.Stream(map, true);
-  // let board = createBoard();
-  let board = loadBloodMap(stream);
+  let board = createBoard();
+  // let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);

@@ -296,7 +296,7 @@ export function cloneSector(sector: BloodSector): BloodSector {
   Object.assign(sectorCopy, sector);
   Object.assign(sectorCopy.floorstat, sector.floorstat);
   Object.assign(sectorCopy.ceilingstat, sector.ceilingstat);
-  if (sector.extra != -1) Object.assign(sectorCopy.extraData, sector.extraData);
+  if (sector.extra != 65535) Object.assign(sectorCopy.extraData, sector.extraData);
   return sectorCopy;
 }
 
@@ -304,7 +304,7 @@ export function cloneWall(wall: BloodWall): BloodWall {
   let wallCopy = new BloodWall();
   Object.assign(wallCopy, wall);
   Object.assign(wallCopy.cstat, wall.cstat);
-  if (wall.extra != -1) Object.assign(wallCopy.extraData, wall.extraData);
+  if (wall.extra != 65535) Object.assign(wallCopy.extraData, wall.extraData);
   return wallCopy;
 }
 
@@ -312,7 +312,7 @@ export function cloneSprite(sprite: BloodSprite): BloodSprite {
   let spriteCopy = new BloodSprite();
   Object.assign(spriteCopy, sprite);
   Object.assign(spriteCopy.cstat, sprite.cstat);
-  if (sprite.extra != -1) Object.assign(spriteCopy.extraData, sprite.extraData);
+  if (sprite.extra != 65535) Object.assign(spriteCopy.extraData, sprite.extraData);
   return spriteCopy;
 }
 
