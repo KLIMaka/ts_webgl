@@ -2,12 +2,12 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../collections";
 import { BuildContext } from "../api";
-import { connectedWalls, mergePoints, moveWall, lastwall, splitWall } from "../boardutils";
+import { connectedWalls, mergePoints, moveWall, lastwall, splitWall, deleteWall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove } from "./messages";
+import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove, NamedMessage } from "./messages";
 import { MOVE_COPY } from "./tools/selection";
 
 function collectConnectedWalls(board: Board, wallId: number) {
@@ -43,8 +43,7 @@ export class WallEnt extends MessageHandlerReflective {
   private invalidate(ctx: BuildContext) {
     WallEnt.invalidatedSectors.clear();
     let cwalls = this.connectedWalls;
-    for (let i = 0; i < cwalls.length(); i++) {
-      let w = cwalls.get(i);
+    for (let w of cwalls) {
       let s = sectorOfWall(ctx.board, w);
       if (WallEnt.invalidatedSectors.indexOf(s) == -1) {
         invalidateSectorAndWalls(s, ctx);
@@ -133,5 +132,13 @@ export class WallEnt extends MessageHandlerReflective {
     wall.cstat.xflip = nflip & 1;
     wall.cstat.yflip = (nflip & 2) >> 1;
     ctx.invalidator.invalidateWall(this.wallId);
+  }
+
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    if (msg.name == 'delete') {
+      deleteWall(ctx.board, this.wallId);
+      ctx.commit();
+      ctx.invalidator.invalidateAll();
+    }
   }
 }

@@ -50,6 +50,7 @@ BACKSPACE       undo_draw_wall
 ]               grid-
 J               join_sectors
 CTRL+Z          undo
+DELETE          delete
 
 +W              forward
 +S              backward

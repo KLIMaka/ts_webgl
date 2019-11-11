@@ -959,7 +959,7 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
   return board.numsprites++;
 }
 
-function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
+export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sectorId = sectorOfWall(board, wallId);
   let sector = board.sectors[sectorId];
   if (sector.wallnum < 4) throw new Error(`Sector ${sectorId} need to have 3 walls minimum`);

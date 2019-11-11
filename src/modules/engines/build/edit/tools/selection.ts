@@ -131,6 +131,7 @@ export class Selection extends MessageHandlerReflective {
       case 'paste_shade': this.selection.handle(clipboardShade, ctx); ctx.commit(); return;
       case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); ctx.commit(); return;
       case 'print_selected': this.print(ctx); return;
+      default: this.selection.handle(msg, ctx);
     }
   }
 

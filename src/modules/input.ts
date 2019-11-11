@@ -20,7 +20,8 @@ let named = {
   38: 'UP',
   39: 'RIGHT',
   40: 'DOWN',
-  45: 'INSERT'
+  45: 'INSERT',
+  46: 'DELETE'
 };
 
 function mapKeyCode(code: number): string {
