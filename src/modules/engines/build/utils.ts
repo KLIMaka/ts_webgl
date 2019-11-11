@@ -56,9 +56,29 @@ export function inSector(board: Board, x: number, y: number, secnum: number): bo
   y = MU.int(y);
   let sec = board.sectors[secnum];
   if (!sec) return false;
-  let wallx = decorate(sub(wrap(board.walls, board.numwalls), sec.wallptr, sec.wallnum), (w: Wall) => w.x);
-  let wally = decorate(sub(wrap(board.walls, board.numwalls), sec.wallptr, sec.wallnum), (w: Wall) => w.y);
-  return inPolygon(x, y, wallx, wally);
+  // let wallx = decorate(sub(wrap(board.walls, board.numwalls), sec.wallptr, sec.wallnum), (w: Wall) => w.x);
+  // let wally = decorate(sub(wrap(board.walls, board.numwalls), sec.wallptr, sec.wallnum), (w: Wall) => w.y);
+  // return inPolygon(x, y, wallx, wally);
+  let end = sec.wallptr + sec.wallnum;
+  let inter = 0;
+  for (let w = sec.wallptr; w < end; w++) {
+    let wall = board.walls[w];
+    let wall2 = board.walls[wall.point2];
+    let dy1 = wall.y - y;
+    let dy2 = wall2.y - y;
+    let dx1 = wall.x - x;
+    let dx2 = wall2.x - x;
+    if (dx1 == 0 && dx2 == 0 && (dy1 == 0 || dy2 == 0 || (dy1 ^ dy2) < 0)) return true;
+    if (dy1 == 0 && dy2 == 0 && (dx1 == 0 || dx2 == 0 || (dx1 ^ dx2) < 0)) return true;
+
+    if ((dy1 ^ dy2) < 0) {
+      if ((dx1 ^ dx2) >= 0)
+        inter ^= dx1;
+      else
+        inter ^= MU.cross2d(dx1, dy1, dx2, dy2) ^ dy2;
+    }
+  }
+  return (inter >>> 31) == 1;
 }
 
 export function sectorOfWall(board: Board, wallId: number): number {
