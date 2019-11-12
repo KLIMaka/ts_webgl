@@ -268,11 +268,10 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
 
 function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
   ctx.state.register('lookaim', false);
-  ctx.state.register('viewpoint', null);
   let view2d = createViewPoint2d(gl, board, ctx, renderables);
   let view3d = createViewPoint3d(gl, board, ctx, renderables);
   let view = view3d;
-  ctx.state.set('viewpoint', view);
+  ctx.state.register('viewpoint', view);
 
   return {
     get sec() { return view.sec },
