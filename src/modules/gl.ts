@@ -1,6 +1,12 @@
 import * as DS from './drawstruct';
 import * as BATCH from './batcher';
 
+export function createContextFromCanvas(id: string, opts = {}): WebGLRenderingContext {
+  let canvas = <HTMLCanvasElement>document.getElementById(id);
+  let gl = <WebGLRenderingContext>canvas.getContext('webgl', opts);
+  return gl;
+}
+
 export function createContext(w: number, h: number, opts = {}): WebGLRenderingContext {
   let canvas: HTMLCanvasElement = document.createElement('canvas');
   canvas.width = w;

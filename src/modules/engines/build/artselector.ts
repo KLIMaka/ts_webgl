@@ -1,7 +1,7 @@
+import { axisSwap, RGBPalPixelProvider } from "../../pixelprovider";
 import { DrawPanel, PixelDataProvider } from "../../ui/drawpanel";
+import { dragElement } from "../../ui/ui";
 import { ArtInfoProvider } from "./art";
-import { RGBPalPixelProvider, axisSwap } from "../../pixelprovider";
-import { Element, panel, button, dragElement, div } from "../../ui/ui";
 
 function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: SelectionCallback) {
   let provider = new PixelDataProvider(1024 * 10, (i: number) => {
@@ -15,38 +15,31 @@ function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCan
 export type SelectionCallback = (id: number) => void;
 
 export class Selector {
-  private panel: Element;
+  private panel: HTMLElement;
   private drawPanel: DrawPanel;
   private cb: SelectionCallback;
 
-  constructor(w: number, h: number, arts: ArtInfoProvider, pal: Uint8Array) {
-    let frame = div('frame');
-    let header = div('header').text('Tiles');
-    header.append(button('<').click(() => { this.drawPanel.prevPage(); this.drawPanel.draw(); }));
-    header.append(button('>').click(() => { this.drawPanel.nextPage(); this.drawPanel.draw(); }));
-    header.append(button('x').click(() => this.select(-1)));
-    frame.append(header).append(div('hline'));
+  constructor(arts: ArtInfoProvider, pal: Uint8Array) {
+    this.panel = document.getElementById('select_tile');
 
-    this.panel = frame;
-    this.panel.pos('100', '100');
-    let canvas: HTMLCanvasElement = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
+    document.getElementById('select_tile_left').onclick = () => { this.drawPanel.prevPage(); this.drawPanel.draw(); };
+    document.getElementById('select_tile_right').onclick = () => { this.drawPanel.nextPage(); this.drawPanel.draw(); };
+    document.getElementById('select_tile_close').onclick = () => this.select(-1);
+
+    let canvas = <HTMLCanvasElement>document.getElementById('select_tile_canvas');
     this.drawPanel = createDrawPanel(arts, pal, canvas, (id: number) => this.select(id));
     this.drawPanel.setCellSize(64, 64);
-    this.panel.append(new Element(canvas));
     this.hide();
-    document.body.appendChild(this.panel.elem());
-    dragElement(header.elem(), this.panel.elem());
+    dragElement(document.getElementById('select_tile_title'), this.panel);
   }
 
   public show() {
-    this.panel.css('display', 'block');
+    this.panel.style.setProperty('display', 'block');
     this.drawPanel.draw();
   }
 
   public hide() {
-    this.panel.css('display', 'none');
+    this.panel.style.setProperty('display', 'none');
   }
 
   public modal(cb: SelectionCallback) {

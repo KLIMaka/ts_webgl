@@ -79,8 +79,8 @@ function keyup(e: KeyboardEvent) {
 }
 
 function mousemove(e: MouseEvent): boolean {
-  state.mouseX = e.clientX;
-  state.mouseY = e.clientY;
+  state.mouseX = e.offsetX;
+  state.mouseY = e.offsetY;
   return false;
 }
 

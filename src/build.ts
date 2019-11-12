@@ -41,7 +41,6 @@ import { loadBloodMap, cloneBoard } from './modules/engines/build/bloodloader';
 import { PushWall } from './modules/engines/build/edit/tools/pushwall';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
-let cfgFile = 'build.cfg';
 
 class BuildArtProvider implements ArtProvider {
   private textures: DS.Texture[] = [];
@@ -159,7 +158,6 @@ class BuildArtProvider implements ArtProvider {
 let loadPanel = UI.verticalPanel('loadPanel');
 document.body.appendChild(loadPanel.elem());
 let loaders = {};
-let index = [];
 function progress(fname: string) {
   return (p: number) => {
     let loader = loaders[fname];
@@ -179,7 +177,6 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
   let pointer = GLM.vec3.create();
   let control = new Controller2D();
   control.setPosition(playerstart.x, playerstart.y);
-  control.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
   ctx.state.register('zoom+', false);
   ctx.state.register('zoom-', false);
 
@@ -198,6 +195,7 @@ function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Frame)) return;
+      control.setSize(ctx.gl.drawingBufferWidth, ctx.gl.drawingBufferHeight);
       let max = control.getPointerPosition(pointer, 1, 1);
       let campos = control.getPosition();
       let dist = MU.len2d(max[0] - campos[0], max[2] - campos[2]);
@@ -246,6 +244,7 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
 
     handle(message: Message, ctx: Context) {
       if (!(message instanceof Frame)) return;
+      aspect = ctx.gl.drawingBufferWidth / ctx.gl.drawingBufferHeight;
       RENDERER3D.draw(renderables.geometry, this);
 
       let state = ctx.state;
@@ -341,37 +340,32 @@ function createBoard() {
   return board;
 }
 
-let info = {}
-function updateUi(props: UI.Properties, ms: BU.MoveStruct) {
-  info['Frame Time:'] = (1000 / PROFILE.get(null).time).toFixed(0) + 'fps';
-  info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
-  info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
-  info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2) + 'ms';
-  info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
-  info['Walls:'] = PROFILE.get('processing').counts['walls'];
-  info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
-  info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
-  info['RORs:'] = PROFILE.get(null).counts['rors'];
-  info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
-  info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
-  info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
-  info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
-  info['Draw Calls:'] = PROFILE.get(null).counts['draws'];
-  info['Sector:'] = ms.sec;
-  info['X:'] = ms.x;
-  info['Y:'] = ms.y;
+function updateUi(ms: BU.MoveStruct) {
+  document.getElementById('x_position').innerText = '' + ms.x;
+  document.getElementById('y_position').innerText = '' + ms.y;
+  document.getElementById('sector_position').innerText = '' + ms.sec;
+  document.getElementById('fps').innerText = (1000 / PROFILE.get(null).time).toFixed(0);
 
-  props.refresh(info);
+  // info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
+  // info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
+  // info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2) + 'ms';
+  // info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
+  // info['Walls:'] = PROFILE.get('processing').counts['walls'];
+  // info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
+  // info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
+  // info['RORs:'] = PROFILE.get(null).counts['rors'];
+  // info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
+  // info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
+  // info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
+  // info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
+  // info['Draw Calls:'] = PROFILE.get(null).counts['draws'];
+
+  // props.refresh(info);
 }
 
-function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
-  let gl = GL.createContext(cfg.width, cfg.height, { alpha: false, antialias: false, stencil: true });
-  let artSelector = new Selector(640, 640, artFiles, pal);
-
-  let panel = UI.panel('Info');
-  let props = UI.props();
-  panel.append(props);
-  document.body.appendChild(panel.elem());
+function render(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
+  let gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
+  let artSelector = new Selector(artFiles, pal);
 
   let stream = new data.Stream(map, true);
   let board = createBoard();
@@ -411,7 +405,7 @@ function render(cfg: any, binds: string, map: ArrayBuffer, artFiles: ART.ArtFile
       HANDLER.handle(INPUT.get(), view, time);
       PROFILE.endProfile()
 
-      updateUi(props, view);
+      updateUi(view);
 
       INPUT.postFrame();
     });
@@ -427,7 +421,6 @@ for (let a = 0; a < 18; a++) {
   getter.preload(artNames[a], ab.callback(artNames[a]), progress(artNames[a]));
 }
 
-getter.preloadString(cfgFile, ab.callback('cfg'));
 getter.preloadString('builded_binds.txt', ab.callback('binds'));
 getter.preload(rffFile, ab.callback('rff'), progress(rffFile));
 let gridcb = ab.callback('grid');
@@ -435,7 +428,6 @@ IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
 
 ab.wait((res) => {
 
-  let cfg = CFG.create(res['cfg']);
   addLogAppender(CONSOLE);
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
@@ -463,5 +455,5 @@ ab.wait((res) => {
   ];
 
   let map = rff.get(browser.getQueryVariable('map')).buffer;
-  render(cfg, res['binds'], map, artFiles, pal, PLUs, res['grid']);
+  render(res['binds'], map, artFiles, pal, PLUs, res['grid']);
 });

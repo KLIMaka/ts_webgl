@@ -87,3 +87,19 @@ body {
 .content {
 	margin: 5px 5px;
 }
+
+.window-frame {
+	position: absolute;
+	background-color:white;
+	box-shadow: 0 0 10px black;
+	border-radius:6px ;
+	overflow: hidden;
+}
+
+.hidden {
+	display: none;
+}
+
+.toolbar .title {
+	margin-top: 2px;
+}
