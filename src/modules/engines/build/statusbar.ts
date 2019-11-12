@@ -1,0 +1,42 @@
+import { MessageHandlerReflective } from "./handlerapi";
+import { Frame, PostFrame } from "./edit/messages";
+import { BuildContext, ViewPoint } from "./api";
+import * as PROFILE from "../../profiler";
+
+
+export class Statusbar extends MessageHandlerReflective {
+  xpos: HTMLElement;
+  ypos: HTMLElement;
+  secpos: HTMLElement;
+  fps: HTMLElement;
+
+  constructor() {
+    super();
+    this.xpos = document.getElementById('x_position');
+    this.ypos = document.getElementById('y_position');
+    this.secpos = document.getElementById('sector_position');
+    this.fps = document.getElementById('fps');
+  }
+
+  public PostFrame(msg: PostFrame, ctx: BuildContext) {
+    let view = ctx.state.get<ViewPoint>('viewpoint');
+    this.xpos.textContent = '' + view.x;
+    this.ypos.textContent = '' + view.y;
+    this.secpos.textContent = '' + view.sec;
+    this.fps.textContent = (1000 / PROFILE.get(null).time).toFixed(0);
+
+    // info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
+    // info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
+    // info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2) + 'ms';
+    // info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
+    // info['Walls:'] = PROFILE.get('processing').counts['walls'];
+    // info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
+    // info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
+    // info['RORs:'] = PROFILE.get(null).counts['rors'];
+    // info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
+    // info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
+    // info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
+    // info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
+    // info['Draw Calls:'] = PROFILE.get(null).counts['draws'];
+  }
+}

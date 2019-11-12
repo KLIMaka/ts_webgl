@@ -137,7 +137,6 @@ export class Selection extends MessageHandlerReflective {
 
   public handleDefault(msg: Message, ctx: BuildContext) {
     this.selection.handle(msg, ctx);
-    ctx.commit();
   }
 
   private activeMove(ctx: BuildContext) {

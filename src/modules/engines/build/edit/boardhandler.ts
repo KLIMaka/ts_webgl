@@ -7,11 +7,12 @@ import { MessageHandler, MessageHandlerList } from '../handlerapi';
 import { hitscan, Hitscan } from '../hitscan';
 import * as U from '../utils';
 import { snap } from './editutils';
-import { Frame, Render } from './messages';
+import { Frame, Render, PostFrame } from './messages';
 
 const hit = new Hitscan();
 const RENDER = new Render();
 const FRAME = new Frame(0);
+const POSTFRAME = new PostFrame();
 
 
 let context: BuildContext;
@@ -52,7 +53,7 @@ function poolMessages(state: InputState): void {
   }
 }
 
-function draw() {
+function drawTools() {
   context.gl.disable(WebGLRenderingContext.DEPTH_TEST);
   context.gl.enable(WebGLRenderingContext.BLEND);
   RENDER.list.clear();
@@ -63,9 +64,21 @@ function draw() {
 }
 
 export function handle(state: InputState, view: ViewPoint, dt: number) {
+  PROFILE.start();
+  frame(state, view, dt);
+  PROFILE.endProfile();
+  postFrame();
+}
+
+function postFrame() {
+  handlers.handle(POSTFRAME, context);
+}
+
+function frame(state: InputState, view: ViewPoint, dt: number) {
   refreshHitscan(state, view);
   FRAME.dt = dt;
   handlers.handle(FRAME, context);
-  poolMessages(state)
-  draw();
+  poolMessages(state);
+  drawTools();
 }
+

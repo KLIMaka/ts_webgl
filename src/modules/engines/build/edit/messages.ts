@@ -18,5 +18,6 @@ export class Palette implements Message { constructor(public value: number, publ
 export class Flip implements Message { constructor() { } }
 export class SpriteMode implements Message { }
 export class Frame implements Message { constructor(public dt: number) { } }
+export class PostFrame implements Message { }
 export class SetWallCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }
 export class SetSectorCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }

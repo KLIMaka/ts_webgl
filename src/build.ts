@@ -1,18 +1,18 @@
 import { AsyncBarrier } from './libs/asyncbarrier';
 import * as browser from './libs/browser';
-import * as CFG from './libs/config';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as MU from './libs/mathutils';
 import * as data from './libs/stream';
 import * as GLM from './libs_js/glmatrix';
+import { Deck } from './modules/collections';
 import { Controller2D } from './modules/controller2d';
 import * as controller from './modules/controller3d';
-import { Deck } from './modules/collections';
 import * as DS from './modules/drawstruct';
 import { ArtProvider } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
+import { cloneBoard, loadBloodMap } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
@@ -20,6 +20,7 @@ import * as HANDLER from './modules/engines/build/edit/boardhandler';
 import { Frame, NamedMessage } from './modules/engines/build/edit/messages';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
+import { PushWall } from './modules/engines/build/edit/tools/pushwall';
 import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import * as RENDERER2D from './modules/engines/build/gl/boardrenderer2d';
@@ -34,11 +35,10 @@ import * as BU from './modules/engines/build/utils';
 import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
 import { addLogAppender, CONSOLE, warning } from './modules/logger';
-import * as PROFILE from './modules/profiler';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import { loadBloodMap, cloneBoard } from './modules/engines/build/bloodloader';
-import { PushWall } from './modules/engines/build/edit/tools/pushwall';
+import { Info } from './modules/engines/build/info';
+import { Statusbar as StatusBar } from './modules/engines/build/statusbar';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
 
@@ -268,9 +268,11 @@ function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Cont
 
 function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
   ctx.state.register('lookaim', false);
+  ctx.state.register('viewpoint', null);
   let view2d = createViewPoint2d(gl, board, ctx, renderables);
   let view3d = createViewPoint3d(gl, board, ctx, renderables);
   let view = view3d;
+  ctx.state.set('viewpoint', view);
 
   return {
     get sec() { return view.sec },
@@ -285,6 +287,7 @@ function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, re
     handle(message: Message, ctx: Context) {
       if (message instanceof NamedMessage && message.name == 'view_mode') {
         view = ctx.state.get(VIEW_2D) ? view2d : view3d;
+        ctx.state.set('viewpoint', view);
         view.activate();
       }
       view.handle(message, ctx)
@@ -340,36 +343,13 @@ function createBoard() {
   return board;
 }
 
-function updateUi(ms: BU.MoveStruct) {
-  document.getElementById('x_position').innerText = '' + ms.x;
-  document.getElementById('y_position').innerText = '' + ms.y;
-  document.getElementById('sector_position').innerText = '' + ms.sec;
-  document.getElementById('fps').innerText = (1000 / PROFILE.get(null).time).toFixed(0);
-
-  // info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
-  // info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';
-  // info['Hitscan:'] = PROFILE.get('hitscan').time.toFixed(2) + 'ms';
-  // info['Sectors:'] = PROFILE.get('processing').counts['sectors'];
-  // info['Walls:'] = PROFILE.get('processing').counts['walls'];
-  // info['Sprites:'] = PROFILE.get('processing').counts['sprites'];
-  // info['PVS:'] = PROFILE.get(null).counts['pvs'] || 0;
-  // info['RORs:'] = PROFILE.get(null).counts['rors'];
-  // info['Mirrors:'] = PROFILE.get(null).counts['mirrors'];
-  // info['Buffer Traffic:'] = ((PROFILE.get(null).counts['traffic'] || 0) / 1024).toFixed(2) + 'k';
-  // info['Buffer Updates:'] = PROFILE.get(null).counts['updates'] || 0;
-  // info['Buffer Usage:'] = (100 * PROFILE.get(null).counts['buffer']).toFixed(2) + '%';
-  // info['Draw Calls:'] = PROFILE.get(null).counts['draws'];
-
-  // props.refresh(info);
-}
-
 function render(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
   let gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
   let artSelector = new Selector(artFiles, pal);
 
   let stream = new data.Stream(map, true);
-  let board = createBoard();
-  // let board = loadBloodMap(stream);
+  // let board = createBoard();
+  let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
@@ -393,6 +373,8 @@ function render(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Ui
     HANDLER.addHandler(new JoinSectors());
     HANDLER.addHandler(new DrawSector());
     HANDLER.addHandler(new PushWall());
+    HANDLER.addHandler(new Info());
+    HANDLER.addHandler(new StatusBar());
     HANDLER.addHandler(context);
     HANDLER.addHandler(view);
 
@@ -400,16 +382,10 @@ function render(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Ui
     RENDERER2D.init(context);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       BGL.newFrame(context);
-
-      PROFILE.start();
       HANDLER.handle(INPUT.get(), view, time);
-      PROFILE.endProfile()
-
-      updateUi(view);
-
       INPUT.postFrame();
     });
-    (<HTMLCanvasElement>gl.canvas).oncontextmenu = () => false;
+    document.body.oncontextmenu = () => false;
   });
 }
 

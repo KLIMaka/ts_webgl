@@ -65,8 +65,12 @@ function create(tag: string) {
 }
 
 export class Table extends Element {
+  private tbody: Element;
+
   constructor() {
     super(create('table'));
+    this.tbody = new Element(create('tbody'));
+    this.append(this.tbody);
   }
 
   public row(cols: Element[]): Table {
@@ -76,12 +80,12 @@ export class Table extends Element {
       let td = new Element(create('td')).append(c);
       tr.append(td);
     }
-    this.append(tr);
+    this.tbody.append(tr);
     return this;
   }
 
   public removeRow(row: number): Table {
-    (<HTMLTableElement>this.elem()).deleteRow(row);
+    (<HTMLTableElement>this.tbody.elem()).deleteRow(row);
     return this;
   }
 }
@@ -125,6 +129,10 @@ export function tag(tag: string): Element {
 
 export function div(className: string): Element {
   return new Element(create('div')).className(className);
+}
+
+export function span(): Element {
+  return new Element(create('span'))
 }
 
 export function table(): Table {
