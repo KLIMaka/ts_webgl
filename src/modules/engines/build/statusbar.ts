@@ -1,7 +1,7 @@
-import { MessageHandlerReflective } from "./handlerapi";
-import { Frame, PostFrame } from "./edit/messages";
-import { BuildContext, ViewPoint } from "./api";
 import * as PROFILE from "../../profiler";
+import { BuildContext, ViewPoint } from "./api";
+import { PostFrame } from "./edit/messages";
+import { MessageHandlerReflective } from "./handlerapi";
 
 
 export class Statusbar extends MessageHandlerReflective {

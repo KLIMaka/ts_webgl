@@ -2,22 +2,16 @@ import { AsyncBarrier } from './libs/asyncbarrier';
 import * as browser from './libs/browser';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
-import * as MU from './libs/mathutils';
 import * as data from './libs/stream';
-import * as GLM from './libs_js/glmatrix';
 import { Deck } from './modules/collections';
-import { Controller2D } from './modules/controller2d';
-import * as controller from './modules/controller3d';
-import * as DS from './modules/drawstruct';
-import { ArtProvider } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
 import { cloneBoard, loadBloodMap } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
+import { BuildArtProvider } from './modules/engines/build/buildartprovider';
 import * as HANDLER from './modules/engines/build/edit/boardhandler';
-import { Frame, NamedMessage } from './modules/engines/build/edit/messages';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { PushWall } from './modules/engines/build/edit/tools/pushwall';
@@ -27,133 +21,19 @@ import * as RENDERER2D from './modules/engines/build/gl/boardrenderer2d';
 import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
-import { Context, VIEW_2D } from './modules/engines/build/gl/context';
-import { Message } from './modules/engines/build/handlerapi';
+import { Context } from './modules/engines/build/gl/context';
+import { Info } from './modules/engines/build/info';
 import * as RFF from './modules/engines/build/rff';
+import { Statusbar as StatusBar } from './modules/engines/build/statusbar';
 import * as BS from './modules/engines/build/structs';
-import * as BU from './modules/engines/build/utils';
+import { createView } from './modules/engines/build/view';
 import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
-import { addLogAppender, CONSOLE, warning } from './modules/logger';
+import { addLogAppender, CONSOLE } from './modules/logger';
 import * as TEX from './modules/textures';
 import * as UI from './modules/ui/ui';
-import { Info } from './modules/engines/build/info';
-import { Statusbar as StatusBar } from './modules/engines/build/statusbar';
 
 let rffFile = 'resources/engines/blood/BLOOD.RFF';
-
-class BuildArtProvider implements ArtProvider {
-  private textures: DS.Texture[] = [];
-  private parallaxTextures: DS.Texture[] = [];
-  private infos: ART.ArtInfo[] = [];
-  private palTexture: DS.Texture = null;
-  private pluTexture: DS.Texture = null;
-  private parallaxPics = 16;
-
-  constructor(
-    private arts: ART.ArtFiles,
-    private pal: Uint8Array,
-    private PLUs: Uint8Array[],
-    private gl: WebGLRenderingContext) { }
-
-  private createTexture(w: number, h: number, arr: Uint8Array): DS.Texture {
-    let repeat = WebGLRenderingContext.CLAMP_TO_EDGE;
-    let filter = WebGLRenderingContext.NEAREST;
-    return TEX.createTexture(w, h, this.gl, { filter: filter, repeat: repeat }, arr, this.gl.LUMINANCE);
-  }
-
-  public get(picnum: number): DS.Texture {
-    let tex = this.textures[picnum];
-    if (tex != undefined)
-      return tex;
-
-    let info = this.arts.getInfo(picnum);
-    if (info.h <= 0 || info.w <= 0)
-      return this.get(0);
-    let arr = this.axisSwap(info.img, info.h, info.w);
-    tex = this.createTexture(info.w, info.h, arr);
-
-    this.textures[picnum] = tex;
-    return tex;
-  }
-
-  public getParallaxTexture(picnum: number): DS.Texture {
-    let tex = this.parallaxTextures[picnum];
-    if (tex != undefined)
-      return tex;
-
-    let infos: ART.ArtInfo[] = [];
-    let axisSwapped: Uint8Array[] = [];
-    for (let i = 0; i < this.parallaxPics; i++) {
-      infos[i] = this.arts.getInfo(picnum + i);
-      if (i != 0) {
-        if (infos[i].w != infos[i - 1].w || infos[i].h != infos[i - 1].h) {
-          warning(`Invalid parallax texture #${picnum}`);
-          return this.get(0);
-        }
-      }
-      axisSwapped[i] = this.axisSwap(infos[i].img, infos[i].h, infos[i].w);
-    }
-    let w = infos[0].w;
-    let h = infos[0].h;
-    let merged = this.mergeParallax(w, h, axisSwapped);
-    tex = this.createTexture(w * this.parallaxPics, h, merged);
-
-    this.parallaxTextures[picnum] = tex;
-    return tex;
-  }
-
-  private mergeParallax(w: number, h: number, arrs: Uint8Array[]): Uint8Array {
-    let result = new Uint8Array(w * h * this.parallaxPics);
-    for (let y = 0; y < h; y++) {
-      for (let i = 0; i < this.parallaxPics; i++) {
-        for (let x = 0; x < w; x++) {
-          result[y * w * this.parallaxPics + i * w + x] = arrs[i][y * w + x];
-        }
-      }
-    }
-    return result;
-  }
-
-  private axisSwap(data: Uint8Array, w: number, h: number): Uint8Array {
-    let result = new Uint8Array(w * h);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        result[x * h + y] = data[y * w + x];
-      }
-    }
-    return result;
-  }
-
-  public getInfo(picnum: number): ART.ArtInfo {
-    let info = this.infos[picnum];
-    if (info == undefined) {
-      info = this.arts.getInfo(picnum);
-      this.infos[picnum] = info;
-    }
-    return info;
-  }
-
-  public getPalTexture(): DS.Texture {
-    if (this.palTexture == null)
-      this.palTexture = TEX.createTexture(256, 1, this.gl, { filter: this.gl.NEAREST }, this.pal, this.gl.RGB, 3);
-    return this.palTexture;
-  }
-
-  public getPluTexture(): DS.Texture {
-    if (this.pluTexture == null) {
-      let tex = new Uint8Array(256 * this.getShadowSteps() * this.getPalswaps());
-      for (let i = 0; i < this.getPalswaps(); i++) {
-        tex.set(this.PLUs[i], 256 * this.getShadowSteps() * i);
-      }
-      this.pluTexture = TEX.createTexture(256, this.getShadowSteps() * this.getPalswaps(), this.gl, { filter: this.gl.NEAREST }, tex, this.gl.LUMINANCE);
-    }
-    return this.pluTexture;
-  }
-
-  public getPalswaps() { return this.PLUs.length }
-  public getShadowSteps() { return 64 }
-}
 
 let loadPanel = UI.verticalPanel('loadPanel');
 document.body.appendChild(loadPanel.elem());
@@ -169,128 +49,6 @@ function progress(fname: string) {
     loader.setValue(p * 100);
     if (p == 1)
       loader.css('display', 'none');
-  }
-}
-
-function createViewPoint2d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
-  let playerstart = BU.getPlayerStart(board);
-  let pointer = GLM.vec3.create();
-  let control = new Controller2D();
-  control.setPosition(playerstart.x, playerstart.y);
-  ctx.state.register('zoom+', false);
-  ctx.state.register('zoom-', false);
-
-  return {
-    get sec() { return playerstart.sectnum },
-    get x() { return playerstart.x },
-    get y() { return playerstart.y },
-    get z() { return playerstart.z },
-
-    getProjectionMatrix() { return control.getProjectionMatrix() },
-    getTransformMatrix() { return control.getTransformMatrix() },
-    getPosition() { return pointer },
-    getForward() { return [0, -1, 0] },
-    unproject(x: number, y: number) { return [0, -1, 0] },
-    activate() { control.setPosition(playerstart.x, playerstart.y) },
-
-    handle(message: Message, ctx: Context) {
-      if (!(message instanceof Frame)) return;
-      control.setSize(ctx.gl.drawingBufferWidth, ctx.gl.drawingBufferHeight);
-      let max = control.getPointerPosition(pointer, 1, 1);
-      let campos = control.getPosition();
-      let dist = MU.len2d(max[0] - campos[0], max[2] - campos[2]);
-      RENDERER2D.draw(renderables.topdown, this, campos, dist);
-
-      let state = ctx.state;
-      if (state.get('zoom+')) control.setUnitsPerPixel(control.getUnitsPerPixel() / 1.1);
-      if (state.get('zoom-')) control.setUnitsPerPixel(control.getUnitsPerPixel() * 1.1);
-      control.track(state.get('mouseX'), state.get('mouseY'), state.get('lookaim'));
-      let x = (state.get<number>('mouseX') / ctx.gl.drawingBufferWidth) * 2 - 1;
-      let y = (state.get<number>('mouseY') / ctx.gl.drawingBufferHeight) * 2 - 1;
-      let p = control.getPointerPosition(pointer, x, y);
-
-      playerstart.x = MU.int(p[0]);
-      playerstart.y = MU.int(p[2]);
-      if (!BU.inSector(board, playerstart.x, playerstart.y, playerstart.sectnum))
-        playerstart.sectnum = BU.findSector(board, playerstart.x, playerstart.y, playerstart.sectnum);
-    }
-  }
-}
-
-function createViewPoint3d(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
-  let playerstart = BU.getPlayerStart(board);
-  let control = new controller.Controller3D();
-  control.setFov(90);
-  control.setPosition(playerstart.x, playerstart.z / BU.ZSCALE + 1024, playerstart.y);
-  let aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
-  ctx.state.register('forward', false);
-  ctx.state.register('backward', false);
-  ctx.state.register('strafe_left', false);
-  ctx.state.register('strafe_right', false);
-  const CAM_SPEED = 8000;
-
-  return {
-    get sec() { return playerstart.sectnum },
-    get x() { return playerstart.x },
-    get y() { return playerstart.y },
-    get z() { return playerstart.z },
-
-    getProjectionMatrix() { return control.getProjectionMatrix(aspect) },
-    getTransformMatrix() { return control.getTransformMatrix() },
-    getPosition() { return control.getPosition() },
-    getForward() { return control.getForward() },
-    unproject(x: number, y: number) { return control.getForwardUnprojected(aspect, x, y) },
-    activate() { control.setPosition(playerstart.x, playerstart.z / BU.ZSCALE + 1024, playerstart.y) },
-
-    handle(message: Message, ctx: Context) {
-      if (!(message instanceof Frame)) return;
-      aspect = ctx.gl.drawingBufferWidth / ctx.gl.drawingBufferHeight;
-      RENDERER3D.draw(renderables.geometry, this);
-
-      let state = ctx.state;
-      let dt = message.dt;
-
-      if (state.get('forward')) control.moveForward(dt * CAM_SPEED);
-      if (state.get('backward')) control.moveForward(-dt * CAM_SPEED);
-      if (state.get('strafe_left')) control.moveSideway(-dt * CAM_SPEED);
-      if (state.get('strafe_right')) control.moveSideway(dt * CAM_SPEED);
-      control.track(state.get('mouseX'), state.get('mouseY'), state.get('lookaim'));
-
-      let p = control.getPosition();
-      playerstart.x = MU.int(p[0]);
-      playerstart.y = MU.int(p[2]);
-      playerstart.z = MU.int(p[1] * BU.ZSCALE);
-      if (!BU.inSector(board, playerstart.x, playerstart.y, playerstart.sectnum))
-        playerstart.sectnum = BU.findSector(board, playerstart.x, playerstart.y, playerstart.sectnum);
-    }
-  }
-}
-
-function createView(gl: WebGLRenderingContext, board: BS.Board, ctx: Context, renderables: RenderablesCache) {
-  ctx.state.register('lookaim', false);
-  let view2d = createViewPoint2d(gl, board, ctx, renderables);
-  let view3d = createViewPoint3d(gl, board, ctx, renderables);
-  let view = view3d;
-  ctx.state.register('viewpoint', view);
-
-  return {
-    get sec() { return view.sec },
-    get x() { return view.x },
-    get y() { return view.y },
-    get z() { return view.z },
-    getProjectionMatrix() { return view.getProjectionMatrix() },
-    getTransformMatrix() { return view.getTransformMatrix() },
-    getPosition() { return view.getPosition() },
-    getForward() { return view.getForward() },
-    unproject(x: number, y: number) { return view.unproject(x, y) },
-    handle(message: Message, ctx: Context) {
-      if (message instanceof NamedMessage && message.name == 'view_mode') {
-        view = ctx.state.get(VIEW_2D) ? view2d : view3d;
-        ctx.state.set('viewpoint', view);
-        view.activate();
-      }
-      view.handle(message, ctx)
-    }
   }
 }
 
@@ -342,10 +100,9 @@ function createBoard() {
   return board;
 }
 
-function render(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
+function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
   let gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
   let artSelector = new Selector(artFiles, pal);
-
   let stream = new data.Stream(map, true);
   // let board = createBoard();
   let board = loadBloodMap(stream);
@@ -384,9 +141,11 @@ function render(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Ui
       HANDLER.handle(INPUT.get(), view, time);
       INPUT.postFrame();
     });
-    document.body.oncontextmenu = () => false;
   });
 }
+
+document.body.oncontextmenu = () => false;
+addLogAppender(CONSOLE);
 
 let path = 'resources/engines/blood/';
 let ab = new AsyncBarrier();
@@ -403,7 +162,6 @@ IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
 
 ab.wait((res) => {
 
-  addLogAppender(CONSOLE);
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
   let arts = [];
@@ -430,5 +188,5 @@ ab.wait((res) => {
   ];
 
   let map = rff.get(browser.getQueryVariable('map')).buffer;
-  render(res['binds'], map, artFiles, pal, PLUs, res['grid']);
+  start(res['binds'], map, artFiles, pal, PLUs, res['grid']);
 });

@@ -9,11 +9,14 @@ export class Info extends MessageHandlerReflective {
   private wallFields: { [index: string]: Element } = {};
   private sectorTable: Element;
   private sectorFields: { [index: string]: Element } = {};
+  private spriteTable: Element;
+  private spriteFields: { [index: string]: Element } = {};
 
   constructor() {
     super();
     this.prepareWallTable();
     this.prepareSectorTable();
+    this.prepareSpriteTable();
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {
@@ -27,9 +30,19 @@ export class Info extends MessageHandlerReflective {
   private clear() {
     this.wallTable.css('display', 'none');
     this.sectorTable.css('display', 'none');
+    this.spriteTable.css('display', 'none');
   }
 
   private renderSprite(ctx: BuildContext, id: number) {
+    this.spriteTable.css('display', '');
+    let sprite = ctx.board.sprites[id];
+    this.spriteFields['id'].text(`${id}`);
+    this.spriteFields['offset'].text(`${sprite.xoffset}, ${sprite.yoffset}`);
+    this.spriteFields['repeat'].text(`${sprite.xrepeat}, ${sprite.yrepeat}`);
+    this.spriteFields['shade'].text(`${sprite.shade}`);
+    this.spriteFields['picnum'].text(`${sprite.picnum}`);
+    this.spriteFields['pal'].text(`${sprite.pal}`);
+    this.spriteFields['z'].text(`${sprite.z}`);
   }
 
   private renderSector(ctx: BuildContext, id: number, type: SubType) {
@@ -41,11 +54,13 @@ export class Info extends MessageHandlerReflective {
       this.sectorFields['shade'].text(`${sector.ceilingshade}`);
       this.sectorFields['picnum'].text(`${sector.ceilingpicnum}`);
       this.sectorFields['pal'].text(`${sector.ceilingpal}`);
+      this.sectorFields['z'].text(`${sector.ceilingz}`);
     } else {
       this.sectorFields['panning'].text(`${sector.floorxpanning}, ${sector.floorypanning}`);
       this.sectorFields['shade'].text(`${sector.floorshade}`);
       this.sectorFields['picnum'].text(`${sector.floorpicnum}`);
       this.sectorFields['pal'].text(`${sector.floorpal}`);
+      this.sectorFields['z'].text(`${sector.floorz}`);
     }
   }
 
@@ -90,11 +105,35 @@ export class Info extends MessageHandlerReflective {
     this.sectorFields['shade'] = span();
     this.sectorFields['picnum'] = span();
     this.sectorFields['pal'] = span();
+    this.sectorFields['z'] = span();
     table.row([span().text("Id"), this.sectorFields['id']]);
     table.row([span().text("Picnum"), this.sectorFields['picnum']]);
     table.row([span().text("Shade"), this.sectorFields['shade']]);
     table.row([span().text("Palette"), this.sectorFields['pal']]);
     table.row([span().text("Panning"), this.sectorFields['panning']]);
+    table.row([span().text("Z"), this.sectorFields['z']]);
+    document.getElementById('info_panel').appendChild(table.elem());
+  }
+
+  private prepareSpriteTable() {
+    let table = this.spriteTable = new Table();
+    table.className("table-striped");
+    table.css('display', 'none');
+    table.row([span().text('Type'), span().text('Sprite')]);
+    this.spriteFields['id'] = span();
+    this.spriteFields['offset'] = span();
+    this.spriteFields['repeat'] = span();
+    this.spriteFields['shade'] = span();
+    this.spriteFields['picnum'] = span();
+    this.spriteFields['pal'] = span();
+    this.spriteFields['z'] = span();
+    table.row([span().text("Id"), this.spriteFields['id']]);
+    table.row([span().text("Picnum"), this.spriteFields['picnum']]);
+    table.row([span().text("Shade"), this.spriteFields['shade']]);
+    table.row([span().text("Palette"), this.spriteFields['pal']]);
+    table.row([span().text("Offset"), this.spriteFields['offset']]);
+    table.row([span().text("Repeat"), this.spriteFields['repeat']]);
+    table.row([span().text("Z"), this.spriteFields['z']]);
     document.getElementById('info_panel').appendChild(table.elem());
   }
 }
