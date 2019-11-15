@@ -9,15 +9,13 @@ import { Selector } from './modules/engines/build/artselector';
 import { cloneBoard, loadBloodMap } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
-import { createNewSector } from './modules/engines/build/boardutils';
+import { createInnerLoop, createNewSector } from './modules/engines/build/boardutils';
 import { BuildArtProvider } from './modules/engines/build/buildartprovider';
-import * as HANDLER from './modules/engines/build/edit/boardhandler';
 import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
 import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
 import { PushWall } from './modules/engines/build/edit/tools/pushwall';
 import { Selection } from './modules/engines/build/edit/tools/selection';
 import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
-import * as RENDERER2D from './modules/engines/build/gl/boardrenderer2d';
 import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
@@ -31,26 +29,7 @@ import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
 import { addLogAppender, CONSOLE } from './modules/logger';
 import * as TEX from './modules/textures';
-import * as UI from './modules/ui/ui';
 
-let rffFile = 'resources/engines/blood/BLOOD.RFF';
-
-let loadPanel = UI.verticalPanel('loadPanel');
-document.body.appendChild(loadPanel.elem());
-let loaders = {};
-function progress(fname: string) {
-  return (p: number) => {
-    let loader = loaders[fname];
-    if (loader == undefined) {
-      loader = UI.progress(fname);
-      loadPanel.add(loader);
-      loaders[fname] = loader;
-    }
-    loader.setValue(p * 100);
-    if (p == 1)
-      loader.css('display', 'none');
-  }
-}
 
 function createBoard() {
   let board = new BloodBoard();
@@ -69,12 +48,12 @@ function createBoard() {
     .push([4096, 4096])
     .push([0, 4096])
   );
-  // createInnerLoop(board, 0, points.clear()
-  //   .push([1024, 1024])
-  //   .push([1024, 3072])
-  //   .push([3072, 3072])
-  //   .push([3072, 1024])
-  // );
+  createInnerLoop(board, 0, points.clear()
+    .push([1024, 1024])
+    .push([1024, 3072])
+    .push([3072, 3072])
+    .push([3072, 1024])
+  );
   // createNewSector(board, points.clear()
   //   .push([1024, 1024])
   //   .push([1024, 3072])
@@ -120,25 +99,21 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   context.loadBinds(binds);
   let cache = new RenderablesCache(context);
   context.setBoardInvalidator(cache);
-  let view = createView(gl, board, context, cache);
+  let view = createView(gl, board, context, cache, impl);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
-    HANDLER.init(context);
-    HANDLER.addHandler(new Selection(context, (cb) => artSelector.modal(cb), cache.helpers));
-    HANDLER.addHandler(new SplitWall());
-    HANDLER.addHandler(new JoinSectors());
-    HANDLER.addHandler(new DrawSector());
-    HANDLER.addHandler(new PushWall());
-    HANDLER.addHandler(new Info());
-    HANDLER.addHandler(new StatusBar());
-    HANDLER.addHandler(context);
-    HANDLER.addHandler(view);
+    context.addHandler(new Selection(context, (cb) => artSelector.modal(cb), cache.helpers));
+    context.addHandler(new SplitWall());
+    context.addHandler(new JoinSectors());
+    context.addHandler(new DrawSector());
+    context.addHandler(new PushWall());
+    context.addHandler(new Info());
+    context.addHandler(new StatusBar());
+    context.addHandler(view);
 
-    RENDERER3D.init(context, impl);
-    RENDERER2D.init(context);
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       BGL.newFrame(context);
-      HANDLER.handle(INPUT.get(), view, time);
+      context.frame(INPUT.get(), view, time);
       INPUT.postFrame();
     });
   });
@@ -147,16 +122,17 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
 document.body.oncontextmenu = () => false;
 addLogAppender(CONSOLE);
 
+let rffFile = 'resources/engines/blood/BLOOD.RFF';
 let path = 'resources/engines/blood/';
 let ab = new AsyncBarrier();
 let artNames = [];
 for (let a = 0; a < 18; a++) {
   artNames[a] = path + 'TILES0' + ("00" + a).slice(-2) + '.ART';
-  getter.preload(artNames[a], ab.callback(artNames[a]), progress(artNames[a]));
+  getter.preload(artNames[a], ab.callback(artNames[a]));
 }
 
 getter.preloadString('builded_binds.txt', ab.callback('binds'));
-getter.preload(rffFile, ab.callback('rff'), progress(rffFile));
+getter.preload(rffFile, ab.callback('rff'));
 let gridcb = ab.callback('grid');
 IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
 
@@ -165,8 +141,7 @@ ab.wait((res) => {
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
   let arts = [];
-  for (let a = 0; a < 18; a++)
-    arts.push(ART.create(new data.Stream(res[artNames[a]], true)));
+  for (let a = 0; a < 18; a++) arts.push(ART.create(new data.Stream(res[artNames[a]], true)));
   let artFiles = ART.createArts(arts);
 
   let PLUs = [

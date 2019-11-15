@@ -20,7 +20,7 @@ export class Info extends MessageHandlerReflective {
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     this.clear();
     if (isWall(hit.type)) this.renderWall(ctx, hit.id);
     else if (isSector(hit.type)) this.renderSector(ctx, hit.id, hit.type);

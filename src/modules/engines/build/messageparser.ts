@@ -93,8 +93,6 @@ function tryParseMessage(): Collection<ContextedValue<Message>> {
       .push(constCtxValue(new EndMove()));
     default: return parsdMessages;
   }
-
-
 }
 
 function tryParse(src: string, messages: Deck<ContextedValue<Message>>): Collection<ContextedValue<Message>> {

@@ -102,7 +102,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
   }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     this.refwall = getClosestWallByIds(ctx.board, hit, this.wallIds);
     let wall = ctx.board.walls[this.refwall];
     GLM.vec2.set(this.origin, wall.x, wall.y);

@@ -9,7 +9,7 @@ export class JoinSectors extends MessageHandlerReflective {
   private sectorId2 = -1;
 
   private join(ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     if (this.sectorId1 == -1) {
       this.sectorId1 = hit.id;
     } else if (this.sectorId2 == -1) {

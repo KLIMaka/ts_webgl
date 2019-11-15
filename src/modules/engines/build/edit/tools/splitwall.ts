@@ -32,7 +32,7 @@ export class SplitWall extends MessageHandlerReflective {
 
   public Frame(msg: Frame, ctx: BuildContext) {
     this.active = false;
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     if (hit.t != -1) {
       let [x, y, id, type] = snap(ctx);
       if (isWall(type)) this.update(x, y, id);

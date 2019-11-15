@@ -1,11 +1,12 @@
+import * as GLM from "../../../libs_js/glmatrix";
+import { Collection } from "../../collections";
 import { Texture } from "../../drawstruct";
+import { InputState } from "../../input";
 import { ArtInfoProvider } from "./art";
 import { Context, Message } from "./handlerapi";
-import { Board, Sector, Wall } from "./structs";
-import * as GLM from "../../../libs_js/glmatrix";
+import { Board } from "./structs";
 import { MoveStruct } from "./utils";
-import { InputState } from "../../input";
-import { Collection } from "../../collections";
+import { Hitscan } from "./hitscan";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
@@ -44,16 +45,12 @@ export const stateCtxValue = <T>(name: string) => (ctx: BuildContext) => ctx.sta
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
-  readonly boardManipulator: BoardManipulator;
   readonly invalidator: BoardInvalidator;
   readonly gl: WebGLRenderingContext;
   readonly state: State;
+  readonly hitscan: Hitscan;
+  readonly gridScale: number;
 
-  poolMessages(input: InputState): Collection<ContextedValue<Message>>;
   snap(x: number): number;
-  gridScale(): number;
-
   commit(): void;
-  backup(): void;
-  restore(): void;
 }

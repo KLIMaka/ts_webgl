@@ -19,7 +19,7 @@ export class PushWall extends MessageHandlerReflective {
   private wireframe = new Wireframe();
 
   private start(ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     let snapresult = snap(ctx);
     if (snapresult == null) return;
     let [, , id, type] = snapresult;
@@ -52,7 +52,7 @@ export class PushWall extends MessageHandlerReflective {
 
   public Frame(msg: Frame, ctx: BuildContext) {
     if (this.movingHandle.isActive()) {
-      let hit = ctx.state.get<Hitscan>('hitscan');
+      let hit = ctx.hitscan;
       this.movingHandle.update(false, false, hit);
     }
   }

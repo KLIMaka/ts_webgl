@@ -145,7 +145,7 @@ export class DrawSector extends MessageHandlerReflective {
 
   private predrawUpdate(ctx: BuildContext) {
     if (this.points.length() > 0) return false;
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     if (hit.t == -1) {
       this.valid = false;
     } else {
@@ -163,7 +163,7 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   private getIntersectionZPlane(ctx: BuildContext): [number, number] {
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     let snapped = snap(ctx);
     if (snapped != null) return tuple2(DrawSector.zintersect, snapped[0], snapped[1]);
     let z = this.contour.getZ();

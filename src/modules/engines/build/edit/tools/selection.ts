@@ -50,7 +50,7 @@ function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
 let list = new Deck<MessageHandler>();
 let segment = new Deck<number>();
 export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
-  let hit = ctx.state.get<Hitscan>('hitscan')
+  let hit = ctx.hitscan;
   let fullLoop = ctx.state.get<boolean>(LOOP_STATE);
   list.clear();
   let board = ctx.board;
@@ -117,7 +117,6 @@ export class Selection extends MessageHandlerReflective {
         this.updateMove(ctx);
       } catch (e) {
         this.valid = false;
-        ctx.restore();
         error(e);
       }
     }
@@ -150,13 +149,13 @@ export class Selection extends MessageHandlerReflective {
   private updateHandle(ctx: BuildContext) {
     let vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
     let parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     handle.update(vertical, parallel, hit);
   }
 
   private updateMove(ctx: BuildContext) {
     if (!handle.isActive() && ctx.state.get(MOVE_STATE)) {
-      let hit = ctx.state.get<Hitscan>('hitscan');
+      let hit = ctx.hitscan;
       handle.start(hit);
       this.selection.handle(START_MOVE, ctx);
     } else if (!ctx.state.get(MOVE_STATE)) {
@@ -183,7 +182,7 @@ export class Selection extends MessageHandlerReflective {
 
   private insertSprite(ctx: BuildContext) {
     let [x, y] = snap(ctx);
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     let z = hit.z;
     if (!isSector(hit.type)) return;
     this.picnumSelector((picnum: number) => {
@@ -194,7 +193,7 @@ export class Selection extends MessageHandlerReflective {
   }
 
   private print(ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan')
+    let hit = ctx.hitscan;
     switch (hit.type) {
       case SubType.CEILING:
       case SubType.FLOOR:
@@ -212,7 +211,7 @@ export class Selection extends MessageHandlerReflective {
   }
 
   private copy(ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan')
+    let hit = ctx.hitscan;
     if (hit.t == -1) return;
     switch (hit.type) {
       case SubType.CEILING:

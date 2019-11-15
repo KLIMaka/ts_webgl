@@ -1,13 +1,18 @@
 import { cyclic } from '../../../../libs/mathutils';
 import { InputState } from '../../../input';
-import { warning } from '../../../logger';
-import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator } from '../api';
-import { MessageHandlerReflective } from '../handlerapi';
+import { warning, error, info } from '../../../logger';
+import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator, ViewPoint } from '../api';
+import { MessageHandlerReflective, MessageHandlerList, Message, MessageHandler } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { Board } from '../structs';
-import { NamedMessage } from '../edit/messages';
+import { NamedMessage, Frame, PostFrame, Mouse, Render } from '../edit/messages';
 import { messageParser } from '../messageparser';
 import { Deck } from '../../../collections';
+import { Hitscan, hitscan } from '../hitscan';
+import * as PROFILE from '../../../profiler';
+import * as BGL from './buildgl';
+import { snap } from '../edit/editutils';
+import { ZSCALE } from '../utils';
 
 class History {
   private history: Deck<Board> = new Deck();
@@ -29,7 +34,7 @@ class StateImpl implements State {
 
   register<T>(name: string, defaultValue: T): void {
     let prevState = this.state[name];
-    if (prevState != undefined) warning(`Redefining state ${name}`);
+    if (prevState != undefined) warning(`Redefining state ${name}`, new Error().stack);
     this.state[name] = defaultValue;
   }
 
@@ -40,18 +45,22 @@ class StateImpl implements State {
 
   get<T>(name: string): T {
     let stateValue = this.state[name];
-    if (stateValue == undefined) warning(`State ${name} is unregistered`);
+    if (stateValue == undefined) warning(`State ${name} is unregistered`, new Error().stack);
     return stateValue;
   }
 }
 
 export const VIEW_2D = 'view_2d';
+const FRAME = new Frame(0);
+const POSTFRAME = new PostFrame();
+const MOUSE = new Mouse(0, 0);
+const RENDER = new Render();
 
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl(this);
-  readonly boardManipulator: BoardManipulator;
+  readonly hitscan = new Hitscan();
 
   readonly binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
@@ -59,7 +68,8 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private invalidatorInt: BoardInvalidator;
   private history: History = new History();
   private activeBoard: Board;
-  private backupBoard: Board;
+  private boardManipulator: BoardManipulator;
+  private handlers = new MessageHandlerList();
 
   constructor(art: ArtProvider, board: Board, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
     super();
@@ -69,10 +79,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.activeBoard = board;
     this.commit();
 
-    this.state.register('mouseX', 0);
-    this.state.register('mouseY', 0);
-    this.state.register('gridSize', 128);
+    this.state.register('gridScale', this.gridScale);
     this.state.register(VIEW_2D, false);
+    this.state.register('hitscan', this.hitscan);
   }
 
   get invalidator() {
@@ -87,34 +96,52 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.invalidatorInt = inv;
   }
 
-  poolMessages(input: InputState) {
-    this.state.set('mouseX', input.mouseX);
-    this.state.set('mouseY', input.mouseY);
+  private updateHitscan(view: ViewPoint, input: InputState) {
+    PROFILE.startProfile('hitscan');
+    let x = (input.mouseX / this.gl.drawingBufferWidth) * 2 - 1;
+    let y = (input.mouseY / this.gl.drawingBufferHeight) * 2 - 1;
+    let [vx, vz, vy] = view.unproject(x, y);
+    hitscan(this.activeBoard, this.art, view.x, view.y, view.z, view.sec, vx, vy, vz, this.hitscan, 0);
+    PROFILE.endProfile();
+    if (this.hitscan.t != -1) {
+      let [x, y] = snap(this);
+      BGL.setCursorPosiotion(x, this.hitscan.z / ZSCALE, y);
+    }
+  }
+
+  private mouseMove(input: InputState) {
+    if (MOUSE.x == input.mouseX && MOUSE.y == input.mouseY) return;
+    MOUSE.x = input.mouseX;
+    MOUSE.y = input.mouseY;
+    this.handle(MOUSE, this);
+  }
+
+  private poolMessages(input: InputState) {
     this.binder.updateState(input, this.state);
     return this.binder.poolEvents(input);
   }
 
-  switchViewMode() {
+  private switchViewMode() {
     let mode = this.state.get(VIEW_2D);
     this.state.set(VIEW_2D, !mode);
   }
 
-  gridScale() {
+  get gridScale() {
     return this.gridSizes[this.gridSizeIdx];
   }
 
-  incGridSize() {
+  private incGridSize() {
     this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length);
-    this.state.set('gridSize', this.gridScale());
+    this.state.set('gridScale', this.gridScale);
   }
 
-  decGridSize() {
+  private decGridSize() {
     this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length);
-    this.state.set('gridSize', this.gridScale());
+    this.state.set('gridScale', this.gridScale);
   }
 
   snap(x: number) {
-    return snapGrid(x, this.gridScale());
+    return snapGrid(x, this.gridScale);
   }
 
   loadBinds(binds: string) {
@@ -125,21 +152,49 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.history.push(this.boardManipulator.cloneBoard(this.activeBoard));
   }
 
-  undo() {
+  private drawTools() {
+    this.gl.disable(WebGLRenderingContext.DEPTH_TEST);
+    this.gl.enable(WebGLRenderingContext.BLEND);
+    RENDER.list.clear();
+    this.handle(RENDER, this);
+    BGL.drawAll(this, RENDER.list);
+    this.gl.disable(WebGLRenderingContext.BLEND);
+    this.gl.enable(WebGLRenderingContext.DEPTH_TEST);
+  }
+
+  private undo() {
     this.history.pop();
     this.activeBoard = this.boardManipulator.cloneBoard(this.history.top());
     this.invalidator.invalidateAll();
   }
 
-  backup() {
-    this.backupBoard = this.boardManipulator.cloneBoard(this.activeBoard);
+  addHandler(handler: MessageHandler) {
+    this.handlers.list().push(handler);
   }
 
-  restore() {
-    if (this.backupBoard == null) return;
-    this.activeBoard = this.backupBoard;
-    this.invalidator.invalidateAll();
-    this.backupBoard = null;
+  handle(msg: Message, ctx: BuildContext) {
+    try {
+      info(msg);
+      super.handle(msg, ctx);
+      this.handlers.handle(msg, ctx);
+    } catch (e) {
+      error(e);
+    }
+  }
+
+  frame(input: InputState, view: ViewPoint, dt: number) {
+    PROFILE.start();
+    this.updateHitscan(view, input);
+    this.mouseMove(input);
+    FRAME.dt = dt;
+    this.handle(FRAME, this);
+    for (let contextedMessage of this.poolMessages(input)) {
+      let message = contextedMessage(this);
+      this.handle(message, this);
+    }
+    this.drawTools();
+    PROFILE.endProfile();
+    this.handle(POSTFRAME, this);
   }
 
   NamedMessage(msg: NamedMessage, ctx: BuildContext) {

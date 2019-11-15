@@ -7,7 +7,7 @@ export class DrawWall extends MessageHandlerReflective {
   private activeWall = -1;
 
   private start(ctx: BuildContext) {
-    let hit = ctx.state.get<Hitscan>('hitscan');
+    let hit = ctx.hitscan;
     if (!isWall(hit.type)) return;
     let wall = ctx.board.walls[hit.id];
     if (wall.nextsector != -1 && hit.type == SubType.MID_WALL) return;
