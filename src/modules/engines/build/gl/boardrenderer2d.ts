@@ -1,4 +1,4 @@
-import { ViewPoint, BuildContext } from '../api';
+import { View, BuildContext } from '../api';
 import { BuildRenderableProvider, Renderable } from './renderable';
 import { TopDownBoardVisitorResult, VisResult } from '../boardvisitor';
 import * as PROFILE from '../../../profiler';
@@ -20,7 +20,7 @@ export function init(ctx: BuildContext) {
 }
 
 let visible = new TopDownBoardVisitorResult();
-export function draw(renderables: BuildRenderableProvider, view: ViewPoint, campos: GLM.Vec3Array, dist: number) {
+export function draw(renderables: BuildRenderableProvider, view: View, campos: GLM.Vec3Array, dist: number) {
   PROFILE.startProfile('processing');
   let result = visible.visit(context.board, campos, dist);
   PROFILE.endProfile();

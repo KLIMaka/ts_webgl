@@ -3,7 +3,7 @@ import { mirrorBasis, normal2d, reflectPoint3d } from '../../../../libs/vecmath'
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as PROFILE from '../../../profiler';
 import { Deck } from '../../../collections';
-import { BuildContext, ViewPoint } from '../api';
+import { BuildContext, View } from '../api';
 import { unpackWallId } from '../boardutils';
 import { AllBoardVisitorResult, createSectorCollector, createWallCollector, PvsBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
@@ -44,7 +44,7 @@ export function init(ctx: BuildContext, impl: Implementation) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
 
-export function draw(renderables: BuildRenderableProvider, view: ViewPoint) {
+export function draw(renderables: BuildRenderableProvider, view: View) {
   drawGeometry(renderables, view);
 }
 
@@ -74,7 +74,7 @@ function writeAll() {
 
 let visible = new PvsBoardVisitorResult();
 let all = new AllBoardVisitorResult();
-function drawGeometry(renderables: BuildRenderableProvider, view: ViewPoint) {
+function drawGeometry(renderables: BuildRenderableProvider, view: View) {
   PROFILE.startProfile('processing');
   let result = view.sec == -1
     ? all.visit(context.board)
@@ -107,7 +107,7 @@ let dstPos = GLM.vec3.create();
 let npos = GLM.vec3.create();
 let mstmp = { sec: 0, x: 0, y: 0, z: 0 };
 
-function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: RorLink, surface: Renderable, stencilValue: number) {
+function drawStack(renderables: BuildRenderableProvider, view: View, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link) return;
 
   BGL.setViewMatrix(view.getTransformMatrix());
@@ -138,7 +138,7 @@ function drawStack(renderables: BuildRenderableProvider, view: ViewPoint, link: 
 
 let rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 
-function drawRor(renderables: BuildRenderableProvider, result: VisResult, view: ViewPoint) {
+function drawRor(renderables: BuildRenderableProvider, result: VisResult, view: View) {
   result.forSector(context.board, rorSectorCollector.visit());
   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
@@ -160,7 +160,7 @@ let mirrorNormal = GLM.vec3.create();
 let mirroredTransform = GLM.mat4.create();
 let mpos = GLM.vec3.create();
 
-function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, view: ViewPoint) {
+function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, view: View) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   context.gl.enable(WebGLRenderingContext.STENCIL_TEST);

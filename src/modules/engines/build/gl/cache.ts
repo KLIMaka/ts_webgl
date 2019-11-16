@@ -45,12 +45,16 @@ class CacheMap<T extends Renderable> {
   }
 }
 
-export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider {
+export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider, BoardInvalidator {
   private sectors = new CacheMap(updateSector2d);
   private walls = new CacheMap(updateWall2d);
   private sprites = new CacheMap(updateSprite);
+  private ctx: BuildContext;
 
-  constructor(readonly ctx: BuildContext) { }
+
+  bind(ctx: BuildContext): void {
+    this.ctx = ctx;
+  }
 
   sector(id: number): SectorRenderable {
     return this.sectors.get(id, this.ctx);
@@ -87,12 +91,16 @@ export class CachedTopDownBuildRenderableProvider implements BuildRenderableProv
   }
 }
 
-export class CachedBuildRenderableProvider implements BuildRenderableProvider {
+export class CachedBuildRenderableProvider implements BuildRenderableProvider, BoardInvalidator {
   private sectors = new CacheMap(updateSector);
   private walls = new CacheMap(updateWall);
   private sprites = new CacheMap(updateSprite);
+  private ctx: BuildContext;
 
-  constructor(readonly ctx: BuildContext) { }
+
+  bind(ctx: BuildContext): void {
+    this.ctx = ctx;
+  }
 
   sector(id: number): SectorRenderable {
     return this.sectors.get(id, this.ctx);
@@ -130,17 +138,22 @@ export class CachedBuildRenderableProvider implements BuildRenderableProvider {
 }
 
 
-export class CachedHelperBuildRenderableProvider implements BuildRenderableProvider {
+export class CachedHelperBuildRenderableProvider implements BuildRenderableProvider, BoardInvalidator {
   private sectors: CacheMap<SectorHelper>;
   private walls: CacheMap<WallHelper>;
   private sprites: CacheMap<Renderable>;
   private wallPoints: CacheMap<Renderable>;
+  private ctx: BuildContext;
 
-  constructor(readonly cache: CachedBuildRenderableProvider, readonly ctx: BuildContext) {
+  constructor(readonly cache: CachedBuildRenderableProvider) {
     this.sectors = new CacheMap((ctx: BuildContext, id: number, value: SectorHelper) => { return this.updateSectorHelper(id, value) });
     this.walls = new CacheMap((ctx: BuildContext, id: number, value: WallHelper) => { return this.updateWallHelper(id, value) });
     this.sprites = new CacheMap((ctx: BuildContext, id: number, value: Renderable) => { return this.updateSpriteHelper(id, value) });
     this.wallPoints = new CacheMap((ctx: BuildContext, id: number, value: Renderable) => { return this.updateWallPoint(id, value) });
+  }
+
+  bind(ctx: BuildContext): void {
+    this.ctx = ctx;
   }
 
   sector(id: number): SectorRenderable {
@@ -271,10 +284,16 @@ export class RenderablesCache implements BoardInvalidator {
   readonly helpers: CachedHelperBuildRenderableProvider;
   readonly topdown: CachedTopDownBuildRenderableProvider;
 
-  constructor(ctx: BuildContext) {
-    this.geometry = new CachedBuildRenderableProvider(ctx);
-    this.helpers = new CachedHelperBuildRenderableProvider(this.geometry, ctx);
-    this.topdown = new CachedTopDownBuildRenderableProvider(ctx);
+  constructor() {
+    this.geometry = new CachedBuildRenderableProvider();
+    this.helpers = new CachedHelperBuildRenderableProvider(this.geometry);
+    this.topdown = new CachedTopDownBuildRenderableProvider();
+  }
+
+  bind(ctx: BuildContext): void {
+    this.geometry.bind(ctx);
+    this.helpers.bind(ctx);
+    this.topdown.bind(ctx);
   }
 
   invalidateAll(): void {

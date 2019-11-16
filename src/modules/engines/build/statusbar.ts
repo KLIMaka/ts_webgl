@@ -1,5 +1,5 @@
 import * as PROFILE from "../../profiler";
-import { BuildContext, ViewPoint } from "./api";
+import { BuildContext, View } from "./api";
 import { PostFrame } from "./edit/messages";
 import { MessageHandlerReflective } from "./handlerapi";
 
@@ -19,7 +19,7 @@ export class Statusbar extends MessageHandlerReflective {
   }
 
   public PostFrame(msg: PostFrame, ctx: BuildContext) {
-    let view = ctx.state.get<ViewPoint>('viewpoint');
+    let view = ctx.state.get<View>('viewpoint');
     this.xpos.textContent = '' + view.x;
     this.ypos.textContent = '' + view.y;
     this.secpos.textContent = '' + view.sec;

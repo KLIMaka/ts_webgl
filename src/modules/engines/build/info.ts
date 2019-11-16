@@ -1,8 +1,8 @@
 import { Element, span, Table } from "../../ui/ui";
 import { BuildContext } from "./api";
+import { Mouse } from "./edit/messages";
 import { MessageHandlerReflective } from "./handlerapi";
-import { Hitscan, isSector, isSprite, isWall, SubType } from "./hitscan";
-import { Frame } from "./edit/messages";
+import { isSector, isSprite, isWall, SubType } from "./hitscan";
 
 export class Info extends MessageHandlerReflective {
   private wallTable: Element;
@@ -19,7 +19,7 @@ export class Info extends MessageHandlerReflective {
     this.prepareSpriteTable();
   }
 
-  public Frame(msg: Frame, ctx: BuildContext) {
+  public Mouse(msg: Mouse, ctx: BuildContext) {
     let hit = ctx.hitscan;
     this.clear();
     if (isWall(hit.type)) this.renderWall(ctx, hit.id);

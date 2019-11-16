@@ -1,7 +1,7 @@
 import { cyclic } from '../../../../libs/mathutils';
 import { InputState } from '../../../input';
 import { warning, error, info } from '../../../logger';
-import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator, ViewPoint } from '../api';
+import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator, View } from '../api';
 import { MessageHandlerReflective, MessageHandlerList, Message, MessageHandler } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { Board } from '../structs';
@@ -61,22 +61,27 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl(this);
   readonly hitscan = new Hitscan();
+  readonly view: View;
+  readonly invalidator: BoardInvalidator;
 
   readonly binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
-  private invalidatorInt: BoardInvalidator;
   private history: History = new History();
   private activeBoard: Board;
   private boardManipulator: BoardManipulator;
   private handlers = new MessageHandlerList();
 
-  constructor(art: ArtProvider, board: Board, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
+  constructor(art: ArtProvider, board: Board, view: View, inv: BoardInvalidator, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
     super();
     this.art = art;
     this.gl = gl;
     this.boardManipulator = manipulator;
     this.activeBoard = board;
+    this.view = view;
+    this.view.bind(this);
+    this.invalidator = inv;
+    this.invalidator.bind(this);
     this.commit();
 
     this.state.register('gridScale', this.gridScale);
@@ -84,19 +89,11 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.state.register('hitscan', this.hitscan);
   }
 
-  get invalidator() {
-    return this.invalidatorInt;
-  }
-
   get board() {
     return this.activeBoard;
   }
 
-  setBoardInvalidator(inv: BoardInvalidator) {
-    this.invalidatorInt = inv;
-  }
-
-  private updateHitscan(view: ViewPoint, input: InputState) {
+  private updateHitscan(view: View, input: InputState) {
     PROFILE.startProfile('hitscan');
     let x = (input.mouseX / this.gl.drawingBufferWidth) * 2 - 1;
     let y = (input.mouseY / this.gl.drawingBufferHeight) * 2 - 1;
@@ -174,7 +171,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   handle(msg: Message, ctx: BuildContext) {
     try {
-      info(msg);
+      // info(msg);
       super.handle(msg, ctx);
       this.handlers.handle(msg, ctx);
     } catch (e) {
@@ -182,7 +179,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     }
   }
 
-  frame(input: InputState, view: ViewPoint, dt: number) {
+  frame(input: InputState, view: View, dt: number) {
     PROFILE.start();
     this.updateHitscan(view, input);
     this.mouseMove(input);

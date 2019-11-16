@@ -1,24 +1,23 @@
 import * as GLM from "../../../libs_js/glmatrix";
-import { Collection } from "../../collections";
 import { Texture } from "../../drawstruct";
-import { InputState } from "../../input";
 import { ArtInfoProvider } from "./art";
-import { Context, Message } from "./handlerapi";
+import { Context } from "./handlerapi";
+import { Hitscan } from "./hitscan";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
-import { Hitscan } from "./hitscan";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
   getParallaxTexture(picnum: number): Texture
 }
 
-export interface ViewPoint extends MoveStruct {
+export interface View extends MoveStruct {
   getProjectionMatrix(): GLM.Mat4Array;
   getTransformMatrix(): GLM.Mat4Array;
   getPosition(): GLM.Vec3Array;
   getForward(): GLM.Vec3Array;
   unproject(x: number, y: number): GLM.Vec3Array;
+  bind(ctx: BuildContext): void;
 }
 
 export interface BoardInvalidator {
@@ -26,6 +25,7 @@ export interface BoardInvalidator {
   invalidateSector(id: number): void;
   invalidateWall(id: number): void;
   invalidateSprite(id: number): void;
+  bind(ctx: BuildContext): void;
 }
 
 export interface BoardManipulator {
@@ -50,6 +50,7 @@ export interface BuildContext extends Context {
   readonly state: State;
   readonly hitscan: Hitscan;
   readonly gridScale: number;
+  readonly view: View;
 
   snap(x: number): number;
   commit(): void;

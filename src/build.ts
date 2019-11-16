@@ -24,7 +24,7 @@ import { Info } from './modules/engines/build/info';
 import * as RFF from './modules/engines/build/rff';
 import { Statusbar as StatusBar } from './modules/engines/build/statusbar';
 import * as BS from './modules/engines/build/structs';
-import { createView } from './modules/engines/build/view';
+import { SwappableView } from './modules/engines/build/view';
 import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
 import { addLogAppender, CONSOLE } from './modules/logger';
@@ -95,11 +95,10 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
     rorLinks() { return rorLinks }
   }
 
-  let context = new Context(art, board, { cloneBoard }, gl);
+  let cache = new RenderablesCache();
+  let view = new SwappableView(cache, impl);
+  let context = new Context(art, board, view, cache, { cloneBoard }, gl);
   context.loadBinds(binds);
-  let cache = new RenderablesCache(context);
-  context.setBoardInvalidator(cache);
-  let view = createView(gl, board, context, cache, impl);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
     context.addHandler(new Selection(context, (cb) => artSelector.modal(cb), cache.helpers));

@@ -5,7 +5,7 @@ import * as PROFILE from '../../profiler';
 import { nextwall, packWallSectorId, unpackSectorId, unpackWallId } from './boardutils';
 import { Board } from './structs';
 import * as U from './utils';
-import { ViewPoint } from './api';
+import { View } from './api';
 
 export interface VisResult {
   forSector<T>(ctx: T, secv: SectorVisitor<T>): void;
