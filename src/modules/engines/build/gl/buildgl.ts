@@ -66,17 +66,16 @@ export function setClipPlane(x: number, y: number, z: number, w: number) {
   state.setUniform('clipPlane', clipPlane);
 }
 
-export function draw(ctx: BuildContext, renderable: Renderable) {
+export function draw(ctx: BuildContext, gl: WebGLRenderingContext, renderable: Renderable) {
   if (renderable == null) return;
-  renderable.draw(ctx, state);
+  renderable.draw(ctx, gl, state);
 }
 
-export function drawAll(ctx: BuildContext, renderables: Collection<Renderable>) {
-  for (let r of renderables) draw(ctx, r);
+export function drawAll(ctx: BuildContext, gl: WebGLRenderingContext, renderables: Collection<Renderable>) {
+  for (let r of renderables) draw(ctx, gl, r);
 }
 
-export function newFrame(ctx: BuildContext) {
-  let gl = ctx.gl;
+export function newFrame(gl: WebGLRenderingContext) {
   gl.clearColor(0.2, 0.2, 0.2, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);

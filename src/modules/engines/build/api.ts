@@ -1,6 +1,6 @@
-import * as GLM from "../../../libs_js/glmatrix";
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
+import { Renderable } from "./gl/renderable";
 import { Context } from "./handlerapi";
 import { Hitscan } from "./hitscan";
 import { Board } from "./structs";
@@ -12,12 +12,9 @@ export interface ArtProvider extends ArtInfoProvider {
 }
 
 export interface View extends MoveStruct {
-  getProjectionMatrix(): GLM.Mat4Array;
-  getTransformMatrix(): GLM.Mat4Array;
-  getPosition(): GLM.Vec3Array;
-  getForward(): GLM.Vec3Array;
-  unproject(x: number, y: number): GLM.Vec3Array;
   bind(ctx: BuildContext): void;
+  draw(renderable: Renderable): void;
+  hitscan(ctx: BuildContext, hitscan: Hitscan): Hitscan;
 }
 
 export interface BoardInvalidator {
@@ -46,7 +43,6 @@ export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
   readonly invalidator: BoardInvalidator;
-  readonly gl: WebGLRenderingContext;
   readonly state: State;
   readonly hitscan: Hitscan;
   readonly gridScale: number;

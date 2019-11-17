@@ -2,6 +2,7 @@ import { cyclic } from '../../../../libs/mathutils';
 import { InputState } from '../../../input';
 import { warning, error, info } from '../../../logger';
 import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator, View } from '../api';
+import { State as StateGl } from '../../../stategl';
 import { MessageHandlerReflective, MessageHandlerList, Message, MessageHandler } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { Board } from '../structs';
@@ -13,6 +14,7 @@ import * as PROFILE from '../../../profiler';
 import * as BGL from './buildgl';
 import { snap } from '../edit/editutils';
 import { ZSCALE } from '../utils';
+import { WrapRenderable } from './renderable';
 
 class History {
   private history: Deck<Board> = new Deck();
@@ -56,9 +58,19 @@ const POSTFRAME = new PostFrame();
 const MOUSE = new Mouse(0, 0);
 const RENDER = new Render();
 
+const onTopRenderable = new WrapRenderable(RENDER.renderable,
+  (ctx: BuildContext, gl: WebGLRenderingContext, state: StateGl) => {
+    gl.disable(WebGLRenderingContext.DEPTH_TEST);
+    gl.enable(WebGLRenderingContext.BLEND);
+  },
+  (ctx: BuildContext, gl: WebGLRenderingContext, state: StateGl) => {
+    gl.disable(WebGLRenderingContext.BLEND);
+    gl.enable(WebGLRenderingContext.DEPTH_TEST);
+  });
+
+
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
-  readonly gl: WebGLRenderingContext;
   readonly state = new StateImpl(this);
   readonly hitscan = new Hitscan();
   readonly view: View;
@@ -72,10 +84,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private boardManipulator: BoardManipulator;
   private handlers = new MessageHandlerList();
 
-  constructor(art: ArtProvider, board: Board, view: View, inv: BoardInvalidator, manipulator: BoardManipulator, gl: WebGLRenderingContext) {
+  constructor(art: ArtProvider, board: Board, view: View, inv: BoardInvalidator, manipulator: BoardManipulator) {
     super();
     this.art = art;
-    this.gl = gl;
     this.boardManipulator = manipulator;
     this.activeBoard = board;
     this.view = view;
@@ -93,12 +104,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     return this.activeBoard;
   }
 
-  private updateHitscan(view: View, input: InputState) {
+  private updateHitscan() {
     PROFILE.startProfile('hitscan');
-    let x = (input.mouseX / this.gl.drawingBufferWidth) * 2 - 1;
-    let y = (input.mouseY / this.gl.drawingBufferHeight) * 2 - 1;
-    let [vx, vz, vy] = view.unproject(x, y);
-    hitscan(this.activeBoard, this.art, view.x, view.y, view.z, view.sec, vx, vy, vz, this.hitscan, 0);
+    this.view.hitscan(this, this.hitscan);
     PROFILE.endProfile();
     if (this.hitscan.t != -1) {
       let [x, y] = snap(this);
@@ -150,13 +158,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   private drawTools() {
-    this.gl.disable(WebGLRenderingContext.DEPTH_TEST);
-    this.gl.enable(WebGLRenderingContext.BLEND);
     RENDER.list.clear();
     this.handle(RENDER, this);
-    BGL.drawAll(this, RENDER.list);
-    this.gl.disable(WebGLRenderingContext.BLEND);
-    this.gl.enable(WebGLRenderingContext.DEPTH_TEST);
+    this.view.draw(onTopRenderable);
   }
 
   private undo() {
@@ -179,9 +183,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     }
   }
 
-  frame(input: InputState, view: View, dt: number) {
+  frame(input: InputState, dt: number) {
     PROFILE.start();
-    this.updateHitscan(view, input);
+    this.updateHitscan();
     this.mouseMove(input);
     FRAME.dt = dt;
     this.handle(FRAME, this);

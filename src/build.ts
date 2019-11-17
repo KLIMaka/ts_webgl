@@ -96,8 +96,8 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   }
 
   let cache = new RenderablesCache();
-  let view = new SwappableView(cache, impl);
-  let context = new Context(art, board, view, cache, { cloneBoard }, gl);
+  let view = new SwappableView(gl, cache, impl);
+  let context = new Context(art, board, view, cache, { cloneBoard });
   context.loadBinds(binds);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
@@ -111,8 +111,8 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
     context.addHandler(view);
 
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      BGL.newFrame(context);
-      context.frame(INPUT.get(), view, time);
+      BGL.newFrame(gl);
+      context.frame(INPUT.get(), time);
       INPUT.postFrame();
     });
   });

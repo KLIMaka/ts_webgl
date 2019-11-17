@@ -14,9 +14,9 @@ export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
   public floor: Solid = new Solid();
 
-  draw(ctx: BuildContext, state: State) {
-    this.ceiling.draw(ctx, state);
-    this.floor.draw(ctx, state);
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
+    this.ceiling.draw(ctx, gl, state);
+    this.floor.draw(ctx, gl, state);
   }
 
   reset() {
@@ -30,10 +30,10 @@ export class WallSolid implements Renderable {
   public mid: Solid = new Solid();
   public bot: Solid = new Solid();
 
-  draw(ctx: BuildContext, state: State) {
-    this.top.draw(ctx, state);
-    this.mid.draw(ctx, state);
-    this.bot.draw(ctx, state);
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
+    this.top.draw(ctx, gl, state);
+    this.mid.draw(ctx, gl, state);
+    this.bot.draw(ctx, gl, state);
   }
 
   reset() {
@@ -49,9 +49,9 @@ export class SectorHelper implements Renderable {
     public floor: Renderable = NULL_RENDERABLE
   ) { }
 
-  draw(ctx: BuildContext, state: State) {
-    this.ceiling.draw(ctx, state);
-    this.floor.draw(ctx, state);
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
+    this.ceiling.draw(ctx, gl, state);
+    this.floor.draw(ctx, gl, state);
   }
 
   reset() {
@@ -67,10 +67,10 @@ export class WallHelper implements Renderable {
     public bot: Renderable = NULL_RENDERABLE
   ) { }
 
-  draw(ctx: BuildContext, state: State) {
-    this.top.draw(ctx, state);
-    this.mid.draw(ctx, state);
-    this.bot.draw(ctx, state);
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
+    this.top.draw(ctx, gl, state);
+    this.mid.draw(ctx, gl, state);
+    this.bot.draw(ctx, gl, state);
   }
 
   reset() {

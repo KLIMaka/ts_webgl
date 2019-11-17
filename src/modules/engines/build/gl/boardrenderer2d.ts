@@ -6,12 +6,11 @@ import * as BGL from './buildgl';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { Deck } from '../../../collections';
 import { Board } from '../structs';
+import { View2d } from '../view';
 
 let context: BuildContext;
-export function init(ctx: BuildContext) {
+export function init(gl: WebGLRenderingContext, ctx: BuildContext) {
   context = ctx;
-
-  let gl = ctx.gl;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
@@ -20,7 +19,7 @@ export function init(ctx: BuildContext) {
 }
 
 let visible = new TopDownBoardVisitorResult();
-export function draw(renderables: BuildRenderableProvider, view: View, campos: GLM.Vec3Array, dist: number) {
+export function draw(view: View2d, campos: GLM.Vec3Array, dist: number) {
   PROFILE.startProfile('processing');
   let result = visible.visit(context.board, campos, dist);
   PROFILE.endProfile();
@@ -28,7 +27,7 @@ export function draw(renderables: BuildRenderableProvider, view: View, campos: G
   BGL.setProjectionMatrix(view.getProjectionMatrix());
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
-  drawRooms(renderables, result);
+  drawRooms(view, result);
 }
 
 let renderables: BuildRenderableProvider;
@@ -56,9 +55,9 @@ function spriteVisitor(board: Board, spriteId: number) {
   PROFILE.incCount('sprites');
 }
 
-function drawRooms(r: BuildRenderableProvider, result: VisResult) {
+function drawRooms(view: View2d, result: VisResult) {
   PROFILE.startProfile('processing');
-  renderables = r;
+  renderables = view.renderables;
   clearDrawLists();
   result.forSector(context.board, sectorVisitor);
   result.forWall(context.board, wallVisitor);
@@ -66,6 +65,6 @@ function drawRooms(r: BuildRenderableProvider, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.drawAll(context, surfaces);
+  BGL.drawAll(context, view.gl, surfaces);
   PROFILE.endProfile();
 }

@@ -10,6 +10,7 @@ import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
 import * as BGL from './buildgl';
 import { BuildRenderableProvider, Renderable } from './renderable';
+import { View3d } from '../view';
 
 export class RorLink {
   constructor(readonly srcSpriteId: number, readonly dstSpriteId: number) { }
@@ -32,11 +33,9 @@ export interface Implementation {
 let implementation: Implementation;
 let context: BuildContext;
 
-export function init(ctx: BuildContext, impl: Implementation) {
+export function init(gl: WebGLRenderingContext, ctx: BuildContext, impl: Implementation) {
   context = ctx;
   implementation = impl;
-
-  let gl = ctx.gl;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
@@ -44,37 +43,37 @@ export function init(ctx: BuildContext, impl: Implementation) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
 
-export function draw(renderables: BuildRenderableProvider, view: View) {
-  drawGeometry(renderables, view);
+export function draw(view: View3d) {
+  drawGeometry(view);
 }
 
-function writeStencilOnly(value: number) {
-  context.gl.stencilFunc(WebGLRenderingContext.ALWAYS, value, 0xff);
-  context.gl.stencilOp(WebGLRenderingContext.KEEP, WebGLRenderingContext.KEEP, WebGLRenderingContext.REPLACE);
-  context.gl.stencilMask(0xff);
-  context.gl.depthMask(false);
-  context.gl.colorMask(false, false, false, false);
+function writeStencilOnly(gl: WebGLRenderingContext, value: number) {
+  gl.stencilFunc(WebGLRenderingContext.ALWAYS, value, 0xff);
+  gl.stencilOp(WebGLRenderingContext.KEEP, WebGLRenderingContext.KEEP, WebGLRenderingContext.REPLACE);
+  gl.stencilMask(0xff);
+  gl.depthMask(false);
+  gl.colorMask(false, false, false, false);
 }
 
-function writeStenciledOnly(value: number) {
-  context.gl.stencilFunc(WebGLRenderingContext.EQUAL, value, 0xff);
-  context.gl.stencilMask(0x0);
-  context.gl.depthMask(true);
-  context.gl.colorMask(true, true, true, true);
+function writeStenciledOnly(gl: WebGLRenderingContext, value: number) {
+  gl.stencilFunc(WebGLRenderingContext.EQUAL, value, 0xff);
+  gl.stencilMask(0x0);
+  gl.depthMask(true);
+  gl.colorMask(true, true, true, true);
 }
 
-function writeDepthOnly() {
-  context.gl.colorMask(false, false, false, false);
+function writeDepthOnly(gl: WebGLRenderingContext, ) {
+  gl.colorMask(false, false, false, false);
 }
 
-function writeAll() {
-  context.gl.depthMask(true);
-  context.gl.colorMask(true, true, true, true);
+function writeAll(gl: WebGLRenderingContext, ) {
+  gl.depthMask(true);
+  gl.colorMask(true, true, true, true);
 }
 
 let visible = new PvsBoardVisitorResult();
 let all = new AllBoardVisitorResult();
-function drawGeometry(renderables: BuildRenderableProvider, view: View) {
+function drawGeometry(view: View3d) {
   PROFILE.startProfile('processing');
   let result = view.sec == -1
     ? all.visit(context.board)
@@ -82,12 +81,12 @@ function drawGeometry(renderables: BuildRenderableProvider, view: View) {
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(view.getProjectionMatrix());
-  drawMirrors(renderables, result, view);
-  drawRor(renderables, result, view);
+  drawMirrors(result, view);
+  drawRor(result, view);
 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
-  drawRooms(renderables, result);
+  drawRooms(view, result);
 }
 
 let rorViss = new Map<RorLink, PvsBoardVisitorResult>();
@@ -107,13 +106,13 @@ let dstPos = GLM.vec3.create();
 let npos = GLM.vec3.create();
 let mstmp = { sec: 0, x: 0, y: 0, z: 0 };
 
-function drawStack(renderables: BuildRenderableProvider, view: View, link: RorLink, surface: Renderable, stencilValue: number) {
+function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link) return;
 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
-  writeStencilOnly(stencilValue);
-  BGL.draw(context, surface);
+  writeStencilOnly(view.gl, stencilValue);
+  BGL.draw(context, view.gl, surface);
 
   let src = context.board.sprites[link.srcSpriteId];
   let dst = context.board.sprites[link.dstSpriteId];
@@ -127,30 +126,30 @@ function drawStack(renderables: BuildRenderableProvider, view: View, link: RorLi
   mstmp.sec = dst.sectnum; mstmp.x = npos[0]; mstmp.y = npos[2]; mstmp.z = npos[1] * ZSCALE;
   BGL.setViewMatrix(stackTransform);
   BGL.setPosition(npos);
-  writeStenciledOnly(stencilValue);
-  drawRooms(renderables, getLinkVis(link).visit(context.board, mstmp, view.getForward()));
+  writeStenciledOnly(view.gl, stencilValue);
+  drawRooms(view, getLinkVis(link).visit(context.board, mstmp, view.getForward()));
 
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
-  writeDepthOnly();
-  BGL.draw(context, surface);
+  writeDepthOnly(view.gl);
+  BGL.draw(context, view.gl, surface);
 }
 
 let rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 
-function drawRor(renderables: BuildRenderableProvider, result: VisResult, view: View) {
+function drawRor(result: VisResult, view: View3d) {
   result.forSector(context.board, rorSectorCollector.visit());
   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
-  context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
+  view.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
     let s = rorSectorCollector.sectors.get(i);
-    let r = renderables.sector(s);
-    drawStack(renderables, view, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
-    drawStack(renderables, view, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
+    let r = view.renderables.sector(s);
+    drawStack(view, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
+    drawStack(view, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
-  context.gl.disable(WebGLRenderingContext.STENCIL_TEST);
-  writeAll();
+  view.gl.disable(WebGLRenderingContext.STENCIL_TEST);
+  writeAll(view.gl);
 }
 
 let mirrorWallsCollector = createWallCollector((board: Board, wallId: number, sectorId: number) => implementation.isMirrorPic(board.walls[wallId].picnum));
@@ -160,10 +159,10 @@ let mirrorNormal = GLM.vec3.create();
 let mirroredTransform = GLM.mat4.create();
 let mpos = GLM.vec3.create();
 
-function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, view: View) {
+function drawMirrors(result: VisResult, view: View3d) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
-  context.gl.enable(WebGLRenderingContext.STENCIL_TEST);
+  view.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
     let w = unpackWallId(mirrorWallsCollector.walls.get(i));
     if (!wallVisible(context.board, w, view))
@@ -173,8 +172,8 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, vi
     let r = renderables.wall(w);
     BGL.setViewMatrix(view.getTransformMatrix());
     BGL.setPosition(view.getPosition());
-    writeStencilOnly(i + 127);
-    BGL.draw(context, r);
+    writeStencilOnly(view.gl, i + 127);
+    BGL.draw(context, view.gl, r);
 
     // draw reflections in stenciled area
     let w1 = context.board.walls[w]; let w2 = context.board.walls[w1.point2];
@@ -186,23 +185,23 @@ function drawMirrors(renderables: BuildRenderableProvider, result: VisResult, vi
 
     BGL.setViewMatrix(mirroredTransform);
     BGL.setClipPlane(mirrorNormal[0], mirrorNormal[1], mirrorNormal[2], mirrorrD);
-    context.gl.cullFace(WebGLRenderingContext.FRONT);
+    view.gl.cullFace(WebGLRenderingContext.FRONT);
     let [sx, sy, sz] = view.getPosition();
     GLM.vec3.set(mpos, sx, sy, sz);
     reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     mstmp.sec = view.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
-    writeStenciledOnly(i + 127);
-    drawRooms(renderables, mirrorVis.visit(context.board, mstmp, view.getForward()));
-    context.gl.cullFace(WebGLRenderingContext.BACK);
+    writeStenciledOnly(view.gl, i + 127);
+    drawRooms(view, mirrorVis.visit(context.board, mstmp, view.getForward()));
+    view.gl.cullFace(WebGLRenderingContext.BACK);
 
     // seal reflections by writing depth of mirror surface
     BGL.setViewMatrix(view.getTransformMatrix());
-    writeDepthOnly();
+    writeDepthOnly(view.gl);
     BGL.setClipPlane(0, 0, 0, 0);
-    BGL.draw(context, r);
+    BGL.draw(context, view.gl, r);
   }
-  context.gl.disable(WebGLRenderingContext.STENCIL_TEST);
-  writeAll();
+  view.gl.disable(WebGLRenderingContext.STENCIL_TEST);
+  writeAll(view.gl);
 }
 
 let renderables: BuildRenderableProvider;
@@ -249,9 +248,9 @@ function spriteVisitor(board: Board, spriteId: number) {
   PROFILE.incCount('sprites');
 }
 
-function drawRooms(r: BuildRenderableProvider, result: VisResult) {
+function drawRooms(view: View3d, result: VisResult) {
   PROFILE.startProfile('processing');
-  renderables = r;
+  renderables = view.renderables;
   clearDrawLists();
   result.forSector(context.board, sectorVisitor);
   result.forWall(context.board, wallVisitor);
@@ -259,18 +258,18 @@ function drawRooms(r: BuildRenderableProvider, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.drawAll(context, surfaces);
+  BGL.drawAll(context, view.gl, surfaces);
 
-  context.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context, sprites);
-  context.gl.polygonOffset(0, 0);
+  view.gl.polygonOffset(-1, -8);
+  BGL.drawAll(context, view.gl, sprites);
+  view.gl.polygonOffset(0, 0);
 
-  context.gl.enable(WebGLRenderingContext.BLEND);
-  BGL.drawAll(context, surfacesTrans);
+  view.gl.enable(WebGLRenderingContext.BLEND);
+  BGL.drawAll(context, view.gl, surfacesTrans);
 
-  context.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context, spritesTrans);
-  context.gl.polygonOffset(0, 0);
-  context.gl.disable(WebGLRenderingContext.BLEND);
+  view.gl.polygonOffset(-1, -8);
+  BGL.drawAll(context, view.gl, spritesTrans);
+  view.gl.polygonOffset(0, 0);
+  view.gl.disable(WebGLRenderingContext.BLEND);
   PROFILE.endProfile();
 }

@@ -17,7 +17,7 @@ class Contour {
   private z = 0;
   private contour = new Wireframe();
   private contourPoints = new Wireframe();
-  private renderable = new RenderableList([this.contour, this.contourPoints]);
+  private renderable = new RenderableList(new Deck<Renderable>().push(this.contour).push(this.contourPoints));
 
   constructor(firstPoint: boolean = true) {
     if (firstPoint)

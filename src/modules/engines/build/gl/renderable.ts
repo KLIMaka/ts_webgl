@@ -1,10 +1,10 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
-import { State } from '../../../stategl';
 import * as PROFILE from '../../../profiler';
-import * as BUFF from './buffers';
+import { State } from '../../../stategl';
 import { BuildContext } from '../api';
+import * as BUFF from './buffers';
 
 export class Buffer {
   private ptr: Pointer;
@@ -59,18 +59,18 @@ export enum Type {
 }
 
 export interface Renderable {
-  draw(ctx: BuildContext, state: State): void;
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void;
   reset(): void;
 }
 
 export const NULL_RENDERABLE: Renderable = {
-  draw: (ctx: BuildContext, state: State) => { },
+  draw: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { },
   reset: () => { }
 }
 
 export class StateRenderable implements Renderable {
   constructor(readonly renderable: Renderable, readonly pred: (cts: BuildContext) => boolean) { }
-  public draw(ctx: BuildContext, state: State): void { if (this.pred(ctx)) this.renderable.draw(ctx, state) }
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void { if (this.pred(ctx)) this.renderable.draw(ctx, gl, state) }
   public reset() { this.renderable.reset() }
 }
 
@@ -87,9 +87,9 @@ export function notStatePred(name: string): (cts: BuildContext) => boolean { ret
 
 export class RenderableList implements Renderable {
   constructor(
-    private renderables: Array<Renderable>
+    private renderables: Iterable<Renderable>
   ) { }
-  public draw(ctx: BuildContext, state: State): void { for (let r of this.renderables) r.draw(ctx, state) }
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void { for (let r of this.renderables) r.draw(ctx, gl, state) }
   public reset() { for (let r of this.renderables) r.reset() }
 }
 
@@ -122,7 +122,7 @@ export class Solid implements Renderable {
   public parallax: number = 0;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
-  public draw(ctx: BuildContext, state: State) {
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
     let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
@@ -135,7 +135,7 @@ export class Solid implements Renderable {
     state.setUniform('pluN', this.pal);
     state.setUniform('shade', this.shade);
     state.setDrawElements(this.buff.get());
-    state.draw(ctx.gl);
+    state.draw(gl);
     PROFILE.get(null).inc('draws');
   }
 
@@ -151,11 +151,29 @@ export class Solid implements Renderable {
   }
 }
 
+export class WrapRenderable implements Renderable {
+  constructor(
+    private rend: Renderable,
+    private pre: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void,
+    private post: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void
+  ) { }
+
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
+    this.pre(ctx, gl, state);
+    this.rend.draw(ctx, gl, state);
+    this.post(ctx, gl, state);
+  }
+
+  reset(): void {
+    this.rend.reset()
+  }
+}
+
 export class GridRenderable implements Renderable {
   public solid: Solid;
   public gridTexMat: GLM.Mat4Array;
 
-  public draw(ctx: BuildContext, state: State) {
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
     let ptr = this.solid.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
@@ -165,7 +183,7 @@ export class GridRenderable implements Renderable {
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
-    state.draw(ctx.gl);
+    state.draw(gl);
     PROFILE.get(null).inc('draws');
   }
 
@@ -183,7 +201,7 @@ export class Wireframe implements Renderable {
   public mode: number = WebGLRenderingContext.LINES;
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
-  public draw(ctx: BuildContext, state: State) {
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
     let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
@@ -193,7 +211,7 @@ export class Wireframe implements Renderable {
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
-    state.draw(ctx.gl, this.mode);
+    state.draw(gl, this.mode);
     PROFILE.get(null).inc('draws');
   }
 
