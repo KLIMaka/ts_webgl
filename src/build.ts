@@ -111,7 +111,6 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
     context.addHandler(view);
 
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      BGL.newFrame(gl);
       context.frame(INPUT.get(), time);
       INPUT.postFrame();
     });

@@ -56,6 +56,7 @@ export class View2d implements View, MessageHandler {
       let max = this.control.getPointerPosition(this.pointer, 1, 1);
       let campos = this.control.getPosition();
       let dist = len2d(max[0] - campos[0], max[2] - campos[2]);
+      BGL.newFrame(this.gl);
       RENDERER2D.draw(this, campos, dist);
 
       let state = ctx.state;
@@ -65,7 +66,7 @@ export class View2d implements View, MessageHandler {
   }
 
   bind(ctx: BuildContext) {
-    this, ctx = ctx;
+    this.ctx = ctx;
     this.playerstart = getPlayerStart(ctx.board);
     this.pointer = vec3.create();
     this.control.setPosition(this.playerstart.x, this.playerstart.y);
@@ -119,6 +120,7 @@ export class View3d implements View, MessageHandler {
       this.control.track(msg.x, msg.y, ctx.state.get('lookaim'));
     } else if (msg instanceof Frame) {
       this.aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
+      BGL.newFrame(this.gl);
       RENDERER3D.draw(this);
 
       let state = ctx.state;
@@ -181,6 +183,7 @@ export class SwappableView implements View, MessageHandler {
   get x() { return this.view.x }
   get y() { return this.view.y }
   get z() { return this.view.z }
+
   hitscan(ctx: BuildContext, hit: Hitscan) { return this.view.hitscan(ctx, hit) }
   draw(renderable: Renderable) { this.view.draw(renderable) }
 
@@ -202,6 +205,4 @@ export class SwappableView implements View, MessageHandler {
     this.view = this.view3d;
     ctx.state.register('viewpoint', this.view);
   }
-
-
 }

@@ -155,7 +155,7 @@ export class WrapRenderable implements Renderable {
   constructor(
     private rend: Renderable,
     private pre: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void,
-    private post: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void
+    private post: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void = () => { }
   ) { }
 
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
