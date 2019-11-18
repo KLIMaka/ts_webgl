@@ -516,16 +516,17 @@ function doMoveWall(board: Board, w: number, x: number, y: number) {
   fixxrepeat(board, lastwall(board, w));
 }
 
+let connectedSet = new IndexedDeck<number>();
 export function connectedWalls(board: Board, wallId: number, result: Deck<number>): Deck<number> {
+  connectedSet.clear();
   let walls = board.walls;
   let w = wallId;
-  let added = false;
+  connectedSet.push(w);
   do {
     let wall = walls[w];
     if (wall.nextwall != -1) {
       w = nextwall(board, wall.nextwall);
-      result.push(w);
-      added = true;
+      if (connectedSet.indexOf(w) == -1) connectedSet.push(w);
     } else {
       w = wallId;
       do {
@@ -533,13 +534,12 @@ export function connectedWalls(board: Board, wallId: number, result: Deck<number
         let wall = walls[p];
         if (wall.nextwall != -1) {
           w = wall.nextwall;
-          result.push(w);
-          added = true;
+          if (connectedSet.indexOf(w) == -1) connectedSet.push(w);
         } else break;
       } while (w != wallId)
     }
   } while (w != wallId)
-  return added ? result : result.push(wallId);
+  return result.pushAll(connectedSet);
 }
 
 let wallsToMove = new Deck<number>();
