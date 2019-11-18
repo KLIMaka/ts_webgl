@@ -170,7 +170,9 @@ export class DrawSector extends MessageHandlerReflective {
     let dz = hit.start[2] / ZSCALE - z;
     let t = -dz / hit.vec[2];
     if (t < 0) return null;
-    return tuple2(DrawSector.zintersect, ctx.snap(hit.start[0] + hit.vec[0] * t), ctx.snap(hit.start[1] + hit.vec[1] * t));
+    const x = ctx.snap(hit.start[0] + hit.vec[0] * t);
+    const y = ctx.snap(hit.start[1] + hit.vec[1] * t);
+    return tuple2(DrawSector.zintersect, x, y);
   }
 
   private isSplitSector(ctx: BuildContext, x: number, y: number) {

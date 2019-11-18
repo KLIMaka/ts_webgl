@@ -1,9 +1,9 @@
 import { int, len2d, tuple2, tuple4 } from "../../../../libs/mathutils";
-import { DEFAULT_REPEAT_RATE, nextwall, closestWallInSector, closestWallSegmentInSector, closestWallSegment, closestWallPoint } from "../boardutils";
-import { Hitscan, isSector, isWall, SubType, isSprite } from "../hitscan";
-import { Board } from "../structs";
-import { slope, sectorOfWall } from "../utils";
 import { BuildContext } from "../api";
+import { closestWallInSector, closestWallPoint, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall } from "../boardutils";
+import { Hitscan, isSector, isSprite, isWall, SubType } from "../hitscan";
+import { Board } from "../structs";
+import { sectorOfWall, slope } from "../utils";
 
 export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
   ctx.invalidator.invalidateSector(sectorId);

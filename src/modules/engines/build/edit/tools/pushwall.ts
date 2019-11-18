@@ -5,7 +5,7 @@ import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan, isWall } from "../../hitscan";
+import { isWall } from "../../hitscan";
 import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { snap } from "../editutils";
 import { MovingHandle } from "../handle";

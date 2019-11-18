@@ -1,19 +1,19 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { InputState } from '../../../input';
-import { warning, error, info } from '../../../logger';
-import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator, View, Bindable } from '../api';
-import { State as StateGl } from '../../../stategl';
-import { MessageHandlerReflective, MessageHandlerList, Message, MessageHandler } from '../handlerapi';
-import { Binder, loadBinds } from '../keymap';
-import { Board } from '../structs';
-import { NamedMessage, Frame, PostFrame, Mouse, Render } from '../edit/messages';
-import { messageParser } from '../messageparser';
 import { Deck } from '../../../collections';
-import { Hitscan, hitscan } from '../hitscan';
+import { InputState } from '../../../input';
+import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
-import * as BGL from './buildgl';
+import { State as StateGl } from '../../../stategl';
+import { ArtProvider, Bindable, BoardInvalidator, BoardManipulator, BuildContext, State, View } from '../api';
 import { snap } from '../edit/editutils';
+import { Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
+import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
+import { Hitscan } from '../hitscan';
+import { Binder, loadBinds } from '../keymap';
+import { messageParser } from '../messageparser';
+import { Board } from '../structs';
 import { ZSCALE } from '../utils';
+import * as BGL from './buildgl';
 import { WrapRenderable } from './renderable';
 
 class History {
@@ -188,7 +188,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
       super.handle(msg, ctx);
       this.handlers.handle(msg, ctx);
     } catch (e) {
-      error(e);
+      error(e, e.stack);
     }
   }
 

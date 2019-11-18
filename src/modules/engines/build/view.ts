@@ -65,7 +65,7 @@ export class View2d implements View, MessageHandler {
   }
 
   bind(ctx: BuildContext) {
-    this, ctx = ctx;
+    this.ctx = ctx;
     this.playerstart = getPlayerStart(ctx.board);
     this.pointer = vec3.create();
     this.control.setPosition(this.playerstart.x, this.playerstart.y);

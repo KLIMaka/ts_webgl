@@ -49,12 +49,12 @@ function createBoard() {
     .push([4096, 4096])
     .push([0, 4096])
   );
-  createInnerLoop(board, 0, points.clear()
-    .push([1024, 1024])
-    .push([1024, 3072])
-    .push([3072, 3072])
-    .push([3072, 1024])
-  );
+  // createInnerLoop(board, 0, points.clear()
+  //   .push([1024, 1024])
+  //   .push([1024, 3072])
+  //   .push([3072, 3072])
+  //   .push([3072, 1024])
+  // );
   // createNewSector(board, points.clear()
   //   .push([1024, 1024])
   //   .push([1024, 3072])
@@ -84,8 +84,8 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   let gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
   let artSelector = new Selector(artFiles, pal);
   let stream = new data.Stream(map, true);
-  // let board = createBoard();
-  let board = loadBloodMap(stream);
+  let board = createBoard();
+  // let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
