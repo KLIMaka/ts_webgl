@@ -202,6 +202,4 @@ export class SwappableView implements View, MessageHandler {
     this.view = this.view3d;
     ctx.state.register('viewpoint', this.view);
   }
-
-
 }

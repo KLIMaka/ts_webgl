@@ -3,6 +3,7 @@ import * as browser from './libs/browser';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as data from './libs/stream';
+import { Stream } from './libs/stream';
 import { Deck } from './modules/collections';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
@@ -101,7 +102,7 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   context.loadBinds(binds);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
-    context.addHandler(new Selection(context, (cb) => artSelector.modal(cb), cache.helpers));
+    context.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
     context.addHandler(new SplitWall());
     context.addHandler(new JoinSectors());
     context.addHandler(new DrawSector());
@@ -140,7 +141,7 @@ ab.wait((res) => {
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
   let arts = [];
-  for (let a = 0; a < 18; a++) arts.push(ART.create(new data.Stream(res[artNames[a]], true)));
+  for (let a = 0; a < 18; a++) arts.push(ART.create(new Stream(res[artNames[a]], true)));
   let artFiles = ART.createArts(arts);
 
   let PLUs = [
