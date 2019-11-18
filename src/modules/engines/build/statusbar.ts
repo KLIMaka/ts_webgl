@@ -19,7 +19,7 @@ export class Statusbar extends MessageHandlerReflective {
   }
 
   public PostFrame(msg: PostFrame, ctx: BuildContext) {
-    let view = ctx.state.get<View>('viewpoint');
+    let view = ctx.view;
     this.xpos.textContent = '' + view.x;
     this.ypos.textContent = '' + view.y;
     this.secpos.textContent = '' + view.sec;

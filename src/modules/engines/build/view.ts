@@ -190,7 +190,6 @@ export class SwappableView implements View, MessageHandler {
   handle(message: Message, ctx: BuildContext) {
     if (message instanceof NamedMessage && message.name == 'view_mode') {
       this.view = ctx.state.get(VIEW_2D) ? this.view2d : this.view3d;
-      ctx.state.set('viewpoint', this.view);
       this.view.activate();
     }
     this.view.handle(message, ctx)
@@ -203,6 +202,5 @@ export class SwappableView implements View, MessageHandler {
     this.view3d = new View3d(this.gl, this.renderables.geometry, this.impl);
     this.view3d.bind(ctx);
     this.view = this.view3d;
-    ctx.state.register('viewpoint', this.view);
   }
 }
