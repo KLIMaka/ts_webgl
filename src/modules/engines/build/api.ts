@@ -11,18 +11,20 @@ export interface ArtProvider extends ArtInfoProvider {
   getParallaxTexture(picnum: number): Texture
 }
 
-export interface View extends MoveStruct {
+export interface Bindable {
   bind(ctx: BuildContext): void;
+}
+
+export interface View extends MoveStruct, Bindable {
   draw(renderable: Renderable): void;
   hitscan(ctx: BuildContext, hitscan: Hitscan): Hitscan;
 }
 
-export interface BoardInvalidator {
+export interface BoardInvalidator extends Bindable {
   invalidateAll(): void;
   invalidateSector(id: number): void;
   invalidateWall(id: number): void;
   invalidateSprite(id: number): void;
-  bind(ctx: BuildContext): void;
 }
 
 export interface BoardManipulator {

@@ -3,6 +3,7 @@ import * as browser from './libs/browser';
 import * as getter from './libs/getter';
 import * as IU from './libs/imgutils';
 import * as data from './libs/stream';
+import { Stream } from './libs/stream';
 import { Deck } from './modules/collections';
 import * as ART from './modules/engines/build/art';
 import { Selector } from './modules/engines/build/artselector';
@@ -48,12 +49,12 @@ function createBoard() {
     .push([4096, 4096])
     .push([0, 4096])
   );
-  createInnerLoop(board, 0, points.clear()
-    .push([1024, 1024])
-    .push([1024, 3072])
-    .push([3072, 3072])
-    .push([3072, 1024])
-  );
+  // createInnerLoop(board, 0, points.clear()
+  //   .push([1024, 1024])
+  //   .push([1024, 3072])
+  //   .push([3072, 3072])
+  //   .push([3072, 1024])
+  // );
   // createNewSector(board, points.clear()
   //   .push([1024, 1024])
   //   .push([1024, 3072])
@@ -83,8 +84,8 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   let gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
   let artSelector = new Selector(artFiles, pal);
   let stream = new data.Stream(map, true);
-  // let board = createBoard();
-  let board = loadBloodMap(stream);
+  let board = createBoard();
+  // let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
@@ -101,7 +102,7 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   context.loadBinds(binds);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
-    context.addHandler(new Selection(context, (cb) => artSelector.modal(cb), cache.helpers));
+    context.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
     context.addHandler(new SplitWall());
     context.addHandler(new JoinSectors());
     context.addHandler(new DrawSector());
@@ -139,7 +140,7 @@ ab.wait((res) => {
   let rff = RFF.create(res['rff']);
   let pal = rff.get('BLOOD.PAL');
   let arts = [];
-  for (let a = 0; a < 18; a++) arts.push(ART.create(new data.Stream(res[artNames[a]], true)));
+  for (let a = 0; a < 18; a++) arts.push(ART.create(new Stream(res[artNames[a]], true)));
   let artFiles = ART.createArts(arts);
 
   let PLUs = [

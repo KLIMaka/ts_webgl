@@ -1,7 +1,7 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { Deck } from "../../../../collections";
 import { info, error } from "../../../../logger";
-import { BuildContext } from "../../api";
+import { BuildContext, Bindable } from "../../api";
 import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { Context } from "../../gl/context";
 import { BuildRenderableProvider } from "../../gl/renderable";
@@ -88,17 +88,16 @@ function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean
 }
 
 
-export class Selection extends MessageHandlerReflective {
+export class Selection extends MessageHandlerReflective implements Bindable {
   private selection = new MessageHandlerList();
   private valid = true;
 
   constructor(
-    ctx: Context,
     private picnumSelector: PicNumSelector,
     private renderables: BuildRenderableProvider
-  ) {
-    super();
+  ) { super() }
 
+  public bind(ctx: BuildContext) {
     ctx.state.register(MOVE_STATE, false);
     ctx.state.register(MOVE_COPY, false);
     ctx.state.register(MOVE_VERTICAL, false);

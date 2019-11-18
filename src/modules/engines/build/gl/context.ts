@@ -1,19 +1,19 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { InputState } from '../../../input';
-import { warning, error, info } from '../../../logger';
-import { ArtProvider, BoardInvalidator, BuildContext, State, BoardManipulator, View } from '../api';
-import { State as StateGl } from '../../../stategl';
-import { MessageHandlerReflective, MessageHandlerList, Message, MessageHandler } from '../handlerapi';
-import { Binder, loadBinds } from '../keymap';
-import { Board } from '../structs';
-import { NamedMessage, Frame, PostFrame, Mouse, Render } from '../edit/messages';
-import { messageParser } from '../messageparser';
 import { Deck } from '../../../collections';
-import { Hitscan, hitscan } from '../hitscan';
+import { InputState } from '../../../input';
+import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
-import * as BGL from './buildgl';
+import { State as StateGl } from '../../../stategl';
+import { ArtProvider, Bindable, BoardInvalidator, BoardManipulator, BuildContext, State, View } from '../api';
 import { snap } from '../edit/editutils';
+import { Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
+import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
+import { Hitscan } from '../hitscan';
+import { Binder, loadBinds } from '../keymap';
+import { messageParser } from '../messageparser';
+import { Board } from '../structs';
 import { ZSCALE } from '../utils';
+import * as BGL from './buildgl';
 import { WrapRenderable } from './renderable';
 
 class History {
@@ -76,23 +76,22 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly view: View;
   readonly invalidator: BoardInvalidator;
 
-  readonly binder = new Binder();
+  private binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
   private history: History = new History();
   private activeBoard: Board;
   private boardManipulator: BoardManipulator;
   private handlers = new MessageHandlerList();
+  private boundObjects = new Set();
 
   constructor(art: ArtProvider, board: Board, view: View, inv: BoardInvalidator, manipulator: BoardManipulator) {
     super();
     this.art = art;
     this.boardManipulator = manipulator;
     this.activeBoard = board;
-    this.view = view;
-    this.view.bind(this);
-    this.invalidator = inv;
-    this.invalidator.bind(this);
+    this.view = this.bind(view);
+    this.invalidator = this.bind(inv);
     this.commit();
 
     this.state.register('gridScale', this.gridScale);
@@ -102,6 +101,14 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   get board() {
     return this.activeBoard;
+  }
+
+  private bind<T extends Bindable>(bindable: T): T {
+    if (!this.boundObjects.has(bindable)) {
+      bindable.bind(this);
+      this.boundObjects.add(bindable);
+    }
+    return bindable;
   }
 
   private updateHitscan() {
@@ -169,7 +176,9 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.invalidator.invalidateAll();
   }
 
-  addHandler(handler: MessageHandler) {
+  addHandler(handler: MessageHandler): void
+  addHandler(handler: MessageHandler & Bindable): void {
+    if (handler.bind != undefined) this.bind(handler);
     this.handlers.list().push(handler);
   }
 
@@ -179,7 +188,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
       super.handle(msg, ctx);
       this.handlers.handle(msg, ctx);
     } catch (e) {
-      error(e);
+      error(e, e.stack);
     }
   }
 
