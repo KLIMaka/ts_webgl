@@ -1,7 +1,7 @@
 import { BuildContext } from "../../api";
 import { splitWall } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan, isWall } from "../../hitscan";
+import { isWall } from "../../hitscan";
 import { sectorOfWall } from "../../utils";
 import { invalidateSectorAndWalls, snap } from "../editutils";
 import { Frame, NamedMessage } from "../messages";
@@ -22,6 +22,7 @@ export class SplitWall extends MessageHandlerReflective {
   private run(ctx: BuildContext) {
     if (!this.active) return;
     splitWall(ctx.board, this.wallId, this.x, this.y, ctx.art);
+    ctx.commit();
     let s = sectorOfWall(ctx.board, this.wallId);
     invalidateSectorAndWalls(s, ctx);
     let nextsector = ctx.board.walls[this.wallId].nextsector;

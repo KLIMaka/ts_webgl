@@ -1,7 +1,6 @@
 import { BuildContext } from "../../api";
 import { joinSectors } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan } from "../../hitscan";
 import { NamedMessage } from "../messages";
 
 export class JoinSectors extends MessageHandlerReflective {
@@ -18,7 +17,10 @@ export class JoinSectors extends MessageHandlerReflective {
 
     if (this.sectorId1 != -1 && this.sectorId2 != -1) {
       let result = joinSectors(ctx.board, this.sectorId1, this.sectorId2);
-      if (result == 0) ctx.invalidator.invalidateAll();
+      if (result == 0) {
+        ctx.commit();
+        ctx.invalidator.invalidateAll();
+      }
       this.sectorId1 = -1;
       this.sectorId2 = -1;
     }

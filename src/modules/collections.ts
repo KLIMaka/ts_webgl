@@ -82,7 +82,7 @@ export class Deck<T> implements MutableCollection<T>{
     return this;
   }
 
-  public pushAll(values: Collection<T>): Deck<T> {
+  public pushAll(values: Iterable<T>): Deck<T> {
     for (let val of values) this.push(val);
     return this;
   }
