@@ -14,6 +14,7 @@ import { Sprite } from "./structs";
 import { findSector, getPlayerStart, inSector, ZSCALE } from "./utils";
 import { BuildRenderableProvider, Renderable } from "./gl/renderable";
 import { Hitscan, hitscan } from "./hitscan";
+import { closestWallInSector, closestWallSegmentInSector, closestWallPoint, closestWallSegment } from "./boardutils";
 
 export class View2d implements View, MessageHandler {
   readonly gl: WebGLRenderingContext;
@@ -80,6 +81,23 @@ export class View2d implements View, MessageHandler {
     return hit;
   }
 
+  foo(ctx: BuildContext) {
+    const d = 32;
+    const sectorId = findSector(ctx.board, this.x, this.y, this.sec);
+    if (sectorId == -1) {
+      const w = closestWallInSector(ctx.board, sectorId, this.x, this.y, d);
+      if (w != -1) return w;
+      const ws = closestWallSegmentInSector(ctx.board, sectorId, this.x, this.y, d);
+      if (ws != -1) return ws;
+      return sectorId;
+    } else {
+      const [w, wd] = closestWallPoint(ctx.board, this.x, this.y);
+      if (w != -1 && wd < d) return w;
+      const [ws, wsd] = closestWallSegment(ctx.board, this.x, this.y, this.sec);
+      if (w != -1 && wsd < d) return ws;
+      return -1;
+    }
+  }
 }
 
 export class View3d implements View, MessageHandler {

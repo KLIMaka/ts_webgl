@@ -1,9 +1,9 @@
-import { Board, Sector, FACE, WALL, FLOOR } from "./structs";
-import { ZSCALE, inSector, slope, rayIntersect, groupSprites, ANGSCALE, inPolygon, spriteAngle } from "./utils";
-import { ArtInfoProvider, ArtInfo } from "./art";
-import { IndexedDeck, Deck } from "../../collections";
-import { int, len2d, cross2d, sqrLen2d, dot2d, PI2, sign } from "../../../libs/mathutils";
+import { cross2d, dot2d, int, len2d, sign, sqrLen2d } from "../../../libs/mathutils";
 import * as GLM from "../../../libs_js/glmatrix";
+import { Deck, IndexedDeck } from "../../collections";
+import { ArtInfo, ArtInfoProvider } from "./art";
+import { Board, FACE, FLOOR, Sector, WALL } from "./structs";
+import { ANGSCALE, groupSprites, inPolygon, inSector, rayIntersect, slope, spriteAngle, ZSCALE } from "./utils";
 
 export enum SubType {
   FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE

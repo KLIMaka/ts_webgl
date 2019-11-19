@@ -1,12 +1,12 @@
-import { View, BuildContext } from '../api';
-import { BuildRenderableProvider, Renderable } from './renderable';
-import { TopDownBoardVisitorResult, VisResult } from '../boardvisitor';
-import * as PROFILE from '../../../profiler';
-import * as BGL from './buildgl';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { Deck } from '../../../collections';
+import * as PROFILE from '../../../profiler';
+import { BuildContext } from '../api';
+import { TopDownBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
+import * as BGL from './buildgl';
+import { BuildRenderableProvider, Renderable } from './renderable';
 
 let context: BuildContext;
 export function init(gl: WebGLRenderingContext, ctx: BuildContext) {
