@@ -49,7 +49,7 @@ function distanceToWallPoint(board: Board, wallId: number, x: number, y: number)
 }
 
 let closestWallPoint_: [number, number] = [0, 0];
-export function closestWallPoint(board: Board, x: number, y: number): [number, number] {
+export function closestWallPointDist(board: Board, x: number, y: number): [number, number] {
   let closestWall = -1;
   let mindist = Number.MAX_VALUE;
   for (let w = 0; w < board.numwalls; w++) {
@@ -62,35 +62,52 @@ export function closestWallPoint(board: Board, x: number, y: number): [number, n
   return tuple2(closestWallPoint_, closestWall, mindist);
 }
 
-export function closestWallInSector(board: Board, secId: number, x: number, y: number, d: number): number {
+export function closestWallPoint(board: Board, x: number, y: number, d: number): number {
+  const [w, dist] = closestWallPointDist(board, x, y);
+  return dist <= d ? w : -1;
+}
+
+let closestWallInSectorDist_: [number, number] = [0, 0];
+export function closestWallInSectorDist(board: Board, secId: number, x: number, y: number): [number, number] {
   let sec = board.sectors[secId];
   let end = sec.wallptr + sec.wallnum;
   let mindist = Number.MAX_VALUE;
-  let result = -1;
+  let wallId = -1;
   for (let w = sec.wallptr; w < end; w++) {
     let wall = board.walls[w];
     let dist = len2d(wall.x - x, wall.y - y);
-    if (dist < d && dist < mindist) {
+    if (dist < mindist) {
       mindist = dist;
-      result = w;
+      wallId = w;
     }
   }
-  return result;
+  return tuple2(closestWallInSectorDist_, wallId, mindist);
 }
 
-export function closestWallSegmentInSector(board: Board, secId: number, x: number, y: number, d: number): number {
+export function closestWallInSector(board: Board, secId: number, x: number, y: number, d: number): number {
+  const [w, dist] = closestWallInSectorDist(board, secId, x, y);
+  return dist <= d ? w : -1;
+}
+
+let closestWallSegmentInSectorDist_: [number, number] = [0, 0];
+export function closestWallSegmentInSectorDist(board: Board, secId: number, x: number, y: number): [number, number] {
   let sec = board.sectors[secId];
   let end = sec.wallptr + sec.wallnum;
   let mindist = Number.MAX_VALUE;
-  let result = -1;
+  let wallId = -1;
   for (let w = sec.wallptr; w < end; w++) {
     let dist = distanceToWallSegment(board, w, x, y);
-    if (dist < d && dist < mindist) {
+    if (dist < mindist) {
       mindist = dist;
-      result = w;
+      wallId = w;
     }
   }
-  return result;
+  return tuple2(closestWallSegmentInSectorDist_, wallId, mindist);
+}
+
+export function closestWallSegmentInSector(board: Board, secId: number, x: number, y: number, d: number): number {
+  const [w, dist] = closestWallSegmentInSectorDist(board, secId, x, y);
+  return dist <= d ? w : -1;
 }
 
 export function wallInSector(board: Board, secId: number, x: number, y: number) {
@@ -103,35 +120,28 @@ export function wallInSector(board: Board, secId: number, x: number, y: number) 
   return -1;
 }
 
-export function closestWallSegment(board: Board, x: number, y: number, secId: number): [number, number] {
+let closestWallSegmentDist_: [number, number] = [0, 0];
+export function closestWallSegmentDist(board: Board, x: number, y: number, secId: number): [number, number] {
   secId = findSector(board, x, y, secId);
+  if (secId != -1) return closestWallSegmentInSectorDist(board, secId, x, y);
+  let wallId = -1;
   let mindist = Number.MAX_VALUE;
-  if (secId != -1) {
-    let start = board.sectors[secId].wallptr;
-    let end = start + board.sectors[secId].wallnum;
-    let wallId = -1;
-    for (let w = start; w < end; w++) {
-      let dist = distanceToWallSegment(board, w, x, y);
-      if (dist <= mindist) {
-        mindist = dist;
-        wallId = w;
-      }
+  for (let w = 0; w < board.numwalls; w++) {
+    let wall = board.walls[w];
+    if (wall.nextwall != -1)
+      continue;
+    let dist = distanceToWallSegment(board, w, x, y);
+    if (dist <= mindist) {
+      mindist = dist;
+      wallId = w;
     }
-    return [wallId, mindist];
-  } else {
-    let wallId = -1;
-    for (let w = 0; w < board.numwalls; w++) {
-      let wall = board.walls[w];
-      if (wall.nextwall != -1)
-        continue;
-      let dist = distanceToWallSegment(board, w, x, y);
-      if (dist <= mindist) {
-        mindist = dist;
-        wallId = w;
-      }
-    }
-    return [wallId, mindist];
+    return tuple2(closestWallSegmentDist_, wallId, mindist);
   }
+}
+
+export function closestWallSegment(board: Board, x: number, y: number, secId: number, d: number): number {
+  const [w, dist] = closestWallSegmentDist(board, secId, x, y);
+  return dist <= d ? w : -1;
 }
 
 function deleteSectorImpl(board: Board, sectorId: number) {
