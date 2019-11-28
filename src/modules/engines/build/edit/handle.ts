@@ -1,39 +1,38 @@
 import { len2d } from "../../../../libs/mathutils";
-import * as GLM from "../../../../libs_js/glmatrix";
-import { Hitscan } from "../hitscan";
-import { ZSCALE } from "../utils";
+import { vec3, Vec3Array } from "../../../../libs_js/glmatrix";
+import { Ray } from "../hitscan";
+import { Mover } from "./messages";
 
-export class MovingHandle {
-  private startPoint = GLM.vec3.create();
-  private currentPoint = GLM.vec3.create();
+export class MovingHandle implements Mover {
+  private startPoint = vec3.create();
+  private currentPoint = vec3.create();
   private dzoff = 0;
   private active = false;
   private vertical = false;
   private parallel = false;
 
-  public start(hit: Hitscan) {
-    if (hit.t == -1) GLM.vec3.copy(this.startPoint, hit.startzscaled);
-    else GLM.vec3.set(this.startPoint, hit.x, hit.z / ZSCALE, hit.y);
-    GLM.vec3.copy(this.currentPoint, this.startPoint);
+  public start(pos: Vec3Array) {
+    vec3.copy(this.startPoint, pos);
+    vec3.copy(this.currentPoint, this.startPoint);
     this.dzoff = 0;
     this.active = true;
   }
 
-  public update(vertical: boolean, parallel: boolean, hit: Hitscan) {
+  public update(vertical: boolean, parallel: boolean, ray: Ray) {
     this.parallel = parallel;
     this.vertical = vertical;
     if (vertical) {
-      let dx = this.currentPoint[0] - hit.startzscaled[0];
-      let dy = this.currentPoint[2] - hit.startzscaled[2];
-      let t = len2d(dx, dy) / len2d(hit.veczscaled[0], hit.veczscaled[2]);
-      this.dzoff = hit.veczscaled[1] * t + hit.startzscaled[1] - this.currentPoint[1];
+      let dx = this.currentPoint[0] - ray.start[0];
+      let dy = this.currentPoint[2] - ray.start[2];
+      let t = len2d(dx, dy) / len2d(ray.dir[0], ray.dir[2]);
+      this.dzoff = ray.dir[1] * t + ray.start[1] - this.currentPoint[1];
     } else {
       this.dzoff = 0;
-      let dz = this.startPoint[1] - hit.startzscaled[1];
-      let t = dz / hit.veczscaled[1];
-      GLM.vec3.copy(this.currentPoint, hit.veczscaled);
-      GLM.vec3.scale(this.currentPoint, this.currentPoint, t);
-      GLM.vec3.add(this.currentPoint, this.currentPoint, hit.startzscaled);
+      let dz = this.startPoint[1] - ray.start[1];
+      let t = dz / ray.dir[1];
+      vec3.copy(this.currentPoint, ray.dir);
+      vec3.scale(this.currentPoint, this.currentPoint, t);
+      vec3.add(this.currentPoint, this.currentPoint, ray.start);
     }
   }
 

@@ -17,7 +17,7 @@ export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
 
 export function getClosestWall(board: Board, hit: Hitscan, d: number, twod: boolean): number {
   if (twod) {
-    let [w, dist] = closestWallPoint(board, hit.start[0], hit.start[1]);
+    let [w, dist] = closestWallPoint(board, hit.ray.start[0], hit.ray.start[1]);
     return dist <= d ? w : -1;
   } else if (isWall(hit.type))
     return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, d);

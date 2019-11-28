@@ -1,17 +1,16 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { Deck } from "../../../../collections";
-import { info, error } from "../../../../logger";
-import { BuildContext, Bindable } from "../../api";
+import { error, info } from "../../../../logger";
+import { Bindable, BuildContext } from "../../api";
 import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
-import { Context } from "../../gl/context";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Hitscan, isSector, isSprite, isWall, SubType } from "../../hitscan";
 import { Board } from "../../structs";
-import { sectorOfWall } from "../../utils";
+import { build2gl, sectorOfWall } from "../../utils";
 import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
 import { MovingHandle } from "../handle";
-import { EndMove, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove, Frame } from "../messages";
+import { EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
@@ -149,13 +148,13 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     let vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
     let parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
     let hit = ctx.hitscan;
-    handle.update(vertical, parallel, hit);
+    handle.update(vertical, parallel, hit.zscaledray);
   }
 
   private updateMove(ctx: BuildContext) {
     if (!handle.isActive() && ctx.state.get(MOVE_STATE)) {
       let hit = ctx.hitscan;
-      handle.start(hit);
+      handle.start(hit.t == -1 ? hit.zscaledray.start : build2gl([hit.x, hit.y, hit.z]));
       this.selection.handle(START_MOVE, ctx);
     } else if (!ctx.state.get(MOVE_STATE)) {
       handle.stop();

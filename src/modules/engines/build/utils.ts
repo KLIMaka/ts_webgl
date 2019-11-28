@@ -1,11 +1,19 @@
 import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
-import { Collection, wrap, sub, decorate, cyclicPairs } from '../../collections';
+import { Collection, cyclicPairs } from '../../collections';
 import { SubType } from './hitscan';
 import { Board, Sector, Sprite, Wall } from './structs';
 
 export const ZSCALE = -16;
+
+export function build2gl(vec: GLM.Vec3Array, out: GLM.Vec3Array = vec): GLM.Vec3Array {
+  return GLM.vec3.set(out, vec[0], vec[2] / ZSCALE, vec[1]);
+}
+
+export function gl2build(vec: GLM.Vec3Array, out: GLM.Vec3Array = vec): GLM.Vec3Array {
+  return GLM.vec3.set(out, vec[0], vec[2] * ZSCALE, vec[1]);
+}
 
 export function getPlayerStart(board: Board): Sprite {
   for (let i = 0; i < board.numsprites; i++) {
