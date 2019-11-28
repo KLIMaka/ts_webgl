@@ -94,7 +94,7 @@ export class Hitscan {
   }
 }
 
-function hitSector(board: Board, secId: number, t: number, hit: Hitscan, type: SubType) {
+function hitSector(board: Board, secId: number, t: number, hit: Hitscan, type: EntityType) {
   let x = hit.ray.start[0] + int(hit.ray.dir[0] * t);
   let y = hit.ray.start[1] + int(hit.ray.dir[1] * t);
   let z = hit.ray.start[2] + int(hit.ray.dir[2] * t) * ZSCALE;
