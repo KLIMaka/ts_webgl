@@ -5,20 +5,47 @@ import { ArtInfo, ArtInfoProvider } from "./art";
 import { Board, FACE, FLOOR, Sector, WALL } from "./structs";
 import { ANGSCALE, groupSprites, inPolygon, inSector, rayIntersect, slope, spriteAngle, ZSCALE, build2gl } from "./utils";
 
-export enum SubType {
-  FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE
+export enum EntityType {
+  FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE, WALL_POINT
 }
 
-export function isSector(type: SubType) {
-  return type == SubType.FLOOR || type == SubType.CEILING;
+export interface HasId { readonly id: number }
+export interface HasType { readonly type: EntityType }
+
+export class Entity implements HasId, HasType {
+  constructor(
+    readonly id: number,
+    readonly type: EntityType
+  ) { }
+
+  isWall() { return isWall(this.type) }
+  isSector() { return isSector(this.type) }
+  isSprite() { return isSprite(this.type) }
+  clone() { return new Entity(this.id, this.type) }
 }
 
-export function isWall(type: SubType) {
-  return type == SubType.LOWER_WALL || type == SubType.MID_WALL || type == SubType.UPPER_WALL;
+export function isSector(type: EntityType) {
+  switch (type) {
+    case EntityType.FLOOR:
+    case EntityType.CEILING:
+      return true;
+    default: return false;
+  }
 }
 
-export function isSprite(type: SubType) {
-  return type == SubType.SPRITE;
+export function isWall(type: EntityType) {
+  switch (type) {
+    case EntityType.LOWER_WALL:
+    case EntityType.MID_WALL:
+    case EntityType.UPPER_WALL:
+    case EntityType.WALL_POINT:
+      return true;
+    default: return false;
+  }
+}
+
+export function isSprite(type: EntityType) {
+  return type == EntityType.SPRITE;
 }
 
 const SPRITE_OFF = 0.1;
@@ -34,15 +61,14 @@ export class Hitscan {
     public y: number = -1,
     public z: number = -1,
     public t: number = -1,
+    public ent: Entity = null,
     public id: number = -1,
-    public type: SubType = null,
     public ray = new Ray(),
     public zscaledray = new Ray()) { }
 
   public reset(xs: number, ys: number, zs: number, vx: number, vy: number, vz: number) {
-    this.id = -1;
+    this.ent = null;
     this.t = -1;
-    this.type = null;
     GLM.vec3.set(this.ray.start, xs, ys, zs);
     GLM.vec3.set(this.ray.dir, vx, vy, vz);
 
@@ -61,10 +87,9 @@ export class Hitscan {
     return false;
   }
 
-  public hit(x: number, y: number, z: number, t: number, id: number, type: SubType) {
+  public hit(x: number, y: number, z: number, t: number, id: number, type: EntityType) {
     if (this.testHit(x, y, z, t)) {
-      this.id = id;
-      this.type = type;
+      this.ent = new Entity(id, type)
     }
   }
 }
@@ -94,7 +119,7 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, hit: Hi
     let ceilz = slope(board, secId, hit.ray.start[0], hit.ray.start[1], sec.ceilingheinum) + sec.ceilingz;
     let ceildz = (ceilz - hit.ray.start[2]) / ZSCALE;
     let t = ceildz / dk;
-    hitSector(board, secId, t, hit, SubType.CEILING);
+    hitSector(board, secId, t, hit, EntityType.CEILING);
   }
 
   let floork = sec.floorheinum * ANGSCALE * angk;
@@ -103,7 +128,7 @@ function intersectSectorPlanes(board: Board, sec: Sector, secId: number, hit: Hi
     let floorz = slope(board, secId, hit.ray.start[0], hit.ray.start[1], sec.floorheinum) + sec.floorz;
     let floordz = (hit.ray.start[2] - floorz) / ZSCALE;
     let t = floordz / dk1;
-    hitSector(board, secId, t, hit, SubType.FLOOR);
+    hitSector(board, secId, t, hit, EntityType.FLOOR);
   }
 }
 
@@ -123,7 +148,7 @@ function intersectWall(board: Board, wallId: number, hit: Hitscan): number {
 
   let nextsecId = wall.nextsector;
   if (nextsecId == -1) {
-    hit.hit(ix, iy, iz, it, wallId, SubType.MID_WALL);
+    hit.hit(ix, iy, iz, it, wallId, EntityType.MID_WALL);
     return -1;
   }
 
@@ -131,13 +156,13 @@ function intersectWall(board: Board, wallId: number, hit: Hitscan): number {
   let floorz = slope(board, nextsecId, ix, iy, nextsec.floorheinum) + nextsec.floorz;
   let ceilz = slope(board, nextsecId, ix, iy, nextsec.ceilingheinum) + nextsec.ceilingz;
   if (iz <= ceilz) {
-    hit.hit(ix, iy, iz, it, wallId, SubType.UPPER_WALL);
+    hit.hit(ix, iy, iz, it, wallId, EntityType.UPPER_WALL);
     return -1;
   } else if (iz >= floorz) {
-    hit.hit(ix, iy, iz, it, wallId, SubType.LOWER_WALL);
+    hit.hit(ix, iy, iz, it, wallId, EntityType.LOWER_WALL);
     return -1;
   } else if (wall.cstat.masking) {
-    hit.hit(ix, iy, iz, it, wallId, SubType.MID_WALL);
+    hit.hit(ix, iy, iz, it, wallId, EntityType.MID_WALL);
     return -1;
   }
 
@@ -163,7 +188,7 @@ function intersectFaceSprite(board: Board, info: ArtInfo, sprId: number, hit: Hi
   let inty = ys + int(vy * t);
   let w = info.w * (spr.xrepeat >> 2);
   if (len2d(x - intx, y - inty) > (w >> 1)) return;
-  hit.hit(intx, inty, intz, t, sprId, SubType.SPRITE);
+  hit.hit(intx, inty, intz, t, sprId, EntityType.SPRITE);
 }
 
 function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, hit: Hitscan) {
@@ -189,7 +214,7 @@ function intersectWallSprite(board: Board, info: ArtInfo, sprId: number, hit: Hi
   z += spr.cstat.realCenter ? h >> 1 : 0;
   z -= info.attrs.yoff * (spr.yrepeat << 2);
   if ((iz > z) || (iz < z - h)) return;
-  hit.hit(ix, iy, iz, it - SPRITE_OFF, sprId, SubType.SPRITE);
+  hit.hit(ix, iy, iz, it - SPRITE_OFF, sprId, EntityType.SPRITE);
 }
 
 let xss = new Deck<number>();
@@ -229,7 +254,7 @@ function intersectFloorSprite(board: Board, info: ArtInfo, sprId: number, hit: H
   let ix = xs + int(vx * t);
   let iy = ys + int(vy * t);
   if (!inPolygon(ix, iy, xss, yss)) return;
-  hit.hit(ix, iy, z, t - SPRITE_OFF, sprId, SubType.SPRITE);
+  hit.hit(ix, iy, z, t - SPRITE_OFF, sprId, EntityType.SPRITE);
 }
 
 

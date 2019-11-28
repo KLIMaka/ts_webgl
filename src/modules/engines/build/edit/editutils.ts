@@ -1,7 +1,7 @@
 import { int, len2d, tuple2, tuple4 } from "../../../../libs/mathutils";
 import { BuildContext } from "../api";
-import { closestWallInSector, closestWallPoint, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall } from "../boardutils";
-import { Hitscan, isSector, isSprite, isWall, SubType } from "../hitscan";
+import { closestWallInSector, closestWallPointDist, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall } from "../boardutils";
+import { Hitscan, isSector, isSprite, isWall, EntityType, Entity } from "../hitscan";
 import { Board } from "../structs";
 import { sectorOfWall, slope } from "../utils";
 
@@ -17,37 +17,37 @@ export function invalidateSectorAndWalls(sectorId: number, ctx: BuildContext) {
 
 export function getClosestWall(board: Board, hit: Hitscan, d: number, twod: boolean): number {
   if (twod) {
-    let [w, dist] = closestWallPoint(board, hit.ray.start[0], hit.ray.start[1]);
+    let [w, dist] = closestWallPointDist(board, hit.ray.start[0], hit.ray.start[1]);
     return dist <= d ? w : -1;
-  } else if (isWall(hit.type))
-    return closestWallInSector(board, sectorOfWall(board, hit.id), hit.x, hit.y, d);
-  else if (isSector(hit.type))
-    return closestWallInSector(board, hit.id, hit.x, hit.y, d);
+  } else if (hit.ent.isWall())
+    return closestWallInSector(board, sectorOfWall(board, hit.ent.id), hit.x, hit.y, d);
+  else if (hit.ent.isSector())
+    return closestWallInSector(board, hit.ent.id, hit.x, hit.y, d);
   return -1;
 }
 
-let snapResult: [number, number, number, SubType] = [0, 0, 0, null];
-export function snap(ctx: BuildContext): [number, number, number, SubType] {
+let snapResult: [number, number, number, EntityType] = [0, 0, 0, null];
+export function snap(ctx: BuildContext): [number, number, number, EntityType] {
   let hit = ctx.hitscan;
   let w = getClosestWall(ctx.board, hit, ctx.gridScale, ctx.state.get('view_2d'));
   if (w != -1) {
     let wall = ctx.board.walls[w];
-    return tuple4(snapResult, wall.x, wall.y, w, SubType.MID_WALL);
-  } else if (isSector(hit.type)) {
-    let w = closestWallSegmentInSector(ctx.board, hit.id, hit.x, hit.y, ctx.gridScale);
-    return w == -1 ? snapGrid(hit, ctx, hit.id, hit.type) : snapWall(w, hit, ctx);
-  } else if (isSprite(hit.type)) {
-    return snapGrid(hit, ctx, hit.id, hit.type);
-  } else if (isWall(hit.type)) {
-    return snapWall(hit.id, hit, ctx);
+    return tuple4(snapResult, wall.x, wall.y, w, EntityType.MID_WALL);
+  } else if (hit.ent.isSector()) {
+    let w = closestWallSegmentInSector(ctx.board, hit.ent.id, hit.x, hit.y, ctx.gridScale);
+    return w == -1 ? snapGrid(hit, ctx, hit.ent) : snapWall(w, hit, ctx);
+  } else if (hit.ent.isSprite()) {
+    return snapGrid(hit, ctx, hit.ent);
+  } else if (hit.ent.isWall()) {
+    return snapWall(hit.ent.id, hit, ctx);
   }
   return null;
 }
 
-function snapGrid(hit: Hitscan, ctx: BuildContext, id: number, type: SubType) {
+function snapGrid(hit: Hitscan, ctx: BuildContext, ent: Entity) {
   let x = ctx.snap(hit.x);
   let y = ctx.snap(hit.y);
-  return tuple4(snapResult, x, y, id, type);
+  return tuple4(snapResult, x, y, ent.id, ent.type);
 }
 
 function snapWall(w: number, hit: Hitscan, ctx: BuildContext) {
@@ -63,14 +63,14 @@ function snapWall(w: number, hit: Hitscan, ctx: BuildContext) {
   let t = ctx.snap(dt * repeat) / repeat;
   let x = int(wall.x + (t * dx));
   let y = int(wall.y + (t * dy));
-  return tuple4(snapResult, x, y, w, SubType.MID_WALL);
+  return tuple4(snapResult, x, y, w, EntityType.MID_WALL);
 }
 
-let sectorZesult: [SubType, number] = [null, 0];
-export function getClosestSectorZ(board: Board, sectorId: number, x: number, y: number, z: number): [SubType, number] {
+let sectorZesult: [EntityType, number] = [null, 0];
+export function getClosestSectorZ(board: Board, sectorId: number, x: number, y: number, z: number): [EntityType, number] {
   let sector = board.sectors[sectorId];
   let fz = slope(board, sectorId, x, y, sector.floorheinum) + sector.floorz;
   let cz = slope(board, sectorId, x, y, sector.ceilingheinum) + sector.ceilingz;
-  return Math.abs(z - fz) < Math.abs(z - cz) ? tuple2(sectorZesult, SubType.FLOOR, fz) : tuple2(sectorZesult, SubType.CEILING, cz);
+  return Math.abs(z - fz) < Math.abs(z - cz) ? tuple2(sectorZesult, EntityType.FLOOR, fz) : tuple2(sectorZesult, EntityType.CEILING, cz);
 }
 

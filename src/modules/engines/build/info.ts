@@ -2,7 +2,7 @@ import { Element, span, Table } from "../../ui/ui";
 import { BuildContext } from "./api";
 import { Mouse } from "./edit/messages";
 import { MessageHandlerReflective } from "./handlerapi";
-import { isSector, isSprite, isWall, SubType } from "./hitscan";
+import { isSector, isSprite, isWall, EntityType, Entity } from "./hitscan";
 
 export class Info extends MessageHandlerReflective {
   private wallTable: Element;
@@ -22,9 +22,9 @@ export class Info extends MessageHandlerReflective {
   public Mouse(msg: Mouse, ctx: BuildContext) {
     let hit = ctx.hitscan;
     this.clear();
-    if (isWall(hit.type)) this.renderWall(ctx, hit.id);
-    else if (isSector(hit.type)) this.renderSector(ctx, hit.id, hit.type);
-    else if (isSprite(hit.type)) this.renderSprite(ctx, hit.id);
+    if (hit.ent.isWall()) this.renderWall(ctx, hit.ent.id);
+    else if (hit.ent.isSector()) this.renderSector(ctx, hit.ent);
+    else if (hit.ent.isSprite()) this.renderSprite(ctx, hit.ent.id);
   }
 
   private clear() {
@@ -45,11 +45,13 @@ export class Info extends MessageHandlerReflective {
     this.spriteFields['z'].text(`${sprite.z}`);
   }
 
-  private renderSector(ctx: BuildContext, id: number, type: SubType) {
+  private renderSector(ctx: BuildContext, sectorEnt: Entity) {
+    const id = sectorEnt.id;
+    const type = sectorEnt.type;
     this.sectorTable.css('display', '');
     let sector = ctx.board.sectors[id];
     this.sectorFields['id'].text(`${id}`);
-    if (type == SubType.CEILING) {
+    if (type == EntityType.CEILING) {
       this.sectorFields['panning'].text(`${sector.ceilingxpanning}, ${sector.ceilingypanning}`);
       this.sectorFields['shade'].text(`${sector.ceilingshade}`);
       this.sectorFields['picnum'].text(`${sector.ceilingpicnum}`);

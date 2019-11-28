@@ -155,9 +155,9 @@ export class DrawSector extends MessageHandlerReflective {
       GLM.vec3.set(this.pointer, x, y, z);
       this.contour.setZ(z / ZSCALE);
       this.contour.updateLastPoint(x, y);
-      if (isSector(hit.type)) this.hintSector = hit.id;
-      if (isSprite(hit.type)) this.hintSector = ctx.board.sprites[hit.id].sectnum;
-      if (isWall(hit.type)) this.hintSector = sectorOfWall(ctx.board, hit.id);
+      if (hit.ent.isSector()) this.hintSector = hit.ent.id;
+      if (hit.ent.isSprite()) this.hintSector = ctx.board.sprites[hit.ent.id].sectnum;
+      if (hit.ent.isWall()) this.hintSector = sectorOfWall(ctx.board, hit.ent.id);
     }
     return true;
   }
@@ -232,8 +232,8 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   private getPointerZ(board: Board, hit: Hitscan, x: number, y: number): number {
-    if (isSector(hit.type)) return hit.z;
-    let sectorId = isWall(hit.type) ? sectorOfWall(board, hit.id) : board.sprites[hit.id].sectnum;
+    if (hit.ent.isSector()) return hit.z;
+    let sectorId = hit.ent.isWall() ? sectorOfWall(board, hit.ent.id) : board.sprites[hit.ent.id].sectnum;
     return getClosestSectorZ(board, sectorId, x, y, hit.z)[1];
   }
 

@@ -2,8 +2,8 @@ import * as MU from '../../../libs/mathutils';
 import * as VEC from '../../../libs/vecmath';
 import * as GLM from '../../../libs_js/glmatrix';
 import { Collection, cyclicPairs } from '../../collections';
-import { SubType } from './hitscan';
 import { Board, Sector, Sprite, Wall } from './structs';
+import { EntityType, Entity } from './hitscan';
 
 export const ZSCALE = -16;
 
@@ -110,41 +110,41 @@ export function sectorOfWall(board: Board, wallId: number): number {
   }
 }
 
-export function sectorZ(board: Board, sectorId: number, type: SubType) {
-  let sec = board.sectors[sectorId];
-  return (type == SubType.CEILING ? sec.ceilingz : sec.floorz);
+export function sectorZ(board: Board, sectorEnt: Entity) {
+  let sec = board.sectors[sectorEnt.id];
+  return (sectorEnt.type == EntityType.CEILING ? sec.ceilingz : sec.floorz);
 }
 
-export function sectorHeinum(board: Board, sectorId: number, type: SubType) {
-  let sec = board.sectors[sectorId];
-  return (type == SubType.CEILING ? sec.ceilingheinum : sec.floorheinum);
+export function sectorHeinum(board: Board, sectorEnt: Entity) {
+  let sec = board.sectors[sectorEnt.id];
+  return (sectorEnt.type == EntityType.CEILING ? sec.ceilingheinum : sec.floorheinum);
 }
 
-export function setSectorZ(board: Board, sectorId: number, type: SubType, z: number): boolean {
-  let pz = sectorZ(board, sectorId, type);
+export function setSectorZ(board: Board, sectorEnt: Entity, z: number): boolean {
+  let pz = sectorZ(board, sectorEnt);
   if (pz == z) return false;
-  let sec = board.sectors[sectorId];
-  if (type == SubType.CEILING) sec.ceilingz = z; else sec.floorz = z;
+  let sec = board.sectors[sectorEnt.id];
+  if (sectorEnt.type == EntityType.CEILING) sec.ceilingz = z; else sec.floorz = z;
   return true;
 }
 
-export function setSectorHeinum(board: Board, sectorId: number, type: SubType, h: number): boolean {
-  let ph = sectorHeinum(board, sectorId, type);
+export function setSectorHeinum(board: Board, sectorEnt: Entity, h: number): boolean {
+  let ph = sectorHeinum(board, sectorEnt);
   if (ph == h) return false;
-  let sec = board.sectors[sectorId];
-  if (type == SubType.CEILING) sec.ceilingheinum = h; else sec.floorheinum = h;
+  let sec = board.sectors[sectorEnt.id];
+  if (sectorEnt.type == EntityType.CEILING) sec.ceilingheinum = h; else sec.floorheinum = h;
   return true;
 }
 
-export function sectorPicnum(board: Board, sectorId: number, type: SubType) {
-  let sec = board.sectors[sectorId];
-  return type == SubType.CEILING ? sec.ceilingpicnum : sec.floorpicnum;
+export function sectorPicnum(board: Board, sectorEnt: Entity) {
+  let sec = board.sectors[sectorEnt.id];
+  return sectorEnt.type == EntityType.CEILING ? sec.ceilingpicnum : sec.floorpicnum;
 }
 
-export function setSectorPicnum(board: Board, sectorId: number, type: SubType, picnum: number): boolean {
-  if (picnum == -1 || sectorPicnum(board, sectorId, type) == picnum) return false;
-  let sec = board.sectors[sectorId];
-  if (type == SubType.CEILING) sec.ceilingpicnum = picnum; else sec.floorpicnum = picnum;
+export function setSectorPicnum(board: Board, sectorEnt: Entity, picnum: number): boolean {
+  if (picnum == -1 || sectorPicnum(board, sectorEnt) == picnum) return false;
+  let sec = board.sectors[sectorEnt.id];
+  if (sectorEnt.type == EntityType.CEILING) sec.ceilingpicnum = picnum; else sec.floorpicnum = picnum;
   return true;
 }
 

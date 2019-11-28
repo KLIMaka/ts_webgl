@@ -3,7 +3,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
 import { ArtInfo } from '../art';
 import { walllen } from '../boardutils';
-import { isSector, isWall, SubType } from '../hitscan';
+import { isSector, isWall, EntityType } from '../hitscan';
 import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
 import * as U from '../utils';
 import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid, SectorRenderable, WallRenderable } from './renderable';
@@ -114,7 +114,7 @@ export function updateWall2d(ctx: BuildContext, wallId: number, renderable: Wall
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
-export function genGridMatrix(board: Board, id: number, type: SubType): GLM.Mat4Array {
+export function genGridMatrix(board: Board, id: number, type: EntityType): GLM.Mat4Array {
   GLM.mat4.identity(texMat);
   if (isSector(type)) {
     GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);

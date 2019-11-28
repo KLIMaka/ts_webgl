@@ -1,5 +1,5 @@
 import * as GLM from '../../../../libs_js/glmatrix';
-import { SubType } from '../hitscan';
+import { EntityType } from '../hitscan';
 import { buildCeilingHinge, buildFloorHinge, updateSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSector2d, updateWall2d } from './builders';
 import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable, Wireframe, wrapState, notStatePred, wrapStatePred } from './renderable';
 import { BuildContext, BoardInvalidator } from '../api';
@@ -201,7 +201,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     let floor2d = new Array<Renderable>();
     let sectorRenderable = this.cache.sector(secId);
     let ceilingGrid = new GridRenderable();
-    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, SubType.CEILING));
+    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, EntityType.CEILING));
     ceilingGrid.gridTexMat = gridMatrix;
     ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
     ceiling2d.push(ceilingGrid);
@@ -254,7 +254,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     renderable.reset();
     let wallWireframe = updateWallWireframe(this.ctx, wallId);
     let wallRenderable = this.cache.wall(wallId);
-    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, SubType.MID_WALL));
+    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, EntityType.MID_WALL));
     renderable.top = this.addWallPart(<Solid>wallRenderable.top, gridMatrix, wallWireframe.top, this.addWallPoints(wallId, true));
     renderable.mid = this.addWallPart(<Solid>wallRenderable.mid, gridMatrix, wallWireframe.mid, NULL_RENDERABLE);
     renderable.bot = this.addWallPart(<Solid>wallRenderable.bot, gridMatrix, wallWireframe.bot, this.addWallPoints(wallId, false));

@@ -3,18 +3,18 @@ import { vec3 } from "../../../libs_js/glmatrix";
 import { Controller2D } from "../../controller2d";
 import { Controller3D } from "../../controller3d";
 import { BuildContext, View } from "./api";
+import { closestWallInSector, closestWallPoint, closestWallSegment, closestWallSegmentInSector } from "./boardutils";
 import { Frame, Mouse, NamedMessage } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
 import { RenderablesCache } from "./gl/cache";
 import { VIEW_2D } from "./gl/context";
+import { BuildRenderableProvider, Renderable } from "./gl/renderable";
 import { Message, MessageHandler } from "./handlerapi";
+import { Hitscan, hitscan } from "./hitscan";
 import { Sprite } from "./structs";
 import { findSector, getPlayerStart, inSector, ZSCALE } from "./utils";
-import { BuildRenderableProvider, Renderable } from "./gl/renderable";
-import { Hitscan, hitscan } from "./hitscan";
-import { closestWallInSector, closestWallSegmentInSector, closestWallPoint, closestWallSegment } from "./boardutils";
 
 export class View2d implements View, MessageHandler {
   readonly gl: WebGLRenderingContext;
@@ -83,18 +83,20 @@ export class View2d implements View, MessageHandler {
 
   foo(ctx: BuildContext) {
     const d = 32;
-    const sectorId = findSector(ctx.board, this.x, this.y, this.sec);
+    const x = this.x;
+    const y = this.y;
+    const sectorId = findSector(ctx.board, x, y, this.sec);
     if (sectorId == -1) {
-      const w = closestWallInSector(ctx.board, sectorId, this.x, this.y, d);
+      const w = closestWallInSector(ctx.board, sectorId, x, y, d);
       if (w != -1) return w;
-      const ws = closestWallSegmentInSector(ctx.board, sectorId, this.x, this.y, d);
+      const ws = closestWallSegmentInSector(ctx.board, sectorId, x, y, d);
       if (ws != -1) return ws;
       return sectorId;
     } else {
-      const [w, wd] = closestWallPoint(ctx.board, this.x, this.y);
-      if (w != -1 && wd < d) return w;
-      const [ws, wsd] = closestWallSegment(ctx.board, this.x, this.y, this.sec);
-      if (w != -1 && wsd < d) return ws;
+      const w = closestWallPoint(ctx.board, x, y, d);
+      if (w != -1) return w;
+      const ws = closestWallSegment(ctx.board, x, y, this.sec, d);
+      if (ws != -1) return ws;
       return -1;
     }
   }
