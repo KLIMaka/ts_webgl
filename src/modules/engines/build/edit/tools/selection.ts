@@ -6,7 +6,7 @@ import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from ".
 import { Context } from "../../gl/context";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan, isSector, isSprite, isWall, SubType } from "../../hitscan";
+import { Hitscan, isSector, isSprite, isWall, EntityType, Entity } from "../../hitscan";
 import { Board } from "../../structs";
 import { sectorOfWall } from "../../utils";
 import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
@@ -41,10 +41,10 @@ let clipboardPicnum = new SetPicnum(0);
 let clipboardShade = new Shade(0, true);
 
 function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
-  let wall = board.walls[hit.id];
-  let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.id) : wall.nextsector;
+  let wall = board.walls[hit.ent.id];
+  let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.ent.id) : wall.nextsector;
   let type = getClosestSectorZ(board, sectorId, hit.x, hit.y, hit.z)[0];
-  return SectorEnt.create(sectorId, type);
+  return SectorEnt.create(hit.ent.clone());
 }
 
 let list = new Deck<MessageHandler>();
@@ -57,24 +57,24 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
   let w = getClosestWall(board, hit, ctx.state.get(SNAP_DIST), ctx.state.get('view_2d'));
   if (w != -1) {
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
-  } else if (isWall(hit.type)) {
-    wallSegment(fullLoop, board, hit.id, hit.type == SubType.LOWER_WALL);
-  } else if (isSector(hit.type)) {
-    let w = closestWallSegmentInSector(board, hit.id, hit.x, hit.y, ctx.state.get(SNAP_DIST));
-    if (w != -1) wallSegment(fullLoop, board, w, hit.type == SubType.FLOOR); else sector(fullLoop, board, hit);
-  } else if (isSprite(hit.type)) {
-    list.push(SpriteEnt.create(hit.id));
+  } else if (hit.ent.isWall()) {
+    wallSegment(fullLoop, board, hit.ent.id, hit.ent.type == EntityType.LOWER_WALL);
+  } else if (hit.ent.isSector()) {
+    let w = closestWallSegmentInSector(board, hit.ent.id, hit.x, hit.y, ctx.state.get(SNAP_DIST));
+    if (w != -1) wallSegment(fullLoop, board, w, hit.ent.type == EntityType.FLOOR); else sector(fullLoop, board, hit);
+  } else if (hit.ent.isSprite()) {
+    list.push(SpriteEnt.create(hit.ent.id));
   }
   return list;
 }
 
 function sector(fullLoop: boolean, board: Board, hit: Hitscan) {
   if (fullLoop) {
-    let firstWall = board.sectors[hit.id].wallptr;
-    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, hit.id)));
-    list.push(SectorEnt.create(hit.id, hit.type == SubType.CEILING ? SubType.FLOOR : SubType.CEILING));
+    let firstWall = board.sectors[hit.ent.id].wallptr;
+    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, hit.ent.id)));
+    list.push(SectorEnt.create(new Entity(hit.ent.id, hit.ent.type == EntityType.CEILING ? EntityType.FLOOR : EntityType.CEILING)));
   }
-  list.push(SectorEnt.create(hit.id, hit.type));
+  list.push(SectorEnt.create(hit.ent.clone()));
 }
 
 function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean) {
@@ -183,7 +183,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     let [x, y] = snap(ctx);
     let hit = ctx.hitscan;
     let z = hit.z;
-    if (!isSector(hit.type)) return;
+    if (!hit.ent.isSector()) return;
     this.picnumSelector((picnum: number) => {
       if (picnum == -1) return;
       let spriteId = insertSprite(ctx.board, x, y, z);
@@ -193,18 +193,18 @@ export class Selection extends MessageHandlerReflective implements Bindable {
 
   private print(ctx: BuildContext) {
     let hit = ctx.hitscan;
-    switch (hit.type) {
-      case SubType.CEILING:
-      case SubType.FLOOR:
-        info(hit.id, ctx.board.sectors[hit.id]);
+    switch (hit.ent.type) {
+      case EntityType.CEILING:
+      case EntityType.FLOOR:
+        info(hit.ent.id, ctx.board.sectors[hit.ent.id]);
         break;
-      case SubType.UPPER_WALL:
-      case SubType.MID_WALL:
-      case SubType.LOWER_WALL:
-        info(hit.id, ctx.board.walls[hit.id]);
+      case EntityType.UPPER_WALL:
+      case EntityType.MID_WALL:
+      case EntityType.LOWER_WALL:
+        info(hit.ent.id, ctx.board.walls[hit.ent.id]);
         break;
-      case SubType.SPRITE:
-        info(hit.id, ctx.board.sprites[hit.id]);
+      case EntityType.SPRITE:
+        info(hit.ent.id, ctx.board.sprites[hit.ent.id]);
         break;
     }
   }
@@ -212,24 +212,24 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private copy(ctx: BuildContext) {
     let hit = ctx.hitscan;
     if (hit.t == -1) return;
-    switch (hit.type) {
-      case SubType.CEILING:
-        clipboardShade.value = ctx.board.sectors[hit.id].ceilingshade;
-        clipboardPicnum.picnum = ctx.board.sectors[hit.id].ceilingpicnum;
+    switch (hit.ent.type) {
+      case EntityType.CEILING:
+        clipboardShade.value = ctx.board.sectors[hit.ent.id].ceilingshade;
+        clipboardPicnum.picnum = ctx.board.sectors[hit.ent.id].ceilingpicnum;
         break;
-      case SubType.FLOOR:
-        clipboardShade.value = ctx.board.sectors[hit.id].floorshade;
-        clipboardPicnum.picnum = ctx.board.sectors[hit.id].floorpicnum;
+      case EntityType.FLOOR:
+        clipboardShade.value = ctx.board.sectors[hit.ent.id].floorshade;
+        clipboardPicnum.picnum = ctx.board.sectors[hit.ent.id].floorpicnum;
         break;
-      case SubType.LOWER_WALL:
-      case SubType.MID_WALL:
-      case SubType.UPPER_WALL:
-        clipboardShade.value = ctx.board.walls[hit.id].shade;
-        clipboardPicnum.picnum = ctx.board.walls[hit.id].picnum;
+      case EntityType.LOWER_WALL:
+      case EntityType.MID_WALL:
+      case EntityType.UPPER_WALL:
+        clipboardShade.value = ctx.board.walls[hit.ent.id].shade;
+        clipboardPicnum.picnum = ctx.board.walls[hit.ent.id].picnum;
         break;
-      case SubType.SPRITE:
-        clipboardShade.value = ctx.board.sprites[hit.id].shade;
-        clipboardPicnum.picnum = ctx.board.sprites[hit.id].picnum;
+      case EntityType.SPRITE:
+        clipboardShade.value = ctx.board.sprites[hit.ent.id].shade;
+        clipboardPicnum.picnum = ctx.board.sprites[hit.ent.id].picnum;
         break;
     }
   }

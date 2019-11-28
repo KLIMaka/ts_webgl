@@ -1,18 +1,16 @@
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Frame, NamedMessage } from "../messages";
 import { BuildContext } from "../../api";
-import { Hitscan, isWall, SubType } from "../../hitscan";
+import { Hitscan, isWall, EntityType } from "../../hitscan";
 
 export class DrawWall extends MessageHandlerReflective {
   private activeWall = -1;
 
   private start(ctx: BuildContext) {
     let hit = ctx.hitscan;
-    if (!isWall(hit.type)) return;
-    let wall = ctx.board.walls[hit.id];
-    if (wall.nextsector != -1 && hit.type == SubType.MID_WALL) return;
-
-
+    if (!hit.ent.isWall()) return;
+    let wall = ctx.board.walls[hit.ent.id];
+    if (wall.nextsector != -1 && hit.ent.type == EntityType.MID_WALL) return;
   }
 
   private insertPoint(ctx: BuildContext) {

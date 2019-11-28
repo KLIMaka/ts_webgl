@@ -18,6 +18,7 @@ export interface Bindable {
 export interface View extends MoveStruct, Bindable {
   draw(renderable: Renderable): void;
   hitscan(ctx: BuildContext, hitscan: Hitscan): Hitscan;
+
 }
 
 export interface BoardInvalidator extends Bindable {

@@ -2,7 +2,7 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { BuildContext } from "../api";
 import { MessageHandlerReflective } from "../handlerapi";
-import { Hitscan, isSector, SubType } from "../hitscan";
+import { Hitscan, isSector, EntityType, Entity } from "../hitscan";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
 import { Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove } from "./messages";
@@ -12,13 +12,12 @@ const resetPanrepeat = new PanRepeat(0, 0, 0, 0, true);
 
 export class SectorEnt extends MessageHandlerReflective {
 
-  public static create(id: number, type: SubType) {
-    return new SectorEnt(id, type);
+  public static create(sectorEnt: Entity) {
+    return new SectorEnt(sectorEnt);
   }
 
   constructor(
-    public sectorId: number,
-    public type: SubType,
+    public sectorEnt: Entity,
     public originz = 0,
     public origin = GLM.vec2.create()
   ) { super() }
@@ -29,7 +28,7 @@ export class SectorEnt extends MessageHandlerReflective {
     // let sec = ctx.board.sectors[this.sectorId];
     // let slope = createSlopeCalculator(sec, ctx.board.walls);
     // this.originz = slope(x, y, this.type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum) + sectorZ(ctx.board, this.sectorId, this.type)) / ZSCALE;
-    this.originz = sectorZ(ctx.board, this.sectorId, this.type) / ZSCALE;
+    this.originz = sectorZ(ctx.board, this.sectorEnt) / ZSCALE;
     GLM.vec2.set(this.origin, x, y);
   }
 
@@ -38,38 +37,38 @@ export class SectorEnt extends MessageHandlerReflective {
       let x = this.origin[0];
       let y = this.origin[1];
       let z = ctx.snap(this.originz + msg.dz * ZSCALE);
-      let h = heinumCalc(ctx.board, this.sectorId, x, y, z);
-      if (setSectorHeinum(ctx.board, this.sectorId, this.type, h))
-        invalidateSectorAndWalls(this.sectorId, ctx);
+      let h = heinumCalc(ctx.board, this.sectorEnt.id, x, y, z);
+      if (setSectorHeinum(ctx.board, this.sectorEnt, h))
+        invalidateSectorAndWalls(this.sectorEnt.id, ctx);
     } else if (ctx.state.get(MOVE_VERTICAL)) {
       let hit = ctx.hitscan;
-      let z = isSector(hit.type) && hit.id != this.sectorId
-        ? sectorZ(ctx.board, hit.id, hit.type) / ZSCALE
+      let z = hit.ent.isSector() && hit.ent.id != this.sectorEnt.id
+        ? sectorZ(ctx.board, hit.ent) / ZSCALE
         : ctx.snap(this.originz + msg.dz);
-      if (setSectorZ(ctx.board, this.sectorId, this.type, z * ZSCALE))
-        invalidateSectorAndWalls(this.sectorId, ctx);
+      if (setSectorZ(ctx.board, this.sectorEnt, z * ZSCALE))
+        invalidateSectorAndWalls(this.sectorEnt.id, ctx);
     }
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
-    msg.set.add(tuple(this.type == SubType.CEILING ? 0 : 1, this.sectorId));
+    msg.set.add(tuple(this.sectorEnt.type == EntityType.CEILING ? 0 : 1, this.sectorEnt.id));
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
-    if (setSectorPicnum(ctx.board, this.sectorId, this.type, msg.picnum))
-      ctx.invalidator.invalidateSector(this.sectorId);
+    if (setSectorPicnum(ctx.board, this.sectorEnt, msg.picnum))
+      ctx.invalidator.invalidateSector(this.sectorEnt.id);
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
-    let sector = ctx.board.sectors[this.sectorId];
-    let shade = this.type == SubType.CEILING ? sector.ceilingshade : sector.floorshade;
+    let sector = ctx.board.sectors[this.sectorEnt.id];
+    let shade = this.sectorEnt.type == EntityType.CEILING ? sector.ceilingshade : sector.floorshade;
     if (msg.absolute && msg.value == shade) return;
     if (msg.absolute) {
-      if (this.type == SubType.CEILING) sector.ceilingshade = msg.value; else sector.floorshade = msg.value;
+      if (this.sectorEnt.type == EntityType.CEILING) sector.ceilingshade = msg.value; else sector.floorshade = msg.value;
     } else {
-      if (this.type == SubType.CEILING) sector.ceilingshade += msg.value; else sector.floorshade += msg.value;
+      if (this.sectorEnt.type == EntityType.CEILING) sector.ceilingshade += msg.value; else sector.floorshade += msg.value;
     }
-    ctx.invalidator.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorEnt.id);
   }
 
   public ResetPanRepeat(msg: ResetPanRepeat, ctx: BuildContext) {
@@ -77,9 +76,9 @@ export class SectorEnt extends MessageHandlerReflective {
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
-    let sector = ctx.board.sectors[this.sectorId];
+    let sector = ctx.board.sectors[this.sectorEnt.id];
     if (msg.absolute) {
-      if (this.type == SubType.CEILING) {
+      if (this.sectorEnt.type == EntityType.CEILING) {
         if (sector.ceilingxpanning == msg.xpan && sector.ceilingypanning == msg.ypan) return;
         sector.ceilingxpanning = msg.xpan;
         sector.ceilingypanning = msg.ypan;
@@ -89,7 +88,7 @@ export class SectorEnt extends MessageHandlerReflective {
         sector.floorypanning = msg.ypan;
       }
     } else {
-      if (this.type == SubType.CEILING) {
+      if (this.sectorEnt.type == EntityType.CEILING) {
         sector.ceilingxpanning += msg.xpan;
         sector.ceilingypanning += msg.ypan;
       } else {
@@ -97,13 +96,13 @@ export class SectorEnt extends MessageHandlerReflective {
         sector.floorypanning += msg.ypan;
       }
     }
-    ctx.invalidator.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorEnt.id);
   }
 
   public Palette(msg: Palette, ctx: BuildContext) {
-    let sector = ctx.board.sectors[this.sectorId];
+    let sector = ctx.board.sectors[this.sectorEnt.id];
     if (msg.absolute) {
-      if (this.type == SubType.CEILING) {
+      if (this.sectorEnt.type == EntityType.CEILING) {
         if (msg.value == sector.ceilingpal) return;
         sector.ceilingpal = msg.value;
       } else {
@@ -111,25 +110,25 @@ export class SectorEnt extends MessageHandlerReflective {
         sector.floorpal = msg.value;
       }
     } else {
-      if (this.type == SubType.CEILING) {
+      if (this.sectorEnt.type == EntityType.CEILING) {
         sector.ceilingpal = cyclic(sector.ceilingpal + msg.value, msg.max);
       } else {
         sector.floorpal = cyclic(sector.floorpal + msg.value, msg.max);
       }
     }
-    ctx.invalidator.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorEnt.id);
   }
 
   public SetSectorCstat(msg: SetSectorCstat, ctx: BuildContext) {
-    let sector = ctx.board.sectors[this.sectorId];
-    let stat = this.type == SubType.CEILING ? sector.ceilingstat[msg.name] : sector.floorstat[msg.name];
+    let sector = ctx.board.sectors[this.sectorEnt.id];
+    let stat = this.sectorEnt.type == EntityType.CEILING ? sector.ceilingstat[msg.name] : sector.floorstat[msg.name];
     if (msg.toggle) {
       let nstat = stat ? 0 : 1;
-      if (this.type == SubType.CEILING) sector.ceilingstat[msg.name] = nstat; else sector.floorstat[msg.name] = nstat;
+      if (this.sectorEnt.type == EntityType.CEILING) sector.ceilingstat[msg.name] = nstat; else sector.floorstat[msg.name] = nstat;
     } else {
       if (stat == msg.value) return;
-      if (this.type == SubType.CEILING) sector.ceilingstat[msg.name] = msg.value; else sector.floorstat[msg.name] = msg.value;
+      if (this.sectorEnt.type == EntityType.CEILING) sector.ceilingstat[msg.name] = msg.value; else sector.floorstat[msg.name] = msg.value;
     }
-    ctx.invalidator.invalidateSector(this.sectorId);
+    ctx.invalidator.invalidateSector(this.sectorEnt.id);
   }
 }
