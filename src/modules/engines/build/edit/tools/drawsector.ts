@@ -232,9 +232,9 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   private getPointerZ(board: Board, hit: Hitscan, x: number, y: number): number {
-    if (hit.ent.isSector()) return hit.z;
+    if (hit.ent.isSector()) return hit.target()[2];
     let sectorId = hit.ent.isWall() ? sectorOfWall(board, hit.ent.id) : board.sprites[hit.ent.id].sectnum;
-    return getClosestSectorZ(board, sectorId, x, y, hit.z)[1];
+    return getClosestSectorZ(board, sectorId, x, y, hit.target()[2])[1];
   }
 
   private findContainingSector(ctx: BuildContext) {

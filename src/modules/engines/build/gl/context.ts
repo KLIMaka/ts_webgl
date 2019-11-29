@@ -117,7 +117,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     PROFILE.endProfile();
     if (this.hitscan.t != -1) {
       let [x, y] = snap(this);
-      BGL.setCursorPosiotion(x, this.hitscan.z / ZSCALE, y);
+      BGL.setCursorPosiotion(x, this.hitscan.target()[2] / ZSCALE, y);
     }
   }
 

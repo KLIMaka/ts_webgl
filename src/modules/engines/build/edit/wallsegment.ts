@@ -15,9 +15,10 @@ function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>
   if (ids.length() == 1) return ids.get(0);
   let id = -1;
   let mindist = Number.MAX_VALUE;
+  let [x, y] = hit.target();
   for (let w of ids) {
     let wall = board.walls[w];
-    let dist = len2d(wall.x - hit.x, wall.y - hit.y);
+    let dist = len2d(wall.x - x, wall.y - y);
     if (dist < mindist) {
       id = w;
       mindist = dist;

@@ -22,6 +22,7 @@ export class Info extends MessageHandlerReflective {
   public Mouse(msg: Mouse, ctx: BuildContext) {
     let hit = ctx.hitscan;
     this.clear();
+    if (hit.ent == null) return;
     if (hit.ent.isWall()) this.renderWall(ctx, hit.ent.id);
     else if (hit.ent.isSector()) this.renderSector(ctx, hit.ent);
     else if (hit.ent.isSprite()) this.renderSprite(ctx, hit.ent.id);

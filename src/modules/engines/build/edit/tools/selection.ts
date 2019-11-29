@@ -15,6 +15,7 @@ import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
 import { WallSegmentsEnt } from "../wallsegment";
+import { vec3 } from "../../../../../libs_js/glmatrix";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -42,7 +43,8 @@ let clipboardShade = new Shade(0, true);
 function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
   let wall = board.walls[hit.ent.id];
   let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.ent.id) : wall.nextsector;
-  let type = getClosestSectorZ(board, sectorId, hit.x, hit.y, hit.z)[0];
+  let [x, y, z] = hit.target();
+  let type = getClosestSectorZ(board, sectorId, x, y, z)[0];
   return SectorEnt.create(hit.ent.clone());
 }
 
@@ -56,10 +58,13 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
   let w = getClosestWall(board, hit, ctx.state.get(SNAP_DIST), ctx.state.get('view_2d'));
   if (w != -1) {
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
-  } else if (hit.ent.isWall()) {
+  }
+  if (hit.ent == null) return list;
+  if (hit.ent.isWall()) {
     wallSegment(fullLoop, board, hit.ent.id, hit.ent.type == EntityType.LOWER_WALL);
   } else if (hit.ent.isSector()) {
-    let w = closestWallSegmentInSector(board, hit.ent.id, hit.x, hit.y, ctx.state.get(SNAP_DIST));
+    let [x, y] = hit.target();
+    let w = closestWallSegmentInSector(board, hit.ent.id, x, y, ctx.state.get(SNAP_DIST));
     if (w != -1) wallSegment(fullLoop, board, w, hit.ent.type == EntityType.FLOOR); else sector(fullLoop, board, hit);
   } else if (hit.ent.isSprite()) {
     list.push(SpriteEnt.create(hit.ent.id));
@@ -86,6 +91,9 @@ function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean
   }
 }
 
+let target_ = vec3.create();
+let start_ = vec3.create();
+let dir_ = vec3.create();
 
 export class Selection extends MessageHandlerReflective implements Bindable {
   private selection = new MessageHandlerList();
@@ -147,14 +155,12 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private updateHandle(ctx: BuildContext) {
     let vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
     let parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
-    let hit = ctx.hitscan;
-    handle.update(vertical, parallel, hit.zscaledray);
+    handle.update(vertical, parallel, build2gl(start_, ctx.hitscan.ray.start), build2gl(dir_, ctx.hitscan.ray.dir));
   }
 
   private updateMove(ctx: BuildContext) {
     if (!handle.isActive() && ctx.state.get(MOVE_STATE)) {
-      let hit = ctx.hitscan;
-      handle.start(hit.t == -1 ? hit.zscaledray.start : build2gl([hit.x, hit.y, hit.z]));
+      handle.start(build2gl(target_, ctx.hitscan.target()));
       this.selection.handle(START_MOVE, ctx);
     } else if (!ctx.state.get(MOVE_STATE)) {
       handle.stop();
@@ -179,10 +185,9 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   }
 
   private insertSprite(ctx: BuildContext) {
+    if (ctx.hitscan.t == -1 || ctx.hitscan.ent.isSector()) return;
     let [x, y] = snap(ctx);
-    let hit = ctx.hitscan;
-    let z = hit.z;
-    if (!hit.ent.isSector()) return;
+    let z = ctx.hitscan.target()[2];
     this.picnumSelector((picnum: number) => {
       if (picnum == -1) return;
       let spriteId = insertSprite(ctx.board, x, y, z);

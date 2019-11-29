@@ -188,3 +188,7 @@ export function cyclicPairs<T>(length: number): Iterable<[number, number]> {
     ? EMPTY_COLLECTION
     : { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, [i++, cyclic(i, length)]) } } }
 }
+
+export function range(start: number, end: number): Iterable<number> {
+  return { [Symbol.iterator]: () => { return { next: () => iteratorResult(start >= end, start++) } } }
+}

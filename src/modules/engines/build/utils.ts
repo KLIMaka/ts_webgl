@@ -7,11 +7,11 @@ import { EntityType, Entity } from './hitscan';
 
 export const ZSCALE = -16;
 
-export function build2gl(vec: GLM.Vec3Array, out: GLM.Vec3Array = vec): GLM.Vec3Array {
+export function build2gl(out: GLM.Vec3Array, vec: GLM.Vec3Array): GLM.Vec3Array {
   return GLM.vec3.set(out, vec[0], vec[2] / ZSCALE, vec[1]);
 }
 
-export function gl2build(vec: GLM.Vec3Array, out: GLM.Vec3Array = vec): GLM.Vec3Array {
+export function gl2build(out: GLM.Vec3Array, vec: GLM.Vec3Array): GLM.Vec3Array {
   return GLM.vec3.set(out, vec[0], vec[2] * ZSCALE, vec[1]);
 }
 
@@ -315,7 +315,7 @@ export function rayIntersect(
   let t = topt / bot;
   let x = xs + MU.int(vx * t);
   let y = ys + MU.int(vy * t);
-  let z = zs + MU.int(vz * t) * ZSCALE;
+  let z = zs + MU.int(vz * t);
 
   return [x, y, z, t];
 }

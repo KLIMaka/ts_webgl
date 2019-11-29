@@ -77,7 +77,7 @@ export class View2d implements View, MessageHandler {
   }
 
   hitscan(ctx: BuildContext, hit: Hitscan) {
-    hitscan(ctx.board, ctx.art, this.x, this.y, this.z, this.sec, 0, 0, -1, hit, 0);
+    hitscan(ctx.board, ctx.art, this.x, this.y, this.z, this.sec, 0, 0, -1 * ZSCALE, hit, 0);
     return hit;
   }
 
@@ -180,7 +180,7 @@ export class View3d implements View, MessageHandler {
     let x = (this.mouseX / this.gl.drawingBufferWidth) * 2 - 1;
     let y = (this.mouseY / this.gl.drawingBufferHeight) * 2 - 1;
     let [vx, vz, vy] = this.unproject(x, y);
-    hitscan(ctx.board, ctx.art, this.x, this.y, this.z, this.sec, vx, vy, vz, hit, 0);
+    hitscan(ctx.board, ctx.art, this.x, this.y, this.z, this.sec, vx, vy, vz * ZSCALE, hit, 0);
     return hit;
   }
 }

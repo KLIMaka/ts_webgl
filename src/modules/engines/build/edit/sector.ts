@@ -23,8 +23,7 @@ export class SectorEnt extends MessageHandlerReflective {
   ) { super() }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
-    let x = ctx.hitscan.x;
-    let y = ctx.hitscan.y;
+    let [x, y] = ctx.hitscan.target();
     // let sec = ctx.board.sectors[this.sectorId];
     // let slope = createSlopeCalculator(sec, ctx.board.walls);
     // this.originz = slope(x, y, this.type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum) + sectorZ(ctx.board, this.sectorId, this.type)) / ZSCALE;

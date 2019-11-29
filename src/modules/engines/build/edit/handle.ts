@@ -18,21 +18,21 @@ export class MovingHandle implements Mover {
     this.active = true;
   }
 
-  public update(vertical: boolean, parallel: boolean, ray: Ray) {
+  public update(vertical: boolean, parallel: boolean, start: Vec3Array, dir: Vec3Array) {
     this.parallel = parallel;
     this.vertical = vertical;
     if (vertical) {
-      let dx = this.currentPoint[0] - ray.start[0];
-      let dy = this.currentPoint[2] - ray.start[2];
-      let t = len2d(dx, dy) / len2d(ray.dir[0], ray.dir[2]);
-      this.dzoff = ray.dir[1] * t + ray.start[1] - this.currentPoint[1];
+      let dx = this.currentPoint[0] - start[0];
+      let dy = this.currentPoint[2] - start[2];
+      let t = len2d(dx, dy) / len2d(dir[0], dir[2]);
+      this.dzoff = dir[1] * t + start[1] - this.currentPoint[1];
     } else {
       this.dzoff = 0;
-      let dz = this.startPoint[1] - ray.start[1];
-      let t = dz / ray.dir[1];
-      vec3.copy(this.currentPoint, ray.dir);
+      let dz = this.startPoint[1] - start[1];
+      let t = dz / dir[1];
+      vec3.copy(this.currentPoint, dir);
       vec3.scale(this.currentPoint, this.currentPoint, t);
-      vec3.add(this.currentPoint, this.currentPoint, ray.start);
+      vec3.add(this.currentPoint, this.currentPoint, start);
     }
   }
 

@@ -5,7 +5,7 @@ import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { isWall } from "../../hitscan";
+import { isWall, pointOnRay } from "../../hitscan";
 import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE, build2gl } from "../../utils";
 import { snap } from "../editutils";
 import { MovingHandle } from "../handle";
@@ -13,6 +13,9 @@ import { Frame, NamedMessage, Render } from "../messages";
 
 let wallNormal_ = vec3.create();
 let wallNormal1_ = vec3.create();
+let target_ = vec3.create();
+let start_ = vec3.create();
+let dir_ = vec3.create();
 export class PushWall extends MessageHandlerReflective {
   private wallId = -1;
   private movingHandle = new MovingHandle();
@@ -25,7 +28,7 @@ export class PushWall extends MessageHandlerReflective {
     let [, , id, type] = snapresult;
     if (!isWall(type)) return;
     this.wallId = id;
-    this.movingHandle.start(hit.t == -1 ? hit.zscaledray.start : build2gl([hit.x, hit.y, hit.z]));
+    this.movingHandle.start(build2gl(target_, hit.target()));
   }
 
   private stop(ctx: BuildContext, copy: boolean) {
@@ -53,7 +56,7 @@ export class PushWall extends MessageHandlerReflective {
   public Frame(msg: Frame, ctx: BuildContext) {
     if (this.movingHandle.isActive()) {
       let hit = ctx.hitscan;
-      this.movingHandle.update(false, false, hit.zscaledray);
+      this.movingHandle.update(false, false, build2gl(start_, hit.ray.start), build2gl(dir_, hit.ray.dir));
     }
   }
 
