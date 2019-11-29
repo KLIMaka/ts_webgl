@@ -5,10 +5,10 @@ import { BuildContext } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
 import { Renderable, RenderableList, Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan, isSector, isSprite, isWall } from "../../hitscan";
+import { Hitscan } from "../../hitscan";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
-import { getClosestSectorZ, snap } from "../editutils";
+import { getClosestSectorZ, } from "../editutils";
 import { Frame, NamedMessage, Render } from "../messages";
 
 class Contour {
@@ -100,7 +100,7 @@ class Contour {
 }
 
 export class DrawSector extends MessageHandlerReflective {
-  private static zintersect: [number, number] = [0, 0];
+  // private static zintersect: [number, number] = [0, 0];
 
   private points = new Deck<[number, number]>();
   private pointer = GLM.vec3.create();
@@ -113,15 +113,7 @@ export class DrawSector extends MessageHandlerReflective {
     if (this.predrawUpdate(ctx)) return;
 
     let z = this.contour.getZ();
-    let x = 0, y = 0;
-    let res = snap(ctx);
-    if (res == null) {
-      let res1 = this.getIntersectionZPlane(ctx);
-      if (res1 == null) return;
-      [x, y] = res1;
-    } else {
-      [x, y] = res;
-    }
+    const [x, y] = ctx.view.snapTarget().coords;
     GLM.vec3.set(this.pointer, x, y, z);
 
     if (this.isRect) {
@@ -162,18 +154,17 @@ export class DrawSector extends MessageHandlerReflective {
     return true;
   }
 
-  private getIntersectionZPlane(ctx: BuildContext): [number, number] {
-    let hit = ctx.hitscan;
-    let snapped = snap(ctx);
-    if (snapped != null) return tuple2(DrawSector.zintersect, snapped[0], snapped[1]);
-    let z = this.contour.getZ();
-    let dz = hit.ray.start[2] / ZSCALE - z;
-    let t = -dz / hit.ray.dir[2];
-    if (t < 0) return null;
-    const x = ctx.snap(hit.ray.start[0] + hit.ray.dir[0] * t);
-    const y = ctx.snap(hit.ray.start[1] + hit.ray.dir[1] * t);
-    return tuple2(DrawSector.zintersect, x, y);
-  }
+  // private getIntersectionZPlane(ctx: BuildContext): [number, number] {
+  //   let snapped = snap(ctx);
+  //   if (snapped != null) return tuple2(DrawSector.zintersect, snapped[0], snapped[1]);
+  //   let z = this.contour.getZ();
+  //   let dz = hit.ray.start[2] / ZSCALE - z;
+  //   let t = -dz / hit.ray.dir[2];
+  //   if (t < 0) return null;
+  //   const x = ctx.snap(hit.ray.start[0] + hit.ray.dir[0] * t);
+  //   const y = ctx.snap(hit.ray.start[1] + hit.ray.dir[1] * t);
+  //   return tuple2(DrawSector.zintersect, x, y);
+  // }
 
   private isSplitSector(ctx: BuildContext, x: number, y: number) {
     let sectorId = this.findContainingSector(ctx);

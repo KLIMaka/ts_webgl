@@ -2,7 +2,7 @@ import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
 import { Renderable } from "./gl/renderable";
 import { Context } from "./handlerapi";
-import { Hitscan } from "./hitscan";
+import { Hitscan, Entity, Ray } from "./hitscan";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
 
@@ -15,10 +15,16 @@ export interface Bindable {
   bind(ctx: BuildContext): void;
 }
 
+export interface Target {
+  readonly coords: [number, number, number];
+  readonly entity: Entity;
+}
+
 export interface View extends MoveStruct, Bindable {
   draw(renderable: Renderable): void;
-  hitscan(ctx: BuildContext, hitscan: Hitscan): Hitscan;
-
+  target(): Target;
+  snapTarget(): Target;
+  dir(): Ray;
 }
 
 export interface BoardInvalidator extends Bindable {
@@ -47,7 +53,6 @@ export interface BuildContext extends Context {
   readonly board: Board;
   readonly invalidator: BoardInvalidator;
   readonly state: State;
-  readonly hitscan: Hitscan;
   readonly gridScale: number;
   readonly view: View;
 

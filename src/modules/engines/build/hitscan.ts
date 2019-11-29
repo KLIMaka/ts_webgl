@@ -4,6 +4,7 @@ import { Deck, IndexedDeck, range } from "../../collections";
 import { ArtInfo, ArtInfoProvider } from "./art";
 import { Board, FACE, FLOOR, Sector, WALL } from "./structs";
 import { ANGSCALE, groupSprites, inPolygon, inSector, rayIntersect, slope, spriteAngle, ZSCALE, build2gl } from "./utils";
+import { Target } from "./api";
 
 export enum EntityType {
   FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE, WALL_POINT
@@ -59,7 +60,7 @@ export function pointOnRay(out: GLM.Vec3Array, ray: Ray, t: number) {
   return out;
 }
 
-export class Hitscan {
+export class Hitscan implements Target {
   constructor(
     public t: number = -1,
     public ent: Entity = null,
@@ -92,6 +93,9 @@ export class Hitscan {
       ? GLM.vec3.copy(this.targetPoint, this.ray.start)
       : pointOnRay(this.targetPoint, this.ray, this.t);
   }
+
+  get coords() { return <[number, number, number]>this.target() }
+  get entity() { return this.ent }
 }
 
 let hitPoint = GLM.vec3.create();

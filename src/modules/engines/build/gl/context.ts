@@ -72,7 +72,6 @@ const onTopRenderable = new WrapRenderable(RENDER.renderable,
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly state = new StateImpl(this);
-  readonly hitscan = new Hitscan();
   readonly view: View;
   readonly invalidator: BoardInvalidator;
 
@@ -96,7 +95,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
     this.state.register('gridScale', this.gridScale);
     this.state.register(VIEW_2D, false);
-    this.state.register('hitscan', this.hitscan);
   }
 
   get board() {
@@ -109,16 +107,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
       this.boundObjects.add(bindable);
     }
     return bindable;
-  }
-
-  private updateHitscan() {
-    PROFILE.startProfile('hitscan');
-    this.view.hitscan(this, this.hitscan);
-    PROFILE.endProfile();
-    if (this.hitscan.t != -1) {
-      let [x, y] = snap(this);
-      BGL.setCursorPosiotion(x, this.hitscan.target()[2] / ZSCALE, y);
-    }
   }
 
   private mouseMove(input: InputState) {
@@ -194,7 +182,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
 
   frame(input: InputState, dt: number) {
     PROFILE.start();
-    this.updateHitscan();
     this.mouseMove(input);
     FRAME.dt = dt;
     this.handle(FRAME, this);

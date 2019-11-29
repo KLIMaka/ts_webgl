@@ -5,9 +5,8 @@ import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { isWall, pointOnRay } from "../../hitscan";
-import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE, build2gl } from "../../utils";
-import { snap } from "../editutils";
+import { isWall } from "../../hitscan";
+import { build2gl, createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { MovingHandle } from "../handle";
 import { Frame, NamedMessage, Render } from "../messages";
 
@@ -22,13 +21,10 @@ export class PushWall extends MessageHandlerReflective {
   private wireframe = new Wireframe();
 
   private start(ctx: BuildContext) {
-    let hit = ctx.hitscan;
-    let snapresult = snap(ctx);
-    if (snapresult == null) return;
-    let [, , id, type] = snapresult;
-    if (!isWall(type)) return;
-    this.wallId = id;
-    this.movingHandle.start(build2gl(target_, hit.target()));
+    const target = ctx.view.snapTarget();
+    if (target.entity == null || !target.entity.isWall()) return;
+    this.wallId = target.entity.id;
+    this.movingHandle.start(build2gl(target_, target.coords));
   }
 
   private stop(ctx: BuildContext, copy: boolean) {

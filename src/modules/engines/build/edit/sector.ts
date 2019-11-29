@@ -23,7 +23,7 @@ export class SectorEnt extends MessageHandlerReflective {
   ) { super() }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
-    let [x, y] = ctx.hitscan.target();
+    let [x, y] = ctx.view.target().coords;
     // let sec = ctx.board.sectors[this.sectorId];
     // let slope = createSlopeCalculator(sec, ctx.board.walls);
     // this.originz = slope(x, y, this.type == HitType.CEILING ? sec.ceilingheinum : sec.floorheinum) + sectorZ(ctx.board, this.sectorId, this.type)) / ZSCALE;
@@ -40,9 +40,9 @@ export class SectorEnt extends MessageHandlerReflective {
       if (setSectorHeinum(ctx.board, this.sectorEnt, h))
         invalidateSectorAndWalls(this.sectorEnt.id, ctx);
     } else if (ctx.state.get(MOVE_VERTICAL)) {
-      let hit = ctx.hitscan;
-      let z = hit.ent.isSector() && hit.ent.id != this.sectorEnt.id
-        ? sectorZ(ctx.board, hit.ent) / ZSCALE
+      const ent = ctx.view.target().entity;
+      let z = ent != null && ent.isSector() && ent.id != this.sectorEnt.id
+        ? sectorZ(ctx.board, ent) / ZSCALE
         : ctx.snap(this.originz + msg.dz);
       if (setSectorZ(ctx.board, this.sectorEnt, z * ZSCALE))
         invalidateSectorAndWalls(this.sectorEnt.id, ctx);

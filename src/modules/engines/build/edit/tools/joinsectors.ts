@@ -8,11 +8,13 @@ export class JoinSectors extends MessageHandlerReflective {
   private sectorId2 = -1;
 
   private join(ctx: BuildContext) {
-    let hit = ctx.hitscan;
+    const target = ctx.view.target();
+    if (target.entity == null || !target.entity.isSector()) return;
+    const sectorId = target.entity.id;
     if (this.sectorId1 == -1) {
-      this.sectorId1 = hit.ent.id;
+      this.sectorId1 = sectorId;
     } else if (this.sectorId2 == -1) {
-      this.sectorId2 = hit.ent.id;
+      this.sectorId2 = sectorId;
     }
 
     if (this.sectorId1 != -1 && this.sectorId2 != -1) {
