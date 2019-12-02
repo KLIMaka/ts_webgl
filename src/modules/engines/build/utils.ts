@@ -12,7 +12,7 @@ export function build2gl(out: GLM.Vec3Array, vec: GLM.Vec3Array): GLM.Vec3Array 
 }
 
 export function gl2build(out: GLM.Vec3Array, vec: GLM.Vec3Array): GLM.Vec3Array {
-  return GLM.vec3.set(out, vec[0], vec[2] * ZSCALE, vec[1]);
+  return GLM.vec3.set(out, vec[0], vec[2], vec[1] * ZSCALE);
 }
 
 export function getPlayerStart(board: Board): Sprite {
@@ -36,8 +36,6 @@ export function getSector(board: Board, ms: MoveStruct): number {
     return ms.sec;
   return -1;
 }
-
-
 
 export function inPolygon(x: number, y: number, xs: Collection<number>, ys: Collection<number>) {
   let inter = 0;

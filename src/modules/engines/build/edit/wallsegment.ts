@@ -2,7 +2,7 @@ import { List } from "../../../../libs/list";
 import { cyclic, len2d, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../collections";
-import { BuildContext } from "../api";
+import { BuildContext, Target } from "../api";
 import { connectedWalls, fixxrepeat, mergePoints, moveWall, nextwall, lastwall } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
 import { Hitscan } from "../hitscan";
@@ -11,11 +11,11 @@ import { sectorOfWall } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
 import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetWallCstat, Shade, StartMove } from "./messages";
 
-function getClosestWallByIds(board: Board, hit: Hitscan, ids: Collection<number>): number {
+function getClosestWallByIds(board: Board, target: Target, ids: Collection<number>): number {
   if (ids.length() == 1) return ids.get(0);
   let id = -1;
   let mindist = Number.MAX_VALUE;
-  let [x, y] = hit.target();
+  let [x, y] = target.coords;
   for (let w of ids) {
     let wall = board.walls[w];
     let dist = len2d(wall.x - x, wall.y - y);
@@ -103,8 +103,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
   }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
-    let hit = ctx.hitscan;
-    this.refwall = getClosestWallByIds(ctx.board, hit, this.wallIds);
+    this.refwall = getClosestWallByIds(ctx.board, ctx.view.target(), this.wallIds);
     let wall = ctx.board.walls[this.refwall];
     GLM.vec2.set(this.origin, wall.x, wall.y);
     this.active = true;

@@ -1,9 +1,8 @@
 import { BuildContext } from "../../api";
 import { splitWall } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { isWall } from "../../hitscan";
 import { sectorOfWall } from "../../utils";
-import { invalidateSectorAndWalls, snap } from "../editutils";
+import { invalidateSectorAndWalls } from "../editutils";
 import { Frame, NamedMessage } from "../messages";
 
 export class SplitWall extends MessageHandlerReflective {
@@ -33,10 +32,10 @@ export class SplitWall extends MessageHandlerReflective {
 
   public Frame(msg: Frame, ctx: BuildContext) {
     this.active = false;
-    let hit = ctx.hitscan;
-    if (hit.t != -1) {
-      let [x, y, id, type] = snap(ctx);
-      if (isWall(type)) this.update(x, y, id);
+    const target = ctx.view.snapTarget();
+    if (target.entity != null) {
+      const [x, y] = target.coords;
+      if (target.entity.isWall()) this.update(x, y, target.entity.id);
     }
   }
 

@@ -1,7 +1,7 @@
 import { tuple2 } from "../../../../../libs/mathutils";
 import * as GLM from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../collections";
-import { BuildContext } from "../../api";
+import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
 import { Renderable, RenderableList, Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
@@ -137,19 +137,19 @@ export class DrawSector extends MessageHandlerReflective {
 
   private predrawUpdate(ctx: BuildContext) {
     if (this.points.length() > 0) return false;
-    let hit = ctx.hitscan;
-    if (hit.t == -1) {
+    const target = ctx.view.snapTarget();
+    if (target.entity == null) {
       this.valid = false;
     } else {
       this.valid = true;
-      let [x, y] = snap(ctx);
-      let z = this.getPointerZ(ctx.board, hit, x, y);
+      let [x, y,] = target.coords;
+      let z = this.getPointerZ(ctx.board, target);
       GLM.vec3.set(this.pointer, x, y, z);
       this.contour.setZ(z / ZSCALE);
       this.contour.updateLastPoint(x, y);
-      if (hit.ent.isSector()) this.hintSector = hit.ent.id;
-      if (hit.ent.isSprite()) this.hintSector = ctx.board.sprites[hit.ent.id].sectnum;
-      if (hit.ent.isWall()) this.hintSector = sectorOfWall(ctx.board, hit.ent.id);
+      if (target.entity.isSector()) this.hintSector = target.entity.id;
+      if (target.entity.isSprite()) this.hintSector = ctx.board.sprites[target.entity.id].sectnum;
+      if (target.entity.isWall()) this.hintSector = sectorOfWall(ctx.board, target.entity.id);
     }
     return true;
   }
@@ -222,10 +222,10 @@ export class DrawSector extends MessageHandlerReflective {
     this.contour.updateLastPoint(this.pointer[0], this.pointer[1]);
   }
 
-  private getPointerZ(board: Board, hit: Hitscan, x: number, y: number): number {
-    if (hit.ent.isSector()) return hit.target()[2];
-    let sectorId = hit.ent.isWall() ? sectorOfWall(board, hit.ent.id) : board.sprites[hit.ent.id].sectnum;
-    return getClosestSectorZ(board, sectorId, x, y, hit.target()[2])[1];
+  private getPointerZ(board: Board, target: Target): number {
+    if (target.entity.isSector()) return target.coords[2];
+    let sectorId = target.entity.isWall() ? sectorOfWall(board, target.entity.id) : board.sprites[target.entity.id].sectnum;
+    return getClosestSectorZ(board, sectorId, target.coords[0], target.coords[1], target.coords[2])[1];
   }
 
   private findContainingSector(ctx: BuildContext) {

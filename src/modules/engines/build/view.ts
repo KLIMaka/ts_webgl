@@ -15,6 +15,7 @@ import { Message, MessageHandler } from "./handlerapi";
 import { Hitscan, hitscan, Entity, EntityType, Ray } from "./hitscan";
 import { Sprite } from "./structs";
 import { findSector, getPlayerStart, inSector, ZSCALE, sectorOfWall, gl2build } from "./utils";
+import { CachedValue } from "../../../libs/cachedvalue";
 
 class TargetIml implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -48,9 +49,9 @@ export class View2d implements View, MessageHandler {
   private control = new Controller2D();
   private pointer = vec3.create();
   private ctx: BuildContext;
-  private hit = new Hitscan();
-  private snapTargetValue = new TargetIml();
-  private direction = new Ray();
+  private hit = new CachedValue((h: Hitscan) => this.updateHitscan(h), new Hitscan());
+  private snapTargetValue = new CachedValue((t: TargetIml) => this.updateSnapTarget(t), new TargetIml());
+  private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
 
   constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider) {
     this.gl = gl;
@@ -67,6 +68,9 @@ export class View2d implements View, MessageHandler {
   getPosition() { return this.pointer }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.y) }
   draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
+  target(): Target { return this.hit.get() }
+  snapTarget(): Target { return this.snapTargetValue.get() }
+  dir(): Ray { return this.direction.get() }
 
   handle(msg: Message, ctx: BuildContext) {
     if (msg instanceof Mouse) {
@@ -80,6 +84,9 @@ export class View2d implements View, MessageHandler {
       if (!inSector(ctx.board, this.playerstart.x, this.playerstart.y, this.playerstart.sectnum))
         this.playerstart.sectnum = findSector(ctx.board, this.playerstart.x, this.playerstart.y, this.playerstart.sectnum);
     } else if (msg instanceof Frame) {
+      this.snapTargetValue.invalidate();
+      this.direction.invalidate();
+      this.hit.invalidate();
       this.control.setSize(this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
       let max = this.control.getPointerPosition(this.pointer, 1, 1);
       let campos = this.control.getPosition();
@@ -103,40 +110,40 @@ export class View2d implements View, MessageHandler {
     RENDERER2D.init(this.gl, ctx);
   }
 
-  target(): Target {
-    hitscan(this.ctx.board, this.ctx.art, this.x, this.y, this.z, this.sec, 0, 0, -1 * ZSCALE, this.hit, 0);
-    return this.hit;
+  private updateHitscan(hit: Hitscan) {
+    hitscan(this.ctx.board, this.ctx.art, this.x, this.y, this.z, this.sec, 0, 0, -1 * ZSCALE, hit, 0);
+    return hit;
   }
 
-  snapTarget(): Target {
+  private updateSnapTarget(target: TargetIml) {
     const d = 32;
     const w = closestWallPoint(this.ctx.board, this.x, this.y, d);
-    if (w != null) {
+    if (w != -1) {
       const wall = this.ctx.board.walls[w];
-      this.snapTargetValue.coords_[0] = wall.x
-      this.snapTargetValue.coords_[1] = wall.y;
-      this.snapTargetValue.entity_ = new Entity(w, EntityType.WALL_POINT);
-      return this.snapTargetValue;
+      target.coords_[0] = wall.x
+      target.coords_[1] = wall.y;
+      target.entity_ = new Entity(w, EntityType.WALL_POINT);
+      return target;
     }
     const ws = closestWallSegment(this.ctx.board, this.x, this.y, -1, d);
     if (ws != -1) {
       const [x, y] = snapWall(ws, this.x, this.y, this.ctx);
-      this.snapTargetValue.coords_[0] = x;
-      this.snapTargetValue.coords_[1] = y;
-      this.snapTargetValue.entity_ = new Entity(ws, EntityType.MID_WALL);
-      return this.snapTargetValue;
+      target.coords_[0] = x;
+      target.coords_[1] = y;
+      target.entity_ = new Entity(ws, EntityType.MID_WALL);
+      return target;
     }
-    this.snapTargetValue.coords_[0] = this.ctx.snap(this.x);
-    this.snapTargetValue.coords_[1] = this.ctx.snap(this.y);
+    target.coords_[0] = this.ctx.snap(this.x);
+    target.coords_[1] = this.ctx.snap(this.y);
     const sectorId = findSector(this.ctx.board, this.x, this.y, this.sec);
-    this.snapTargetValue.entity_ = sectorId == -1 ? null : new Entity(sectorId, EntityType.FLOOR);
-    return this.snapTargetValue;
+    target.entity_ = sectorId == -1 ? null : new Entity(sectorId, EntityType.FLOOR);
+    return target;
   }
 
-  dir(): Ray {
-    vec3.set(this.direction.start, this.x, this.y, this.z);
-    vec3.set(this.direction.dir, 0, 0, -1 * ZSCALE);
-    return this.direction;
+  private updateDir(ray: Ray): Ray {
+    vec3.set(ray.start, this.x, this.y, this.z);
+    vec3.set(ray.dir, 0, 0, -1 * ZSCALE);
+    return ray;
   }
 }
 
@@ -151,9 +158,9 @@ export class View3d implements View, MessageHandler {
   private ctx: BuildContext;
   private mouseX = 0;
   private mouseY = 0;
-  private hit = new Hitscan();
-  private snapTargetValue = new TargetIml();
-  private direction = new Ray();
+  private hit = new CachedValue((h: Hitscan) => this.updateHitscan(h), new Hitscan());
+  private snapTargetValue = new CachedValue((t: TargetIml) => this.updateSnapTarget(t), new TargetIml());
+  private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
 
   constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, impl: RENDERER3D.Implementation) {
     this.gl = gl;
@@ -173,6 +180,9 @@ export class View3d implements View, MessageHandler {
   unproject(x: number, y: number) { return this.control.getForwardUnprojected(this.aspect, x, y) }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.z / ZSCALE + 1024, this.playerstart.y) }
   draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
+  target(): Target { return this.hit.get() }
+  snapTarget(): Target { return this.snapTargetValue.get() }
+  dir(): Ray { return this.direction.get() }
 
   handle(msg: Message, ctx: BuildContext) {
     if (msg instanceof Mouse) {
@@ -180,6 +190,9 @@ export class View3d implements View, MessageHandler {
       this.mouseY = msg.y;
       this.control.track(msg.x, msg.y, ctx.state.get('lookaim'));
     } else if (msg instanceof Frame) {
+      this.snapTargetValue.invalidate();
+      this.direction.invalidate();
+      this.hit.invalidate();
       this.aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
       BGL.newFrame(this.gl);
       RENDERER3D.draw(this);
@@ -217,10 +230,10 @@ export class View3d implements View, MessageHandler {
   }
 
 
-  target(): Target {
+  private updateHitscan(hit: Hitscan): Target {
     const ray = this.dir();
-    hitscan(this.ctx.board, this.ctx.art, ray.start[0], ray.start[1], ray.start[2], this.sec, ray.dir[0], ray.dir[1], ray.dir[2], this.hit, 0);
-    return this.hit;
+    hitscan(this.ctx.board, this.ctx.art, ray.start[0], ray.start[1], ray.start[2], this.sec, ray.dir[0], ray.dir[1], ray.dir[2], hit, 0);
+    return hit;
   }
 
   private getClosestWall(target: Target, d: number): number {
@@ -231,56 +244,56 @@ export class View3d implements View, MessageHandler {
     return -1;
   }
 
-  private snapGrid(target: Target) {
-    this.snapTargetValue.coords_[0] = this.ctx.snap(target.coords[0]);
-    this.snapTargetValue.coords_[1] = this.ctx.snap(target.coords[1]);
-    this.snapTargetValue.coords_[2] = this.ctx.snap(target.coords[2]);
-    this.snapTargetValue.entity_ = target.entity.clone();
-    return this.snapTargetValue;
+  private snapGrid(target: Target, t: TargetIml) {
+    t.coords_[0] = this.ctx.snap(target.coords[0]);
+    t.coords_[1] = this.ctx.snap(target.coords[1]);
+    t.coords_[2] = this.ctx.snap(target.coords[2]);
+    t.entity_ = target.entity.clone();
+    return t;
   }
 
-  private snapWall(target: Target, wallId: number) {
+  private snapWall(target: Target, wallId: number, t: TargetIml) {
     const [x, y] = snapWall(wallId, target.coords[0], target.coords[1], this.ctx);
-    this.snapTargetValue.coords_[0] = x;
-    this.snapTargetValue.coords_[1] = y;
-    this.snapTargetValue.entity_ = new Entity(wallId, EntityType.MID_WALL);
-    return this.snapTargetValue;
+    t.coords_[0] = x;
+    t.coords_[1] = y;
+    t.entity_ = new Entity(wallId, EntityType.MID_WALL);
+    return t;
   }
 
-  snapTarget(): Target {
+  private updateSnapTarget(t: TargetIml): Target {
     const target = this.target();
     if (target.entity == null) return target;
     const d = 32;
     let w = this.getClosestWall(target, d);
     if (w != -1) {
       let wall = this.ctx.board.walls[w];
-      this.snapTargetValue.coords_[0] = wall.x;
-      this.snapTargetValue.coords_[1] = wall.y;
-      this.snapTargetValue.coords_[2] = target.coords[2];
-      this.snapTargetValue.entity_ = new Entity(w, EntityType.WALL_POINT);
-      return this.snapTargetValue;
+      t.coords_[0] = wall.x;
+      t.coords_[1] = wall.y;
+      t.coords_[2] = target.coords[2];
+      t.entity_ = new Entity(w, EntityType.WALL_POINT);
+      return t;
     }
     if (target.entity.isSector()) {
       let w = closestWallSegmentInSector(this.ctx.board, target.entity.id, target.coords[0], target.coords[1], d);
-      return w == -1 ? this.snapGrid(target) : this.snapWall(target, w);
+      return w == -1 ? this.snapGrid(target, t) : this.snapWall(target, w, t);
     } else if (target.entity.isSprite()) {
       const sprite = this.ctx.board.sprites[target.entity.id];
-      this.snapTargetValue.coords_[0] = sprite.x;
-      this.snapTargetValue.coords_[1] = sprite.y;
-      this.snapTargetValue.coords_[2] = sprite.z;
-      this.snapTargetValue.entity_ = target.entity.clone();
-      return this.snapTargetValue;
+      t.coords_[0] = sprite.x;
+      t.coords_[1] = sprite.y;
+      t.coords_[2] = sprite.z;
+      t.entity_ = target.entity.clone();
+      return t;
     } else if (target.entity.isWall()) {
-      return this.snapWall(target, target.entity.id);
+      return this.snapWall(target, target.entity.id, t);
     }
   }
 
-  dir(): Ray {
-    vec3.set(this.direction.start, this.x, this.y, this.z);
+  updateDir(r: Ray): Ray {
+    vec3.set(r.start, this.x, this.y, this.z);
     const x = (this.mouseX / this.gl.drawingBufferWidth) * 2 - 1;
     const y = (this.mouseY / this.gl.drawingBufferHeight) * 2 - 1;
-    gl2build(this.direction.dir, this.unproject(x, y));
-    return this.direction;
+    gl2build(r.dir, this.unproject(x, y));
+    return r;
   }
 }
 

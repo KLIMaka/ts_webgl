@@ -140,7 +140,7 @@ export function closestWallSegmentDist(board: Board, x: number, y: number, secId
 }
 
 export function closestWallSegment(board: Board, x: number, y: number, secId: number, d: number): number {
-  const [w, dist] = closestWallSegmentDist(board, secId, x, y);
+  const [w, dist] = closestWallSegmentDist(board, x, y, secId);
   return dist <= d ? w : -1;
 }
 

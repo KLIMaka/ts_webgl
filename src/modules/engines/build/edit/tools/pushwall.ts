@@ -51,8 +51,8 @@ export class PushWall extends MessageHandlerReflective {
 
   public Frame(msg: Frame, ctx: BuildContext) {
     if (this.movingHandle.isActive()) {
-      let hit = ctx.hitscan;
-      this.movingHandle.update(false, false, build2gl(start_, hit.ray.start), build2gl(dir_, hit.ray.dir));
+      const dir = ctx.view.dir();
+      this.movingHandle.update(false, false, build2gl(start_, dir.start), build2gl(dir_, dir.dir));
     }
   }
 

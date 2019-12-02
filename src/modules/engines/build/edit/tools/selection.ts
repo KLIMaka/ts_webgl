@@ -1,21 +1,21 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
+import { vec3 } from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../collections";
 import { error, info } from "../../../../logger";
-import { Bindable, BuildContext } from "../../api";
+import { Bindable, BuildContext, Target } from "../../api";
 import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan, isSector, isSprite, isWall, EntityType, Entity } from "../../hitscan";
+import { Entity, EntityType, Hitscan } from "../../hitscan";
 import { Board } from "../../structs";
 import { build2gl, sectorOfWall } from "../../utils";
-import { getClosestSectorZ, getClosestWall, snap } from "../editutils";
+import { getClosestSectorZ } from "../editutils";
 import { MovingHandle } from "../handle";
 import { EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
 import { WallSegmentsEnt } from "../wallsegment";
-import { vec3 } from "../../../../../libs_js/glmatrix";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
@@ -51,34 +51,31 @@ function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
 let list = new Deck<MessageHandler>();
 let segment = new Deck<number>();
 export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
-  let hit = ctx.hitscan;
-  let fullLoop = ctx.state.get<boolean>(LOOP_STATE);
+  const target = ctx.view.snapTarget();
   list.clear();
-  let board = ctx.board;
-  let w = getClosestWall(board, hit, ctx.state.get(SNAP_DIST), ctx.state.get('view_2d'));
-  if (w != -1) {
+  if (target.entity == null) return list;
+  const fullLoop = ctx.state.get<boolean>(LOOP_STATE);
+  const board = ctx.board;
+  if (target.entity.type == EntityType.WALL_POINT) {
+    const w = target.entity.id;
     list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
-  }
-  if (hit.ent == null) return list;
-  if (hit.ent.isWall()) {
-    wallSegment(fullLoop, board, hit.ent.id, hit.ent.type == EntityType.LOWER_WALL);
-  } else if (hit.ent.isSector()) {
-    let [x, y] = hit.target();
-    let w = closestWallSegmentInSector(board, hit.ent.id, x, y, ctx.state.get(SNAP_DIST));
-    if (w != -1) wallSegment(fullLoop, board, w, hit.ent.type == EntityType.FLOOR); else sector(fullLoop, board, hit);
-  } else if (hit.ent.isSprite()) {
-    list.push(SpriteEnt.create(hit.ent.id));
+  } else if (target.entity.isWall()) {
+    wallSegment(fullLoop, board, target.entity.id, target.entity.type == EntityType.LOWER_WALL);
+  } else if (target.entity.isSector()) {
+    sector(fullLoop, board, target);
+  } else if (target.entity.isSprite()) {
+    list.push(SpriteEnt.create(target.entity.id));
   }
   return list;
 }
 
-function sector(fullLoop: boolean, board: Board, hit: Hitscan) {
+function sector(fullLoop: boolean, board: Board, target: Target) {
   if (fullLoop) {
-    let firstWall = board.sectors[hit.ent.id].wallptr;
-    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, hit.ent.id)));
-    list.push(SectorEnt.create(new Entity(hit.ent.id, hit.ent.type == EntityType.CEILING ? EntityType.FLOOR : EntityType.CEILING)));
+    let firstWall = board.sectors[target.entity.id].wallptr;
+    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, target.entity.id)));
+    list.push(SectorEnt.create(new Entity(target.entity.id, target.entity.type == EntityType.CEILING ? EntityType.FLOOR : EntityType.CEILING)));
   }
-  list.push(SectorEnt.create(hit.ent.clone()));
+  list.push(SectorEnt.create(target.entity.clone()));
 }
 
 function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean) {
@@ -153,14 +150,15 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   }
 
   private updateHandle(ctx: BuildContext) {
-    let vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
-    let parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
-    handle.update(vertical, parallel, build2gl(start_, ctx.hitscan.ray.start), build2gl(dir_, ctx.hitscan.ray.dir));
+    const vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
+    const parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
+    const dir = ctx.view.dir();
+    handle.update(vertical, parallel, build2gl(start_, dir.start), build2gl(dir_, dir.dir));
   }
 
   private updateMove(ctx: BuildContext) {
     if (!handle.isActive() && ctx.state.get(MOVE_STATE)) {
-      handle.start(build2gl(target_, ctx.hitscan.target()));
+      handle.start(build2gl(target_, ctx.view.target().coords));
       this.selection.handle(START_MOVE, ctx);
     } else if (!ctx.state.get(MOVE_STATE)) {
       handle.stop();
@@ -185,55 +183,56 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   }
 
   private insertSprite(ctx: BuildContext) {
-    if (ctx.hitscan.t == -1 || ctx.hitscan.ent.isSector()) return;
-    let [x, y] = snap(ctx);
-    let z = ctx.hitscan.target()[2];
+    const target = ctx.view.snapTarget();
+    if (target.entity == null || !target.entity.isSector()) return;
     this.picnumSelector((picnum: number) => {
       if (picnum == -1) return;
+      const [x, y, z] = target.coords;
       let spriteId = insertSprite(ctx.board, x, y, z);
       ctx.board.sprites[spriteId].picnum = picnum;
     });
   }
 
   private print(ctx: BuildContext) {
-    let hit = ctx.hitscan;
-    switch (hit.ent.type) {
+    const target = ctx.view.target();
+    if (target.entity == null) return;
+    switch (target.entity.type) {
       case EntityType.CEILING:
       case EntityType.FLOOR:
-        info(hit.ent.id, ctx.board.sectors[hit.ent.id]);
+        info(target.entity.id, ctx.board.sectors[target.entity.id]);
         break;
       case EntityType.UPPER_WALL:
       case EntityType.MID_WALL:
       case EntityType.LOWER_WALL:
-        info(hit.ent.id, ctx.board.walls[hit.ent.id]);
+        info(target.entity.id, ctx.board.walls[target.entity.id]);
         break;
       case EntityType.SPRITE:
-        info(hit.ent.id, ctx.board.sprites[hit.ent.id]);
+        info(target.entity.id, ctx.board.sprites[target.entity.id]);
         break;
     }
   }
 
   private copy(ctx: BuildContext) {
-    let hit = ctx.hitscan;
-    if (hit.t == -1) return;
-    switch (hit.ent.type) {
+    const target = ctx.view.target();
+    if (target.entity == null) return;
+    switch (target.entity.type) {
       case EntityType.CEILING:
-        clipboardShade.value = ctx.board.sectors[hit.ent.id].ceilingshade;
-        clipboardPicnum.picnum = ctx.board.sectors[hit.ent.id].ceilingpicnum;
+        clipboardShade.value = ctx.board.sectors[target.entity.id].ceilingshade;
+        clipboardPicnum.picnum = ctx.board.sectors[target.entity.id].ceilingpicnum;
         break;
       case EntityType.FLOOR:
-        clipboardShade.value = ctx.board.sectors[hit.ent.id].floorshade;
-        clipboardPicnum.picnum = ctx.board.sectors[hit.ent.id].floorpicnum;
+        clipboardShade.value = ctx.board.sectors[target.entity.id].floorshade;
+        clipboardPicnum.picnum = ctx.board.sectors[target.entity.id].floorpicnum;
         break;
       case EntityType.LOWER_WALL:
       case EntityType.MID_WALL:
       case EntityType.UPPER_WALL:
-        clipboardShade.value = ctx.board.walls[hit.ent.id].shade;
-        clipboardPicnum.picnum = ctx.board.walls[hit.ent.id].picnum;
+        clipboardShade.value = ctx.board.walls[target.entity.id].shade;
+        clipboardPicnum.picnum = ctx.board.walls[target.entity.id].picnum;
         break;
       case EntityType.SPRITE:
-        clipboardShade.value = ctx.board.sprites[hit.ent.id].shade;
-        clipboardPicnum.picnum = ctx.board.sprites[hit.ent.id].picnum;
+        clipboardShade.value = ctx.board.sprites[target.entity.id].shade;
+        clipboardPicnum.picnum = ctx.board.sprites[target.entity.id].picnum;
         break;
     }
   }

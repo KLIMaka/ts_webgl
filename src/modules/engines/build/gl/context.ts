@@ -5,15 +5,11 @@ import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { State as StateGl } from '../../../stategl';
 import { ArtProvider, Bindable, BoardInvalidator, BoardManipulator, BuildContext, State, View } from '../api';
-import { snap } from '../edit/editutils';
 import { Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
-import { Hitscan } from '../hitscan';
 import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
 import { Board } from '../structs';
-import { ZSCALE } from '../utils';
-import * as BGL from './buildgl';
 import { WrapRenderable } from './renderable';
 
 class History {
