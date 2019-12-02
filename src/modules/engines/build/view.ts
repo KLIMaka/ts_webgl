@@ -1,21 +1,20 @@
-import { int, len2d, tuple4, tuple2 } from "../../../libs/mathutils";
+import { CachedValue } from "../../../libs/cachedvalue";
+import { int, len2d, tuple2 } from "../../../libs/mathutils";
 import { vec3 } from "../../../libs_js/glmatrix";
 import { Controller2D } from "../../controller2d";
 import { Controller3D } from "../../controller3d";
-import { BuildContext, View, Target } from "./api";
-import { closestWallInSector, closestWallPoint, closestWallSegment, closestWallSegmentInSector, nextwall, DEFAULT_REPEAT_RATE } from "./boardutils";
+import { BuildContext, Target, View } from "./api";
+import { closestWallInSector, closestWallPoint, closestWallSegment, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall } from "./boardutils";
 import { Frame, Mouse, NamedMessage } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
 import { RenderablesCache } from "./gl/cache";
-import { VIEW_2D } from "./gl/context";
 import { BuildRenderableProvider, Renderable } from "./gl/renderable";
 import { Message, MessageHandler } from "./handlerapi";
-import { Hitscan, hitscan, Entity, EntityType, Ray } from "./hitscan";
+import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
-import { findSector, getPlayerStart, inSector, ZSCALE, sectorOfWall, gl2build } from "./utils";
-import { CachedValue } from "../../../libs/cachedvalue";
+import { findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE } from "./utils";
 
 class TargetIml implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -177,7 +176,6 @@ export class View3d implements View, MessageHandler {
   getTransformMatrix() { return this.control.getTransformMatrix() }
   getPosition() { return this.control.getPosition() }
   getForward() { return this.control.getForward() }
-  unproject(x: number, y: number) { return this.control.getForwardUnprojected(this.aspect, x, y) }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.z / ZSCALE + 1024, this.playerstart.y) }
   draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
   target(): Target { return this.hit.get() }
@@ -229,6 +227,7 @@ export class View3d implements View, MessageHandler {
     RENDERER3D.init(this.gl, ctx, this.impl);
   }
 
+  private unproject(x: number, y: number) { return this.control.getForwardUnprojected(this.aspect, x, y) }
 
   private updateHitscan(hit: Hitscan): Target {
     const ray = this.dir();
@@ -323,8 +322,9 @@ export class SwappableView implements View, MessageHandler {
 
   handle(message: Message, ctx: BuildContext) {
     if (message instanceof NamedMessage && message.name == 'view_mode') {
-      this.view = ctx.state.get(VIEW_2D) ? this.view2d : this.view3d;
+      this.view = this.view == this.view3d ? this.view2d : this.view3d;
       this.view.activate();
+      return;
     }
     this.view.handle(message, ctx)
   }

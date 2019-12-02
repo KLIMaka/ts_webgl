@@ -46,12 +46,12 @@ export function isSprite(type: EntityType) {
   return type == EntityType.SPRITE;
 }
 
-const SPRITE_OFF = 0.1;
-
 export class Ray {
   public start = GLM.vec3.create();
   public dir = GLM.vec3.create();
 }
+
+const SPRITE_OFF = 0.1;
 
 export function pointOnRay(out: GLM.Vec3Array, ray: Ray, t: number) {
   GLM.vec3.copy(out, ray.dir);

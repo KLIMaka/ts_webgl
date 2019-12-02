@@ -2,7 +2,7 @@ import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
 import { Renderable } from "./gl/renderable";
 import { Context } from "./handlerapi";
-import { Hitscan, Entity, Ray } from "./hitscan";
+import { Entity, Ray } from "./hitscan";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
 
@@ -45,8 +45,8 @@ export interface State {
 }
 
 export type ContextedValue<T> = (ctx: BuildContext) => T;
-export const constCtxValue = <T>(value: T) => (ctx: BuildContext) => value
-export const stateCtxValue = <T>(name: string) => (ctx: BuildContext) => ctx.state.get(name)
+export const constCtxValue = <T>(value: T) => (ctx: BuildContext): T => value
+export const stateCtxValue = <T>(name: string) => (ctx: BuildContext): T => ctx.state.get(name)
 
 export interface BuildContext extends Context {
   readonly art: ArtProvider;

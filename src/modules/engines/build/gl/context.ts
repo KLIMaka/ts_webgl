@@ -20,7 +20,6 @@ class History {
   public top() { return this.history.top() }
 }
 
-
 function snapGrid(coord: number, gridSize: number): number {
   return Math.round(coord / gridSize) * gridSize;
 }
@@ -48,7 +47,6 @@ class StateImpl implements State {
   }
 }
 
-export const VIEW_2D = 'view_2d';
 const FRAME = new Frame(0);
 const POSTFRAME = new PostFrame();
 const MOUSE = new Mouse(0, 0);
@@ -90,7 +88,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     this.commit();
 
     this.state.register('gridScale', this.gridScale);
-    this.state.register(VIEW_2D, false);
   }
 
   get board() {
@@ -115,11 +112,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private poolMessages(input: InputState) {
     this.binder.updateState(input, this.state);
     return this.binder.poolEvents(input);
-  }
-
-  private switchViewMode() {
-    let mode = this.state.get(VIEW_2D);
-    this.state.set(VIEW_2D, !mode);
   }
 
   get gridScale() {
@@ -194,7 +186,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     switch (msg.name) {
       case 'grid+': this.incGridSize(); return;
       case 'grid-': this.decGridSize(); return;
-      case 'view_mode': this.switchViewMode(); return;
       case 'undo': this.undo(); return;
     }
   }
