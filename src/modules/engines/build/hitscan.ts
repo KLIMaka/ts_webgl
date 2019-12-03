@@ -1,10 +1,10 @@
 import { cross2d, dot2d, int, len2d, sign, sqrLen2d } from "../../../libs/mathutils";
-import * as GLM from "../../../libs_js/glmatrix";
 import { Deck, IndexedDeck, range } from "../../collections";
-import { ArtInfo, ArtInfoProvider } from "./art";
-import { Board, FACE, FLOOR, Sector, WALL } from "./structs";
-import { ANGSCALE, groupSprites, inPolygon, inSector, rayIntersect, slope, spriteAngle, ZSCALE, build2gl } from "./utils";
 import { Target } from "./api";
+import { ArtInfo, ArtInfoProvider } from "./art";
+import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, WALL_SPRITE } from "./structs";
+import { ANGSCALE, groupSprites, inPolygon, inSector, rayIntersect, slope, spriteAngle, ZSCALE } from "./utils";
+import { vec3, Vec3Array } from "../../../libs_js/glmatrix";
 
 export enum EntityType {
   FLOOR, CEILING, UPPER_WALL, MID_WALL, LOWER_WALL, SPRITE, WALL_POINT
@@ -47,16 +47,16 @@ export function isSprite(type: EntityType) {
 }
 
 export class Ray {
-  public start = GLM.vec3.create();
-  public dir = GLM.vec3.create();
+  public start = vec3.create();
+  public dir = vec3.create();
 }
 
 const SPRITE_OFF = 0.1;
 
-export function pointOnRay(out: GLM.Vec3Array, ray: Ray, t: number) {
-  GLM.vec3.copy(out, ray.dir);
-  GLM.vec3.scale(out, out, t);
-  GLM.vec3.add(out, out, ray.start);
+export function pointOnRay(out: Vec3Array, ray: Ray, t: number) {
+  vec3.copy(out, ray.dir);
+  vec3.scale(out, out, t);
+  vec3.add(out, out, ray.start);
   return out;
 }
 
@@ -65,13 +65,13 @@ export class Hitscan implements Target {
     public t: number = -1,
     public ent: Entity = null,
     public ray = new Ray(),
-    private targetPoint = GLM.vec3.create()) { }
+    private targetPoint = vec3.create()) { }
 
   public reset(xs: number, ys: number, zs: number, vx: number, vy: number, vz: number) {
     this.ent = null;
     this.t = -1;
-    GLM.vec3.set(this.ray.start, xs, ys, zs);
-    GLM.vec3.set(this.ray.dir, vx, vy, vz);
+    vec3.set(this.ray.start, xs, ys, zs);
+    vec3.set(this.ray.dir, vx, vy, vz);
   }
 
   private testHit(t: number): boolean {
@@ -88,9 +88,9 @@ export class Hitscan implements Target {
     }
   }
 
-  public target(): GLM.Vec3Array {
+  private target(): Vec3Array {
     return this.t == -1
-      ? GLM.vec3.copy(this.targetPoint, this.ray.start)
+      ? vec3.copy(this.targetPoint, this.ray.start)
       : pointOnRay(this.targetPoint, this.ray, this.t);
   }
 
@@ -98,7 +98,7 @@ export class Hitscan implements Target {
   get entity() { return this.ent }
 }
 
-let hitPoint = GLM.vec3.create();
+let hitPoint = vec3.create();
 function hitSector(board: Board, secId: number, t: number, hit: Hitscan, type: EntityType) {
   pointOnRay(hitPoint, hit.ray, t);
   let x = int(hitPoint[0]);
@@ -267,11 +267,11 @@ function intersectSprite(board: Board, artInfo: ArtInfoProvider, sprId: number, 
   let spr = board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible) return;
   let info = artInfo.getInfo(spr.picnum);
-  if (spr.cstat.type == FACE) {
+  if (spr.cstat.type == FACE_SPRITE) {
     intersectFaceSprite(board, info, sprId, hit);
-  } else if (spr.cstat.type == WALL) {
+  } else if (spr.cstat.type == WALL_SPRITE) {
     intersectWallSprite(board, info, sprId, hit);
-  } else if (spr.cstat.type == FLOOR) {
+  } else if (spr.cstat.type == FLOOR_SPRITE) {
     intersectFloorSprite(board, info, sprId, hit);
   }
 }

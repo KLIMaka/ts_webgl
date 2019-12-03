@@ -1,9 +1,9 @@
-import { cross2d, cyclic, len2d, dot2d, tuple2, lenPointToLine, int } from '../../../libs/mathutils';
-import { Collection, cyclicPairs, Deck, findFirst, IndexedDeck, indexedIterator, reversed, MutableCollection, EMPTY_COLLECTION } from '../../collections';
-import { ArtInfoProvider } from './art';
-import { Board, FACE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
-import { findSector, sectorOfWall, wallNormal } from './utils';
+import { cross2d, cyclic, int, len2d, lenPointToLine, tuple2 } from '../../../libs/mathutils';
 import { vec3 } from '../../../libs_js/glmatrix';
+import { Collection, cyclicPairs, Deck, EMPTY_COLLECTION, findFirst, indexedIterator, MutableCollection, reversed } from '../../collections';
+import { ArtInfoProvider } from './art';
+import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
+import { findSector, sectorOfWall, wallNormal } from './utils';
 
 const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
@@ -411,7 +411,7 @@ function newSpriteStats() {
   stats.realCenter = 0;
   stats.tranclucentReversed = 0;
   stats.translucent = 0;
-  stats.type = FACE;
+  stats.type = FACE_SPRITE;
   stats.xflip = 0;
   stats.yflip = 0;
   return stats;

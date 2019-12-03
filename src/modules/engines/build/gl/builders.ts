@@ -4,7 +4,7 @@ import { tesselate } from '../../../../libs_js/glutess';
 import { ArtInfo } from '../art';
 import { walllen } from '../boardutils';
 import { isSector, isWall, EntityType } from '../hitscan';
-import { Board, FACE, FLOOR, Sector, Wall, WALL } from '../structs';
+import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
 import * as U from '../utils';
 import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid, SectorRenderable, WallRenderable } from './renderable';
 import { State } from '../../../stategl';
@@ -396,13 +396,13 @@ export function updateSpriteWireframe(ctx: BuildContext, sprId: number): Rendera
   let xo = (info.attrs.xoff * spr.xrepeat) / 4;
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
 
-  if (spr.cstat.type == FACE) {
+  if (spr.cstat.type == FACE_SPRITE) {
     wireframe.type = Type.FACE;
     fillBuffersForFaceSpriteWireframe(x, y, z, xo, yo, hw, hh, wireframe);
-  } else if (spr.cstat.type == WALL) {
+  } else if (spr.cstat.type == WALL_SPRITE) {
     wireframe.type = Type.SURFACE;
     fillbuffersForWallSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
-  } else if (spr.cstat.type == FLOOR) {
+  } else if (spr.cstat.type == FLOOR_SPRITE) {
     wireframe.type = Type.SURFACE;
     fillbuffersForFloorSpriteWireframe(x, y, z, xo, yo, hw, hh, ang, wireframe);
   }
@@ -801,12 +801,12 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
   renderable.pal = spr.pal;
   renderable.trans = trans;
 
-  if (spr.cstat.type == FACE) {
+  if (spr.cstat.type == FACE_SPRITE) {
     fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, renderable);
     renderable.type = Type.FACE;
-  } else if (spr.cstat.type == WALL) {
+  } else if (spr.cstat.type == WALL_SPRITE) {
     fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
-  } else if (spr.cstat.type == FLOOR) {
+  } else if (spr.cstat.type == FLOOR_SPRITE) {
     fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
   }
 

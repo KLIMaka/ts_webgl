@@ -3,13 +3,12 @@ import { vec3 } from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../collections";
 import { error, info } from "../../../../logger";
 import { Bindable, BuildContext, Target } from "../../api";
-import { closestWallSegmentInSector, insertSprite, loopWalls, nextwall } from "../../boardutils";
+import { insertSprite, loopWalls, nextwall } from "../../boardutils";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
-import { Entity, EntityType, Hitscan } from "../../hitscan";
+import { Entity, EntityType } from "../../hitscan";
 import { Board } from "../../structs";
 import { build2gl, sectorOfWall } from "../../utils";
-import { getClosestSectorZ } from "../editutils";
 import { MovingHandle } from "../handle";
 import { EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
 import { SectorEnt } from "../sector";
@@ -40,13 +39,13 @@ export const MOVE_ROTATE = 'move.rotate';
 let clipboardPicnum = new SetPicnum(0);
 let clipboardShade = new Shade(0, true);
 
-function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
-  let wall = board.walls[hit.ent.id];
-  let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.ent.id) : wall.nextsector;
-  let [x, y, z] = hit.target();
-  let type = getClosestSectorZ(board, sectorId, x, y, z)[0];
-  return SectorEnt.create(hit.ent.clone());
-}
+// function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
+//   let wall = board.walls[hit.ent.id];
+//   let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.ent.id) : wall.nextsector;
+//   let [x, y, z] = hit.target();
+//   let type = getClosestSectorZ(board, sectorId, x, y, z)[0];
+//   return SectorEnt.create(hit.ent.clone());
+// }
 
 let list = new Deck<MessageHandler>();
 let segment = new Deck<number>();

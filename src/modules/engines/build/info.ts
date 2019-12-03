@@ -2,7 +2,7 @@ import { Element, span, Table } from "../../ui/ui";
 import { BuildContext } from "./api";
 import { Mouse } from "./edit/messages";
 import { MessageHandlerReflective } from "./handlerapi";
-import { isSector, isSprite, isWall, EntityType, Entity } from "./hitscan";
+import { Entity, EntityType } from "./hitscan";
 
 export class Info extends MessageHandlerReflective {
   private wallTable: Element;

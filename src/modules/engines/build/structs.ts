@@ -144,9 +144,9 @@ export class Wall {
 //  owner, xvel, yvel, zvel, lotag, hitag, extra - These variables used by the
 //  game programmer only
 
-export const FACE = 0;
-export const WALL = 1;
-export const FLOOR = 2;
+export const FACE_SPRITE = 0;
+export const WALL_SPRITE = 1;
+export const FLOOR_SPRITE = 2;
 
 export class SpriteStats {
   public blocking: number;
