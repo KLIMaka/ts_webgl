@@ -100,17 +100,16 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   let view = new SwappableView(gl, cache, impl);
   let context = new Context(art, board, view, cache, { cloneBoard });
   context.loadBinds(binds);
+  context.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
+  context.addHandler(new SplitWall());
+  context.addHandler(new JoinSectors());
+  context.addHandler(new DrawSector());
+  context.addHandler(new PushWall());
+  context.addHandler(new Info());
+  context.addHandler(new StatusBar());
+  context.addHandler(view);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
-    context.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
-    context.addHandler(new SplitWall());
-    context.addHandler(new JoinSectors());
-    context.addHandler(new DrawSector());
-    context.addHandler(new PushWall());
-    context.addHandler(new Info());
-    context.addHandler(new StatusBar());
-    context.addHandler(view);
-
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       context.frame(INPUT.get(), time);
       INPUT.postFrame();

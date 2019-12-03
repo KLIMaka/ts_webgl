@@ -121,26 +121,21 @@ export function wallInSector(board: Board, secId: number, x: number, y: number) 
 }
 
 let closestWallSegmentDist_: [number, number] = [0, 0];
-export function closestWallSegmentDist(board: Board, x: number, y: number, secId: number): [number, number] {
-  secId = findSector(board, x, y, secId);
-  if (secId != -1) return closestWallSegmentInSectorDist(board, secId, x, y);
+export function closestWallSegmentDist(board: Board, x: number, y: number): [number, number] {
   let wallId = -1;
   let mindist = Number.MAX_VALUE;
   for (let w = 0; w < board.numwalls; w++) {
-    let wall = board.walls[w];
-    if (wall.nextwall != -1)
-      continue;
     let dist = distanceToWallSegment(board, w, x, y);
     if (dist <= mindist) {
       mindist = dist;
       wallId = w;
     }
-    return tuple2(closestWallSegmentDist_, wallId, mindist);
   }
+  return tuple2(closestWallSegmentDist_, wallId, mindist);
 }
 
-export function closestWallSegment(board: Board, x: number, y: number, secId: number, d: number): number {
-  const [w, dist] = closestWallSegmentDist(board, x, y, secId);
+export function closestWallSegment(board: Board, x: number, y: number, d: number): number {
+  const [w, dist] = closestWallSegmentDist(board, x, y);
   return dist <= d ? w : -1;
 }
 

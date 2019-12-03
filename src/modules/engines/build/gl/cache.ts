@@ -3,6 +3,7 @@ import { EntityType } from '../hitscan';
 import { buildCeilingHinge, buildFloorHinge, updateSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSector2d, updateWall2d } from './builders';
 import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable, Wireframe, wrapState, notStatePred, wrapStatePred } from './renderable';
 import { BuildContext, BoardInvalidator } from '../api';
+import { View3d } from '../view';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -225,8 +226,8 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     ceiling.push(buildCeilingHinge(this.ctx, secId));
     floor.push(buildFloorHinge(this.ctx, secId));
 
-    renderable.ceiling = new RenderableList([...ceiling2d, wrapStatePred(notStatePred('view_2d'), new RenderableList(ceiling))]);
-    renderable.floor = new RenderableList([...floor2d, wrapStatePred(notStatePred('view_2d'), new RenderableList(floor))]);
+    renderable.ceiling = new RenderableList([...ceiling2d, wrapStatePred((ctx: BuildContext) => !ctx.view.isWireframe(), new RenderableList(ceiling))]);
+    renderable.floor = new RenderableList([...floor2d, wrapStatePred((ctx: BuildContext) => !ctx.view.isWireframe(), new RenderableList(floor))]);
     return renderable;
   }
 

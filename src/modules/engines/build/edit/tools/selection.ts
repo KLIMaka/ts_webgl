@@ -152,8 +152,8 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private updateHandle(ctx: BuildContext) {
     const vertical = ctx.state.get<boolean>(MOVE_VERTICAL);
     const parallel = ctx.state.get<boolean>(MOVE_PARALLEL);
-    const dir = ctx.view.dir();
-    handle.update(vertical, parallel, build2gl(start_, dir.start), build2gl(dir_, dir.dir));
+    const { start, dir } = ctx.view.dir();
+    handle.update(vertical, parallel, build2gl(start_, start), build2gl(dir_, dir));
   }
 
   private updateMove(ctx: BuildContext) {

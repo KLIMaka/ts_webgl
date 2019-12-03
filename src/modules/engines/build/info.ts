@@ -21,8 +21,8 @@ export class Info extends MessageHandlerReflective {
 
   public Mouse(msg: Mouse, ctx: BuildContext) {
     this.clear();
-    if (ctx.view.target().entity == null) return;
-    const ent = ctx.view.target().entity;
+    const ent = ctx.view.snapTarget().entity;
+    if (ent == null) return;
     if (ent.isWall()) this.renderWall(ctx, ent.id);
     else if (ent.isSector()) this.renderSector(ctx, ent);
     else if (ent.isSprite()) this.renderSprite(ctx, ent.id);

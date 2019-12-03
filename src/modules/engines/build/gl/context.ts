@@ -94,6 +94,10 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     return this.activeBoard;
   }
 
+  get gridScale() {
+    return this.gridSizes[this.gridSizeIdx];
+  }
+
   private bind<T extends Bindable>(bindable: T): T {
     if (!this.boundObjects.has(bindable)) {
       bindable.bind(this);
@@ -112,10 +116,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private poolMessages(input: InputState) {
     this.binder.updateState(input, this.state);
     return this.binder.poolEvents(input);
-  }
-
-  get gridScale() {
-    return this.gridSizes[this.gridSizeIdx];
   }
 
   private incGridSize() {

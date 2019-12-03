@@ -25,6 +25,7 @@ export interface View extends MoveStruct, Bindable {
   target(): Target;
   snapTarget(): Target;
   dir(): Ray;
+  isWireframe(): boolean;
 }
 
 export interface BoardInvalidator extends Bindable {
