@@ -5,16 +5,15 @@ import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
 import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { isWall } from "../../hitscan";
 import { build2gl, createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { MovingHandle } from "../handle";
 import { Frame, NamedMessage, Render } from "../messages";
 
-let wallNormal_ = vec3.create();
-let wallNormal1_ = vec3.create();
-let target_ = vec3.create();
-let start_ = vec3.create();
-let dir_ = vec3.create();
+const wallNormal_ = vec3.create();
+const wallNormal1_ = vec3.create();
+const target_ = vec3.create();
+const start_ = vec3.create();
+const dir_ = vec3.create();
 export class PushWall extends MessageHandlerReflective {
   private wallId = -1;
   private movingHandle = new MovingHandle();
@@ -27,6 +26,11 @@ export class PushWall extends MessageHandlerReflective {
     this.movingHandle.start(build2gl(target_, target.coords));
   }
 
+  private abort() {
+    this.wallId = -1;
+    this.movingHandle.stop();
+  }
+
   private stop(ctx: BuildContext, copy: boolean) {
     pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, copy);
     ctx.commit();
@@ -36,9 +40,9 @@ export class PushWall extends MessageHandlerReflective {
   }
 
   private getDistance(ctx: BuildContext): number {
-    let dx = this.movingHandle.dx;
-    let dy = this.movingHandle.dy;
-    let [nx, , ny] = wallNormal(wallNormal1_, ctx.board, this.wallId);
+    const dx = this.movingHandle.dx;
+    const dy = this.movingHandle.dy;
+    const [nx, , ny] = wallNormal(wallNormal1_, ctx.board, this.wallId);
     return ctx.snap(dot2d(nx, ny, dx, dy));
   }
 
@@ -46,6 +50,7 @@ export class PushWall extends MessageHandlerReflective {
     switch (msg.name) {
       case 'push_wall': this.movingHandle.isActive() ? this.stop(ctx, false) : this.start(ctx); return;
       case 'push_wall_copy': this.movingHandle.isActive() ? this.stop(ctx, true) : this.start(ctx); return;
+      case 'push_wall_stop': this.abort(); return;
     }
   }
 
@@ -63,16 +68,16 @@ export class PushWall extends MessageHandlerReflective {
   }
 
   private updateWireframe(ctx: BuildContext) {
-    let buff = this.wireframe.buff;
+    const buff = this.wireframe.buff;
     buff.allocate(8, 16);
-    let normal = wallNormal(wallNormal_, ctx.board, this.wallId);
-    let [nx, , ny] = vec3.scale(normal, normal, this.getDistance(ctx));
-    let wall = ctx.board.walls[this.wallId];
-    let wall2 = ctx.board.walls[wall.point2];
-    let sectorId = sectorOfWall(ctx.board, this.wallId);
-    let sector = ctx.board.sectors[sectorId];
-    let x1 = wall.x + nx, y1 = wall.y + ny;
-    let x2 = wall2.x + nx, y2 = wall2.y + ny;
+    const normal = wallNormal(wallNormal_, ctx.board, this.wallId);
+    const [nx, , ny] = vec3.scale(normal, normal, this.getDistance(ctx));
+    const wall = ctx.board.walls[this.wallId];
+    const wall2 = ctx.board.walls[wall.point2];
+    const sectorId = sectorOfWall(ctx.board, this.wallId);
+    const sector = ctx.board.sectors[sectorId];
+    const x1 = wall.x + nx, y1 = wall.y + ny;
+    const x2 = wall2.x + nx, y2 = wall2.y + ny;
     const slopeCalc = createSlopeCalculator(ctx.board, sectorId);
     const z1 = slopeCalc(x1, y1, sector.floorheinum) + sector.floorz;
     const z2 = slopeCalc(x1, y1, sector.ceilingheinum) + sector.ceilingz;

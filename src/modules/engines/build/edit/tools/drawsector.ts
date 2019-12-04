@@ -1,15 +1,13 @@
-import { tuple2 } from "../../../../../libs/mathutils";
-import * as GLM from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
 import { Renderable, RenderableList, Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { Hitscan } from "../../hitscan";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
-import { getClosestSectorZ, } from "../editutils";
+import { getClosestSectorZ } from "../editutils";
 import { Frame, NamedMessage, Render } from "../messages";
+import { vec3 } from "../../../../../libs_js/glmatrix";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -103,7 +101,7 @@ export class DrawSector extends MessageHandlerReflective {
   // private static zintersect: [number, number] = [0, 0];
 
   private points = new Deck<[number, number]>();
-  private pointer = GLM.vec3.create();
+  private pointer = vec3.create();
   private hintSector = -1;
   private valid = false;
   private contour = new Contour();
@@ -114,7 +112,7 @@ export class DrawSector extends MessageHandlerReflective {
 
     let z = this.contour.getZ();
     const [x, y] = ctx.view.snapTarget().coords;
-    GLM.vec3.set(this.pointer, x, y, z);
+    vec3.set(this.pointer, x, y, z);
 
     if (this.isRect) {
       let fp = this.points.get(0);
@@ -144,7 +142,7 @@ export class DrawSector extends MessageHandlerReflective {
       this.valid = true;
       let [x, y,] = target.coords;
       let z = this.getPointerZ(ctx.board, target);
-      GLM.vec3.set(this.pointer, x, y, z);
+      vec3.set(this.pointer, x, y, z);
       this.contour.setZ(z / ZSCALE);
       this.contour.updateLastPoint(x, y);
       if (target.entity.isSector()) this.hintSector = target.entity.id;

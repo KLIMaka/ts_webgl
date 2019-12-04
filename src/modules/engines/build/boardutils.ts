@@ -775,7 +775,7 @@ export function setFirstWall(board: Board, sectorId: number, newFirstWall: numbe
   const nwalls = new Deck<Wall>().pushAll(newFirstWallLoop);
   const looppoints = new Deck<number>().push(newFirstWallLoop.length());
   for (let loop of loops) {
-    looppoints.push(loop.length());
+    looppoints.push(looppoints.top() + loop.length());
     nwalls.pushAll(loop);
   }
   recreateSectorWalls(board, sectorId, nwalls, looppoints, wallptrs);

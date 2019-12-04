@@ -36,19 +36,19 @@ export const MOVE_VERTICAL = 'move.vertical';
 export const MOVE_PARALLEL = 'move.parallel';
 export const MOVE_ROTATE = 'move.rotate';
 
-let clipboardPicnum = new SetPicnum(0);
-let clipboardShade = new Shade(0, true);
+const clipboardPicnum = new SetPicnum(0);
+const clipboardShade = new Shade(0, true);
 
 // function getAttachedSector(board: Board, hit: Hitscan): MessageHandler {
-//   let wall = board.walls[hit.ent.id];
-//   let sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.ent.id) : wall.nextsector;
-//   let [x, y, z] = hit.target();
-//   let type = getClosestSectorZ(board, sectorId, x, y, z)[0];
+//   const wall = board.walls[hit.ent.id];
+//   const sectorId = wall.nextsector == -1 ? sectorOfWall(board, hit.ent.id) : wall.nextsector;
+//   const [x, y, z] = hit.target();
+//   const type = getClosestSectorZ(board, sectorId, x, y, z)[0];
 //   return SectorEnt.create(hit.ent.clone());
 // }
 
-let list = new Deck<MessageHandler>();
-let segment = new Deck<number>();
+const list = new Deck<MessageHandler>();
+const segment = new Deck<number>();
 export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
   const target = ctx.view.snapTarget();
   list.clear();
@@ -70,7 +70,7 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
 
 function sector(fullLoop: boolean, board: Board, target: Target) {
   if (fullLoop) {
-    let firstWall = board.sectors[target.entity.id].wallptr;
+    const firstWall = board.sectors[target.entity.id].wallptr;
     list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, target.entity.id)));
     list.push(SectorEnt.create(new Entity(target.entity.id, target.entity.type == EntityType.CEILING ? EntityType.FLOOR : EntityType.CEILING)));
   }
@@ -81,15 +81,15 @@ function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean
   if (fullLoop) {
     list.push(WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w)), bottom));
   } else {
-    let w1 = nextwall(board, w);
+    const w1 = nextwall(board, w);
     segment.clear().push(w).push(w1);
     list.push(WallSegmentsEnt.create(board, segment, bottom));
   }
 }
 
-let target_ = vec3.create();
-let start_ = vec3.create();
-let dir_ = vec3.create();
+const target_ = vec3.create();
+const start_ = vec3.create();
+const dir_ = vec3.create();
 
 export class Selection extends MessageHandlerReflective implements Bindable {
   private selection = new MessageHandlerList();
@@ -142,10 +142,10 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   }
 
   private activeMove(ctx: BuildContext) {
-    let start = !handle.isActive() && ctx.state.get(MOVE_STATE);
+    const start = !handle.isActive() && ctx.state.get(MOVE_STATE);
     if (this.valid == false && start) this.valid = true;
-    let move = handle.isActive() && ctx.state.get(MOVE_STATE);
-    let end = handle.isActive() && !ctx.state.get(MOVE_STATE);
+    const move = handle.isActive() && ctx.state.get(MOVE_STATE);
+    const end = handle.isActive() && !ctx.state.get(MOVE_STATE);
     return this.valid && (start || move || end);
   }
 
@@ -182,7 +182,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   }
 
   private setTexture(ctx: BuildContext) {
-    let sel = this.selection.clone();
+    const sel = this.selection.clone();
     this.picnumSelector((picnum: number) => {
       if (picnum == -1) return;
       SET_PICNUM.picnum = picnum;
@@ -193,10 +193,10 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private insertSprite(ctx: BuildContext) {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isSector()) return;
+    const [x, y, z] = target.coords;
     this.picnumSelector((picnum: number) => {
       if (picnum == -1) return;
-      const [x, y, z] = target.coords;
-      let spriteId = insertSprite(ctx.board, x, y, z);
+      const spriteId = insertSprite(ctx.board, x, y, z);
       ctx.board.sprites[spriteId].picnum = picnum;
     });
   }
@@ -248,9 +248,9 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   public Render(msg: Render, ctx: BuildContext) {
     HIGHLIGHT.set.clear();
     this.selection.handle(HIGHLIGHT, ctx);
-    for (let v of HIGHLIGHT.set.keys()) {
-      let type = detuple0(v);
-      let id = detuple1(v);
+    for (const v of HIGHLIGHT.set.keys()) {
+      const type = detuple0(v);
+      const id = detuple1(v);
       switch (type) {
         case 0: msg.list.push(this.renderables.sector(id).ceiling); break;
         case 1: msg.list.push(this.renderables.sector(id).floor); break;

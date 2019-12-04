@@ -1,6 +1,6 @@
 import { Element, span, Table } from "../../ui/ui";
 import { BuildContext } from "./api";
-import { Mouse } from "./edit/messages";
+import { Frame } from "./edit/messages";
 import { MessageHandlerReflective } from "./handlerapi";
 import { Entity, EntityType } from "./hitscan";
 
@@ -19,7 +19,7 @@ export class Info extends MessageHandlerReflective {
     this.prepareSpriteTable();
   }
 
-  public Mouse(msg: Mouse, ctx: BuildContext) {
+  public Frame(msg: Frame, ctx: BuildContext) {
     this.clear();
     const ent = ctx.view.snapTarget().entity;
     if (ent == null) return;

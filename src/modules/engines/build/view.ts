@@ -16,7 +16,7 @@ import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
 import { findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE, build2gl } from "./utils";
 
-class TargetIml implements Target {
+class TargetImpl implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
   public entity_: Entity = null;
   get coords() { return this.coords_ }
@@ -49,7 +49,7 @@ export class View2d extends MessageHandlerReflective implements View {
   private pointer = vec3.create();
   private ctx: BuildContext;
   private hit = new CachedValue((h: Hitscan) => this.updateHitscan(h), new Hitscan());
-  private snapTargetValue = new CachedValue((t: TargetIml) => this.updateSnapTarget(t), new TargetIml());
+  private snapTargetValue = new CachedValue((t: TargetImpl) => this.updateSnapTarget(t), new TargetImpl());
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
 
   constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider) {
@@ -116,8 +116,8 @@ export class View2d extends MessageHandlerReflective implements View {
     return hit;
   }
 
-  private updateSnapTarget(target: TargetIml) {
-    const d = this.ctx.gridScale / 4;
+  private updateSnapTarget(target: TargetImpl) {
+    const d = this.ctx.gridScale / 2;
     const w = closestWallPoint(this.ctx.board, this.x, this.y, d);
     if (w != -1) {
       const wall = this.ctx.board.walls[w];
@@ -160,7 +160,7 @@ export class View3d extends MessageHandlerReflective implements View {
   private mouseX = 0;
   private mouseY = 0;
   private hit = new CachedValue((h: Hitscan) => this.updateHitscan(h), new Hitscan());
-  private snapTargetValue = new CachedValue((t: TargetIml) => this.updateSnapTarget(t), new TargetIml());
+  private snapTargetValue = new CachedValue((t: TargetImpl) => this.updateSnapTarget(t), new TargetImpl());
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
   private cursor = vec3.create();
 
@@ -249,7 +249,7 @@ export class View3d extends MessageHandlerReflective implements View {
     return -1;
   }
 
-  private snapGrid(target: Target, t: TargetIml) {
+  private snapGrid(target: Target, t: TargetImpl) {
     t.coords_[0] = this.ctx.snap(target.coords[0]);
     t.coords_[1] = this.ctx.snap(target.coords[1]);
     t.coords_[2] = this.ctx.snap(target.coords[2]);
@@ -257,7 +257,7 @@ export class View3d extends MessageHandlerReflective implements View {
     return t;
   }
 
-  private snapWall(target: Target, wallId: number, t: TargetIml) {
+  private snapWall(target: Target, wallId: number, t: TargetImpl) {
     const [x, y] = snapWall(wallId, target.coords[0], target.coords[1], this.ctx);
     t.coords_[0] = x;
     t.coords_[1] = y;
@@ -266,7 +266,7 @@ export class View3d extends MessageHandlerReflective implements View {
     return t;
   }
 
-  private snapWallPoint(target: Target, wallId: number, t: TargetIml) {
+  private snapWallPoint(target: Target, wallId: number, t: TargetImpl) {
     const wall = this.ctx.board.walls[wallId];
     t.coords_[0] = wall.x;
     t.coords_[1] = wall.y;
@@ -275,7 +275,7 @@ export class View3d extends MessageHandlerReflective implements View {
     return t;
   }
 
-  private snapSprite(target: Target, t: TargetIml) {
+  private snapSprite(target: Target, t: TargetImpl) {
     const sprite = this.ctx.board.sprites[target.entity.id];
     t.coords_[0] = sprite.x;
     t.coords_[1] = sprite.y;
@@ -284,10 +284,18 @@ export class View3d extends MessageHandlerReflective implements View {
     return t;
   }
 
-  private updateSnapTarget(t: TargetIml): Target {
+  private copyTarget(target: Target, t: TargetImpl) {
+    t.coords_[0] = target.coords[0];
+    t.coords_[1] = target.coords[1];
+    t.coords_[2] = target.coords[2];
+    t.entity_ = null;
+    return t;
+  }
+
+  private updateSnapTarget(t: TargetImpl): Target {
     const target = this.target();
-    if (target.entity == null) return target;
-    const d = this.ctx.gridScale / 4;
+    if (target.entity == null) return this.copyTarget(target, t);
+    const d = this.ctx.gridScale / 2;
     const w = this.getClosestWall(target, d);
     if (w != -1) {
       return this.snapWallPoint(target, w, t);

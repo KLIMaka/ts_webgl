@@ -27,14 +27,10 @@ M               msg wallcstat alignBottom true true
 R               msg sprite_mode
 R               msg sectorcstat alignToFirstWall true true
 E               msg sectorcstat doubleSmooshiness true true
-RIGHT           msg move {return ctx.state.get('gridSize')} 0 0 true
-LEFT            msg move {return -ctx.state.get('gridSize')} 0 0 true
-UP              msg move 0 {return -ctx.state.get('gridSize')} 0 true
-DOWN            msg move 0 {return ctx.state.get('gridSize')}  0 true
-
 
 T               push_wall
 SHIFT+T         push_wall_copy
+BACKSPACE       push_wall_stop
 V               set_picnum
 I               insert_sprite
 1               copy
