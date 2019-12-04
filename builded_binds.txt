@@ -51,6 +51,7 @@ BACKSPACE       undo_draw_wall
 J               join_sectors
 CTRL+Z          undo
 DELETE          delete
+ALT+F           set_first_wall
 
 +W              forward
 +S              backward

@@ -14,7 +14,7 @@ import { BuildRenderableProvider, Renderable } from "./gl/renderable";
 import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi";
 import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
-import { findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE } from "./utils";
+import { findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE, build2gl } from "./utils";
 
 class TargetIml implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -23,20 +23,20 @@ class TargetIml implements Target {
   get entity() { return this.entity_ }
 }
 
-let snapResult: [number, number] = [0, 0];
+const snapResult: [number, number] = [0, 0];
 function snapWall(w: number, x: number, y: number, ctx: BuildContext) {
-  let wall = ctx.board.walls[w];
-  let w1 = nextwall(ctx.board, w);
-  let wall1 = ctx.board.walls[w1];
-  let dx = wall1.x - wall.x;
-  let dy = wall1.y - wall.y;
-  let repeat = DEFAULT_REPEAT_RATE * wall.xrepeat;
-  let dxt = x - wall.x;
-  let dyt = y - wall.y;
-  let dt = len2d(dxt, dyt) / len2d(dx, dy);
-  let t = ctx.snap(dt * repeat) / repeat;
-  let xs = int(wall.x + (t * dx));
-  let ys = int(wall.y + (t * dy));
+  const wall = ctx.board.walls[w];
+  const w1 = nextwall(ctx.board, w);
+  const wall1 = ctx.board.walls[w1];
+  const dx = wall1.x - wall.x;
+  const dy = wall1.y - wall.y;
+  const repeat = DEFAULT_REPEAT_RATE * wall.xrepeat;
+  const dxt = x - wall.x;
+  const dyt = y - wall.y;
+  const dt = len2d(dxt, dyt) / len2d(dx, dy);
+  const t = ctx.snap(dt * repeat) / repeat;
+  const xs = int(wall.x + (t * dx));
+  const ys = int(wall.y + (t * dy));
   return tuple2(snapResult, xs, ys);
 }
 
@@ -75,9 +75,9 @@ export class View2d extends MessageHandlerReflective implements View {
 
   Mouse(msg: Mouse, ctx: BuildContext) {
     this.control.track(msg.x, msg.y, ctx.state.get('lookaim'));
-    let x = (msg.x / this.gl.drawingBufferWidth) * 2 - 1;
-    let y = (msg.y / this.gl.drawingBufferHeight) * 2 - 1;
-    let p = this.control.getPointerPosition(this.pointer, x, y);
+    const x = (msg.x / this.gl.drawingBufferWidth) * 2 - 1;
+    const y = (msg.y / this.gl.drawingBufferHeight) * 2 - 1;
+    const p = this.control.getPointerPosition(this.pointer, x, y);
 
     this.playerstart.x = int(p[0]);
     this.playerstart.y = int(p[2]);
@@ -90,13 +90,13 @@ export class View2d extends MessageHandlerReflective implements View {
     this.direction.invalidate();
     this.hit.invalidate();
     this.control.setSize(this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
-    let max = this.control.getPointerPosition(this.pointer, 1, 1);
-    let campos = this.control.getPosition();
-    let dist = len2d(max[0] - campos[0], max[2] - campos[2]);
+    const max = this.control.getPointerPosition(this.pointer, 1, 1);
+    const campos = this.control.getPosition();
+    const dist = len2d(max[0] - campos[0], max[2] - campos[2]);
     BGL.newFrame(this.gl);
     RENDERER2D.draw(this, campos, dist);
 
-    let state = ctx.state;
+    const state = ctx.state;
     if (state.get('zoom+')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() / 1.1);
     if (state.get('zoom-')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() * 1.1);
   }
@@ -117,7 +117,7 @@ export class View2d extends MessageHandlerReflective implements View {
   }
 
   private updateSnapTarget(target: TargetIml) {
-    const d = this.ctx.gridScale;
+    const d = this.ctx.gridScale / 4;
     const w = closestWallPoint(this.ctx.board, this.x, this.y, d);
     if (w != -1) {
       const wall = this.ctx.board.walls[w];
@@ -162,6 +162,7 @@ export class View3d extends MessageHandlerReflective implements View {
   private hit = new CachedValue((h: Hitscan) => this.updateHitscan(h), new Hitscan());
   private snapTargetValue = new CachedValue((t: TargetIml) => this.updateSnapTarget(t), new TargetIml());
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
+  private cursor = vec3.create();
 
   constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, impl: RENDERER3D.Implementation) {
     super();
@@ -196,20 +197,22 @@ export class View3d extends MessageHandlerReflective implements View {
     this.snapTargetValue.invalidate();
     this.direction.invalidate();
     this.hit.invalidate();
+    build2gl(this.cursor, this.snapTarget().coords);
+    BGL.setCursorPosiotion(this.cursor[0], this.cursor[1], this.cursor[2]);
     this.aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
     BGL.newFrame(this.gl);
     RENDERER3D.draw(this);
 
-    let state = ctx.state;
-    let dt = msg.dt;
-    let cameraSpeed = ctx.state.get<number>('camera_speed');
+    const state = ctx.state;
+    const dt = msg.dt;
+    const cameraSpeed = ctx.state.get<number>('camera_speed');
 
     if (state.get('forward')) this.control.moveForward(dt * cameraSpeed);
     if (state.get('backward')) this.control.moveForward(-dt * cameraSpeed);
     if (state.get('strafe_left')) this.control.moveSideway(-dt * cameraSpeed);
     if (state.get('strafe_right')) this.control.moveSideway(dt * cameraSpeed);
 
-    let p = this.control.getPosition();
+    const p = this.control.getPosition();
     this.playerstart.x = int(p[0]);
     this.playerstart.y = int(p[2]);
     this.playerstart.z = int(p[1] * ZSCALE);
@@ -238,10 +241,11 @@ export class View3d extends MessageHandlerReflective implements View {
   }
 
   private getClosestWall(target: Target, d: number): number {
+    const [x, y] = target.coords;
     if (target.entity.isWall())
-      return closestWallInSector(this.ctx.board, sectorOfWall(this.ctx.board, target.entity.id), target.coords[0], target.coords[0], d);
+      return closestWallInSector(this.ctx.board, sectorOfWall(this.ctx.board, target.entity.id), x, y, d);
     else if (target.entity.isSector())
-      return closestWallInSector(this.ctx.board, target.entity.id, target.coords[0], target.coords[1], d);
+      return closestWallInSector(this.ctx.board, target.entity.id, x, y, d);
     return -1;
   }
 
@@ -263,7 +267,7 @@ export class View3d extends MessageHandlerReflective implements View {
   }
 
   private snapWallPoint(target: Target, wallId: number, t: TargetIml) {
-    let wall = this.ctx.board.walls[wallId];
+    const wall = this.ctx.board.walls[wallId];
     t.coords_[0] = wall.x;
     t.coords_[1] = wall.y;
     t.coords_[2] = target.coords[2];
@@ -283,7 +287,7 @@ export class View3d extends MessageHandlerReflective implements View {
   private updateSnapTarget(t: TargetIml): Target {
     const target = this.target();
     if (target.entity == null) return target;
-    const d = this.ctx.gridScale;
+    const d = this.ctx.gridScale / 4;
     const w = this.getClosestWall(target, d);
     if (w != -1) {
       return this.snapWallPoint(target, w, t);

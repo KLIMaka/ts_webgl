@@ -5,7 +5,6 @@ import { ArtInfoProvider } from './art';
 import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
 
-const DELTA_DIST = Math.SQRT2;
 export const DEFAULT_REPEAT_RATE = 128;
 
 let looppoints_ = new Deck<number>();
@@ -656,6 +655,7 @@ let nullWall = new Wall();
 function resizeWalls(board: Board, sectorId: number, newSize: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sec = board.sectors[sectorId];
   let dw = newSize - sec.wallnum;
+  if (dw == 0) return;
   if (dw > 0) {
     moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, wallptrs);
   } else {
@@ -732,6 +732,54 @@ export function joinSectors(board: Board, s1: number, s2: number, wallptrs: Muta
   return 0;
 }
 
+export function deleteSector(board: Board, sectorId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
+  const sector = board.sectors[sectorId];
+  const wallsend = sector.wallptr + sector.wallnum;
+  for (let w = sector.wallptr; w < wallsend; w++) {
+    const wall = board.walls[w];
+    if (wall.nextwall != -1) {
+      const nextwall = board.walls[wall.nextwall];
+      nextwall.nextsector = -1;
+      nextwall.nextwall = -1;
+    }
+  }
+  resizeWalls(board, sectorId, 0, wallptrs);
+  deleteSectorImpl(board, sectorId);
+}
+
+export function setFirstWall(board: Board, sectorId: number, newFirstWall: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
+  const sector = board.sectors[sectorId];
+  if (sector.wallptr == newFirstWall) return;
+  const end = sector.wallptr + sector.wallnum;
+  if (newFirstWall < sector.wallptr || newFirstWall >= end) return;
+  const loops = new Deck<Deck<Wall>>();
+  let newFirstWallLoop = new Deck<Wall>();
+  let currentLoop = new Deck<Wall>();
+  let firstWallLoopPos = -1;
+  for (let w = sector.wallptr; w < end; w++) {
+    if (w == newFirstWall) firstWallLoopPos = currentLoop.length();
+    const wall = board.walls[w];
+    currentLoop.push(wall);
+    if (wall.point2 < w) {
+      if (firstWallLoopPos != -1) {
+        for (let i = 0; i < currentLoop.length(); i++)
+          newFirstWallLoop.push(currentLoop.get(cyclic(firstWallLoopPos + i, currentLoop.length())));
+        firstWallLoopPos = -1;
+      } else {
+        loops.push(currentLoop);
+      }
+      currentLoop = new Deck<Wall>();
+    }
+  }
+
+  const nwalls = new Deck<Wall>();
+  nwalls.pushAll(newFirstWallLoop);
+  for (let loop of loops) nwalls.pushAll(loop);
+  const looppoints = new Deck<number>();
+  looppoints.push(newFirstWallLoop.length());
+  for (let loop of loops) looppoints.push(loop.length());
+  recreateSectorWalls(board, sectorId, nwalls, looppoints, wallptrs);
+}
 
 function clockwise(walls: Collection<[number, number]>): boolean {
   let minx = Number.MAX_VALUE;

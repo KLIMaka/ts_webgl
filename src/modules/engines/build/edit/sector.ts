@@ -1,11 +1,12 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { BuildContext } from "../api";
+import { deleteSector } from "../boardutils";
 import { MessageHandlerReflective } from "../handlerapi";
-import { Hitscan, isSector, EntityType, Entity } from "../hitscan";
+import { Entity, EntityType } from "../hitscan";
 import { heinumCalc, sectorZ, setSectorHeinum, setSectorPicnum, setSectorZ, ZSCALE } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove } from "./messages";
+import { Highlight, Move, NamedMessage, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetSectorCstat, Shade, StartMove } from "./messages";
 import { MOVE_ROTATE, MOVE_VERTICAL } from "./tools/selection";
 
 const resetPanrepeat = new PanRepeat(0, 0, 0, 0, true);
@@ -129,5 +130,15 @@ export class SectorEnt extends MessageHandlerReflective {
       if (this.sectorEnt.type == EntityType.CEILING) sector.ceilingstat[msg.name] = msg.value; else sector.floorstat[msg.name] = msg.value;
     }
     ctx.invalidator.invalidateSector(this.sectorEnt.id);
+  }
+
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    switch (msg.name) {
+      case 'delete':
+        deleteSector(ctx.board, this.sectorEnt.id);
+        ctx.commit();
+        ctx.invalidator.invalidateAll();
+        return;
+    }
   }
 }

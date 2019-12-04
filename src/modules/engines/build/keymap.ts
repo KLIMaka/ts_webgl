@@ -1,7 +1,7 @@
 import { Collection, Deck, EMPTY_COLLECTION } from "../../collections";
 import { InputState } from "../../input";
-import { warning, debug } from "../../logger";
-import { State, ContextedValue } from "./api";
+import { warning } from "../../logger";
+import { ContextedValue, State } from "./api";
 import { Message } from "./handlerapi";
 
 export type InputHandler = (state: InputState) => boolean;
