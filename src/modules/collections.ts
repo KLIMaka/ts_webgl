@@ -189,6 +189,10 @@ export function cyclicPairs<T>(length: number): Iterable<[number, number]> {
     : { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, [i++, cyclic(i, length)]) } } }
 }
 
+export function cyclicRange(start: number, length: number): Iterable<number> {
+  let i = 0;
+  return { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, cyclic(start + (i++), length)) } } }
+}
 export function range(start: number, end: number): Iterable<number> {
   return { [Symbol.iterator]: () => { return { next: () => iteratorResult(start >= end, start++) } } }
 }

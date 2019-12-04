@@ -1,6 +1,6 @@
 import { cross2d, cyclic, int, len2d, lenPointToLine, tuple2 } from '../../../libs/mathutils';
 import { vec3 } from '../../../libs_js/glmatrix';
-import { Collection, cyclicPairs, Deck, EMPTY_COLLECTION, findFirst, indexedIterator, MutableCollection, reversed } from '../../collections';
+import { Collection, cyclicPairs, Deck, EMPTY_COLLECTION, findFirst, indexedIterator, MutableCollection, reversed, cyclicRange } from '../../collections';
 import { ArtInfoProvider } from './art';
 import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
@@ -762,8 +762,8 @@ export function setFirstWall(board: Board, sectorId: number, newFirstWall: numbe
     currentLoop.push(wall);
     if (wall.point2 < w) {
       if (firstWallLoopPos != -1) {
-        for (let i = 0; i < currentLoop.length(); i++)
-          newFirstWallLoop.push(currentLoop.get(cyclic(firstWallLoopPos + i, currentLoop.length())));
+        for (let i of cyclicRange(firstWallLoopPos, currentLoop.length()))
+          newFirstWallLoop.push(currentLoop.get(i));
         firstWallLoopPos = -1;
       } else {
         loops.push(currentLoop);
@@ -772,12 +772,12 @@ export function setFirstWall(board: Board, sectorId: number, newFirstWall: numbe
     }
   }
 
-  const nwalls = new Deck<Wall>();
-  nwalls.pushAll(newFirstWallLoop);
-  for (let loop of loops) nwalls.pushAll(loop);
-  const looppoints = new Deck<number>();
-  looppoints.push(newFirstWallLoop.length());
-  for (let loop of loops) looppoints.push(loop.length());
+  const nwalls = new Deck<Wall>().pushAll(newFirstWallLoop);
+  const looppoints = new Deck<number>().push(newFirstWallLoop.length());
+  for (let loop of loops) {
+    looppoints.push(loop.length());
+    nwalls.pushAll(loop);
+  }
   recreateSectorWalls(board, sectorId, nwalls, looppoints, wallptrs);
 }
 
