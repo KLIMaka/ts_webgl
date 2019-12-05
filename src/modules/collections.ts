@@ -35,7 +35,10 @@ export class ArrayWrapper<T> implements MutableCollection<T> {
 export function wrap<T>(array: T[], len: number = array.length) { return new ArrayWrapper(array, len) }
 
 export class DecoratedCollection<T, U> implements Collection<T> {
-  constructor(protected values: Collection<U>, private getter: (o: U) => T) { }
+  constructor(
+    protected values: Collection<U>,
+    private getter: (o: U) => T
+  ) { }
   get(i: number) { return this.getter(this.values.get(i)) }
   length() { return this.values.length() }
   isEmpty() { return this.values.isEmpty() }
@@ -57,8 +60,6 @@ export class DecoratedMutableCollection<T, U> extends DecoratedCollection<T, U> 
 export function decorateMutable<T, U>(values: Collection<U>, getter: (o: U) => T, setter: (o: U, v: T) => void): DecoratedMutableCollection<T, U> {
   return new DecoratedMutableCollection(values, getter, setter);
 }
-
-
 
 export class Deck<T> implements MutableCollection<T>{
   protected pointer = 0;
@@ -152,47 +153,52 @@ export function findFirst<T>(collection: Collection<T>, value: T, start = 0) {
   return -1;
 }
 
-export function reversed<T>(collection: Collection<T>): Collection<T> {
-  return collection.isEmpty()
+export function reverse<T>(c: Collection<T>): Collection<T> {
+  return c.isEmpty()
     ? EMPTY_COLLECTION
     : {
-      get: (i: number) => collection.get(collection.length() - 1 - i),
-      length: () => collection.length(),
-      isEmpty: () => collection.length() == 0,
-      [Symbol.iterator]: () => { let i = collection.length() - 1; return { next: () => iteratorResult(i < 0, collection.get(i--)) } }
+      get: (i: number) => c.get(c.length() - 1 - i),
+      length: () => c.length(),
+      isEmpty: () => false,
+      [Symbol.iterator]: () => reversed(c)
     }
 }
 
-export function sub<T>(collection: Collection<T>, start: number, length: number): Collection<T> {
+export function subCollection<T>(c: Collection<T>, start: number, length: number): Collection<T> {
   return length == 0
     ? EMPTY_COLLECTION
     : {
-      get: (i: number) => collection.get(start + i),
+      get: (i: number) => c.get(start + i),
       length: () => length,
-      isEmpty: () => length == 0,
-      [Symbol.iterator]: () => { let i = 0; return { next: () => iteratorResult(i == length, collection.get(start + i++)) } }
+      isEmpty: () => false,
+      [Symbol.iterator]: () => sub(c, start, length)
     }
 }
 
-export function indexedIterator<T>(c: Collection<T>): Iterable<[T, number]> {
-  let length = c.length();
-  let i = 0;
-  return length == 0
-    ? EMPTY_COLLECTION
-    : { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, [c.get(i), i++]) } } }
+export function* map<T, V>(i: Iterable<T>, f: (t: T) => V): Generator<V> {
+  for (const v of i) yield f(v);
 }
 
-export function cyclicPairs<T>(length: number): Iterable<[number, number]> {
-  let i = 0;
-  return length == 0
-    ? EMPTY_COLLECTION
-    : { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, [i++, cyclic(i, length)]) } } }
+export function* sub<T>(c: Collection<T>, start: number, length: number): Generator<T> {
+  for (let i = 0; i < length; i++) yield c.get(start + i);
 }
 
-export function cyclicRange(start: number, length: number): Iterable<number> {
-  let i = 0;
-  return { [Symbol.iterator]: () => { return { next: () => iteratorResult(i == length, cyclic(start + (i++), length)) } } }
+export function* reversed<T>(c: Collection<T>): Generator<T> {
+  for (let i = c.length() - 1; i >= 0; i--) yield c.get(i);
 }
-export function range(start: number, end: number): Iterable<number> {
-  return { [Symbol.iterator]: () => { return { next: () => iteratorResult(start >= end, start++) } } }
+
+export function* indexed<T>(c: Collection<T>): Generator<[T, number]> {
+  for (let i = 0; i < c.length(); i++) yield [c.get(i), i];
+}
+
+export function* range(start: number, end: number) {
+  for (let i = start; i <= end; i++) yield i;
+}
+
+export function* cyclicRange(start: number, length: number) {
+  for (let i = 0; i < length; i++) yield cyclic(start + i, length);
+}
+
+export function* cyclicPairs(length: number): Generator<[number, number]> {
+  for (let i = 0; i < length; i++) yield [i, cyclic(i + 1, length)];
 }

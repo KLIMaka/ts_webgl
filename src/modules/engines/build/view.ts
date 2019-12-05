@@ -4,7 +4,7 @@ import { vec3 } from "../../../libs_js/glmatrix";
 import { Controller2D } from "../../controller2d";
 import { Controller3D } from "../../controller3d";
 import { BuildContext, Target, View } from "./api";
-import { closestWallInSector, closestWallPoint, closestWallSegment, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall } from "./boardutils";
+import { closestWallInSector, closestWallSegment, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall, closestWallPoint } from "./boardutils";
 import { Frame, Mouse, NamedMessage } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';

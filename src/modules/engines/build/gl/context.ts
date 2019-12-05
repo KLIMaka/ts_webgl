@@ -11,7 +11,6 @@ import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
 import { Board } from '../structs';
 import { WrapRenderable } from './renderable';
-import { setCursorPosiotion } from './buildgl';
 
 class History {
   private history: Deck<Board> = new Deck();

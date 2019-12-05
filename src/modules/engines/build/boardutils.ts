@@ -1,6 +1,6 @@
 import { cross2d, cyclic, int, len2d, lenPointToLine, tuple2 } from '../../../libs/mathutils';
 import { vec3 } from '../../../libs_js/glmatrix';
-import { Collection, cyclicPairs, Deck, EMPTY_COLLECTION, findFirst, indexedIterator, MutableCollection, reversed, cyclicRange } from '../../collections';
+import { Collection, cyclicPairs, Deck, EMPTY_COLLECTION, findFirst, indexed, MutableCollection, reverse, cyclicRange } from '../../collections';
 import { ArtInfoProvider } from './art';
 import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
@@ -669,17 +669,17 @@ function resizeWalls(board: Board, sectorId: number, newSize: number, wallptrs: 
 
 function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   resizeWalls(board, sectorId, nwalls.length(), wallptrs);
-  let sec = board.sectors[sectorId];
-  let loopId = 0;
+  const sec = board.sectors[sectorId];
+  const loopIter = looppoints[Symbol.iterator]();
   let loopStart = sec.wallptr;
-  let loopEnd = looppoints.get(loopId++);
-  for (let [wall, i] of indexedIterator(nwalls)) {
+  let loopEnd = loopIter.next().value;
+  for (let [wall, i] of indexed(nwalls)) {
     let w = i + sec.wallptr;
     board.walls[w] = wall;
     if (loopEnd == i + 1) {
       wall.point2 = loopStart;
       loopStart = w + 1;
-      loopEnd = looppoints.get(loopId++);
+      loopEnd = loopIter.next().value;
     } else {
       wall.point2 = w + 1;
     }
@@ -753,7 +753,7 @@ export function setFirstWall(board: Board, sectorId: number, newFirstWall: numbe
   const end = sector.wallptr + sector.wallnum;
   if (newFirstWall < sector.wallptr || newFirstWall >= end) return;
   const loops = new Deck<Deck<Wall>>();
-  let newFirstWallLoop = new Deck<Wall>();
+  const newFirstWallLoop = new Deck<Wall>();
   let currentLoop = new Deck<Wall>();
   let firstWallLoopPos = -1;
   for (let w = sector.wallptr; w < end; w++) {
@@ -804,7 +804,7 @@ function clockwise(walls: Collection<[number, number]>): boolean {
 
 function order(points: Collection<[number, number]>, cw = true): Collection<[number, number]> {
   let actual = clockwise(points);
-  return actual == cw ? points : reversed(points);
+  return actual == cw ? points : reverse(points);
 }
 
 function searchMatchWall(board: Board, p1: [number, number], p2: [number, number]): [number, number] {
@@ -874,7 +874,7 @@ export function createInnerLoop(board: Board, sectorId: number, points: Collecti
   let wallPtr = sector.wallptr + sector.wallnum - points.length();
   let firstWall = board.walls[sector.wallptr];
   points = order(points, false);
-  for (let [p, i] of indexedIterator(points)) {
+  for (let [p, i] of indexed(points)) {
     let wall = copyWall(firstWall, p[0], p[1]);
     wall.point2 = i == points.length() - 1 ? wallPtr : wallPtr + i + 1;
     wall.nextsector = wall.nextwall = -1;
@@ -897,7 +897,7 @@ function polygonSector(board: Board, points: Collection<[number, number]>, hintS
 
 function matchPoints(board: Board, points: Collection<[number, number]>, sectorId: number): [number[], number[]] {
   let pmap = {};
-  for (let [p, i] of indexedIterator(points)) pmap[`${p[0]},${p[1]}`] = i;
+  for (let [p, i] of indexed(points)) pmap[`${p[0]},${p[1]}`] = i;
   let wmap = {};
   let sector = board.sectors[sectorId];
   for (let i = 0; i < sector.wallnum; i++) {
@@ -975,14 +975,14 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   let lastWall = wallInSector(board, sectorId, lastPoint[0], lastPoint[1]);
   let loop = loopWalls(board, firstWall, sectorId);
   if (findFirst(loop, lastWall) == -1) return -1;
-  [firstWall, lastWall, points] = firstWall > lastWall ? [lastWall, firstWall, reversed(points)] : [firstWall, lastWall, points];
+  [firstWall, lastWall, points] = firstWall > lastWall ? [lastWall, firstWall, reverse(points)] : [firstWall, lastWall, points];
   let [nwalls, looppoints, rest] = sliceSector(board, sectorId, points, firstWall, lastWall);
   recreateSectorWalls(board, sectorId, nwalls, looppoints, wallptrs);
   let sector = copySector(board.sectors[sectorId]);
   let newSectorId = addSector(board, sector);
 
   nwalls.clear();
-  points = reversed(points);
+  points = reverse(points);
   firstPoint = points.get(0);
   lastPoint = points.get(points.length() - 1);
   firstWall = wallInSector(board, sectorId, firstPoint[0], firstPoint[1]);
@@ -1013,16 +1013,16 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
 }
 
 export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
-  let sectorId = sectorOfWall(board, wallId);
-  let sector = board.sectors[sectorId];
+  const sectorId = sectorOfWall(board, wallId);
+  const sector = board.sectors[sectorId];
   if (sector.wallnum < 4) throw new Error(`Sector ${sectorId} need to have 3 walls minimum`);
-  let wall = board.walls[wallId];
+  const wall = board.walls[wallId];
   if (wall.nextsector != -1 && board.sectors[wall.nextsector].wallnum < 4)
-    throw new Error(`Sector ${board.sectors[wall.nextsector].wallnum} need to have 3 walls minimum`);
+    throw new Error(`Sector ${wall.nextsector} need to have 3 walls minimum`);
   if (wall.nextwall != -1) {
-    let wall2 = board.walls[wall.nextwall];
-    let sectorId2 = wall.nextsector;
-    let wall2Id = wall.nextwall;
+    const wall2 = board.walls[wall.nextwall];
+    const sectorId2 = wall.nextsector;
+    const wall2Id = wall.nextwall;
     wall2.nextwall = -1;
     wall2.nextsector = -1;
     wall.nextwall = -1;
