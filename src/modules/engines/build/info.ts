@@ -35,8 +35,8 @@ export class Info extends MessageHandlerReflective {
   }
 
   private renderSprite(ctx: BuildContext, id: number) {
+    const sprite = ctx.board.sprites[id];
     this.spriteTable.css('display', '');
-    let sprite = ctx.board.sprites[id];
     this.spriteFields['id'].text(`${id}`);
     this.spriteFields['offset'].text(`${sprite.xoffset}, ${sprite.yoffset}`);
     this.spriteFields['repeat'].text(`${sprite.xrepeat}, ${sprite.yrepeat}`);
@@ -49,8 +49,8 @@ export class Info extends MessageHandlerReflective {
   private renderSector(ctx: BuildContext, sectorEnt: Entity) {
     const id = sectorEnt.id;
     const type = sectorEnt.type;
+    const sector = ctx.board.sectors[id];
     this.sectorTable.css('display', '');
-    let sector = ctx.board.sectors[id];
     this.sectorFields['id'].text(`${id}`);
     if (type == EntityType.CEILING) {
       this.sectorFields['panning'].text(`${sector.ceilingxpanning}, ${sector.ceilingypanning}`);
@@ -69,7 +69,7 @@ export class Info extends MessageHandlerReflective {
 
   private renderWall(ctx: BuildContext, id: number) {
     this.wallTable.css('display', '');
-    let wall = ctx.board.walls[id];
+    const wall = ctx.board.walls[id];
     this.wallFields['id'].text(`${id}`);
     this.wallFields['panning'].text(`${wall.xpanning}, ${wall.ypanning}`);
     this.wallFields['repeat'].text(`${wall.xrepeat}, ${wall.yrepeat}`);
@@ -79,7 +79,7 @@ export class Info extends MessageHandlerReflective {
   }
 
   private prepareWallTable() {
-    let table = this.wallTable = new Table();
+    const table = this.wallTable = new Table();
     table.className("table-striped");
     table.css('display', 'none');
     table.row([span().text('Type'), span().text('Wall')]);
@@ -99,7 +99,7 @@ export class Info extends MessageHandlerReflective {
   }
 
   private prepareSectorTable() {
-    let table = this.sectorTable = new Table();
+    const table = this.sectorTable = new Table();
     table.className("table-striped");
     table.css('display', 'none');
     table.row([span().text('Type'), span().text('Sector')]);
@@ -119,7 +119,7 @@ export class Info extends MessageHandlerReflective {
   }
 
   private prepareSpriteTable() {
-    let table = this.spriteTable = new Table();
+    const table = this.spriteTable = new Table();
     table.className("table-striped");
     table.css('display', 'none');
     table.row([span().text('Type'), span().text('Sprite')]);

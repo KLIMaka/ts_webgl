@@ -2,7 +2,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { Deck } from '../../../collections';
 import * as PROFILE from '../../../profiler';
 import { BuildContext } from '../api';
-import { TopDownBoardVisitorResult, VisResult } from '../boardvisitor';
+import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import * as BGL from './buildgl';
@@ -18,10 +18,10 @@ export function init(gl: WebGLRenderingContext, ctx: BuildContext) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
 
-let visible = new TopDownBoardVisitorResult();
+let visible = new AllBoardVisitorResult();
 export function draw(view: View2d, campos: GLM.Vec3Array, dist: number) {
   PROFILE.startProfile('processing');
-  let result = visible.visit(context.board, campos, dist);
+  let result = visible.visit(context.board);
   PROFILE.endProfile();
 
   BGL.setProjectionMatrix(view.getProjectionMatrix());
