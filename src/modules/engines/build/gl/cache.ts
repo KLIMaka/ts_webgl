@@ -1,10 +1,10 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import { BuildContext } from '../api';
+import { BoardInvalidate } from '../edit/messages';
+import { MessageHandlerReflective } from '../handlerapi';
 import { EntityType } from '../hitscan';
 import { buildCeilingHinge, buildFloorHinge, genGridMatrix, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
 import { BuildRenderableProvider, GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, SectorRenderable, Solid, WallRenderable, wrapStatePred } from './renderable';
-import { MessageHandler, Message, MessageHandlerReflective } from '../handlerapi';
-import { BoardInvalidate } from '../edit/messages';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }

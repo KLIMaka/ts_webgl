@@ -5,7 +5,7 @@ import { Controller2D } from "../../controller2d";
 import { Controller3D } from "../../controller3d";
 import { BuildContext, Target, View } from "./api";
 import { closestWallInSector, closestWallSegment, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall, closestWallPoint } from "./boardutils";
-import { Frame, Mouse, NamedMessage } from "./edit/messages";
+import { Frame, Mouse, NamedMessage, BoardInvalidate } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
@@ -86,9 +86,7 @@ export class View2d extends MessageHandlerReflective implements View {
   }
 
   Frame(msg: Message, ctx: BuildContext) {
-    this.snapTargetValue.invalidate();
-    this.direction.invalidate();
-    this.hit.invalidate();
+    this.invalidateTarget();
     this.control.setSize(this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
     const max = this.control.getPointerPosition(this.pointer, 1, 1);
     const campos = this.control.getPosition();
@@ -99,6 +97,16 @@ export class View2d extends MessageHandlerReflective implements View {
     const state = ctx.state;
     if (state.get('zoom+')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() / 1.1);
     if (state.get('zoom-')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() * 1.1);
+  }
+
+  private invalidateTarget() {
+    this.snapTargetValue.invalidate();
+    this.direction.invalidate();
+    this.hit.invalidate();
+  }
+
+  BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
+    this.invalidateTarget();
   }
 
   bind(ctx: BuildContext) {
@@ -194,9 +202,7 @@ export class View3d extends MessageHandlerReflective implements View {
   }
 
   Frame(msg: Frame, ctx: BuildContext) {
-    this.snapTargetValue.invalidate();
-    this.direction.invalidate();
-    this.hit.invalidate();
+    this.invalidateTarget();
     build2gl(this.cursor, this.snapTarget().coords);
     BGL.setCursorPosiotion(this.cursor[0], this.cursor[1], this.cursor[2]);
     this.aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
@@ -218,6 +224,16 @@ export class View3d extends MessageHandlerReflective implements View {
     this.playerstart.z = int(p[1] * ZSCALE);
     if (!inSector(ctx.board, this.playerstart.x, this.playerstart.y, this.playerstart.sectnum))
       this.playerstart.sectnum = findSector(ctx.board, this.playerstart.x, this.playerstart.y, this.playerstart.sectnum);
+  }
+
+  BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
+    this.invalidateTarget();
+  }
+
+  private invalidateTarget() {
+    this.snapTargetValue.invalidate();
+    this.direction.invalidate();
+    this.hit.invalidate();
   }
 
   bind(ctx: BuildContext) {
