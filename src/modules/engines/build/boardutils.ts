@@ -176,10 +176,8 @@ function moveWalls(board: Board, secId: number, afterWallId: number, size: numbe
 
   for (let w = 0; w < board.numwalls; w++) {
     let wall = board.walls[w];
-    if (wall.point2 > afterWallId)
-      wall.point2 += size;
-    if (wall.nextwall > afterWallId)
-      wall.nextwall += size;
+    if (wall.point2 > afterWallId) wall.point2 += size;
+    if (wall.nextwall > afterWallId) wall.nextwall += size;
   }
   for (let i = 0; i < wallptrs.length(); i++) {
     let w = wallptrs.get(i);
@@ -1028,14 +1026,18 @@ export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollec
   if (wall.nextsector != -1 && board.sectors[wall.nextsector].wallnum < 4)
     throw new Error(`Sector ${wall.nextsector} need to have 3 walls minimum`);
   if (wall.nextwall != -1) {
-    const wall2 = board.walls[wall.nextwall];
+    const wall2Id = board.walls[wall.nextwall].point2;
+    const lastWallId = lastwall(board, wallId);
+    board.walls[lastWallId].nextwall = wall.nextwall;
+    board.walls[wall.nextwall].nextwall = lastWallId;
+    const wall2 = board.walls[wall2Id];
     const sectorId2 = wall.nextsector;
-    const wall2Id = wall.nextwall;
     wall2.nextwall = -1;
     wall2.nextsector = -1;
     wall.nextwall = -1;
     wall.nextsector = -1;
     moveWalls(board, sectorId2, wall2Id, -1, wallptrs);
+    wallId += wallId > wall2Id ? -1 : 0;
   }
   moveWalls(board, sectorId, wallId, -1, wallptrs);
 }

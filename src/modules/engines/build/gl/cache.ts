@@ -300,7 +300,7 @@ export class RenderablesCache extends MessageHandlerReflective {
   }
 
   BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
-    if (msg == null) this.invalidateAll();
+    if (msg.ent == null) this.invalidateAll();
     else if (msg.ent.isSector()) this.invalidateSector(msg.ent.id);
     else if (msg.ent.isSprite()) this.invalidateSprite(msg.ent.id);
     else if (msg.ent.isWall()) this.invalidateWall(msg.ent.id);
