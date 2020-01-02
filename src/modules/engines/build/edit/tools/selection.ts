@@ -10,7 +10,7 @@ import { Entity, EntityType } from "../../hitscan";
 import { Board } from "../../structs";
 import { build2gl, sectorOfWall } from "../../utils";
 import { MovingHandle } from "../handle";
-import { EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
+import { EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove, BoardInvalidate } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
@@ -178,7 +178,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     if (target.entity == null || !target.entity.isWall()) return;
     setFirstWall(ctx.board, sectorOfWall(ctx.board, target.entity.id), target.entity.id);
     ctx.commit();
-    ctx.invalidator.invalidateAll();
+    ctx.message(new BoardInvalidate(null));
   }
 
   private setTexture(ctx: BuildContext) {

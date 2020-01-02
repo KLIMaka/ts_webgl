@@ -6,7 +6,7 @@ import { MessageHandlerReflective } from "../../handlerapi";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
 import { getClosestSectorZ } from "../editutils";
-import { Frame, NamedMessage, Render } from "../messages";
+import { Frame, NamedMessage, Render, BoardInvalidate } from "../messages";
 import { vec3 } from "../../../../../libs_js/glmatrix";
 
 class Contour {
@@ -241,7 +241,7 @@ export class DrawSector extends MessageHandlerReflective {
       createInnerLoop(ctx.board, sectorId, this.points);
     createNewSector(ctx.board, this.points);
     ctx.commit();
-    ctx.invalidator.invalidateAll();
+    ctx.message(new BoardInvalidate(null));
     this.points.clear();
     this.contour.clear();
     this.contour.pushPoint(0, 0);
@@ -250,7 +250,7 @@ export class DrawSector extends MessageHandlerReflective {
   private splitSector(ctx: BuildContext, sectorId: number) {
     if (splitSector(ctx.board, sectorId, this.points) != -1) {
       ctx.commit();
-      ctx.invalidator.invalidateAll();
+      ctx.message(new BoardInvalidate(null));
     }
     this.points.clear();
     this.contour.clear();

@@ -1,6 +1,7 @@
 import { Deck } from "../../../collections";
 import { Renderable, RenderableList } from "../gl/renderable";
 import { Message } from "../handlerapi";
+import { Entity } from "../hitscan";
 
 export interface Mover { readonly dx: number; readonly dy: number; readonly dz: number; }
 
@@ -18,6 +19,7 @@ export class Palette implements Message { constructor(public value: number, publ
 export class Flip implements Message { constructor() { } }
 export class SpriteMode implements Message { }
 export class Frame implements Message { constructor(public dt: number) { } }
+export class BoardInvalidate implements Message { constructor(public ent: Entity) { } }
 export class PostFrame implements Message { }
 export class Mouse implements Message { constructor(public x: number, public y: number) { } }
 export class SetWallCstat implements Message { constructor(public name: string, public value = false, public toggle = true) { } }

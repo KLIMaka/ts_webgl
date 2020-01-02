@@ -2,6 +2,14 @@ import { Board, Sprite } from "./structs";
 import { List, Node } from "../../../libs/list";
 import { lastwall, nextwall } from "./boardutils";
 
+class BoardVersioner {
+  private version = 0;
+
+  public incVersion() { this.version++ }
+  public getVersion() { return this.version }
+  public getWallId(version: number, id: number) { return this.version == version ? id : -1 }
+}
+
 export type Pointer = Node<number>;
 
 export class BoardHelper {

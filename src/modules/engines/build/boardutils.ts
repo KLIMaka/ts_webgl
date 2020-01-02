@@ -1012,6 +1012,14 @@ export function insertSprite(board: Board, x: number, y: number, z: number, spri
   return board.numsprites++;
 }
 
+export function deleteSprite(board: Board, spriteId: number) {
+  if (spriteId < 0 || spriteId >= board.numsprites) return;
+  for (let i = spriteId; i < board.numsprites; i++) {
+    board.sprites[i] = board.sprites[i + 1];
+  }
+  board.numsprites--;
+}
+
 export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   const sectorId = sectorOfWall(board, wallId);
   const sector = board.sectors[sectorId];

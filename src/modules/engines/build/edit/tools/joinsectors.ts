@@ -1,7 +1,7 @@
 import { BuildContext } from "../../api";
 import { joinSectors } from "../../boardutils";
 import { MessageHandlerReflective } from "../../handlerapi";
-import { NamedMessage } from "../messages";
+import { NamedMessage, BoardInvalidate } from "../messages";
 
 export class JoinSectors extends MessageHandlerReflective {
   private sectorId1 = -1;
@@ -21,7 +21,7 @@ export class JoinSectors extends MessageHandlerReflective {
       let result = joinSectors(ctx.board, this.sectorId1, this.sectorId2);
       if (result == 0) {
         ctx.commit();
-        ctx.invalidator.invalidateAll();
+        ctx.message(new BoardInvalidate(null));
       }
       this.sectorId1 = -1;
       this.sectorId2 = -1;

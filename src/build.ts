@@ -98,7 +98,7 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
 
   let cache = new RenderablesCache();
   let view = new SwappableView(gl, cache, impl);
-  let context = new Context(art, board, view, cache, { cloneBoard });
+  let context = new Context(art, board, view, { cloneBoard });
   context.loadBinds(binds);
   context.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
   context.addHandler(new SplitWall());
@@ -108,6 +108,7 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   context.addHandler(new Info());
   context.addHandler(new StatusBar());
   context.addHandler(view);
+  context.addHandler(cache);
 
   BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {

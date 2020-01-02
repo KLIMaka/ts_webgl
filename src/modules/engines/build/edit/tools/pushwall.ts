@@ -7,7 +7,7 @@ import { Wireframe } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { build2gl, createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { MovingHandle } from "../handle";
-import { Frame, NamedMessage, Render } from "../messages";
+import { Frame, NamedMessage, Render, BoardInvalidate } from "../messages";
 
 const wallNormal_ = vec3.create();
 const wallNormal1_ = vec3.create();
@@ -34,7 +34,7 @@ export class PushWall extends MessageHandlerReflective {
   private stop(ctx: BuildContext, copy: boolean) {
     pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, copy);
     ctx.commit();
-    ctx.invalidator.invalidateAll();
+    ctx.message(new BoardInvalidate(null));
     this.wallId = -1;
     this.movingHandle.stop();
   }

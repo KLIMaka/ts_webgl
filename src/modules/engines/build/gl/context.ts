@@ -4,8 +4,8 @@ import { InputState } from '../../../input';
 import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { State as StateGl } from '../../../stategl';
-import { ArtProvider, Bindable, BoardInvalidator, BoardManipulator, BuildContext, State, View } from '../api';
-import { Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
+import { ArtProvider, Bindable, BoardManipulator, BuildContext, State, View } from '../api';
+import { Frame, Mouse, NamedMessage, PostFrame, Render, BoardInvalidate } from '../edit/messages';
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
@@ -51,6 +51,7 @@ const FRAME = new Frame(0);
 const POSTFRAME = new PostFrame();
 const MOUSE = new Mouse(0, 0);
 const RENDER = new Render();
+const INVALIDATE_ALL = new BoardInvalidate(null);
 
 const onTopRenderable = new WrapRenderable(RENDER.renderable,
   (ctx: BuildContext, gl: WebGLRenderingContext, state: StateGl) => {
@@ -67,7 +68,6 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly state = new StateImpl(this);
   readonly view: View;
-  readonly invalidator: BoardInvalidator;
 
   private binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
@@ -78,13 +78,12 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private handlers = new MessageHandlerList();
   private boundObjects = new Set();
 
-  constructor(art: ArtProvider, board: Board, view: View, inv: BoardInvalidator, manipulator: BoardManipulator) {
+  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator) {
     super();
     this.art = art;
     this.boardManipulator = manipulator;
     this.activeBoard = board;
     this.view = this.bind(view);
-    this.invalidator = this.bind(inv);
     this.commit();
 
     this.state.register('gridScale', this.gridScale);
@@ -149,13 +148,17 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private undo() {
     this.history.pop();
     this.activeBoard = this.boardManipulator.cloneBoard(this.history.top());
-    this.invalidator.invalidateAll();
+    this.message(INVALIDATE_ALL);
   }
 
   addHandler(handler: MessageHandler): void
   addHandler(handler: MessageHandler & Bindable): void {
     if (handler.bind != undefined) this.bind(handler);
     this.handlers.list().push(handler);
+  }
+
+  message(msg: Message) {
+    this.handle(msg, this);
   }
 
   handle(msg: Message, ctx: BuildContext) {
@@ -172,14 +175,14 @@ export class Context extends MessageHandlerReflective implements BuildContext {
     PROFILE.start();
     this.mouseMove(input);
     FRAME.dt = dt;
-    this.handle(FRAME, this);
+    this.message(FRAME);
     for (let contextedMessage of this.poolMessages(input)) {
       let message = contextedMessage(this);
-      this.handle(message, this);
+      this.message(message);
     }
     this.drawTools();
     PROFILE.endProfile();
-    this.handle(POSTFRAME, this);
+    this.message(POSTFRAME);
   }
 
   NamedMessage(msg: NamedMessage, ctx: BuildContext) {

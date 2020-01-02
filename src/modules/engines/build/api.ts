@@ -1,7 +1,7 @@
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
 import { Renderable } from "./gl/renderable";
-import { Context } from "./handlerapi";
+import { Context, Message } from "./handlerapi";
 import { Entity, Ray } from "./hitscan";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
@@ -28,13 +28,6 @@ export interface View extends MoveStruct, Bindable {
   isWireframe(): boolean;
 }
 
-export interface BoardInvalidator extends Bindable {
-  invalidateAll(): void;
-  invalidateSector(id: number): void;
-  invalidateWall(id: number): void;
-  invalidateSprite(id: number): void;
-}
-
 export interface BoardManipulator {
   cloneBoard(board: Board): Board;
 }
@@ -52,11 +45,11 @@ export const stateCtxValue = <T>(name: string) => (ctx: BuildContext): T => ctx.
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
-  readonly invalidator: BoardInvalidator;
   readonly state: State;
   readonly gridScale: number;
   readonly view: View;
 
   snap(x: number): number;
   commit(): void;
+  message(msg: Message): void;
 }

@@ -1,11 +1,12 @@
 import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { BuildContext } from "../api";
-import { insertSprite, moveSprite } from "../boardutils";
-import { MessageHandlerReflective } from "../handlerapi";
+import { deleteSprite, insertSprite, moveSprite } from "../boardutils";
+import { MessageHandlerReflective, Message } from "../handlerapi";
 import { ZSCALE } from "../utils";
-import { Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove } from "./messages";
+import { Flip, Highlight, Move, NamedMessage, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, BoardInvalidate } from "./messages";
 import { MOVE_COPY, MOVE_ROTATE } from "./tools/selection";
+import { Entity, EntityType } from "../hitscan";
 
 export class SpriteEnt extends MessageHandlerReflective {
 
@@ -16,7 +17,8 @@ export class SpriteEnt extends MessageHandlerReflective {
   constructor(
     public spriteId: number,
     public origin = GLM.vec3.create(),
-    public origAng = 0) { super() }
+    public origAng = 0,
+    private valid = true) { super() }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
@@ -29,13 +31,13 @@ export class SpriteEnt extends MessageHandlerReflective {
     if (ctx.state.get(MOVE_ROTATE)) {
       let spr = ctx.board.sprites[this.spriteId];
       spr.ang = ctx.snap(this.origAng + msg.dz);
-      ctx.invalidator.invalidateSprite(this.spriteId);
+      ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
     } else {
       let x = ctx.snap(this.origin[0] + msg.dx);
       let y = ctx.snap(this.origin[2] + msg.dy);
       let z = ctx.snap(this.origin[1] + msg.dz) * ZSCALE;
       if (moveSprite(ctx.board, this.spriteId, x, y, z)) {
-        ctx.invalidator.invalidateSprite(this.spriteId);
+        ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
       }
     }
   }
@@ -47,7 +49,7 @@ export class SpriteEnt extends MessageHandlerReflective {
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let sprite = ctx.board.sprites[this.spriteId];
     sprite.picnum = msg.picnum;
-    ctx.invalidator.invalidateSprite(this.spriteId);
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
@@ -55,7 +57,7 @@ export class SpriteEnt extends MessageHandlerReflective {
     let shade = sprite.shade;
     if (msg.absolute && shade == msg.value) return;
     if (msg.absolute) sprite.shade = msg.value; else sprite.shade += msg.value;
-    ctx.invalidator.invalidateSprite(this.spriteId);
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
@@ -72,7 +74,7 @@ export class SpriteEnt extends MessageHandlerReflective {
       sprite.xrepeat += msg.xrepeat;
       sprite.yrepeat += msg.yrepeat;
     }
-    ctx.invalidator.invalidateSprite(this.spriteId);
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
   }
 
   public Palette(msg: Palette, ctx: BuildContext) {
@@ -83,13 +85,13 @@ export class SpriteEnt extends MessageHandlerReflective {
     } else {
       spr.pal = cyclic(spr.pal + msg.value, msg.max);
     }
-    ctx.invalidator.invalidateSprite(this.spriteId);
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
   }
 
   public SpriteMode(msg: SpriteMode, ctx: BuildContext) {
     let spr = ctx.board.sprites[this.spriteId];
     spr.cstat.type = cyclic(spr.cstat.type + 1, 3);
-    ctx.invalidator.invalidateSprite(this.spriteId);
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
   }
 
   public Flip(msg: Flip, ctx: BuildContext) {
@@ -98,6 +100,24 @@ export class SpriteEnt extends MessageHandlerReflective {
     let nflip = cyclic(flip + 1, 4);
     spr.cstat.xflip = nflip & 1;
     spr.cstat.yflip = (nflip & 2) >> 1;
-    ctx.invalidator.invalidateSprite(this.spriteId);
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
+  }
+
+  public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
+    switch (msg.name) {
+      case 'delete':
+        deleteSprite(ctx.board, this.spriteId);
+        ctx.commit();
+        ctx.message(new BoardInvalidate(null));
+        return;
+    }
+  }
+
+  public BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
+    if (msg.ent == null) this.valid = false;
+  }
+
+  public handle(msg: Message, ctx: BuildContext) {
+    if (this.valid) super.handle(msg, ctx);
   }
 }

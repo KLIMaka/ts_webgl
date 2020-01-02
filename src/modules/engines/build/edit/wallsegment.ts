@@ -4,12 +4,12 @@ import * as GLM from "../../../../libs_js/glmatrix";
 import { Collection, Deck, IndexedDeck } from "../../../collections";
 import { BuildContext, Target } from "../api";
 import { connectedWalls, fixxrepeat, mergePoints, moveWall, nextwall, lastwall } from "../boardutils";
-import { MessageHandlerReflective } from "../handlerapi";
-import { Hitscan } from "../hitscan";
+import { MessageHandlerReflective, Message } from "../handlerapi";
+import { Hitscan, EntityType, Entity } from "../hitscan";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetWallCstat, Shade, StartMove } from "./messages";
+import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, ResetPanRepeat, SetPicnum, SetWallCstat, Shade, StartMove, BoardInvalidate } from "./messages";
 
 function getClosestWallByIds(board: Board, target: Target, ids: Collection<number>): number {
   if (ids.length() == 1) return ids.get(0);
@@ -89,7 +89,8 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
     public active = false,
     public highlighted = collectHighlightedWalls(board, wallIds),
     public connectedWalls = collectConnectedWalls(board, wallIds),
-    public motionSectors = collectMotionSectors(board, wallIds)) { super() }
+    public motionSectors = collectMotionSectors(board, wallIds),
+    private valid = true) { super() }
 
   private invalidate(ctx: BuildContext) {
     let invalidatedSectors = WallSegmentsEnt.invalidatedSectors.clear();
@@ -156,11 +157,11 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
   }
 
   private invalidateWall(w: number, ctx: BuildContext) {
-    ctx.invalidator.invalidateWall(w);
+    ctx.message(new BoardInvalidate(new Entity(w, EntityType.WALL_POINT)));
     let wall = ctx.board.walls[w];
     if (wall.cstat.swapBottoms && wall.nextwall != -1 ||
       wall.nextwall != -1 && ctx.board.walls[wall.nextwall].cstat.swapBottoms)
-      ctx.invalidator.invalidateWall(wall.nextwall);
+      ctx.message(new BoardInvalidate(new Entity(wall.nextwall, EntityType.WALL_POINT)));
   }
 
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
@@ -242,5 +243,13 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
       wall.cstat[msg.name] = stat ? 0 : 1;
       this.invalidateWall(w, ctx);
     }
+  }
+
+  public BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
+    if (msg.ent == null) this.valid = false;
+  }
+
+  public handle(msg: Message, ctx: BuildContext) {
+    if (this.valid) super.handle(msg, ctx);
   }
 }

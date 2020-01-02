@@ -1,9 +1,10 @@
 import * as GLM from '../../../../libs_js/glmatrix';
+import { BuildContext } from '../api';
 import { EntityType } from '../hitscan';
-import { buildCeilingHinge, buildFloorHinge, updateSectorWireframe, genGridMatrix, SectorHelper, updateSector, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSector2d, updateWall2d } from './builders';
-import { GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, Solid, BuildRenderableProvider, SectorRenderable, WallRenderable, Wireframe, wrapState, notStatePred, wrapStatePred } from './renderable';
-import { BuildContext, BoardInvalidator } from '../api';
-import { View3d } from '../view';
+import { buildCeilingHinge, buildFloorHinge, genGridMatrix, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
+import { BuildRenderableProvider, GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, SectorRenderable, Solid, WallRenderable, wrapStatePred } from './renderable';
+import { MessageHandler, Message, MessageHandlerReflective } from '../handlerapi';
+import { BoardInvalidate } from '../edit/messages';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -46,7 +47,7 @@ class CacheMap<T extends Renderable> {
   }
 }
 
-export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider, BoardInvalidator {
+export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider {
   private sectors = new CacheMap(updateSector2d);
   private walls = new CacheMap(updateWall2d);
   private sprites = new CacheMap(updateSprite);
@@ -92,7 +93,7 @@ export class CachedTopDownBuildRenderableProvider implements BuildRenderableProv
   }
 }
 
-export class CachedBuildRenderableProvider implements BuildRenderableProvider, BoardInvalidator {
+export class CachedBuildRenderableProvider implements BuildRenderableProvider {
   private sectors = new CacheMap(updateSector);
   private walls = new CacheMap(updateWall);
   private sprites = new CacheMap(updateSprite);
@@ -139,7 +140,7 @@ export class CachedBuildRenderableProvider implements BuildRenderableProvider, B
 }
 
 
-export class CachedHelperBuildRenderableProvider implements BuildRenderableProvider, BoardInvalidator {
+export class CachedHelperBuildRenderableProvider implements BuildRenderableProvider {
   private sectors: CacheMap<SectorHelper>;
   private walls: CacheMap<WallHelper>;
   private sprites: CacheMap<Renderable>;
@@ -280,12 +281,13 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   }
 }
 
-export class RenderablesCache implements BoardInvalidator {
+export class RenderablesCache extends MessageHandlerReflective {
   readonly geometry: CachedBuildRenderableProvider;
   readonly helpers: CachedHelperBuildRenderableProvider;
   readonly topdown: CachedTopDownBuildRenderableProvider;
 
   constructor() {
+    super();
     this.geometry = new CachedBuildRenderableProvider();
     this.helpers = new CachedHelperBuildRenderableProvider(this.geometry);
     this.topdown = new CachedTopDownBuildRenderableProvider();
@@ -295,6 +297,13 @@ export class RenderablesCache implements BoardInvalidator {
     this.geometry.bind(ctx);
     this.helpers.bind(ctx);
     this.topdown.bind(ctx);
+  }
+
+  BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
+    if (msg == null) this.invalidateAll();
+    else if (msg.ent.isSector()) this.invalidateSector(msg.ent.id);
+    else if (msg.ent.isSprite()) this.invalidateSprite(msg.ent.id);
+    else if (msg.ent.isWall()) this.invalidateWall(msg.ent.id);
   }
 
   invalidateAll(): void {

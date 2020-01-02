@@ -2,13 +2,14 @@ import { cyclic, tuple } from "../../../../libs/mathutils";
 import * as GLM from "../../../../libs_js/glmatrix";
 import { Deck, IndexedDeck } from "../../../collections";
 import { BuildContext } from "../api";
-import { connectedWalls, mergePoints, moveWall, lastwall, splitWall, deleteWall } from "../boardutils";
-import { MessageHandlerReflective } from "../handlerapi";
+import { connectedWalls, deleteWall, lastwall, mergePoints, moveWall, splitWall } from "../boardutils";
+import { MessageHandlerReflective, Message } from "../handlerapi";
 import { Board } from "../structs";
 import { sectorOfWall } from "../utils";
 import { invalidateSectorAndWalls } from "./editutils";
-import { EndMove, Flip, Highlight, Move, Palette, PanRepeat, SetPicnum, Shade, StartMove, NamedMessage } from "./messages";
+import { EndMove, Flip, Highlight, Move, NamedMessage, Palette, PanRepeat, SetPicnum, Shade, StartMove, BoardInvalidate } from "./messages";
 import { MOVE_COPY } from "./tools/selection";
+import { Entity, EntityType } from "../hitscan";
 
 function collectConnectedWalls(board: Board, wallId: number) {
   let result = new Deck<number>();
@@ -28,7 +29,8 @@ export class WallEnt extends MessageHandlerReflective {
     public wallId: number,
     public origin = GLM.vec2.create(),
     public active = false,
-    public connectedWalls = collectConnectedWalls(board, wallId)) { super() }
+    public connectedWalls = collectConnectedWalls(board, wallId),
+    private valid = true) { super() }
 
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
@@ -86,7 +88,7 @@ export class WallEnt extends MessageHandlerReflective {
   public SetPicnum(msg: SetPicnum, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     wall.picnum = msg.picnum;
-    ctx.invalidator.invalidateWall(this.wallId);
+    ctx.message(new BoardInvalidate(new Entity(this.wallId, EntityType.WALL_POINT)));
   }
 
   public Shade(msg: Shade, ctx: BuildContext) {
@@ -94,7 +96,7 @@ export class WallEnt extends MessageHandlerReflective {
     let shade = wall.shade;
     if (msg.absolute && shade == msg.value) return;
     if (msg.absolute) wall.shade = msg.value; else wall.shade += msg.value;
-    ctx.invalidator.invalidateWall(this.wallId);
+    ctx.message(new BoardInvalidate(new Entity(this.wallId, EntityType.WALL_POINT)));
   }
 
   public PanRepeat(msg: PanRepeat, ctx: BuildContext) {
@@ -111,7 +113,7 @@ export class WallEnt extends MessageHandlerReflective {
       wall.xrepeat += msg.xrepeat;
       wall.yrepeat += msg.yrepeat;
     }
-    ctx.invalidator.invalidateWall(this.wallId);
+    ctx.message(new BoardInvalidate(new Entity(this.wallId, EntityType.WALL_POINT)));
   }
 
   public Palette(msg: Palette, ctx: BuildContext) {
@@ -122,7 +124,7 @@ export class WallEnt extends MessageHandlerReflective {
     } else {
       wall.pal = cyclic(wall.pal + msg.value, msg.max);
     }
-    ctx.invalidator.invalidateWall(this.wallId);
+    ctx.message(new BoardInvalidate(new Entity(this.wallId, EntityType.WALL_POINT)));
   }
 
   public Flip(msg: Flip, ctx: BuildContext) {
@@ -131,14 +133,22 @@ export class WallEnt extends MessageHandlerReflective {
     let nflip = cyclic(flip + 1, 4);
     wall.cstat.xflip = nflip & 1;
     wall.cstat.yflip = (nflip & 2) >> 1;
-    ctx.invalidator.invalidateWall(this.wallId);
+    ctx.message(new BoardInvalidate(new Entity(this.wallId, EntityType.WALL_POINT)));
   }
 
   public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
     if (msg.name == 'delete') {
       deleteWall(ctx.board, this.wallId);
       ctx.commit();
-      ctx.invalidator.invalidateAll();
+      ctx.message(new BoardInvalidate(null));
     }
+  }
+
+  public BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
+    if (msg.ent == null) this.valid = false;
+  }
+
+  public handle(msg: Message, ctx: BuildContext) {
+    if (this.valid) super.handle(msg, ctx);
   }
 }
