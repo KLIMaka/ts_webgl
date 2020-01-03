@@ -6,6 +6,7 @@ import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, Wal
 import { findSector, sectorOfWall, wallNormal } from './utils';
 
 export const DEFAULT_REPEAT_RATE = 128;
+const NULL_WALL = new Wall();
 
 let looppoints_ = new Deck<number>();
 export function looppoints(board: Board, sectorId: number): Collection<number> {
@@ -173,6 +174,10 @@ function addSector(board: Board, sector: Sector) {
 
 function moveWalls(board: Board, secId: number, afterWallId: number, size: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   if (size == 0) return;
+  if (size < 0) {
+    for (let w = afterWallId; w < afterWallId - size; w++)
+      board.walls[w] = NULL_WALL;
+  }
 
   for (let w = 0; w < board.numwalls; w++) {
     let wall = board.walls[w];
@@ -649,7 +654,6 @@ function updateSpriteSector(board: Board, fromSector: number) {
   }
 }
 
-let nullWall = new Wall();
 function resizeWalls(board: Board, sectorId: number, newSize: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sec = board.sectors[sectorId];
   let dw = newSize - sec.wallnum;
@@ -657,10 +661,6 @@ function resizeWalls(board: Board, sectorId: number, newSize: number, wallptrs: 
   if (dw > 0) {
     moveWalls(board, sectorId, sec.wallptr + sec.wallnum - 1, dw, wallptrs);
   } else {
-    let from = sec.wallptr + newSize;
-    let end = from - dw;
-    for (let w = from; w < end; w++)
-      board.walls[w] = nullWall;
     moveWalls(board, sectorId, sec.wallptr + newSize, dw, wallptrs)
   }
 }
@@ -1018,28 +1018,53 @@ export function deleteSprite(board: Board, spriteId: number) {
   board.numsprites--;
 }
 
-export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
+function deleteWallImpl(board: Board, wallId: number) {
   const sectorId = sectorOfWall(board, wallId);
-  const sector = board.sectors[sectorId];
-  if (sector.wallnum < 4) throw new Error(`Sector ${sectorId} need to have 3 walls minimum`);
+  const originalPoint2 = board.walls[wallId].point2;
+  const point2 = originalPoint2 > wallId ? wallId : originalPoint2;
+  for (let w = 0; w < board.numwalls; w++) {
+    if (w == wallId) continue;
+    const wall = board.walls[w];
+    if (wall.nextwall == wallId) throw new Error(`Wall ${w} nextwall references to deleting wall ${wallId}`);
+    if (wall.point2 == wallId) wall.point2 = point2;
+    if (wall.point2 > wallId) wall.point2--;
+    if (wall.nextwall > wallId) wall.nextwall--;
+  }
+  for (let i = wallId; i < board.numwalls - 1; i++) board.walls[i] = board.walls[i + 1];
+  board.walls[board.numwalls - 1] = null;
+  board.numwalls--;
+  board.sectors[sectorId].wallnum--;
+  for (let i = 0; i < board.numsectors; i++) {
+    let sec = board.sectors[i];
+    if (sec.wallptr > wallId) sec.wallptr--;
+  }
+}
+
+export function isSectorTJunction(board: Board, wallId: number) {
   const wall = board.walls[wallId];
-  if (wall.nextsector != -1 && board.sectors[wall.nextsector].wallnum < 4)
-    throw new Error(`Sector ${wall.nextsector} need to have 3 walls minimum`);
-  if (wall.nextwall != -1) {
+  const lwall = board.walls[lastwall(board, wallId)];
+  return wall.nextsector != lwall.nextsector;
+}
+
+export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
+  if (isSectorTJunction(board, wallId)) throw new Error(`Wall ${wallId} is sector T junction`);
+  const sectorId = sectorOfWall(board, wallId);
+  const loop = loopWalls(board, wallId, sectorId)
+  if (loop.length() < 4) throw new Error(`Loop of Wall ${wallId} need to have 3 walls minimum`);
+  const wall = board.walls[wallId];
+  if (wall.nextsector != -1) {
+    const loop = loopWalls(board, wall.nextwall, wall.nextsector);
+    if (loop.length() < 4) throw new Error(`Loop of Wall ${wall.nextwall} need to have 3 walls minimum`);
     const wall2Id = board.walls[wall.nextwall].point2;
     const lastWallId = lastwall(board, wallId);
     board.walls[lastWallId].nextwall = wall.nextwall;
     board.walls[wall.nextwall].nextwall = lastWallId;
-    const wall2 = board.walls[wall2Id];
-    const sectorId2 = wall.nextsector;
-    wall2.nextwall = -1;
-    wall2.nextsector = -1;
     wall.nextwall = -1;
     wall.nextsector = -1;
-    moveWalls(board, sectorId2, wall2Id, -1, wallptrs);
+    deleteWallImpl(board, wall2Id);
     wallId += wallId > wall2Id ? -1 : 0;
   }
-  moveWalls(board, sectorId, wallId, -1, wallptrs);
+  deleteWallImpl(board, wallId);
 }
 
 export function mergePoints(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
