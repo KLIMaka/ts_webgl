@@ -21,7 +21,8 @@ export function looppoints(board: Board, sectorId: number): Collection<number> {
 }
 
 let loopwalls_ = new Deck<number>();
-export function loopWalls(board: Board, wallId: number, sectorId: number): Collection<number> {
+export function loopWalls(board: Board, wallId: number): Collection<number> {
+  const sectorId = sectorOfWall(board, wallId);
   let sec = board.sectors[sectorId];
   loopwalls_.clear();
   let loopFound = false;
@@ -34,7 +35,6 @@ export function loopWalls(board: Board, wallId: number, sectorId: number): Colle
       loopwalls_.clear();
     }
   }
-  return null;
 }
 
 function distanceToWallSegment(board: Board, wallId: number, x: number, y: number): number {
@@ -882,16 +882,34 @@ export function createInnerLoop(board: Board, sectorId: number, points: Collecti
   }
 }
 
+export function isOuterLoop(board: Board, wallId: number) {
+  const points = new Deck<[number, number]>();
+  const loop = loopWalls(board, wallId);
+  for (let w of loop) points.push([board.walls[w].x, board.walls[w].y]);
+  return clockwise(points);
+}
+
 export function fillInnerLoop(board: Board, wallId: number) {
   const wall = board.walls[wallId];
   if (wall.nextsector != -1) throw new Error(`Already filled`);
-  const sectorId = sectorOfWall(board, wallId);
-  const loop = loopWalls(board, wallId, sectorId);
+  const loop = loopWalls(board, wallId);
   for (let w of loop) if (board.walls[w].nextsector != -1) throw new Error(`Already filled`);
   const points = new Deck<[number, number]>();
   for (let w of loop) points.push([board.walls[w].x, board.walls[w].y]);
   if (clockwise(points)) throw new Error('Only inner loops can be filled');
   createNewSector(board, points);
+}
+
+export function deleteLoop(board: Board, wallId: number) {
+  const loop = loopWalls(board, wallId);
+  for (let w of loop) if (board.walls[w].nextsector != -1) throw new Error('Cannot delete filled loop');
+  if (isOuterLoop(board, wallId)) throw new Error('Cannot delete outer loops');
+  const sectorId = sectorOfWall(board, wallId);
+  moveWalls(board, sectorId, loop.get(0), -loop.length());
+}
+
+export function deleteSectorFull(board: Board, sectorId: number) {
+
 }
 
 function polygonSector(board: Board, points: Collection<[number, number]>, hintSectorId: number): number {
@@ -982,7 +1000,7 @@ export function splitSector(board: Board, sectorId: number, points: Collection<[
   let lastPoint = points.get(points.length() - 1);
   let firstWall = wallInSector(board, sectorId, firstPoint[0], firstPoint[1]);
   let lastWall = wallInSector(board, sectorId, lastPoint[0], lastPoint[1]);
-  let loop = loopWalls(board, firstWall, sectorId);
+  let loop = loopWalls(board, firstWall);
   if (findFirst(loop, lastWall) == -1) return -1;
   [firstWall, lastWall, points] = firstWall > lastWall ? [lastWall, firstWall, reverse(points)] : [firstWall, lastWall, points];
   let [nwalls, looppoints, rest] = sliceSector(board, sectorId, points, firstWall, lastWall);
@@ -1059,12 +1077,11 @@ export function isSectorTJunction(board: Board, wallId: number) {
 
 export function deleteWall(board: Board, wallId: number, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   if (isSectorTJunction(board, wallId)) throw new Error(`Wall ${wallId} is sector T junction`);
-  const sectorId = sectorOfWall(board, wallId);
-  const loop = loopWalls(board, wallId, sectorId)
+  const loop = loopWalls(board, wallId)
   if (loop.length() < 4) throw new Error(`Loop of Wall ${wallId} need to have 3 walls minimum`);
   const wall = board.walls[wallId];
   if (wall.nextsector != -1) {
-    const loop = loopWalls(board, wall.nextwall, wall.nextsector);
+    const loop = loopWalls(board, wall.nextwall);
     if (loop.length() < 4) throw new Error(`Loop of Wall ${wall.nextwall} need to have 3 walls minimum`);
     const wall2Id = board.walls[wall.nextwall].point2;
     const lastWallId = lastwall(board, wallId);

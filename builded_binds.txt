@@ -49,6 +49,7 @@ CTRL+Z          undo
 DELETE          delete
 ALT+F           set_first_wall
 ALT+J           fill_inner_sector
+ALT+DELETE      delete_loop
 
 +W              forward
 +S              backward

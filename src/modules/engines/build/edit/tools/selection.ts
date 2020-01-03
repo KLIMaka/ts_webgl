@@ -3,7 +3,7 @@ import { vec3 } from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../collections";
 import { error, info } from "../../../../logger";
 import { Bindable, BuildContext, Target } from "../../api";
-import { insertSprite, loopWalls, nextwall, setFirstWall, fillInnerLoop } from "../../boardutils";
+import { insertSprite, loopWalls, nextwall, setFirstWall, fillInnerLoop, deleteLoop } from "../../boardutils";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Entity, EntityType } from "../../hitscan";
@@ -57,7 +57,7 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
   const board = ctx.board;
   if (target.entity.type == EntityType.WALL_POINT) {
     const w = target.entity.id;
-    list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w))) : WallEnt.create(board, w));
+    list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w)) : WallEnt.create(board, w));
   } else if (target.entity.isWall()) {
     wallSegment(fullLoop, board, target.entity.id, target.entity.type == EntityType.LOWER_WALL);
   } else if (target.entity.isSector()) {
@@ -71,7 +71,7 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
 function sector(fullLoop: boolean, board: Board, target: Target) {
   if (fullLoop) {
     const firstWall = board.sectors[target.entity.id].wallptr;
-    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall, target.entity.id)));
+    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall)));
     list.push(SectorEnt.create(new Entity(target.entity.id, target.entity.type == EntityType.CEILING ? EntityType.FLOOR : EntityType.CEILING)));
   }
   list.push(SectorEnt.create(target.entity.clone()));
@@ -79,7 +79,7 @@ function sector(fullLoop: boolean, board: Board, target: Target) {
 
 function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean) {
   if (fullLoop) {
-    list.push(WallSegmentsEnt.create(board, loopWalls(board, w, sectorOfWall(board, w)), bottom));
+    list.push(WallSegmentsEnt.create(board, loopWalls(board, w), bottom));
   } else {
     const w1 = nextwall(board, w);
     segment.clear().push(w).push(w1);
@@ -134,6 +134,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
       case 'print_selected': this.print(ctx); return;
       case 'set_first_wall': this.setFirstWall(ctx); return;
       case 'fill_inner_sector': this.fillInnerLoop(ctx); return;
+      case 'delete_loop': this.deleteLoop(ctx); return;
       default: this.selection.handle(msg, ctx);
     }
   }
@@ -186,6 +187,14 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isWall()) return;
     fillInnerLoop(ctx.board, target.entity.id);
+    ctx.commit();
+    ctx.message(new BoardInvalidate(null));
+  }
+
+  private deleteLoop(ctx: BuildContext) {
+    const target = ctx.view.snapTarget();
+    if (target.entity == null || !target.entity.isWall()) return;
+    deleteLoop(ctx.board, target.entity.id);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
   }
