@@ -48,6 +48,7 @@ J               join_sectors
 CTRL+Z          undo
 DELETE          delete
 ALT+F           set_first_wall
+ALT+J           fill_inner_sector
 
 +W              forward
 +S              backward

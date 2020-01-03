@@ -3,7 +3,7 @@ import { vec3 } from "../../../../../libs_js/glmatrix";
 import { Deck } from "../../../../collections";
 import { error, info } from "../../../../logger";
 import { Bindable, BuildContext, Target } from "../../api";
-import { insertSprite, loopWalls, nextwall, setFirstWall } from "../../boardutils";
+import { insertSprite, loopWalls, nextwall, setFirstWall, fillInnerLoop } from "../../boardutils";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Entity, EntityType } from "../../hitscan";
@@ -133,6 +133,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
       case 'paste_picnum': this.selection.handle(clipboardPicnum, ctx); ctx.commit(); return;
       case 'print_selected': this.print(ctx); return;
       case 'set_first_wall': this.setFirstWall(ctx); return;
+      case 'fill_inner_sector': this.fillInnerLoop(ctx); return;
       default: this.selection.handle(msg, ctx);
     }
   }
@@ -177,6 +178,14 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isWall()) return;
     setFirstWall(ctx.board, sectorOfWall(ctx.board, target.entity.id), target.entity.id);
+    ctx.commit();
+    ctx.message(new BoardInvalidate(null));
+  }
+
+  private fillInnerLoop(ctx: BuildContext) {
+    const target = ctx.view.snapTarget();
+    if (target.entity == null || !target.entity.isWall()) return;
+    fillInnerLoop(ctx.board, target.entity.id);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
   }

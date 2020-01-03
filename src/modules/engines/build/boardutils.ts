@@ -865,7 +865,6 @@ function createNewWalls(points: Collection<[number, number]>, mwalls: [number, n
   return walls;
 }
 
-
 export function createInnerLoop(board: Board, sectorId: number, points: Collection<[number, number]>, wallptrs: MutableCollection<number> = EMPTY_COLLECTION) {
   let sector = board.sectors[sectorId];
   resizeWalls(board, sectorId, sector.wallnum + points.length(), wallptrs);
@@ -881,6 +880,18 @@ export function createInnerLoop(board: Board, sectorId: number, points: Collecti
   for (let w = wallPtr; w < sector.wallptr + sector.wallnum; w++) {
     fixxrepeat(board, w);
   }
+}
+
+export function fillInnerLoop(board: Board, wallId: number) {
+  const wall = board.walls[wallId];
+  if (wall.nextsector != -1) throw new Error(`Already filled`);
+  const sectorId = sectorOfWall(board, wallId);
+  const loop = loopWalls(board, wallId, sectorId);
+  for (let w of loop) if (board.walls[w].nextsector != -1) throw new Error(`Already filled`);
+  const points = new Deck<[number, number]>();
+  for (let w of loop) points.push([board.walls[w].x, board.walls[w].y]);
+  if (clockwise(points)) throw new Error('Only inner loops can be filled');
+  createNewSector(board, points);
 }
 
 function polygonSector(board: Board, points: Collection<[number, number]>, hintSectorId: number): number {
