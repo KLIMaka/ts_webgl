@@ -22,7 +22,7 @@ const float trans = float(255.0/256.0);
 const float PI = 3.1415926538;
 
 float lightOffset() {
-  float lightLevel = length(wpos.xz - eyepos.xz) / 1024.0;
+  float lightLevel = length(wpos.xz - eyepos.xz) / 256.0;
   return float(shade) + lightLevel;
 }
 
