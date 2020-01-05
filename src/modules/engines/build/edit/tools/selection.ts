@@ -1,16 +1,16 @@
 import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { vec3 } from "../../../../../libs_js/glmatrix";
-import { Deck } from "../../../../collections";
+import { Deck, Collection } from "../../../../collections";
 import { error, info } from "../../../../logger";
 import { Bindable, BuildContext, Target } from "../../api";
-import { insertSprite, loopWalls, nextwall, setFirstWall, fillInnerLoop, deleteLoop } from "../../boardutils";
+import { deleteLoop, fillInnerLoop, insertSprite, loopWallsFull, nextwall, setFirstWall, deleteSectorFull, deleteLoopFull, loopWalls } from "../../boardutils";
 import { BuildRenderableProvider } from "../../gl/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Entity, EntityType } from "../../hitscan";
 import { Board } from "../../structs";
 import { build2gl, sectorOfWall } from "../../utils";
 import { MovingHandle } from "../handle";
-import { EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove, BoardInvalidate } from "../messages";
+import { BoardInvalidate, EndMove, Frame, Highlight, Move, NamedMessage, Render, SetPicnum, Shade, StartMove } from "../messages";
 import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
@@ -29,6 +29,7 @@ const HIGHLIGHT = new Highlight();
 
 const MOVE_STATE = 'move';
 const LOOP_STATE = 'select_loop_mod';
+const FULL_LOOP_STATE = 'select_full_loop_mod';
 const SNAP_DIST = 'select.snap_dist';
 
 export const MOVE_COPY = 'move.copy';
@@ -53,11 +54,11 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
   const target = ctx.view.snapTarget();
   list.clear();
   if (target.entity == null) return list;
-  const fullLoop = ctx.state.get<boolean>(LOOP_STATE);
+  const fullLoop = ctx.state.get<boolean>(FULL_LOOP_STATE) ? loopWallsFull : ctx.state.get<boolean>(LOOP_STATE) ? loopWalls : null;
   const board = ctx.board;
   if (target.entity.type == EntityType.WALL_POINT) {
     const w = target.entity.id;
-    list.push(fullLoop ? WallSegmentsEnt.create(board, loopWalls(board, w)) : WallEnt.create(board, w));
+    list.push(fullLoop ? WallSegmentsEnt.create(board, fullLoop(board, w)) : WallEnt.create(board, w));
   } else if (target.entity.isWall()) {
     wallSegment(fullLoop, board, target.entity.id, target.entity.type == EntityType.LOWER_WALL);
   } else if (target.entity.isSector()) {
@@ -68,18 +69,18 @@ export function getFromHitscan(ctx: BuildContext): Deck<MessageHandler> {
   return list;
 }
 
-function sector(fullLoop: boolean, board: Board, target: Target) {
+function sector(fullLoop: (board: Board, wallId: number) => Collection<number>, board: Board, target: Target) {
   if (fullLoop) {
     const firstWall = board.sectors[target.entity.id].wallptr;
-    list.push(WallSegmentsEnt.create(board, loopWalls(board, firstWall)));
+    list.push(WallSegmentsEnt.create(board, fullLoop(board, firstWall)));
     list.push(SectorEnt.create(new Entity(target.entity.id, target.entity.type == EntityType.CEILING ? EntityType.FLOOR : EntityType.CEILING)));
   }
   list.push(SectorEnt.create(target.entity.clone()));
 }
 
-function wallSegment(fullLoop: boolean, board: Board, w: number, bottom: boolean) {
+function wallSegment(fullLoop: (board: Board, wallId: number) => Collection<number>, board: Board, w: number, bottom: boolean) {
   if (fullLoop) {
-    list.push(WallSegmentsEnt.create(board, loopWalls(board, w), bottom));
+    list.push(WallSegmentsEnt.create(board, fullLoop(board, w), bottom));
   } else {
     const w1 = nextwall(board, w);
     segment.clear().push(w).push(w1);
@@ -107,6 +108,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     ctx.state.register(MOVE_PARALLEL, false);
     ctx.state.register(MOVE_ROTATE, false);
     ctx.state.register(LOOP_STATE, false);
+    ctx.state.register(FULL_LOOP_STATE, false);
     ctx.state.register(SNAP_DIST, 32);
   }
 
@@ -135,6 +137,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
       case 'set_first_wall': this.setFirstWall(ctx); return;
       case 'fill_inner_sector': this.fillInnerLoop(ctx); return;
       case 'delete_loop': this.deleteLoop(ctx); return;
+      case 'delete_full': this.deleteFull(ctx); return;
       default: this.selection.handle(msg, ctx);
     }
   }
@@ -195,6 +198,16 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isWall()) return;
     deleteLoop(ctx.board, target.entity.id);
+    ctx.commit();
+    ctx.message(new BoardInvalidate(null));
+  }
+
+  private deleteFull(ctx: BuildContext) {
+    const target = ctx.view.snapTarget();
+    if (target.entity == null) return;
+    if (target.entity.isWall()) deleteLoopFull(ctx.board, target.entity.id);
+    else if (target.entity.isSector()) deleteSectorFull(ctx.board, target.entity.id);
+    else return;
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
   }

@@ -50,6 +50,7 @@ DELETE          delete
 ALT+F           set_first_wall
 ALT+J           fill_inner_sector
 ALT+DELETE      delete_loop
+ALT+SHIFT+DELETE delete_full
 
 +W              forward
 +S              backward
@@ -59,6 +60,7 @@ ALT+DELETE      delete_loop
 +W              zoom+
 +S              zoom-
 +TAB            select_loop_mod
++`              select_full_loop_mod
 +mouse0         move
 +SHIFT          move.parallel
 +ALT            move.vertical

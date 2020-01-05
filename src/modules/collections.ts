@@ -129,6 +129,7 @@ export class IndexedDeck<T> extends Deck<T>{
   private index = new Map<T, number>();
 
   public push(value: T): IndexedDeck<T> {
+    if (this.index.has(value)) return this;
     super.push(value);
     this.index.set(value, this.pointer);
     return this;
@@ -143,6 +144,11 @@ export class IndexedDeck<T> extends Deck<T>{
   public indexOf(value: T) {
     let idx = this.index.get(value);
     return idx == undefined ? -1 : idx;
+  }
+
+  public hasAny(i: Iterable<T>): boolean {
+    for (const v of i) if (this.indexOf(v) != -1) return true;
+    return false;
   }
 }
 
@@ -173,6 +179,10 @@ export function subCollection<T>(c: Collection<T>, start: number, length: number
       isEmpty: () => false,
       [Symbol.iterator]: () => sub(c, start, length)
     }
+}
+
+export function* filter<T>(i: Iterable<T>, f: (t: T) => boolean): Generator<T> {
+  for (const v of i) if (f(v)) yield v;
 }
 
 export function* map<T, V>(i: Iterable<T>, f: (t: T) => V): Generator<V> {

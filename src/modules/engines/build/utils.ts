@@ -147,7 +147,7 @@ export function setSectorPicnum(board: Board, sectorEnt: Entity, picnum: number)
 }
 
 export function findSector(board: Board, x: number, y: number, secnum: number = -1): number {
-  if (secnum == -1)
+  if (secnum == -1 || secnum >= board.numsectors)
     return findSectorAll(board, x, y);
   let secs = [secnum];
   for (let i = 0; i < secs.length; i++) {
