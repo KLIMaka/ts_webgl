@@ -4,7 +4,7 @@ import { Collection, cyclicPairs, cyclicRange, Deck, findFirst, indexed, Indexed
 import { ArtInfoProvider } from './art';
 import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
-import { ReferenceTrackerImpl } from './reference';
+import { ReferenceTrackerImpl } from './referencetracker';
 import { BuildReferenceTracker } from './api';
 
 export const DEFAULT_REPEAT_RATE = 128;
@@ -952,9 +952,7 @@ export function innerSectors(board: Board, sectorId: number, sectors: Set<number
 function deleteSectors(board: Board, sectors: Iterable<number>, refs: BuildReferenceTracker) {
   const refs1 = refs.sectors.start();
   const secs = [...map(sectors, (s) => refs1.ref(s))];
-  for (let s of secs) {
-    deleteSector(board, refs1.val(s), refs);
-  }
+  for (let s of secs) deleteSector(board, refs1.val(s), refs);
   refs1.stop();
 }
 

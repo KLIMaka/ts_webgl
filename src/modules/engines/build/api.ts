@@ -3,9 +3,9 @@ import { ArtInfoProvider } from "./art";
 import { Renderable } from "./gl/renderable";
 import { Context, Message } from "./handlerapi";
 import { Entity, Ray } from "./hitscan";
+import { ReferenceTracker } from "./referencetracker";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
-import { ReferenceTracker, ReferenceTrackerImpl } from "./reference";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;

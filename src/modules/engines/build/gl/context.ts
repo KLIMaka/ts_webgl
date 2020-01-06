@@ -9,7 +9,7 @@ import { BoardInvalidate, Frame, Mouse, NamedMessage, PostFrame, Render } from '
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
-import { ReferenceTrackerImpl } from '../reference';
+import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
 import { WrapRenderable } from './renderable';
 

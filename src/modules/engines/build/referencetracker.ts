@@ -13,8 +13,8 @@ export interface ReferenceTracker<T, R> {
 
 export class ReferenceTrackerImpl<T> implements ReferenceTracker<T, number>{
   constructor(
-    private nil: T,
-    private parent: ReferenceTrackerImpl<T> = null,
+    private readonly nil: T,
+    private readonly parent: ReferenceTrackerImpl<T> = null,
     private parentNode: Node<ReferenceTrackerImpl<T>> = null,
     private refs = new IndexedDeck<T>(),
     private nested = new List<ReferenceTrackerImpl<T>>(),
@@ -53,6 +53,7 @@ export class ReferenceTrackerImpl<T> implements ReferenceTracker<T, number>{
   }
 
   stop(): void {
+    if (this.stopped) return;
     if (this.parent == null) throw new Error('Cannot stop root trackers');
     this.parent.nested.remove(this.parentNode);
     for (const n of this.nested) n.stop();

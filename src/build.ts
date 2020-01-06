@@ -31,7 +31,7 @@ import * as INPUT from './modules/input';
 import { addLogAppender, CONSOLE } from './modules/logger';
 import * as TEX from './modules/textures';
 import { BuildReferenceTracker } from './modules/engines/build/api';
-import { ReferenceTrackerImpl } from './modules/engines/build/reference';
+import { ReferenceTrackerImpl } from './modules/engines/build/referencetracker';
 
 
 function createBoard() {
