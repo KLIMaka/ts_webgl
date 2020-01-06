@@ -136,7 +136,7 @@ export class SectorEnt extends MessageHandlerReflective {
   public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
     switch (msg.name) {
       case 'delete':
-        deleteSector(ctx.board, this.sectorEnt.id);
+        deleteSector(ctx.board, this.sectorEnt.id, ctx.refs);
         ctx.commit();
         ctx.message(new BoardInvalidate(null));
         return;

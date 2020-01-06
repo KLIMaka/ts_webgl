@@ -128,7 +128,7 @@ export class WallSegmentsEnt extends MessageHandlerReflective {
 
   public EndMove(msg: EndMove, ctx: BuildContext) {
     this.active = false;
-    for (let w of this.wallIds) mergePoints(ctx.board, w);
+    for (let w of this.wallIds) mergePoints(ctx.board, w, ctx.refs);
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {

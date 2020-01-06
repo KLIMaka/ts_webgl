@@ -4,46 +4,11 @@ import { Collection, cyclicPairs, cyclicRange, Deck, findFirst, indexed, Indexed
 import { ArtInfoProvider } from './art';
 import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
+import { ReferenceTrackerImpl } from './reference';
+import { BuildReferenceTracker } from './api';
 
 export const DEFAULT_REPEAT_RATE = 128;
 const NULL_WALL = new Wall();
-
-export class ReferenceTracker {
-  private wallRefs = new IndexedDeck<number>();
-  private sectorRefs = new IndexedDeck<number>();
-  private spriteRefs = new IndexedDeck<number>();
-
-  private getReference(refs: IndexedDeck<number>, wallId: number): number {
-    let ref = refs.indexOf(wallId);
-    if (ref == -1) {
-      refs.push(wallId);
-      ref = refs.length() - 1;
-    }
-    return ref;
-  }
-
-  private updateReference(refs: IndexedDeck<number>, updater: (r: number) => number) {
-    for (let i = 0; i < refs.length(); i++) {
-      const r = refs.get(i);
-      if (r == -1) continue;
-      refs.set(i, updater(r));
-    }
-  }
-
-  public getWallReference(wallId: number) { return this.getReference(this.wallRefs, wallId) }
-  public getSectorReference(sectorId: number) { return this.getReference(this.sectorRefs, sectorId) }
-  public getSpriteReference(sectorId: number) { return this.getReference(this.spriteRefs, sectorId) }
-
-  public updateWallReferences(updater: (r: number) => number) { return this.updateReference(this.wallRefs, updater) }
-  public updateSectorReferences(updater: (r: number) => number) { return this.updateReference(this.sectorRefs, updater) }
-  public updateSpriteReferences(updater: (r: number) => number) { return this.updateReference(this.spriteRefs, updater) }
-
-  public getWallByReference(ref: number) { return this.wallRefs.get(ref) || -1 }
-  public getSectorByReference(ref: number) { return this.sectorRefs.get(ref) || -1 }
-  public getSpriteByReference(ref: number) { return this.spriteRefs.get(ref) || -1 }
-
-  public clear() { this.wallRefs.clear(); this.sectorRefs.clear(); this.spriteRefs.clear() }
-}
 
 export function looppoints(board: Board, sectorId: number): Iterable<number> {
   const sec = board.sectors[sectorId];
@@ -197,7 +162,7 @@ export function closestWallSegment(board: Board, x: number, y: number, d: number
   return dist <= d ? w : -1;
 }
 
-function deleteSectorImpl(board: Board, sectorId: number, refs: ReferenceTracker) {
+function deleteSectorImpl(board: Board, sectorId: number, refs: BuildReferenceTracker) {
   if (board.sectors[sectorId].wallnum != 0)
     throw new Error(`Error while deleting sector #${sectorId}. wallnum != 0`);
 
@@ -218,7 +183,7 @@ function deleteSectorImpl(board: Board, sectorId: number, refs: ReferenceTracker
   for (let s = sectorId; s < board.numsectors - 1; s++) {
     board.sectors[s] = board.sectors[s + 1];
   }
-  refs.updateSectorReferences((s) => s == sectorId ? -1 : s > sectorId ? s - 1 : s);
+  refs.sectors.update((s) => s == sectorId ? -1 : s > sectorId ? s - 1 : s);
   board.sectors[board.numsectors - 1] = null;
   board.numsectors--;
 }
@@ -231,7 +196,7 @@ function addSector(board: Board, sector: Sector) {
   return idx;
 }
 
-function moveWalls(board: Board, secId: number, afterWallId: number, size: number, refs: ReferenceTracker) {
+function moveWalls(board: Board, secId: number, afterWallId: number, size: number, refs: BuildReferenceTracker) {
   if (size == 0) return;
   if (size < 0) {
     for (let w = afterWallId; w < afterWallId - size; w++)
@@ -243,7 +208,7 @@ function moveWalls(board: Board, secId: number, afterWallId: number, size: numbe
     if (wall.point2 > afterWallId) wall.point2 += size;
     if (wall.nextwall > afterWallId) wall.nextwall += size;
   }
-  refs.updateWallReferences((w) => {
+  refs.walls.update((w) => {
     if (size < 0 && w >= afterWallId && w < afterWallId - size) return -1;
     else if (w > afterWallId) return w + size;
     return w;
@@ -294,7 +259,7 @@ function fixpoint2xpan(board: Board, wallId: number, art: ArtInfoProvider) {
   wall2.xpanning = ((wall.xpanning + (wall.xrepeat << 3)) % art.getInfo(wall.picnum).w) & 0xff;
 }
 
-export function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, refs: ReferenceTracker): number {
+export function insertWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, refs: BuildReferenceTracker): number {
   let secId = sectorOfWall(board, wallId);
   let wall = board.walls[wallId];
   let lenperrep = walllen(board, wallId) / Math.max(wall.xrepeat, 1);
@@ -544,7 +509,7 @@ function copySprite(sprite: Sprite, x: number, y: number, z: number): Sprite {
   return nsprite;
 }
 
-export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, refs: ReferenceTracker = new ReferenceTracker()): number {
+export function splitWall(board: Board, wallId: number, x: number, y: number, art: ArtInfoProvider, refs: BuildReferenceTracker): number {
   let wall = board.walls[wallId];
   insertWall(board, wallId, x, y, art, refs);
   if (wall.nextwall != -1) {
@@ -625,7 +590,7 @@ export function moveSprite(board: Board, sprId: number, x: number, y: number, z:
 }
 
 let wallNormal_ = vec3.create();
-export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, alwaysNewPoints = false, refs: ReferenceTracker = new ReferenceTracker()): number {
+export function pushWall(board: Board, wallId: number, len: number, art: ArtInfoProvider, alwaysNewPoints = false, refs: BuildReferenceTracker): number {
   if (len == 0) return wallId;
   let w1 = wallId; let wall1 = board.walls[w1];
   let w2 = wall1.point2; let wall2 = board.walls[w2];
@@ -711,7 +676,7 @@ function updateSpriteSector(board: Board, fromSector: number) {
   }
 }
 
-function resizeWalls(board: Board, sectorId: number, newSize: number, refs: ReferenceTracker) {
+function resizeWalls(board: Board, sectorId: number, newSize: number, refs: BuildReferenceTracker) {
   let sec = board.sectors[sectorId];
   let dw = newSize - sec.wallnum;
   if (dw == 0) return;
@@ -722,7 +687,7 @@ function resizeWalls(board: Board, sectorId: number, newSize: number, refs: Refe
   }
 }
 
-function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>, refs: ReferenceTracker) {
+function recreateSectorWalls(board: Board, sectorId: number, nwalls: Collection<Wall>, looppoints: Collection<number>, refs: BuildReferenceTracker) {
   resizeWalls(board, sectorId, nwalls.length(), refs);
   const sec = board.sectors[sectorId];
   const loopIter = looppoints[Symbol.iterator]();
@@ -777,7 +742,7 @@ function getJoinedWallsLoops(board: Board, s1: number, s2: number): [Collection<
   return [newsectorwalls, loopPoints];
 }
 
-export function joinSectors(board: Board, s1: number, s2: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function joinSectors(board: Board, s1: number, s2: number, refs: BuildReferenceTracker) {
   if (isJoinedSectors(board, s1, s2) == -1) return -1;
   let [nwalls, looppoints] = getJoinedWallsLoops(board, s1, s2);
   recreateSectorWalls(board, s1, nwalls, looppoints, refs);
@@ -787,7 +752,7 @@ export function joinSectors(board: Board, s1: number, s2: number, refs: Referenc
   return 0;
 }
 
-export function deleteSector(board: Board, sectorId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function deleteSector(board: Board, sectorId: number, refs: BuildReferenceTracker) {
   const sector = board.sectors[sectorId];
   const wallsend = sector.wallptr + sector.wallnum;
   for (let w = sector.wallptr; w < wallsend; w++) {
@@ -802,7 +767,7 @@ export function deleteSector(board: Board, sectorId: number, refs: ReferenceTrac
   deleteSectorImpl(board, sectorId, refs);
 }
 
-export function setFirstWall(board: Board, sectorId: number, newFirstWall: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function setFirstWall(board: Board, sectorId: number, newFirstWall: number, refs: BuildReferenceTracker) {
   const sector = board.sectors[sectorId];
   if (sector.wallptr == newFirstWall) return;
   const end = sector.wallptr + sector.wallnum;
@@ -891,7 +856,7 @@ function commonSectorWall(board: Board, matched: [number, number][]): [Sector, W
   return [newSector(), newWall(0, 0)];
 }
 
-export function createNewSector(board: Board, points: Collection<[number, number]>, refs: ReferenceTracker = new ReferenceTracker()) {
+export function createNewSector(board: Board, points: Collection<[number, number]>, refs: BuildReferenceTracker) {
   points = order(points);
   let mwalls = matchWalls(board, points);
   let [commonSector, commonWall] = commonSectorWall(board, mwalls);
@@ -922,7 +887,7 @@ function createNewWalls(points: Collection<[number, number]>, mwalls: [number, n
   return walls;
 }
 
-export function createInnerLoop(board: Board, sectorId: number, points: Collection<[number, number]>, refs: ReferenceTracker = new ReferenceTracker()) {
+export function createInnerLoop(board: Board, sectorId: number, points: Collection<[number, number]>, refs: BuildReferenceTracker) {
   let sector = board.sectors[sectorId];
   resizeWalls(board, sectorId, sector.wallnum + points.length(), refs);
   let wallPtr = sector.wallptr + sector.wallnum - points.length();
@@ -946,7 +911,7 @@ export function isOuterLoop(board: Board, wallId: number) {
   return clockwise(points);
 }
 
-export function fillInnerLoop(board: Board, wallId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function fillInnerLoop(board: Board, wallId: number, refs: BuildReferenceTracker) {
   const wall = board.walls[wallId];
   if (wall.nextsector != -1) throw new Error(`Already filled`);
   const loop = loopWalls(board, wallId);
@@ -957,7 +922,7 @@ export function fillInnerLoop(board: Board, wallId: number, refs: ReferenceTrack
   createNewSector(board, points, refs);
 }
 
-export function deleteLoop(board: Board, wallId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function deleteLoop(board: Board, wallId: number, refs: BuildReferenceTracker) {
   const loop = loopWalls(board, wallId);
   for (let w of loop) if (board.walls[w].nextsector != -1) throw new Error('Cannot delete filled loop');
   if (isOuterLoop(board, wallId)) throw new Error('Cannot delete outer loops');
@@ -984,19 +949,21 @@ export function innerSectors(board: Board, sectorId: number, sectors: Set<number
   return sectors;
 }
 
-function deleteSectors(board: Board, sectors: Iterable<number>, refs: ReferenceTracker) {
-  const secs = [...map(sectors, (s) => refs.getSectorReference(s))];
+function deleteSectors(board: Board, sectors: Iterable<number>, refs: BuildReferenceTracker) {
+  const refs1 = refs.sectors.start();
+  const secs = [...map(sectors, (s) => refs1.ref(s))];
   for (let s of secs) {
-    deleteSector(board, refs.getSectorByReference(s), refs);
+    deleteSector(board, refs1.val(s), refs);
   }
+  refs1.stop();
 }
 
-export function deleteSectorFull(board: Board, sectorId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function deleteSectorFull(board: Board, sectorId: number, refs: BuildReferenceTracker) {
   const secs = [...innerSectors(board, sectorId), sectorId];
   deleteSectors(board, secs, refs);
 }
 
-export function deleteLoopFull(board: Board, wallId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function deleteLoopFull(board: Board, wallId: number, refs: BuildReferenceTracker) {
   if (isOuterLoop(board, wallId)) throw new Error('Cannot delete outer loops');
   const sectors = new Set<number>();
   const loop = loopWalls(board, wallId);
@@ -1006,9 +973,11 @@ export function deleteLoopFull(board: Board, wallId: number, refs: ReferenceTrac
     sectors.add(wall.nextsector);
     innerSectors(board, wall.nextsector, sectors);
   }
-  const wallref = refs.getWallReference(wallId);
+  const refs1 = refs.walls.start();
+  const wallref = refs1.ref(wallId);
   deleteSectors(board, sectors, refs);
-  deleteLoop(board, refs.getWallByReference(wallref), refs);
+  deleteLoop(board, refs1.val(wallref), refs);
+  refs1.stop();
 }
 
 function polygonSector(board: Board, points: Collection<[number, number]>, hintSectorId: number): number {
@@ -1094,7 +1063,7 @@ function sliceSector(board: Board, sectorId: number, points: Collection<[number,
   return [newLoops, newLoopLooppoints, restLoop];
 }
 
-export function splitSector(board: Board, sectorId: number, points: Collection<[number, number]>, refs: ReferenceTracker = new ReferenceTracker()) {
+export function splitSector(board: Board, sectorId: number, points: Collection<[number, number]>, refs: BuildReferenceTracker) {
   let firstPoint = points.get(0);
   let lastPoint = points.get(points.length() - 1);
   let firstWall = wallInSector(board, sectorId, firstPoint[0], firstPoint[1]);
@@ -1174,7 +1143,7 @@ export function isSectorTJunction(board: Board, wallId: number) {
   return wall.nextsector != lwall.nextsector;
 }
 
-export function deleteWall(board: Board, wallId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function deleteWall(board: Board, wallId: number, refs: BuildReferenceTracker) {
   if (isSectorTJunction(board, wallId)) throw new Error(`Wall ${wallId} is sector T junction`);
   const loop = loopWalls(board, wallId)
   if (loop.length() < 4) throw new Error(`Loop of Wall ${wallId} need to have 3 walls minimum`);
@@ -1194,7 +1163,7 @@ export function deleteWall(board: Board, wallId: number, refs: ReferenceTracker 
   deleteWallImpl(board, wallId);
 }
 
-export function mergePoints(board: Board, wallId: number, refs: ReferenceTracker = new ReferenceTracker()) {
+export function mergePoints(board: Board, wallId: number, refs: BuildReferenceTracker) {
   let wall = board.walls[wallId];
   let wall2 = board.walls[wall.point2];
   if (wall.x == wall2.x && wall.y == wall2.y) deleteWall(board, wallId, refs);

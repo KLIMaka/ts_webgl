@@ -32,7 +32,7 @@ export class PushWall extends MessageHandlerReflective {
   }
 
   private stop(ctx: BuildContext, copy: boolean) {
-    pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, copy);
+    pushWall(ctx.board, this.wallId, this.getDistance(ctx), ctx.art, copy, ctx.refs);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
     this.wallId = -1;

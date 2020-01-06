@@ -30,6 +30,8 @@ import * as GL from './modules/gl';
 import * as INPUT from './modules/input';
 import { addLogAppender, CONSOLE } from './modules/logger';
 import * as TEX from './modules/textures';
+import { BuildReferenceTracker } from './modules/engines/build/api';
+import { ReferenceTrackerImpl } from './modules/engines/build/reference';
 
 
 function createBoard() {
@@ -43,11 +45,18 @@ function createBoard() {
 
   let points = new Deck<[number, number]>();
 
+  const NULL_TRACKER: BuildReferenceTracker = {
+    walls: new ReferenceTrackerImpl<number>(-1),
+    sectors: new ReferenceTrackerImpl<number>(-1),
+    sprites: new ReferenceTrackerImpl<number>(-1),
+  }
+
   createNewSector(board, points.clear()
     .push([0, 0])
     .push([4096, 0])
     .push([4096, 4096])
-    .push([0, 4096])
+    .push([0, 4096]),
+    NULL_TRACKER
   );
   // createInnerLoop(board, 0, points.clear()
   //   .push([1024, 1024])

@@ -9,7 +9,6 @@ export class Node<T> {
 }
 
 export class List<T> implements Iterable<T>{
-
   private nil = new Node<T>();
 
   constructor() {

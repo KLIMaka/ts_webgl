@@ -35,7 +35,7 @@ export class WallEnt extends MessageHandlerReflective {
   public StartMove(msg: StartMove, ctx: BuildContext) {
     let wall = ctx.board.walls[this.wallId];
     if (ctx.state.get(MOVE_COPY)) {
-      this.wallId = splitWall(ctx.board, this.wallId, wall.x, wall.y, ctx.art);
+      this.wallId = splitWall(ctx.board, this.wallId, wall.x, wall.y, ctx.art, ctx.refs);
       this.connectedWalls = collectConnectedWalls(ctx.board, this.wallId);
     }
     GLM.vec2.set(this.origin, wall.x, wall.y);
@@ -64,7 +64,7 @@ export class WallEnt extends MessageHandlerReflective {
 
   public EndMove(msg: EndMove, ctx: BuildContext) {
     this.active = false;
-    mergePoints(ctx.board, this.wallId);
+    mergePoints(ctx.board, this.wallId, ctx.refs);
   }
 
   public Highlight(msg: Highlight, ctx: BuildContext) {
@@ -138,7 +138,7 @@ export class WallEnt extends MessageHandlerReflective {
 
   public NamedMessage(msg: NamedMessage, ctx: BuildContext) {
     if (msg.name == 'delete') {
-      deleteWall(ctx.board, this.wallId);
+      deleteWall(ctx.board, this.wallId, ctx.refs);
       ctx.commit();
       ctx.message(new BoardInvalidate(null));
     }

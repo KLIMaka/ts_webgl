@@ -5,6 +5,7 @@ import { Context, Message } from "./handlerapi";
 import { Entity, Ray } from "./hitscan";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
+import { ReferenceTracker, ReferenceTrackerImpl } from "./reference";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
@@ -42,9 +43,16 @@ export type ContextedValue<T> = (ctx: BuildContext) => T;
 export const constCtxValue = <T>(value: T) => (ctx: BuildContext): T => value
 export const stateCtxValue = <T>(name: string) => (ctx: BuildContext): T => ctx.state.get(name)
 
+export interface BuildReferenceTracker {
+  readonly walls: ReferenceTracker<number, number>;
+  readonly sectors: ReferenceTracker<number, number>;
+  readonly sprites: ReferenceTracker<number, number>;
+}
+
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
   readonly board: Board;
+  readonly refs: BuildReferenceTracker;
   readonly state: State;
   readonly gridScale: number;
   readonly view: View;

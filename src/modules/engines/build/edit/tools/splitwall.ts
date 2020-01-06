@@ -13,7 +13,7 @@ export class SplitWall extends MessageHandlerReflective {
     const [x, y] = target.coords;
     const id = target.entity.id;
 
-    splitWall(ctx.board, id, x, y, ctx.art);
+    splitWall(ctx.board, id, x, y, ctx.art, ctx.refs);
     ctx.commit();
     let s = sectorOfWall(ctx.board, id);
     invalidateSectorAndWalls(s, ctx);

@@ -238,8 +238,8 @@ export class DrawSector extends MessageHandlerReflective {
   private createSector(ctx: BuildContext) {
     let sectorId = this.findContainingSector(ctx);
     if (sectorId != -1)
-      createInnerLoop(ctx.board, sectorId, this.points);
-    createNewSector(ctx.board, this.points);
+      createInnerLoop(ctx.board, sectorId, this.points, ctx.refs);
+    createNewSector(ctx.board, this.points, ctx.refs);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
     this.points.clear();
@@ -248,7 +248,7 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   private splitSector(ctx: BuildContext, sectorId: number) {
-    if (splitSector(ctx.board, sectorId, this.points) != -1) {
+    if (splitSector(ctx.board, sectorId, this.points, ctx.refs) != -1) {
       ctx.commit();
       ctx.message(new BoardInvalidate(null));
     }

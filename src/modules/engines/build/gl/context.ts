@@ -4,11 +4,12 @@ import { InputState } from '../../../input';
 import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { State as StateGl } from '../../../stategl';
-import { ArtProvider, Bindable, BoardManipulator, BuildContext, State, View } from '../api';
-import { Frame, Mouse, NamedMessage, PostFrame, Render, BoardInvalidate } from '../edit/messages';
+import { ArtProvider, Bindable, BoardManipulator, BuildContext, State, View, BuildReferenceTracker } from '../api';
+import { BoardInvalidate, Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
+import { ReferenceTrackerImpl } from '../reference';
 import { Board } from '../structs';
 import { WrapRenderable } from './renderable';
 
@@ -63,11 +64,17 @@ const onTopRenderable = new WrapRenderable(RENDER.renderable,
     gl.enable(WebGLRenderingContext.DEPTH_TEST);
   });
 
+class BuildReferenceTrackerImpl implements BuildReferenceTracker {
+  readonly walls = new ReferenceTrackerImpl<number>(-1);
+  readonly sectors = new ReferenceTrackerImpl<number>(-1);
+  readonly sprites = new ReferenceTrackerImpl<number>(-1);
+}
 
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly state = new StateImpl(this);
   readonly view: View;
+  readonly refs = new BuildReferenceTrackerImpl();
 
   private binder = new Binder();
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];

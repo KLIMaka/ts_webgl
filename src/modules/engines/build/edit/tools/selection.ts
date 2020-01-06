@@ -181,7 +181,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private setFirstWall(ctx: BuildContext) {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isWall()) return;
-    setFirstWall(ctx.board, sectorOfWall(ctx.board, target.entity.id), target.entity.id);
+    setFirstWall(ctx.board, sectorOfWall(ctx.board, target.entity.id), target.entity.id, ctx.refs);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
   }
@@ -189,7 +189,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private fillInnerLoop(ctx: BuildContext) {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isWall()) return;
-    fillInnerLoop(ctx.board, target.entity.id);
+    fillInnerLoop(ctx.board, target.entity.id, ctx.refs);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
   }
@@ -197,7 +197,7 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private deleteLoop(ctx: BuildContext) {
     const target = ctx.view.snapTarget();
     if (target.entity == null || !target.entity.isWall()) return;
-    deleteLoop(ctx.board, target.entity.id);
+    deleteLoop(ctx.board, target.entity.id, ctx.refs);
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
   }
@@ -205,8 +205,8 @@ export class Selection extends MessageHandlerReflective implements Bindable {
   private deleteFull(ctx: BuildContext) {
     const target = ctx.view.snapTarget();
     if (target.entity == null) return;
-    if (target.entity.isWall()) deleteLoopFull(ctx.board, target.entity.id);
-    else if (target.entity.isSector()) deleteSectorFull(ctx.board, target.entity.id);
+    if (target.entity.isWall()) deleteLoopFull(ctx.board, target.entity.id, ctx.refs);
+    else if (target.entity.isSector()) deleteSectorFull(ctx.board, target.entity.id, ctx.refs);
     else return;
     ctx.commit();
     ctx.message(new BoardInvalidate(null));
