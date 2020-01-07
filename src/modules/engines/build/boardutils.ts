@@ -1,11 +1,10 @@
 import { cross2d, cyclic, int, len2d, lenPointToLine, tuple2 } from '../../../libs/mathutils';
 import { vec3 } from '../../../libs_js/glmatrix';
 import { Collection, cyclicPairs, cyclicRange, Deck, findFirst, indexed, IndexedDeck, map, reverse } from '../../collections';
+import { BuildReferenceTracker } from './api';
 import { ArtInfoProvider } from './art';
 import { Board, FACE_SPRITE, Sector, SectorStats, Sprite, SpriteStats, Wall, WallStats } from './structs';
 import { findSector, sectorOfWall, wallNormal } from './utils';
-import { ReferenceTrackerImpl } from './referencetracker';
-import { BuildReferenceTracker } from './api';
 
 export const DEFAULT_REPEAT_RATE = 128;
 const NULL_WALL = new Wall();
