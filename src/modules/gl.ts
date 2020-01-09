@@ -97,13 +97,13 @@ export class UniformBinder {
     let uniforms = shader.getUniforms();
     for (let i in uniforms) {
       let uniform = uniforms[i];
-      if (this.resolvers[uniform.getName()] == undefined)
+      if (this.resolvers[uniform.name] == undefined)
         continue;
-      let loc = shader.getUniformLocation(uniform.getName(), gl)
+      let loc = shader.getUniformLocation(uniform.name, gl)
       if (!loc)
         continue;
-      let value = this.resolvers[uniform.getName()]();
-      this.setters[uniform.getName()].setUniform(gl, loc, value);
+      let value = this.resolvers[uniform.name]();
+      this.setters[uniform.name].setUniform(gl, loc, value);
     }
   }
 
@@ -134,7 +134,7 @@ function drawModel(gl: WebGLRenderingContext, shader: DS.Shader, model: DS.DrawS
   for (let s in samplers) {
     let sampler = samplers[s];
     gl.activeTexture(gl.TEXTURE0 + unit++);
-    gl.bindTexture(gl.TEXTURE_2D, model.getMaterial().getTexture(sampler.getName()).get());
+    gl.bindTexture(gl.TEXTURE_2D, model.getMaterial().getTexture(sampler.name).get());
   }
   gl.drawElements(model.getMode(), model.getLength(), gl.UNSIGNED_SHORT, model.getOffset());
   return shader;
@@ -146,7 +146,7 @@ function initTextures(gl: WebGLRenderingContext, shader: DS.Shader, data: any): 
   for (let s in samplers) {
     gl.activeTexture(gl.TEXTURE0 + unit);
     let sampler = samplers[s];
-    gl.uniform1i(shader.getUniformLocation(sampler.getName(), gl), unit++);
+    gl.uniform1i(shader.getUniformLocation(sampler.name, gl), unit++);
   }
   return shader;
 }

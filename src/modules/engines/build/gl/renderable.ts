@@ -2,7 +2,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
 import * as PROFILE from '../../../profiler';
-import { State } from '../../../stategl';
+import { State, StateValue } from '../../../stategl';
 import { BuildContext } from '../api';
 import * as BUFF from './buffers';
 
@@ -122,18 +122,39 @@ export class Solid implements Renderable {
   public parallax: number = 0;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
+  private uniformsUpdated = false;
+  private baseUniform: StateValue<DS.Texture>;
+  private colorUniform: StateValue<any>;
+  private pluNUniform: StateValue<any>;
+  private shadeUniform: StateValue<any>;
+  private posBuffer: StateValue<DS.VertexBuffer>;
+  private normBuffer: StateValue<DS.VertexBuffer>;
+  private tcBuffer: StateValue<DS.VertexBuffer>;
+  private updateUniformLocations(state: State) {
+    if (this.uniformsUpdated) return;
+    this.baseUniform = state.getTextureValue('base');
+    this.colorUniform = state.getUniformValue('color');
+    this.pluNUniform = state.getUniformValue('pluN');
+    this.shadeUniform = state.getUniformValue('shade');
+    this.posBuffer = state.getVertexBufferValue('aPos');
+    this.normBuffer = state.getVertexBufferValue('aNorm');
+    this.tcBuffer = state.getVertexBufferValue('aTc');
+    this.uniformsUpdated = true;
+  }
+
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
+    this.updateUniformLocations(state);
     let ptr = this.buff.get();
     state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
-    state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
-    state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
-    state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
+    this.posBuffer.set(BUFF.getPosBuffer(ptr));
+    this.normBuffer.set(BUFF.getNormBuffer(ptr));
+    this.tcBuffer.set(BUFF.getTexCoordBuffer(ptr));
     state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
-    state.setTexture('base', this.tex);
-    state.setUniform('color', GLM.vec4.set(color, 1, 1, 1, this.trans));
-    state.setUniform('pluN', this.pal);
-    state.setUniform('shade', this.shade);
+    this.baseUniform.set(this.tex);
+    this.colorUniform.set(GLM.vec4.set(color, 1, 1, 1, this.trans));
+    this.pluNUniform.set(this.pal);
+    this.shadeUniform.set(this.shade);
     state.setDrawElements(this.buff.get());
     state.draw(gl);
     PROFILE.get(null).inc('draws');
@@ -144,6 +165,7 @@ export class Solid implements Renderable {
     this.type = Type.SURFACE;
     this.trans = 1;
     this.parallax = 0;
+    this.uniformsUpdated = false;
   }
 
   public renderable(): boolean {

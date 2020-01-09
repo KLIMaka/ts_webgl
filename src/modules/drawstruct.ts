@@ -33,8 +33,8 @@ export interface Shader {
 }
 
 export interface Definition {
-  getName(): string;
-  getType(): string;
+  readonly name: string;
+  readonly type: string;
 }
 
 export interface Material {

@@ -33,16 +33,16 @@ export class ShaderImpl implements Shader {
   private initUniformLocations(gl: WebGLRenderingContext): void {
     for (let i = 0; i < this.definitions.uniforms.length; i++) {
       let uniform = this.definitions.uniforms[i];
-      this.uniformIndex[uniform.getName()] = i;
-      this.uniforms[i] = gl.getUniformLocation(this.program, uniform.getName());
+      this.uniformIndex[uniform.name] = i;
+      this.uniforms[i] = gl.getUniformLocation(this.program, uniform.name);
     }
   }
 
   private initAttributeLocations(gl: WebGLRenderingContext): void {
     for (let i = 0; i < this.definitions.attributes.length; i++) {
       let attrib = this.definitions.attributes[i];
-      this.attributeIndex[attrib.getName()] = i;
-      this.attribs[i] = gl.getAttribLocation(this.program, attrib.getName());
+      this.attributeIndex[attrib.name] = i;
+      this.attribs[i] = gl.getAttribLocation(this.program, attrib.name);
     }
   }
 
@@ -142,12 +142,9 @@ function compileSource(gl: WebGLRenderingContext, type: number, source: string):
 
 export class DefinitionImpl implements Definition {
   constructor(
-    private type: string,
-    private name: string
+    readonly type: string,
+    readonly name: string
   ) { }
-
-  getName() { return this.name }
-  getType() { return this.type }
 }
 
 export class Definitions {
@@ -169,7 +166,7 @@ function processShaders(gl: WebGLRenderingContext, program: WebGLProgram): any {
     let info = gl.getActiveUniform(program, u);
     let def = convertToDefinition(info);
     defs.uniforms.push(def);
-    if (def.getType() == 'sampler2D')
+    if (def.type == 'sampler2D')
       defs.samplers.push(def);
   }
   return defs;
@@ -216,7 +213,7 @@ function preprocess(shader: string, cb: (sh: string) => void): void {
   });
 }
 
-let setters = {
+const setters = {
   mat4: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Float32List) => gl.uniformMatrix4fv(loc, false, val),
   ivec2: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Int32List) => gl.uniform2iv(loc, val),
   vec2: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: Float32List) => gl.uniform2fv(loc, val),
@@ -227,11 +224,10 @@ let setters = {
   sampler2D: (gl: WebGLRenderingContext, loc: WebGLUniformLocation, val: number) => gl.uniform1i(loc, val),
 }
 
-export function setUniform(gl: WebGLRenderingContext, shader: Shader, name: string, value: any) {
-  let uniform = shader.getUniform(name);
+export function setUniform(gl: WebGLRenderingContext, shader: Shader, uniform: Definition, value: any) {
   if (uniform == undefined) return;
-  let loc = shader.getUniformLocation(name, gl);
-  let setter = setters[uniform.getType()];
-  if (setter == undefined) throw new Error('Invalid type: ' + uniform.getType());
+  const loc = shader.getUniformLocation(uniform.name, gl);
+  const setter = setters[uniform.type];
+  if (setter == undefined) throw new Error('Invalid type: ' + uniform.type);
   setter(gl, loc, value);
 }

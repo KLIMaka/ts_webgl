@@ -1,12 +1,13 @@
 import * as SHADER from './shaders';
 import * as GLM from '../libs_js/glmatrix';
 import { Pointer } from './buffergl';
-import { Shader, VertexBuffer, IndexBuffer, Texture } from './drawstruct';
+import { Shader, VertexBuffer, IndexBuffer, Texture, Definition } from './drawstruct';
+import { Deck } from './collections';
 
 function eqCmp<T>(lh: T, rh: T) { return lh === rh }
 function assign<T>(dst: T, src: T) { return src }
 
-class StateValue<T> {
+export class StateValue<T> {
   public changed: boolean = false;
   constructor(
     public value: T,
@@ -15,8 +16,6 @@ class StateValue<T> {
   ) { }
   get(): T { return this.value; }
   set(v: T) { if (!this.cmp(v, this.value)) { this.value = this.setter(this.value, v); this.changed = true; } }
-  isChanged() { return this.changed; }
-  setChanged(c: boolean) { this.changed = c; }
 }
 
 function createStateValue(type: string): StateValue<any> {
@@ -41,12 +40,15 @@ export class State {
   private vertexBufferIndex: { [index: string]: number } = {};
 
   private uniforms: StateValue<any>[] = [];
-  private uniformsNames: string[] = [];
+  private uniformsDefinitions: Definition[] = [];
   private uniformsIndex: { [index: string]: number } = {};
 
   private textures: StateValue<Texture>[] = [];
   private texturesNames: string[] = [];
   private texturesIndex: { [index: string]: number } = {};
+
+  private currentTexturesIdxs = new Deck<number>();
+  private currentUniformIdxs = new Deck<number>();
 
 
   public registerShader(name: string, shader: Shader) {
@@ -54,44 +56,53 @@ export class State {
     let uniforms = shader.getUniforms();
     for (let u = 0; u < uniforms.length; u++) {
       let uniform = uniforms[u];
-      if (this.uniformsIndex[uniform.getName()] != undefined) continue;
-      this.uniforms.push(createStateValue(uniform.getType()));
-      this.uniformsNames.push(uniform.getName());
-      this.uniformsIndex[uniform.getName()] = u;
+      if (this.uniformsIndex[uniform.name] != undefined) continue;
+      this.uniforms.push(createStateValue(uniform.type));
+      this.uniformsDefinitions.push(uniform);
+      this.uniformsIndex[uniform.name] = u;
     }
     let samplers = shader.getSamplers();
     for (let s = 0; s < samplers.length; s++) {
       let sampler = samplers[s];
-      if (this.texturesIndex[sampler.getName()] != undefined) continue;
+      if (this.texturesIndex[sampler.name] != undefined) continue;
       let idx = this.textures.length;
       this.textures.push(new StateValue<Texture>(null));
-      this.texturesNames.push(sampler.getName());
-      this.texturesIndex[sampler.getName()] = idx;
+      this.texturesNames.push(sampler.name);
+      this.texturesIndex[sampler.name] = idx;
     }
   }
 
   public setUniform(name: string, value: any) {
-    let u = this.uniformsIndex[name];
-    if (u == undefined) {
-      // throw new Error('Invalid uniform name: ' + name);
-      return;
-    }
+    const u = this.uniformsIndex[name];
+    if (u == undefined) return;
     this.uniforms[u].set(value);
   }
 
+  public getUniformValue(name: string): StateValue<any> {
+    const u = this.uniformsIndex[name];
+    if (u == undefined) throw new Error('Invalid uniform name: ' + name);
+    return this.uniforms[u];
+  }
+
   public setShader(name: string) {
-    let s = this.shaders[name];
+    const s = this.shaders[name];
     if (s == undefined)
       throw new Error('Unknown shader: ' + name);
     this.shader.set(s);
   }
 
   public setTexture(name: string, tex: Texture) {
-    let t = this.texturesIndex[name];
+    const t = this.texturesIndex[name];
     if (t == undefined) {
       throw new Error('Invalid sampler name: ' + name);
     }
     this.textures[t].set(tex);
+  }
+
+  public getTextureValue(name: string): StateValue<Texture> {
+    const t = this.texturesIndex[name];
+    if (t == undefined) throw new Error('Invalid sampler name: ' + name);
+    return this.textures[t];
   }
 
   public setIndexBuffer(b: IndexBuffer) {
@@ -99,6 +110,10 @@ export class State {
   }
 
   public setVertexBuffer(name: string, b: VertexBuffer) {
+    this.getVertexBufferValue(name).set(b);
+  }
+
+  public getVertexBufferValue(name: string): StateValue<VertexBuffer> {
     let idx = this.vertexBufferIndex[name];
     if (idx == undefined) {
       idx = this.vertexBuffers.length;
@@ -106,8 +121,7 @@ export class State {
       this.vertexBufferNames[idx] = name;
       this.vertexBuffers.push(new StateValue<VertexBuffer>(null));
     }
-    let state = this.vertexBuffers[idx];
-    state.set(b);
+    return this.vertexBuffers[idx];
   }
 
   public setDrawElements(ptr: Pointer) {
@@ -115,75 +129,87 @@ export class State {
   }
 
   private rebindShader(gl: WebGLRenderingContext): boolean {
-    if (this.shader.isChanged()) {
-      let shader = this.shader.get();
+    if (this.shader.changed) {
+      const shader = this.shader.get();
       gl.useProgram(shader.getProgram());
-      let samplers = this.shader.get().getSamplers();
+      const samplers = this.shader.get().getSamplers();
+      this.currentTexturesIdxs.clear();
       for (let s = 0; s < samplers.length; s++) {
-        let sampler = samplers[s];
-        this.setUniform(sampler.getName(), s);
+        const sampler = samplers[s];
+        this.currentTexturesIdxs.push(this.texturesIndex[sampler.name]);
+        this.setUniform(sampler.name, s);
       }
-      this.shader.setChanged(false);
+      this.currentUniformIdxs.clear();
+      const uniforms = this.shader.get().getUniforms();
+      for (let u = 0; u < uniforms.length; u++) {
+        const uniform = uniforms[u];
+        this.currentUniformIdxs.push(this.uniformsIndex[uniform.name]);
+      }
+      this.shader.changed = false;
       return true;
     }
     return false;
   }
 
   private rebindVertexBuffers(gl: WebGLRenderingContext, rebindAll: boolean) {
-    let shader = this.shader.get();
+    const shader = this.shader.get();
     for (let a = 0; a < this.vertexBuffers.length; a++) {
-      let buf = this.vertexBuffers[a];
-      if (!rebindAll && !buf.isChanged()) continue;
-      let vbuf = buf.get();
-      let location = shader.getAttributeLocation(this.vertexBufferNames[a], gl);
+      const buf = this.vertexBuffers[a];
+      if (!rebindAll && !buf.changed) continue;
+      const vbuf = buf.get();
+      const location = shader.getAttributeLocation(this.vertexBufferNames[a], gl);
       if (location == -1)
         continue;
       gl.bindBuffer(gl.ARRAY_BUFFER, vbuf.getBuffer());
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, vbuf.getSpacing(), vbuf.getType(), vbuf.getNormalized(), vbuf.getStride(), vbuf.getOffset());
-      buf.setChanged(false);
+      buf.changed = false;
     }
   }
 
   private rebindIndexBuffer(gl: WebGLRenderingContext, rebindAll: boolean) {
-    if (rebindAll || this.indexBuffer.isChanged()) {
+    if (rebindAll || this.indexBuffer.changed) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer.get().getBuffer());
-      this.indexBuffer.setChanged(false);
+      this.indexBuffer.changed = false;
     }
   }
 
   private rebindTextures(gl: WebGLRenderingContext, rebindAll: boolean) {
-    let samplers = this.shader.get().getSamplers();
-    for (let s = 0; s < samplers.length; s++) {
-      let sampler = samplers[s];
-      let texture = this.textures[this.texturesIndex[sampler.getName()]];
-      if (texture != undefined && texture.get() != null && (rebindAll || texture.isChanged())) {
+    const texturesIdxs = this.currentTexturesIdxs;
+    const len = texturesIdxs.length();
+    for (let s = 0; s < len; s++) {
+      const idx = texturesIdxs.get(s);
+      const texture = this.textures[idx];
+      if (texture != undefined && texture.get() != null && (rebindAll || texture.changed)) {
         gl.activeTexture(gl.TEXTURE0 + s);
         gl.bindTexture(gl.TEXTURE_2D, texture.get().get());
-        texture.setChanged(false);
+        texture.changed = false;
       }
     }
   }
 
   private updateUniforms(gl: WebGLRenderingContext, rebindAll: boolean) {
-    for (let u = 0; u < this.uniforms.length; u++) {
-      let state = this.uniforms[u];
-      if (!rebindAll && !state.isChanged()) continue;
-      SHADER.setUniform(gl, this.shader.get(), this.uniformsNames[u], state.get());
-      state.setChanged(false);
+    const uniformsIdxs = this.currentUniformIdxs;
+    const len = uniformsIdxs.length();
+    for (let u = 0; u < len; u++) {
+      const idx = uniformsIdxs.get(u);
+      const state = this.uniforms[idx];
+      if (!rebindAll && !state.changed) continue;
+      SHADER.setUniform(gl, this.shader.get(), this.uniformsDefinitions[idx], state.get());
+      state.changed = false;
     }
   }
 
   public draw(gl: WebGLRenderingContext, mode: number = gl.TRIANGLES) {
-    let rebindAll = this.rebindShader(gl);
+    const rebindAll = this.rebindShader(gl);
     this.rebindVertexBuffers(gl, rebindAll);
     this.rebindIndexBuffer(gl, rebindAll);
     this.updateUniforms(gl, rebindAll);
     this.rebindTextures(gl, rebindAll);
-    let drawElements = this.drawElements.get();
+    const drawElements = this.drawElements.get();
     drawElements.buffer.update(gl);
-    let count = drawElements.idx.size;
-    let offset = drawElements.idx.offset;
+    const count = drawElements.idx.size;
+    const offset = drawElements.idx.offset;
     gl.drawElements(mode, count, gl.UNSIGNED_SHORT, offset * 2);
   }
 }
