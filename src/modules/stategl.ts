@@ -73,7 +73,8 @@ export class State {
   public setUniform(name: string, value: any) {
     let u = this.uniformsIndex[name];
     if (u == undefined) {
-      throw new Error('Invalid uniform name: ' + name);
+      // throw new Error('Invalid uniform name: ' + name);
+      return;
     }
     this.uniforms[u].set(value);
   }
