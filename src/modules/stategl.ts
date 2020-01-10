@@ -1,38 +1,43 @@
-import * as SHADER from './shaders';
 import * as GLM from '../libs_js/glmatrix';
 import { Pointer } from './buffergl';
-import { Shader, VertexBuffer, IndexBuffer, Texture, Definition } from './drawstruct';
 import { Deck } from './collections';
+import { Definition, IndexBuffer, Shader, Texture, VertexBuffer } from './drawstruct';
+import * as SHADER from './shaders';
 
 function eqCmp<T>(lh: T, rh: T) { return lh === rh }
 function assign<T>(dst: T, src: T) { return src }
 
 export class StateValue<T> {
-  public changed: boolean = false;
   constructor(
+    private changecb: () => void,
     public value: T,
     public cmp: (lh: T, rh: T) => boolean = eqCmp,
     public setter: (dst: T, src: T) => T = assign
   ) { }
   get(): T { return this.value; }
-  set(v: T) { if (!this.cmp(v, this.value)) { this.value = this.setter(this.value, v); this.changed = true; } }
+  set(v: T) {
+    if (!this.cmp(v, this.value)) {
+      this.value = this.setter(this.value, v);
+      this.changecb()
+    }
+  }
 }
 
-function createStateValue(type: string): StateValue<any> {
+function createStateValue(type: string, changecb: () => void): StateValue<any> {
   switch (type) {
     case "mat4":
     case "vec3":
     case "vec4":
-      return new StateValue<GLM.Mat4Array>(GLM[type].create(), GLM[type].exactEquals, GLM[type].copy)
+      return new StateValue<GLM.Mat4Array>(changecb, GLM[type].create(), GLM[type].exactEquals, GLM[type].copy)
     default:
-      return new StateValue<number>(0);
+      return new StateValue<number>(changecb, 0);
   }
 }
 
 export class State {
-  private shader: StateValue<Shader> = new StateValue<Shader>(null);
-  private indexBuffer: StateValue<IndexBuffer> = new StateValue<IndexBuffer>(null);
-  private drawElements: StateValue<Pointer> = new StateValue<Pointer>(null);
+  private shader: StateValue<Shader> = new StateValue<Shader>(() => this.changeShader = true, null);
+  private indexBuffer: StateValue<IndexBuffer> = new StateValue<IndexBuffer>(() => this.changeShader = true, null);
+  private drawElements: Pointer;
   private shaders: { [index: string]: Shader } = {};
 
   private vertexBuffers: StateValue<VertexBuffer>[] = [];
@@ -47,8 +52,11 @@ export class State {
   private texturesNames: string[] = [];
   private texturesIndex: { [index: string]: number } = {};
 
-  private currentTexturesIdxs = new Deck<number>();
-  private currentUniformIdxs = new Deck<number>();
+  private changeShader = true;
+  private changeIndexBuffer = true;
+  private changedVertexBuffersIds = new Deck<number>();
+  private changedTextures = new Deck<[number, number]>();
+  private changedUniformIdxs = new Deck<number>();
 
 
   public registerShader(name: string, shader: Shader) {
@@ -58,7 +66,7 @@ export class State {
       const uniform = uniforms[u];
       if (this.uniformsIndex[uniform.name] != undefined) continue;
       const idx = this.uniforms.length;
-      this.uniforms.push(createStateValue(uniform.type));
+      this.uniforms.push(createStateValue(uniform.type, () => this.changedUniformIdxs.push(idx)));
       this.uniformsDefinitions.push(uniform);
       this.uniformsIndex[uniform.name] = idx;
     }
@@ -67,7 +75,7 @@ export class State {
       const sampler = samplers[s];
       if (this.texturesIndex[sampler.name] != undefined) continue;
       const idx = this.textures.length;
-      this.textures.push(new StateValue<Texture>(null));
+      this.textures.push(new StateValue<Texture>(() => this.changedTextures.push([idx, s]), null));
       this.texturesNames.push(sampler.name);
       this.texturesIndex[sampler.name] = idx;
     }
@@ -117,94 +125,99 @@ export class State {
       idx = this.vertexBuffers.length;
       this.vertexBufferIndex[name] = idx;
       this.vertexBufferNames[idx] = name;
-      this.vertexBuffers.push(new StateValue<VertexBuffer>(null));
+      this.vertexBuffers.push(new StateValue<VertexBuffer>(() => this.changedVertexBuffersIds.push(idx), null));
     }
     return this.vertexBuffers[idx];
   }
 
   public setDrawElements(ptr: Pointer) {
-    this.drawElements.set(ptr);
+    this.drawElements = ptr;
   }
 
-  private rebindShader(gl: WebGLRenderingContext): boolean {
-    if (this.shader.changed) {
+  private rebindShader(gl: WebGLRenderingContext) {
+    if (this.changeShader) {
       const shader = this.shader.get();
       gl.useProgram(shader.getProgram());
       const samplers = this.shader.get().getSamplers();
-      this.currentTexturesIdxs.clear();
+      this.changedTextures.clear();
       for (let s = 0; s < samplers.length; s++) {
         const sampler = samplers[s];
-        this.currentTexturesIdxs.push(this.texturesIndex[sampler.name]);
+        this.changedTextures.push([this.texturesIndex[sampler.name], s]);
         this.setUniform(sampler.name, s);
       }
-      this.currentUniformIdxs.clear();
+      this.changedUniformIdxs.clear();
       const uniforms = this.shader.get().getUniforms();
       for (let u = 0; u < uniforms.length; u++) {
         const uniform = uniforms[u];
-        this.currentUniformIdxs.push(this.uniformsIndex[uniform.name]);
+        this.changedUniformIdxs.push(this.uniformsIndex[uniform.name]);
       }
-      this.shader.changed = false;
-      return true;
+      const attribs = this.shader.get().getAttributes();
+      for (let a = 0; a < attribs.length; a++) {
+        const attrib = attribs[a];
+        this.changedVertexBuffersIds.push(this.vertexBufferIndex[attrib.name]);
+      }
+      this.changeShader = false;
+      this.changeIndexBuffer = true;
     }
-    return false;
   }
 
-  private rebindVertexBuffers(gl: WebGLRenderingContext, rebindAll: boolean) {
+  private rebindVertexBuffers(gl: WebGLRenderingContext) {
+    const vertexBufferIdxs = this.changedVertexBuffersIds;
+    const len = vertexBufferIdxs.length();
     const shader = this.shader.get();
-    for (let a = 0; a < this.vertexBuffers.length; a++) {
-      const buf = this.vertexBuffers[a];
-      if (!rebindAll && !buf.changed) continue;
+    for (let a = 0; a < len; a++) {
+      const idx = vertexBufferIdxs.get(a);
+      const buf = this.vertexBuffers[idx];
       const vbuf = buf.get();
-      const location = shader.getAttributeLocation(this.vertexBufferNames[a], gl);
+      const location = shader.getAttributeLocation(this.vertexBufferNames[idx], gl);
       if (location == -1)
         continue;
       gl.bindBuffer(gl.ARRAY_BUFFER, vbuf.getBuffer());
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, vbuf.getSpacing(), vbuf.getType(), vbuf.getNormalized(), vbuf.getStride(), vbuf.getOffset());
-      buf.changed = false;
     }
+    vertexBufferIdxs.clear();
   }
 
-  private rebindIndexBuffer(gl: WebGLRenderingContext, rebindAll: boolean) {
-    if (rebindAll || this.indexBuffer.changed) {
+  private rebindIndexBuffer(gl: WebGLRenderingContext) {
+    if (this.changeIndexBuffer) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer.get().getBuffer());
-      this.indexBuffer.changed = false;
+      this.changeIndexBuffer = false;
     }
   }
 
-  private rebindTextures(gl: WebGLRenderingContext, rebindAll: boolean) {
-    const texturesIdxs = this.currentTexturesIdxs;
-    const len = texturesIdxs.length();
-    for (let s = 0; s < len; s++) {
-      const idx = texturesIdxs.get(s);
+  private rebindTextures(gl: WebGLRenderingContext) {
+    const textures = this.changedTextures;
+    const len = textures.length();
+    for (let t = 0; t < len; t++) {
+      const [idx, sampler] = textures.get(t);
       const texture = this.textures[idx];
-      if (texture != undefined && texture.get() != null && (rebindAll || texture.changed)) {
-        gl.activeTexture(gl.TEXTURE0 + s);
+      if (texture != undefined && texture.get() != null) {
+        gl.activeTexture(gl.TEXTURE0 + sampler);
         gl.bindTexture(gl.TEXTURE_2D, texture.get().get());
-        texture.changed = false;
       }
     }
+    textures.clear();
   }
 
-  private updateUniforms(gl: WebGLRenderingContext, rebindAll: boolean) {
-    const uniformsIdxs = this.currentUniformIdxs;
+  private updateUniforms(gl: WebGLRenderingContext) {
+    const uniformsIdxs = this.changedUniformIdxs;
     const len = uniformsIdxs.length();
     for (let u = 0; u < len; u++) {
       const idx = uniformsIdxs.get(u);
       const state = this.uniforms[idx];
-      if (!rebindAll && !state.changed) continue;
       SHADER.setUniform(gl, this.shader.get(), this.uniformsDefinitions[idx], state.get());
-      state.changed = false;
     }
+    uniformsIdxs.clear();
   }
 
   public draw(gl: WebGLRenderingContext, mode: number = gl.TRIANGLES) {
-    const rebindAll = this.rebindShader(gl);
-    this.rebindVertexBuffers(gl, rebindAll);
-    this.rebindIndexBuffer(gl, rebindAll);
-    this.updateUniforms(gl, rebindAll);
-    this.rebindTextures(gl, rebindAll);
-    const drawElements = this.drawElements.get();
+    this.rebindShader(gl);
+    this.rebindVertexBuffers(gl);
+    this.rebindIndexBuffer(gl);
+    this.updateUniforms(gl);
+    this.rebindTextures(gl);
+    const drawElements = this.drawElements;
     drawElements.buffer.update(gl);
     const count = drawElements.idx.size;
     const offset = drawElements.idx.offset;

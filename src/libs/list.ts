@@ -105,6 +105,7 @@ export class List<T> implements Iterable<T>{
 }
 
 export class FastList<T> implements Iterable<T> {
+
   private elements = new Deck<T>();
   private nextIdx = new Deck<number>();
   private lastIdx = new Deck<number>();
@@ -153,6 +154,10 @@ export class FastList<T> implements Iterable<T> {
     return this.lastIdx.get(idx);
   }
 
+  public push(value: T) {
+    this.insertAfter(value)
+  }
+
   public clear() {
     this.elements.clear().push(null);
     this.nextIdx.clear().push(0);
@@ -165,8 +170,7 @@ export class FastList<T> implements Iterable<T> {
       ? EMPTY_ITERATOR
       : {
         next: () => {
-          if (pointer == 0)
-            return TERMINAL_ITERATOR_RESULT;
+          if (pointer == 0) return TERMINAL_ITERATOR_RESULT;
           else {
             let obj = this.get(pointer);
             pointer = this.next(pointer);

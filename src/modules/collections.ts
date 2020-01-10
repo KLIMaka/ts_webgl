@@ -20,7 +20,7 @@ export const EMPTY_COLLECTION: MutableCollection<any> = {
   set: (i: number, v: any) => { }
 }
 
-function iteratorResult<T>(isDone: boolean, val: T): IteratorResult<T> {
+export function iteratorResult<T>(isDone: boolean, val: T): IteratorResult<T> {
   return isDone ? TERMINAL_ITERATOR_RESULT : { done: false, value: val };
 }
 
