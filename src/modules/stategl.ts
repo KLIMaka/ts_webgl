@@ -70,12 +70,12 @@ export class State {
     this.batchMode = -1;
   }
 
-  private tryBatch(gl: WebGLRenderingContext, mode: number) {
+  private tryBatch(gl: WebGLRenderingContext, mode: number): boolean {
     if (this.batchMode == -1) {
       this.batchMode = mode;
       this.batchOffset = this.drawElements.idx.offset;
       this.batchSize = this.drawElements.idx.size;
-      return;
+      return false;
     } else if (this.batchMode == mode
       && !this.changeShader
       && !this.changeIndexBuffer
@@ -87,14 +87,20 @@ export class State {
       if (this.batchOffset == offset + size) {
         this.batchOffset = offset;
         this.batchSize += size;
-        return;
+        return true;
       } else if (this.batchOffset + this.batchSize == offset) {
         this.batchSize += size;
-        return;
+        return true;
       }
     }
     this.flush(gl);
-    this.tryBatch(gl, mode);
+    return this.tryBatch(gl, mode);
+
+    // this.flush(gl);
+    // this.batchMode = mode;
+    // this.batchOffset = this.drawElements.idx.offset;
+    // this.batchSize = this.drawElements.idx.size;
+    // return false;
   }
 
 
@@ -250,12 +256,13 @@ export class State {
     uniformsIdxs.clear();
   }
 
-  public draw(gl: WebGLRenderingContext, mode: number = gl.TRIANGLES) {
-    this.tryBatch(gl, mode);
+  public draw(gl: WebGLRenderingContext, mode: number = gl.TRIANGLES): boolean {
+    if (this.tryBatch(gl, mode)) return true;
     this.rebindShader(gl);
     this.rebindVertexBuffers(gl);
     this.rebindIndexBuffer(gl);
     this.updateUniforms(gl);
     this.rebindTextures(gl);
+    return false;
   }
 }

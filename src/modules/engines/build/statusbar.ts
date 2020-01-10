@@ -9,6 +9,7 @@ export class Statusbar extends MessageHandlerReflective {
   ypos: HTMLElement;
   secpos: HTMLElement;
   fps: HTMLElement;
+  draws: HTMLElement;
 
   constructor() {
     super();
@@ -16,6 +17,7 @@ export class Statusbar extends MessageHandlerReflective {
     this.ypos = document.getElementById('y_position');
     this.secpos = document.getElementById('sector_position');
     this.fps = document.getElementById('fps');
+    this.draws = document.getElementById('draws');
   }
 
   public PostFrame(msg: PostFrame, ctx: BuildContext) {
@@ -24,6 +26,9 @@ export class Statusbar extends MessageHandlerReflective {
     this.ypos.textContent = '' + view.y;
     this.secpos.textContent = '' + view.sec;
     this.fps.textContent = (1000 / PROFILE.get(null).time).toFixed(0);
+    const draws = PROFILE.get(null).counts['draws'] | 0;
+    const skips = PROFILE.get(null).counts['skip_draws'] | 0;
+    this.draws.textContent = '' + draws + ' / ' + (100 * (skips / draws)).toFixed(2) + '%';
 
     // info['Rendering:'] = PROFILE.get('draw').time.toFixed(2) + 'ms';
     // info['Processing:'] = PROFILE.get('processing').time.toFixed(2) + 'ms';

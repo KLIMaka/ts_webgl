@@ -156,7 +156,8 @@ export class Solid implements Renderable {
     this.pluNUniform.set(this.pal);
     this.shadeUniform.set(this.shade);
     state.setDrawElements(this.buff.get());
-    state.draw(gl);
+    if (state.draw(gl))
+      PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
   }
 
@@ -205,7 +206,8 @@ export class GridRenderable implements Renderable {
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMat);
     state.setDrawElements(this.solid.buff.get());
-    state.draw(gl);
+    if (state.draw(gl))
+      PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
   }
 
@@ -233,7 +235,8 @@ export class Wireframe implements Renderable {
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
-    state.draw(gl, this.mode);
+    if (state.draw(gl, this.mode))
+      PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
   }
 
