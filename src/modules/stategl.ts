@@ -58,6 +58,45 @@ export class State {
   private changedTextures = new Deck<[number, number]>();
   private changedUniformIdxs = new Deck<number>();
 
+  private batchOffset = -1;
+  private batchSize = -1;
+  private batchMode = -1;
+
+
+  public flush(gl: WebGLRenderingContext) {
+    if (this.batchMode == -1) return;
+    this.drawElements.buffer.update(gl);
+    gl.drawElements(this.batchMode, this.batchSize, gl.UNSIGNED_SHORT, this.batchOffset * 2);
+    this.batchMode = -1;
+  }
+
+  private tryBatch(gl: WebGLRenderingContext, mode: number) {
+    if (this.batchMode == -1) {
+      this.batchMode = mode;
+      this.batchOffset = this.drawElements.idx.offset;
+      this.batchSize = this.drawElements.idx.size;
+      return;
+    } else if (this.batchMode == mode
+      && !this.changeShader
+      && !this.changeIndexBuffer
+      && this.changedUniformIdxs.isEmpty()
+      && this.changedTextures.isEmpty()
+      && this.changedVertexBuffersIds.isEmpty()) {
+      const offset = this.drawElements.idx.offset;
+      const size = this.drawElements.idx.size;
+      if (this.batchOffset == offset + size) {
+        this.batchOffset = offset;
+        this.batchSize += size;
+        return;
+      } else if (this.batchOffset + this.batchSize == offset) {
+        this.batchSize += size;
+        return;
+      }
+    }
+    this.flush(gl);
+    this.tryBatch(gl, mode);
+  }
+
 
   public registerShader(name: string, shader: Shader) {
     this.shaders[name] = shader;
@@ -212,15 +251,11 @@ export class State {
   }
 
   public draw(gl: WebGLRenderingContext, mode: number = gl.TRIANGLES) {
+    this.tryBatch(gl, mode);
     this.rebindShader(gl);
     this.rebindVertexBuffers(gl);
     this.rebindIndexBuffer(gl);
     this.updateUniforms(gl);
     this.rebindTextures(gl);
-    const drawElements = this.drawElements;
-    drawElements.buffer.update(gl);
-    const count = drawElements.idx.size;
-    const offset = drawElements.idx.offset;
-    gl.drawElements(mode, count, gl.UNSIGNED_SHORT, offset * 2);
   }
 }

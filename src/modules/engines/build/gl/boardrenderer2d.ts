@@ -65,6 +65,8 @@ function drawRooms(view: View2d, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
+  BGL.flush(view.gl);
   BGL.drawAll(context, view.gl, surfaces);
+  BGL.flush(view.gl);
   PROFILE.endProfile();
 }

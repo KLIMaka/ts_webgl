@@ -82,4 +82,8 @@ export function newFrame(gl: WebGLRenderingContext) {
   state.setUniform('time', performance.now());
 }
 
+export function flush(gl: WebGLRenderingContext) {
+  state.flush(gl);
+}
+
 

@@ -108,11 +108,12 @@ let mstmp = { sec: 0, x: 0, y: 0, z: 0 };
 
 function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link) return;
-
+  BGL.flush(view.gl);
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   writeStencilOnly(view.gl, stencilValue);
   BGL.draw(context, view.gl, surface);
+  BGL.flush(view.gl);
 
   let src = context.board.sprites[link.srcSpriteId];
   let dst = context.board.sprites[link.dstSpriteId];
@@ -133,6 +134,7 @@ function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValu
   BGL.setPosition(view.getPosition());
   writeDepthOnly(view.gl);
   BGL.draw(context, view.gl, surface);
+  BGL.flush(view.gl);
 }
 
 let rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
@@ -148,6 +150,7 @@ function drawRor(result: VisResult, view: View3d) {
     drawStack(view, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
     drawStack(view, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
+  BGL.flush(view.gl);
   view.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll(view.gl);
 }
@@ -162,6 +165,7 @@ let mpos = GLM.vec3.create();
 function drawMirrors(result: VisResult, view: View3d) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
+  BGL.flush(view.gl);
   view.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
     let w = unpackWallId(mirrorWallsCollector.walls.get(i));
@@ -174,6 +178,7 @@ function drawMirrors(result: VisResult, view: View3d) {
     BGL.setPosition(view.getPosition());
     writeStencilOnly(view.gl, i + 127);
     BGL.draw(context, view.gl, r);
+    BGL.flush(view.gl);
 
     // draw reflections in stenciled area
     let w1 = context.board.walls[w]; let w2 = context.board.walls[w1.point2];
@@ -192,6 +197,7 @@ function drawMirrors(result: VisResult, view: View3d) {
     mstmp.sec = view.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
     writeStenciledOnly(view.gl, i + 127);
     drawRooms(view, mirrorVis.visit(context.board, mstmp, view.getForward()));
+    BGL.flush(view.gl);
     view.gl.cullFace(WebGLRenderingContext.BACK);
 
     // seal reflections by writing depth of mirror surface
@@ -199,6 +205,7 @@ function drawMirrors(result: VisResult, view: View3d) {
     writeDepthOnly(view.gl);
     BGL.setClipPlane(0, 0, 0, 0);
     BGL.draw(context, view.gl, r);
+    BGL.flush(view.gl);
   }
   view.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll(view.gl);
@@ -258,6 +265,8 @@ function drawRooms(view: View3d, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
+  BGL.flush(view.gl);
+
   BGL.drawAll(context, view.gl, surfaces);
 
   view.gl.polygonOffset(-1, -8);
@@ -271,5 +280,7 @@ function drawRooms(view: View3d, result: VisResult) {
   BGL.drawAll(context, view.gl, spritesTrans);
   view.gl.polygonOffset(0, 0);
   view.gl.disable(WebGLRenderingContext.BLEND);
+
+  BGL.flush(view.gl);
   PROFILE.endProfile();
 }
