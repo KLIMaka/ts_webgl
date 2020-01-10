@@ -47,7 +47,7 @@ export function setProjectionMatrix(proj: GLM.Mat4Array) {
 let inv = GLM.mat4.create();
 export function setViewMatrix(view: GLM.Mat4Array) {
   state.setUniform('V', view);
-  state.setUniform('IV', GLM.mat4.invert(inv, view));
+  if (state.isUniformEnabled('IV')) state.setUniform('IV', GLM.mat4.invert(inv, view));
 }
 
 export function setPosition(pos: GLM.Vec3Array) {

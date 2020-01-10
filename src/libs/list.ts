@@ -1,4 +1,4 @@
-import { TERMINAL_ITERATOR_RESULT, EMPTY_ITERATOR } from "../modules/collections";
+import { TERMINAL_ITERATOR_RESULT, EMPTY_ITERATOR, Deck } from "../modules/collections";
 
 export class Node<T> {
   constructor(
@@ -103,3 +103,76 @@ export class List<T> implements Iterable<T>{
       }
   }
 }
+
+export class FastList<T> implements Iterable<T> {
+  private elements = new Deck<T>();
+  private nextIdx = new Deck<number>();
+  private lastIdx = new Deck<number>();
+
+  constructor() {
+    this.clear();
+  }
+
+  public insertAfter(value: T, after: number = this.lastIdx.get(0)): number {
+    const idx = this.elements.length();
+    this.elements.push(value);
+    this.nextIdx.push(0)
+    this.lastIdx.push(after);
+    this.nextIdx.set(after, idx);
+    this.lastIdx.set(0, idx);
+    return idx;
+  }
+
+  public insertBefore(value: T, before: number = this.nextIdx.get(0)): number {
+    const idx = this.elements.length();
+    this.elements.push(value);
+    this.nextIdx.push(before)
+    this.lastIdx.push(0);
+    this.nextIdx.set(0, idx);
+    this.lastIdx.set(before, idx);
+    return idx;
+  }
+
+  public remove(idx: number): T {
+    if (idx <= 0 || idx >= this.elements.length() - 1 || this.nextIdx.get(idx) == -1) return null;
+    this.nextIdx.set(this.lastIdx.get(idx), this.nextIdx.get(idx));
+    this.lastIdx.set(this.nextIdx.get(idx), this.lastIdx.get(idx));
+    this.nextIdx.set(idx, -1);
+    return this.elements.get(idx);
+  }
+
+  public get(idx: number): T {
+    return this.elements.get(idx);
+  }
+
+  public next(idx: number): number {
+    return this.nextIdx.get(idx);
+  }
+
+  public last(idx: number): number {
+    return this.lastIdx.get(idx);
+  }
+
+  public clear() {
+    this.elements.clear().push(null);
+    this.nextIdx.clear().push(0);
+    this.lastIdx.clear().push(0);
+  }
+
+  public [Symbol.iterator]() {
+    let pointer = this.next(0);
+    return pointer == 0
+      ? EMPTY_ITERATOR
+      : {
+        next: () => {
+          if (pointer == 0)
+            return TERMINAL_ITERATOR_RESULT;
+          else {
+            let obj = this.get(pointer);
+            pointer = this.next(pointer);
+            return { done: false, value: obj }
+          }
+        }
+      }
+  }
+} 

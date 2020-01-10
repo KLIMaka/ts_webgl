@@ -53,19 +53,20 @@ export class State {
 
   public registerShader(name: string, shader: Shader) {
     this.shaders[name] = shader;
-    let uniforms = shader.getUniforms();
+    const uniforms = shader.getUniforms();
     for (let u = 0; u < uniforms.length; u++) {
-      let uniform = uniforms[u];
+      const uniform = uniforms[u];
       if (this.uniformsIndex[uniform.name] != undefined) continue;
+      const idx = this.uniforms.length;
       this.uniforms.push(createStateValue(uniform.type));
       this.uniformsDefinitions.push(uniform);
-      this.uniformsIndex[uniform.name] = u;
+      this.uniformsIndex[uniform.name] = idx;
     }
-    let samplers = shader.getSamplers();
+    const samplers = shader.getSamplers();
     for (let s = 0; s < samplers.length; s++) {
-      let sampler = samplers[s];
+      const sampler = samplers[s];
       if (this.texturesIndex[sampler.name] != undefined) continue;
-      let idx = this.textures.length;
+      const idx = this.textures.length;
       this.textures.push(new StateValue<Texture>(null));
       this.texturesNames.push(sampler.name);
       this.texturesIndex[sampler.name] = idx;
@@ -73,9 +74,7 @@ export class State {
   }
 
   public setUniform(name: string, value: any) {
-    const u = this.uniformsIndex[name];
-    if (u == undefined) return;
-    this.uniforms[u].set(value);
+    this.getUniformValue(name).set(value);
   }
 
   public getUniformValue(name: string): StateValue<any> {
@@ -84,19 +83,18 @@ export class State {
     return this.uniforms[u];
   }
 
+  public isUniformEnabled(name: string): boolean {
+    return this.uniformsIndex[name] != undefined;
+  }
+
   public setShader(name: string) {
     const s = this.shaders[name];
-    if (s == undefined)
-      throw new Error('Unknown shader: ' + name);
+    if (s == undefined) throw new Error('Unknown shader: ' + name);
     this.shader.set(s);
   }
 
   public setTexture(name: string, tex: Texture) {
-    const t = this.texturesIndex[name];
-    if (t == undefined) {
-      throw new Error('Invalid sampler name: ' + name);
-    }
-    this.textures[t].set(tex);
+    this.getTextureValue(name).set(tex);
   }
 
   public getTextureValue(name: string): StateValue<Texture> {

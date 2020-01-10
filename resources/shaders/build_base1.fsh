@@ -111,7 +111,8 @@ void main() {
 #elif defined NORMAL
   writeColor(vec3((wnormal + 1.0) / 2.0), color);
 #elif defined GRID
-  writeColor(vec3(1.0), texture2D(grid, gridtc));
+  vec4 grid = texture2D(grid, gridtc);
+  writeColor(vec3(1.0), grid);
 #else
   writeColor(palLookup(tc), color);
 #endif
