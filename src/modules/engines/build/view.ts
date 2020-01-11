@@ -15,6 +15,7 @@ import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi"
 import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
 import { findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE, build2gl } from "./utils";
+import { GridController } from "./gl/context";
 
 class TargetImpl implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -51,11 +52,13 @@ export class View2d extends MessageHandlerReflective implements View {
   private hit = new CachedValue((h: Hitscan) => this.updateHitscan(h), new Hitscan());
   private snapTargetValue = new CachedValue((t: TargetImpl) => this.updateSnapTarget(t), new TargetImpl());
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
+  private gridController: GridController;
 
-  constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider) {
+  constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, gridController: GridController) {
     super();
     this.gl = gl;
     this.renderables = renderables;
+    this.gridController = gridController;
   }
 
   get sec() { return this.playerstart.sectnum }
@@ -67,7 +70,7 @@ export class View2d extends MessageHandlerReflective implements View {
   getTransformMatrix() { return this.control.getTransformMatrix() }
   getPosition() { return this.pointer }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.y) }
-  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
+  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable); BGL.flush(this.gl) }
   target(): Target { return this.hit.get() }
   snapTarget(): Target { return this.snapTargetValue.get() }
   dir(): Ray { return this.direction.get() }
@@ -95,8 +98,12 @@ export class View2d extends MessageHandlerReflective implements View {
     RENDERER2D.draw(this, campos, dist, this.control);
 
     const state = ctx.state;
-    if (state.get('zoom+')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() / 1.1);
-    if (state.get('zoom-')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() * 1.1);
+    if (state.get('zoom+')) { this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() / 1.1); this.recalcGridSize() }
+    if (state.get('zoom-')) { this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() * 1.1); this.recalcGridSize() }
+  }
+
+  private recalcGridSize() {
+    this.gridController.setGridSize(this.control.getUnitsPerPixel() * 64);
   }
 
   private invalidateTarget() {
@@ -189,7 +196,7 @@ export class View3d extends MessageHandlerReflective implements View {
   getPosition() { return this.control.getPosition() }
   getForward() { return this.control.getForward() }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.z / ZSCALE + 1024, this.playerstart.y) }
-  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
+  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable); BGL.flush(this.gl) }
   target(): Target { return this.hit.get() }
   snapTarget(): Target { return this.snapTargetValue.get() }
   dir(): Ray { return this.direction.get() }
@@ -341,11 +348,13 @@ export class SwappableView implements View, MessageHandler {
   private view3d: View3d;
   private renderables: RenderablesCache;
   private impl: RENDERER3D.Implementation;
+  private gridController: GridController;
 
-  constructor(gl: WebGLRenderingContext, renderables: RenderablesCache, impl: RENDERER3D.Implementation) {
+  constructor(gl: WebGLRenderingContext, renderables: RenderablesCache, impl: RENDERER3D.Implementation, gridController: GridController) {
     this.gl = gl;
     this.renderables = renderables;
     this.impl = impl;
+    this.gridController = gridController;
   }
 
   get sec() { return this.view.sec }
@@ -370,7 +379,7 @@ export class SwappableView implements View, MessageHandler {
 
   bind(ctx: BuildContext) {
     ctx.state.register('lookaim', false);
-    this.view2d = new View2d(this.gl, this.renderables.topdown);
+    this.view2d = new View2d(this.gl, this.renderables.topdown, this.gridController);
     this.view2d.bind(ctx);
     this.view3d = new View3d(this.gl, this.renderables.geometry, this.impl);
     this.view3d.bind(ctx);

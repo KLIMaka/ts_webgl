@@ -20,7 +20,7 @@ import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
 import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCache } from './modules/engines/build/gl/cache';
-import { Context } from './modules/engines/build/gl/context';
+import { Context, GridController } from './modules/engines/build/gl/context';
 import { Info } from './modules/engines/build/info';
 import * as RFF from './modules/engines/build/rff';
 import { Statusbar as StatusBar } from './modules/engines/build/statusbar';
@@ -106,8 +106,9 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   }
 
   let cache = new RenderablesCache();
-  let view = new SwappableView(gl, cache, impl);
-  let context = new Context(art, board, view, { cloneBoard });
+  let gridController = new GridController();
+  let view = new SwappableView(gl, cache, impl, gridController);
+  let context = new Context(art, board, view, { cloneBoard }, gridController);
   context.loadBinds(binds);
   context.addHandler(new Selection((cb) => artSelector.modal(cb), cache.helpers));
   context.addHandler(new SplitWall());

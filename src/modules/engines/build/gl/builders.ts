@@ -80,7 +80,7 @@ export class WallHelper implements Renderable {
   }
 }
 
-const NULL_SECTOR_RENDERAABLE: SectorRenderable = {
+const NULL_SECTOR_RENDERABLE: SectorRenderable = {
   floor: NULL_RENDERABLE,
   ceiling: NULL_RENDERABLE,
   draw: () => { },
@@ -88,7 +88,7 @@ const NULL_SECTOR_RENDERAABLE: SectorRenderable = {
 }
 
 export function updateSector2d(ctx: BuildContext, sectorId: number, SectorRenderable: SectorRenderable): SectorRenderable {
-  return NULL_SECTOR_RENDERAABLE;
+  return NULL_SECTOR_RENDERABLE;
 }
 
 let white = GLM.vec4.fromValues(1, 1, 1, 1);

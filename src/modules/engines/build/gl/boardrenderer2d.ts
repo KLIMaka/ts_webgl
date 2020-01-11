@@ -14,15 +14,28 @@ const scale = GLM.vec3.create();
 const offset = GLM.vec3.create();
 function getGrid(controller: Controller2D) {
   if (grid != null) {
-    const k = (context.gridScale * 4) / controller.getUnitsPerPixel();
-    GLM.vec3.set(scale, controller.getWidth() / k, controller.getHeight() / k, 1);
-    GLM.vec3.set(offset, controller.getPosition()[0] / controller.getUnitsPerPixel(), controller.getPosition()[2] / controller.getUnitsPerPixel(), 0);
+    const upp = controller.getUnitsPerPixel();
+    const w = controller.getWidth();
+    const h = controller.getHeight();
+    const hw = w / 2;
+    const hh = h / 2;
+    const gridScale = context.gridScale;
+    const xs = (hw * upp) / gridScale;
+    const ys = (hh * upp) / gridScale;
+    const x = controller.getPosition()[0];
+    const y = controller.getPosition()[2];
+    const xo = x / upp / hw;
+    const yo = y / upp / hh;
+
+    GLM.vec3.set(scale, xs, ys, 1);
+    GLM.vec3.set(offset, xo, -yo, 0);
     GLM.mat4.identity(grid.gridTexMat);
-    GLM.mat4.translate(grid.gridTexMat, grid.gridTexMat, offset);
     GLM.mat4.scale(grid.gridTexMat, grid.gridTexMat, scale);
+    GLM.mat4.translate(grid.gridTexMat, grid.gridTexMat, offset);
     return grid;
   }
   const gridSolid = new Solid();
+  gridSolid.trans = 0.5;
   const buff = gridSolid.buff;
   buff.allocate(4, 6);
   buff.writePos(0, -1, 1, 0);
@@ -60,9 +73,11 @@ export function draw(view: View2d, campos: GLM.Vec3Array, dist: number, controll
   BGL.setProjectionMatrix(idMat4);
   BGL.setViewMatrix(idMat4);
   view.gl.depthMask(false);
+  view.gl.enable(WebGLRenderingContext.BLEND);
   BGL.draw(context, view.gl, getGrid(controller));
   BGL.flush(view.gl);
   view.gl.depthMask(true);
+  view.gl.disable(WebGLRenderingContext.BLEND);
 
   BGL.setProjectionMatrix(view.getProjectionMatrix());
   BGL.setViewMatrix(view.getTransformMatrix());

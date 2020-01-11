@@ -1,5 +1,5 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { Deck } from '../../../collections';
+import { Deck, cyclicPairs } from '../../../collections';
 import { InputState } from '../../../input';
 import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
@@ -70,6 +70,28 @@ class BuildReferenceTrackerImpl implements BuildReferenceTracker {
   readonly sprites = new ReferenceTrackerImpl<number>(-1);
 }
 
+export class GridController {
+  private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
+  private gridSizeIdx = 3;
+
+  public setGridSize(size: number) {
+    if (size < this.gridSizes[0]) this.gridSizeIdx = 0;
+    else if (size > this.gridSizes[this.gridSizes.length - 1]) this.gridSizeIdx = this.gridSizes.length - 1;
+    else {
+      for (let i = 0; i < this.gridSizes.length - 2; i++) {
+        const i1 = i + 1;
+        if (size > this.gridSizes[i1]) continue;
+        this.gridSizeIdx = (size - this.gridSizes[i]) < (this.gridSizes[i1] - size) ? i : i1;
+        break;
+      }
+    }
+  }
+
+  public getGridSize(): number { return this.gridSizes[this, this.gridSizeIdx] }
+  public incGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length) }
+  public decGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length) }
+}
+
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
   readonly state = new StateImpl(this);
@@ -77,18 +99,18 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   readonly refs = new BuildReferenceTrackerImpl();
 
   private binder = new Binder();
-  private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
-  private gridSizeIdx = 3;
   private history: History = new History();
   private activeBoard: Board;
   private boardManipulator: BoardManipulator;
   private handlers = new MessageHandlerList();
   private boundObjects = new Set();
+  private gridController: GridController;
 
-  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator) {
+  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator, gridController: GridController) {
     super();
     this.art = art;
     this.boardManipulator = manipulator;
+    this.gridController = gridController;
     this.activeBoard = board;
     this.view = this.bind(view);
     this.commit();
@@ -101,7 +123,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   get gridScale() {
-    return this.gridSizes[this.gridSizeIdx];
+    return this.gridController.getGridSize();
   }
 
   private bind<T extends Bindable>(bindable: T): T {
@@ -125,12 +147,12 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   private incGridSize() {
-    this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length);
+    this.gridController.incGridSize();
     this.state.set('gridScale', this.gridScale);
   }
 
   private decGridSize() {
-    this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length);
+    this.gridController.decGridSize();
     this.state.set('gridScale', this.gridScale);
   }
 

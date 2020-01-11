@@ -201,16 +201,6 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
 
     let ceiling2d = new Array<Renderable>();
     let floor2d = new Array<Renderable>();
-    let sectorRenderable = this.cache.sector(secId);
-    let ceilingGrid = new GridRenderable();
-    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, EntityType.CEILING));
-    ceilingGrid.gridTexMat = gridMatrix;
-    ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
-    ceiling2d.push(ceilingGrid);
-    let floorGrid = new GridRenderable();
-    floorGrid.gridTexMat = gridMatrix;
-    floorGrid.solid = <Solid>sectorRenderable.floor;
-    floor2d.push(floorGrid);
 
     let sec = this.ctx.board.sectors[secId];
     let end = sec.wallptr + sec.wallnum;
@@ -226,6 +216,16 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     floor.push(sectorWireframe.floor);
     ceiling.push(buildCeilingHinge(this.ctx, secId));
     floor.push(buildFloorHinge(this.ctx, secId));
+    let sectorRenderable = this.cache.sector(secId);
+    let ceilingGrid = new GridRenderable();
+    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, EntityType.CEILING));
+    ceilingGrid.gridTexMat = gridMatrix;
+    ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
+    ceiling.push(ceilingGrid);
+    let floorGrid = new GridRenderable();
+    floorGrid.gridTexMat = gridMatrix;
+    floorGrid.solid = <Solid>sectorRenderable.floor;
+    floor.push(floorGrid);
 
     renderable.ceiling = new RenderableList([...ceiling2d, wrapStatePred((ctx: BuildContext) => !ctx.view.isWireframe(), new RenderableList(ceiling))]);
     renderable.floor = new RenderableList([...floor2d, wrapStatePred((ctx: BuildContext) => !ctx.view.isWireframe(), new RenderableList(floor))]);
