@@ -96,7 +96,7 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   // let board = createBoard();
   let board = loadBloodMap(stream);
   let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
-  let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_LINEAR, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
+  let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: false }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
 
   let rorLinks = loadRorLinks(board);

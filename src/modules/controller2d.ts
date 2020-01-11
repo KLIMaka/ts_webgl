@@ -41,6 +41,9 @@ export class Controller2D {
     this.height = h;
   }
 
+  public getWidth() { return this.width }
+  public getHeight() { return this.height }
+
   public setUnitsPerPixel(scale: number) {
     this.scale = scale;
   }
