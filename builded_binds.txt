@@ -16,7 +16,7 @@ CTRL+SHIFT+LEFT msg panrepeat 0 0 -8 0 false
 CTRL+SHIFT+UP   msg panrepeat 0 0 0 8 false
 CTRL+SHIFT+DOWN msg panrepeat 0 0 0 -8 false
 \               msg reset_panrepeat
-O               msg pal 1 14 false
+O               msg pal 1 15 false
 F               msg flip
 wheelUp         msg shade 1 false
 wheelDown       msg shade -1 false

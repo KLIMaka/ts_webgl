@@ -92,7 +92,7 @@ export class View2d extends MessageHandlerReflective implements View {
     const campos = this.control.getPosition();
     const dist = len2d(max[0] - campos[0], max[2] - campos[2]);
     BGL.newFrame(this.gl);
-    RENDERER2D.draw(this, campos, dist);
+    RENDERER2D.draw(this, campos, dist, this.control);
 
     const state = ctx.state;
     if (state.get('zoom+')) this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() / 1.1);
