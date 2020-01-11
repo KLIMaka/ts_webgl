@@ -173,7 +173,7 @@ function drawMirrors(result: VisResult, view: View3d) {
       continue;
 
     // draw mirror surface into stencil
-    let r = renderables.wall(w);
+    let r = view.renderables.wall(w);
     BGL.setViewMatrix(view.getTransformMatrix());
     BGL.setPosition(view.getPosition());
     writeStencilOnly(view.gl, i + 127);

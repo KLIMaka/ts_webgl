@@ -793,7 +793,7 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
   let xf = spr.cstat.xflip; let yf = spr.cstat.yflip;
   let sec = ctx.board.sectors[spr.sectnum];
-  let sectorShade = sec.floorshade;
+  let sectorShade = sec ? sec.floorshade : spr.shade;
   let shade = spr.shade == -8 ? sectorShade : spr.shade;
   let trans = (spr.cstat.translucent || spr.cstat.tranclucentReversed) ? 0.6 : 1;
   renderable.tex = tex;
