@@ -114,25 +114,28 @@ export function updateWall2d(ctx: BuildContext, wallId: number, renderable: Wall
 
 let tmp = GLM.vec4.create();
 let texMat = GLM.mat4.create();
-export function genGridMatrix(board: Board, id: number, type: EntityType): GLM.Mat4Array {
+export const gridMatrixProviderSector = (scale: number) => {
   GLM.mat4.identity(texMat);
-  if (isSector(type)) {
-    GLM.vec4.set(tmp, 1 / 512, 1 / 512, 1, 1);
-    GLM.mat4.scale(texMat, texMat, tmp);
-    GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
-  } else if (isWall(type)) {
-    let wall1 = board.walls[id];
-    let wall2 = board.walls[wall1.point2];
-    let dx = wall2.x - wall1.x;
-    let dy = wall2.y - wall1.y;
-    let d = 128 / (walllen(board, id) / wall1.xrepeat);
-    GLM.vec4.set(tmp, d / 512, 1 / 512, 1, 1);
+  GLM.vec4.set(tmp, 1 / scale, 1 / scale, 1, 1);
+  GLM.mat4.scale(texMat, texMat, tmp);
+  GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
+  return texMat;
+}
+
+export function createGridMatrixProviderWall(board: Board, id: number) {
+  let wall1 = board.walls[id];
+  let wall2 = board.walls[wall1.point2];
+  let dx = wall2.x - wall1.x;
+  let dy = wall2.y - wall1.y;
+  return (scale: number) => {
+    GLM.mat4.identity(texMat);
+    let d = scale / (walllen(board, id) / wall1.xrepeat);
+    GLM.vec4.set(tmp, d / scale, 1 / scale, 1, 1);
     GLM.mat4.scale(texMat, texMat, tmp);
     GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
     GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
-    GLM.mat4.translate(texMat, texMat, tmp);
+    return GLM.mat4.translate(texMat, texMat, tmp);
   }
-  return texMat;
 }
 
 export function updateWallLine(ctx: BuildContext, wallId: number): Wireframe {

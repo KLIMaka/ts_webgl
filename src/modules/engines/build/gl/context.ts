@@ -72,7 +72,7 @@ class BuildReferenceTrackerImpl implements BuildReferenceTracker {
 
 export class GridController {
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
-  private gridSizeIdx = 3;
+  private gridSizeIdx = 4;
 
   public setGridSize(size: number) {
     if (size < this.gridSizes[0]) this.gridSizeIdx = 0;
@@ -87,7 +87,7 @@ export class GridController {
     }
   }
 
-  public getGridSize(): number { return this.gridSizes[this, this.gridSizeIdx] }
+  public getGridSize(): number { return this.gridSizes[this.gridSizeIdx] }
   public incGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx + 1, this.gridSizes.length) }
   public decGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length) }
 }
@@ -106,7 +106,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private boundObjects = new Set();
   private gridController: GridController;
 
-  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator, gridController: GridController) {
+  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator, gridController: GridController = new GridController()) {
     super();
     this.art = art;
     this.boardManipulator = manipulator;

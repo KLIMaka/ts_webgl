@@ -70,7 +70,7 @@ export class View2d extends MessageHandlerReflective implements View {
   getTransformMatrix() { return this.control.getTransformMatrix() }
   getPosition() { return this.pointer }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.y) }
-  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable); BGL.flush(this.gl) }
+  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
   target(): Target { return this.hit.get() }
   snapTarget(): Target { return this.snapTargetValue.get() }
   dir(): Ray { return this.direction.get() }
@@ -196,7 +196,7 @@ export class View3d extends MessageHandlerReflective implements View {
   getPosition() { return this.control.getPosition() }
   getForward() { return this.control.getForward() }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.z / ZSCALE + 1024, this.playerstart.y) }
-  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable); BGL.flush(this.gl) }
+  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
   target(): Target { return this.hit.get() }
   snapTarget(): Target { return this.snapTargetValue.get() }
   dir(): Ray { return this.direction.get() }

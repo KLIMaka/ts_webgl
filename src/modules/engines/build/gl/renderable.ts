@@ -182,8 +182,10 @@ export class WrapRenderable implements Renderable {
   ) { }
 
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
+    state.flush(gl);
     this.pre(ctx, gl, state);
     this.rend.draw(ctx, gl, state);
+    state.flush(gl);
     this.post(ctx, gl, state);
   }
 
@@ -194,7 +196,7 @@ export class WrapRenderable implements Renderable {
 
 export class GridRenderable implements Renderable {
   public solid: Solid;
-  public gridTexMat: GLM.Mat4Array;
+  public gridTexMatProvider: (scale: number) => GLM.Mat4Array;
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
@@ -204,7 +206,7 @@ export class GridRenderable implements Renderable {
     state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
     state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
     state.setShader('grid');
-    state.setUniform('GT', this.gridTexMat);
+    state.setUniform('GT', this.gridTexMatProvider(ctx.gridScale));
     state.setDrawElements(this.solid.buff.get());
     if (state.draw(gl))
       PROFILE.get(null).inc('skip_draws');

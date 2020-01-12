@@ -12,6 +12,7 @@ import { Controller2D } from '../../../controller2d';
 let grid: GridRenderable;
 const scale = GLM.vec3.create();
 const offset = GLM.vec3.create();
+const gridMatrix = GLM.mat4.create();
 function getGrid(controller: Controller2D) {
   if (grid != null) {
     const upp = controller.getUnitsPerPixel();
@@ -29,9 +30,9 @@ function getGrid(controller: Controller2D) {
 
     GLM.vec3.set(scale, xs, ys, 1);
     GLM.vec3.set(offset, xo, -yo, 0);
-    GLM.mat4.identity(grid.gridTexMat);
-    GLM.mat4.scale(grid.gridTexMat, grid.gridTexMat, scale);
-    GLM.mat4.translate(grid.gridTexMat, grid.gridTexMat, offset);
+    GLM.mat4.identity(gridMatrix);
+    GLM.mat4.scale(gridMatrix, gridMatrix, scale);
+    GLM.mat4.translate(gridMatrix, gridMatrix, offset);
     return grid;
   }
   const gridSolid = new Solid();
@@ -48,7 +49,7 @@ function getGrid(controller: Controller2D) {
   buff.writeTc(3, -1, 1);
   buff.writeQuad(0, 0, 1, 2, 3);
   grid = new GridRenderable();
-  grid.gridTexMat = GLM.mat4.create();
+  grid.gridTexMatProvider = (scale: number) => gridMatrix;
   grid.solid = gridSolid;
   return grid;
 }

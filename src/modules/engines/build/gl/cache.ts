@@ -2,8 +2,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { BuildContext } from '../api';
 import { BoardInvalidate } from '../edit/messages';
 import { MessageHandlerReflective } from '../handlerapi';
-import { EntityType } from '../hitscan';
-import { buildCeilingHinge, buildFloorHinge, genGridMatrix, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
+import { buildCeilingHinge, buildFloorHinge, createGridMatrixProviderWall, gridMatrixProviderSector, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
 import { BuildRenderableProvider, GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, SectorRenderable, Solid, WallRenderable, wrapStatePred } from './renderable';
 
 class Entry<T> {
@@ -218,12 +217,11 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     floor.push(buildFloorHinge(this.ctx, secId));
     let sectorRenderable = this.cache.sector(secId);
     let ceilingGrid = new GridRenderable();
-    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, secId, EntityType.CEILING));
-    ceilingGrid.gridTexMat = gridMatrix;
+    ceilingGrid.gridTexMatProvider = gridMatrixProviderSector;
     ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
     ceiling.push(ceilingGrid);
     let floorGrid = new GridRenderable();
-    floorGrid.gridTexMat = gridMatrix;
+    floorGrid.gridTexMatProvider = gridMatrixProviderSector;
     floorGrid.solid = <Solid>sectorRenderable.floor;
     floor.push(floorGrid);
 
@@ -240,11 +238,11 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     return new RenderableList(arr);
   }
 
-  private addWallPart(solid: Solid, mat: GLM.Mat4Array, wire: Renderable, points: Renderable): Renderable {
+  private addWallPart(solid: Solid, matProvider: (scale: number) => GLM.Mat4Array, wire: Renderable, points: Renderable): Renderable {
     let arr = new Array<Renderable>();
     arr.push(wire);
     let wallGrid = new GridRenderable();
-    wallGrid.gridTexMat = mat;
+    wallGrid.gridTexMatProvider = matProvider;
     wallGrid.solid = solid;
     arr.push(wallGrid);
     arr.push(points);
@@ -256,7 +254,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     renderable.reset();
     let wallWireframe = updateWallWireframe(this.ctx, wallId);
     let wallRenderable = this.cache.wall(wallId);
-    let gridMatrix = GLM.mat4.copy(GLM.mat4.create(), genGridMatrix(this.ctx.board, wallId, EntityType.MID_WALL));
+    let gridMatrix = createGridMatrixProviderWall(this.ctx.board, wallId);
     renderable.top = this.addWallPart(<Solid>wallRenderable.top, gridMatrix, wallWireframe.top, this.addWallPoints(wallId, true));
     renderable.mid = this.addWallPart(<Solid>wallRenderable.mid, gridMatrix, wallWireframe.mid, NULL_RENDERABLE);
     renderable.bot = this.addWallPart(<Solid>wallRenderable.bot, gridMatrix, wallWireframe.bot, this.addWallPoints(wallId, false));
