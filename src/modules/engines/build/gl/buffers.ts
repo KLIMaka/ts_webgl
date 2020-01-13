@@ -1,14 +1,18 @@
 import { Buffer, BufferBuilder, Pointer } from '../../../buffergl';
 import { VertexBuffer, IndexBuffer } from '../../../drawstruct';
 
-let buffers: Buffer[] = [];
+const buffers: Buffer[] = [];
 let ctx: WebGLRenderingContext;
+
+const POSITION = 'aPos';
+const NORMAL = 'aNorm';
+const TEXCOORDS = 'aTc';
 
 function createNewBuffer() {
   let buffer = new Buffer(ctx, new BufferBuilder()
-    .addVertexBuffer(ctx, 'aPos', ctx.FLOAT, 3)
-    .addVertexBuffer(ctx, 'aNorm', ctx.FLOAT, 3)
-    .addVertexBuffer(ctx, 'aTc', ctx.FLOAT, 2));
+    .addVertexBuffer(ctx, POSITION, ctx.FLOAT, 3)
+    .addVertexBuffer(ctx, NORMAL, ctx.FLOAT, 3)
+    .addVertexBuffer(ctx, TEXCOORDS, ctx.FLOAT, 2));
   buffers.push(buffer);
   return buffer;
 }
@@ -18,23 +22,7 @@ export function init(gl: WebGLRenderingContext) {
   createNewBuffer();
 }
 
-export function getPosBuffer(ptr: Pointer): VertexBuffer {
-  return ptr.buffer.getVertexBuffer('aPos');
-}
-
-export function getNormBuffer(ptr: Pointer): VertexBuffer {
-  return ptr.buffer.getVertexBuffer('aNorm');
-}
-
-export function getTexCoordBuffer(ptr: Pointer): VertexBuffer {
-  return ptr.buffer.getVertexBuffer('aTc');
-}
-
-export function getIdxBuffer(ptr: Pointer): IndexBuffer {
-  return ptr.buffer.getIndexBuffer();
-}
-
-export function allocate(vtxSize: number, idxSize: number): Pointer {
+function allocate(vtxSize: number, idxSize: number): Pointer {
   for (let i = 0; i < buffers.length; i++) {
     let ptr = buffers[i].allocate(vtxSize, idxSize);
     if (ptr != null) return ptr;
@@ -42,36 +30,99 @@ export function allocate(vtxSize: number, idxSize: number): Pointer {
   return createNewBuffer().allocate(vtxSize, idxSize);
 }
 
-export function remove(ptr: Pointer) {
+function remove(ptr: Pointer) {
   ptr.buffer.deallocate(ptr);
 }
 
-export function writePos(ptr: Pointer, off: number, x: number, y: number, z: number): number {
-  ptr.buffer.writeVertex(ptr, 'aPos', off, [x, y, z]);
+function writePos(ptr: Pointer, off: number, x: number, y: number, z: number): number {
+  ptr.buffer.writeVertex(ptr, POSITION, off, [x, y, z]);
   return off + 1;
 }
 
-export function writeNormal(ptr: Pointer, off: number, x: number, y: number, z: number): number {
-  ptr.buffer.writeVertex(ptr, 'aNorm', off, [x, y, z]);
+function writeNormal(ptr: Pointer, off: number, x: number, y: number, z: number): number {
+  ptr.buffer.writeVertex(ptr, NORMAL, off, [x, y, z]);
   return off + 1;
 }
 
-export function writeTc(ptr: Pointer, off: number, u: number, v: number): number {
-  ptr.buffer.writeVertex(ptr, 'aTc', off, [u, v]);
+function writeTc(ptr: Pointer, off: number, u: number, v: number): number {
+  ptr.buffer.writeVertex(ptr, TEXCOORDS, off, [u, v]);
   return off + 1;
 }
 
-export function writeTriangle(ptr: Pointer, off: number, a: number, b: number, c: number): number {
+function writeTriangle(ptr: Pointer, off: number, a: number, b: number, c: number): number {
   ptr.buffer.writeIndex(ptr, off, [a, b, c]);
   return off + 3;
 }
 
-export function writeQuad(ptr: Pointer, off: number, a: number, b: number, c: number, d: number): number {
+function writeQuad(ptr: Pointer, off: number, a: number, b: number, c: number, d: number): number {
   ptr.buffer.writeIndex(ptr, off, [a, c, b, a, d, c]);
   return off + 6;
 }
 
-export function writeLine(ptr: Pointer, off: number, a: number, b: number): number {
+function writeLine(ptr: Pointer, off: number, a: number, b: number): number {
   ptr.buffer.writeIndex(ptr, off, [a, b]);
   return off + 2;
+}
+
+export class BuildBuffer {
+  private ptr: Pointer;
+
+  public get(): Pointer {
+    return this.ptr;
+  }
+
+  public allocate(vtxCount: number, triIndexCount: number) {
+    if (this.ptr != null) {
+      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount) return;
+      remove(this.ptr);
+    }
+    this.ptr = allocate(vtxCount, triIndexCount);
+  }
+
+  public deallocate() {
+    if (this.ptr != null) {
+      remove(this.ptr);
+      this.ptr = null;
+    }
+  }
+
+  public writePos(off: number, x: number, y: number, z: number): number {
+    return writePos(this.ptr, off, x, y, z);
+  }
+
+  public writeNormal(off: number, x: number, y: number, z: number): number {
+    return writeNormal(this.ptr, off, x, y, z);
+  }
+
+  public writeTc(off: number, u: number, v: number): number {
+    return writeTc(this.ptr, off, u, v);
+  }
+
+  public writeTriangle(off: number, a: number, b: number, c: number): number {
+    return writeTriangle(this.ptr, off, a, b, c);
+  }
+
+  public writeQuad(off: number, a: number, b: number, c: number, d: number): number {
+    return writeQuad(this.ptr, off, a, b, c, d);
+  }
+
+  public writeLine(off: number, a: number, b: number) {
+    return writeLine(this.ptr, off, a, b);
+  }
+
+  public getPosBuffer(): VertexBuffer {
+    return this.ptr.buffer.getVertexBuffer(POSITION);
+  }
+
+  public getNormBuffer(): VertexBuffer {
+    return this.ptr.buffer.getVertexBuffer(NORMAL);
+  }
+
+  public getTexCoordBuffer(): VertexBuffer {
+    return this.ptr.buffer.getVertexBuffer(TEXCOORDS);
+  }
+
+  public getIdxBuffer(): IndexBuffer {
+    return this.ptr.buffer.getIndexBuffer();
+  }
 }

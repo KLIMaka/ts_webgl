@@ -1,20 +1,34 @@
-import { MessageHandlerReflective } from "../../handlerapi";
-import { Frame, NamedMessage } from "../messages";
 import { BuildContext } from "../../api";
-import { Hitscan, isWall, EntityType } from "../../hitscan";
+import { Wireframe } from "../../gl/renderable";
+import { MessageHandlerReflective } from "../../handlerapi";
+import { MovingHandle } from "../handle";
+import { Frame, NamedMessage, Render } from "../messages";
+import { vec3 } from "../../../../../libs_js/glmatrix";
+import { build2gl } from "../../utils";
+import { Deck } from "../../../../collections";
+
+const target_ = vec3.create();
+const start_ = vec3.create();
+const dir_ = vec3.create();
 
 export class DrawWall extends MessageHandlerReflective {
-  private activeWall = -1;
+  private wallId = -1;
+  private movingHandle = new MovingHandle();
+  private wireframe = new Wireframe();
+  private upper = new Deck<number>();
+  private lower = new Deck<number>();
+  private points = new Deck<[number, number]>();
 
   private start(ctx: BuildContext) {
-    let hit = ctx.hitscan;
-    if (!hit.ent.isWall()) return;
-    let wall = ctx.board.walls[hit.ent.id];
-    if (wall.nextsector != -1 && hit.ent.type == EntityType.MID_WALL) return;
+    const target = ctx.view.snapTarget();
+    if (target.entity == null || !target.entity.isWall()) return;
+    this.wallId = target.entity.id;
+    this.movingHandle.start(build2gl(target_, target.coords));
   }
 
   private insertPoint(ctx: BuildContext) {
-    if (this.activeWall == -1) this.start(ctx);
+    if (this.wallId == -1) this.start(ctx);
+
   }
 
   private popPoint() {
@@ -29,6 +43,15 @@ export class DrawWall extends MessageHandlerReflective {
   }
 
   public Frame(msg: Frame, ctx: BuildContext) {
+    if (this.movingHandle.isActive()) {
+      const { start, dir } = ctx.view.dir();
+      this.movingHandle.update(false, false, build2gl(start_, start), build2gl(dir_, dir));
+    }
+  }
 
+  public Render(msg: Render, ctx: BuildContext) {
+    if (!this.movingHandle.isActive()) return;
+    this.updateWireframe(ctx);
+    msg.list.push(this.wireframe);
   }
 }

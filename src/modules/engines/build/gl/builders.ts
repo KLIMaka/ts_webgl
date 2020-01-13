@@ -1,14 +1,14 @@
-import * as MU from '../../../../libs/mathutils';
+import { len2d } from '../../../../libs/mathutils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
-import { ArtInfo } from '../art';
-import { walllen } from '../boardutils';
-import { isSector, isWall, EntityType } from '../hitscan';
-import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
-import * as U from '../utils';
-import { Buffer, NULL_RENDERABLE, Renderable, Type, Wireframe, Solid, SectorRenderable, WallRenderable } from './renderable';
 import { State } from '../../../stategl';
 import { BuildContext } from '../api';
+import { ArtInfo } from '../art';
+import { walllen } from '../boardutils';
+import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
+import { ang2vec, createSlopeCalculator, getFirstWallAngle, sectorNormal, sectorOfWall, slope, spriteAngle, wallNormal, ZSCALE } from '../utils';
+import { BuildBuffer } from './buffers';
+import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe } from './renderable';
 
 export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
@@ -123,13 +123,14 @@ export const gridMatrixProviderSector = (scale: number) => {
 }
 
 export function createGridMatrixProviderWall(board: Board, id: number) {
-  let wall1 = board.walls[id];
-  let wall2 = board.walls[wall1.point2];
-  let dx = wall2.x - wall1.x;
-  let dy = wall2.y - wall1.y;
+  const wall1 = board.walls[id];
+  const wall2 = board.walls[wall1.point2];
+  const dx = wall2.x - wall1.x;
+  const dy = wall2.y - wall1.y;
+  const wlen = walllen(board, id);
   return (scale: number) => {
+    const d = scale / (wlen / wall1.xrepeat);
     GLM.mat4.identity(texMat);
-    let d = scale / (walllen(board, id) / wall1.xrepeat);
     GLM.vec4.set(tmp, d / scale, 1 / scale, 1, 1);
     GLM.mat4.scale(texMat, texMat, tmp);
     GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
@@ -143,13 +144,13 @@ export function updateWallLine(ctx: BuildContext, wallId: number): Wireframe {
   let board = ctx.board;
   let buff = line.buff;
   buff.allocate(2, 2);
-  let sectorId = U.sectorOfWall(board, wallId);
+  let sectorId = sectorOfWall(board, wallId);
   let sector = board.sectors[sectorId];
   let wall = board.walls[wallId];
-  let fz = sector.floorz + U.slope(board, sectorId, wall.x, wall.y, sector.floorheinum);
-  let cz = sector.ceilingz + U.slope(board, sectorId, wall.x, wall.y, sector.ceilingheinum);
-  buff.writePos(0, wall.x, fz / U.ZSCALE, wall.y);
-  buff.writePos(1, wall.x, cz / U.ZSCALE, wall.y);
+  let fz = sector.floorz + slope(board, sectorId, wall.x, wall.y, sector.floorheinum);
+  let cz = sector.ceilingz + slope(board, sectorId, wall.x, wall.y, sector.ceilingheinum);
+  buff.writePos(0, wall.x, fz / ZSCALE, wall.y);
+  buff.writePos(1, wall.x, cz / ZSCALE, wall.y);
   buff.writeLine(0, 0, 1);
   return line;
 }
@@ -169,21 +170,21 @@ function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean): Wi
   let wall1 = board.walls[sec.wallptr];
   let wall2 = board.walls[wall1.point2];
   let dx = (wall2.x - wall1.x); let dy = (wall2.y - wall1.y);
-  let dl = MU.len2d(dx, dy);
+  let dl = len2d(dx, dy);
   let x = wall1.x + dx / 2; let y = wall1.y + dy / 2;
   dx /= dl; dy /= dl;
-  let z = (ceiling ? sec.ceilingz : sec.floorz) / U.ZSCALE;
+  let z = (ceiling ? sec.ceilingz : sec.floorz) / ZSCALE;
   let dz = ceiling ? -size / 2 : size / 2;
   let x1 = x - dx * size; let y1 = y - dy * size;
   let x2 = x + dx * size; let y2 = y + dy * size;
   let x3 = x1 - dy * (size / 2); let y3 = y1 + dx * (size / 2);
   let x4 = x2 - dy * (size / 2); let y4 = y2 + dx * (size / 2);
   let heinum = ceiling ? sec.ceilingheinum : sec.floorheinum;
-  let slope = U.slope(board, sectorId, x3, y3, heinum) / U.ZSCALE;
+  let s = slope(board, sectorId, x3, y3, heinum) / ZSCALE;
   buff.writePos(0, x1, z, y1);
   buff.writePos(1, x2, z, y2);
-  buff.writePos(2, x3, z + slope, y3);
-  buff.writePos(3, x4, z + slope, y4);
+  buff.writePos(2, x3, z + s, y3);
+  buff.writePos(3, x4, z + s, y4);
   buff.writePos(4, x1, z + dz, y1);
   buff.writePos(5, x2, z + dz, y2);
   buff.writeQuad(0, 0, 1, 3, 2);
@@ -199,12 +200,12 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wirefram
   let buff = arrow.buff;
   buff.allocate(3, 6);
   let spr = ctx.board.sprites[spriteId];
-  let x = spr.x, y = spr.y, z = spr.z / U.ZSCALE;
-  let ang = U.spriteAngle(spr.ang);
+  let x = spr.x, y = spr.y, z = spr.z / ZSCALE;
+  let ang = spriteAngle(spr.ang);
   let size = 128;
-  let vec1 = U.ang2vec(ang);
+  let vec1 = ang2vec(ang);
   GLM.vec3.scale(vec1, vec1, size);
-  let vec2 = U.ang2vec(ang + Math.PI / 2);
+  let vec2 = ang2vec(ang + Math.PI / 2);
   GLM.vec3.scale(vec2, vec2, size / 4);
   buff.writePos(0, x + vec1[0], z, y + vec1[2]);
   buff.writePos(1, x + vec2[0], z, y + vec2[2]);
@@ -214,7 +215,7 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wirefram
   return arrow;
 }
 
-function fillBufferForWallPoint(board: Board, wallId: number, buff: Buffer, d: number, z: number) {
+function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
   buff.allocate(4, 12);
   let wall = board.walls[wallId];
   buff.writePos(0, wall.x - d, z, wall.y - d);
@@ -232,19 +233,19 @@ function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d:
   let point = new Wireframe();
   let board = ctx.board;
   point.mode = WebGLRenderingContext.TRIANGLES;
-  let s = U.sectorOfWall(board, wallId);
+  let s = sectorOfWall(board, wallId);
   let sec = board.sectors[s];
-  let slope = U.createSlopeCalculator(board, s);
+  let slope = createSlopeCalculator(board, s);
   let h = (ceiling ? sec.ceilingheinum : sec.floorheinum);
   let z = (ceiling ? sec.ceilingz : sec.floorz);
   let wall = board.walls[wallId];
-  let zz = (slope(wall.x, wall.y, h) + z) / U.ZSCALE;
+  let zz = (slope(wall.x, wall.y, h) + z) / ZSCALE;
   fillBufferForWallPoint(board, wallId, point.buff, d, zz);
   return point;
 }
 
-function fillBuffersForSectorWireframe(s: number, sec: Sector, heinum: number, z: number, board: Board, buff: Buffer) {
-  let slope = U.createSlopeCalculator(board, s);
+function fillBuffersForSectorWireframe(s: number, sec: Sector, heinum: number, z: number, board: Board, buff: BuildBuffer) {
+  let slope = createSlopeCalculator(board, s);
   buff.allocate(sec.wallnum, sec.wallnum * 2);
 
   let fw = sec.wallptr;
@@ -254,7 +255,7 @@ function fillBuffersForSectorWireframe(s: number, sec: Sector, heinum: number, z
     let wall = board.walls[wid];
     let vx = wall.x;
     let vy = wall.y;
-    let vz = (slope(vx, vy, heinum) + z) / U.ZSCALE;
+    let vz = (slope(vx, vy, heinum) + z) / ZSCALE;
     buff.writePos(w, vx, vz, vy);
     if (fw != wid) {
       off = buff.writeLine(off, w - 1, w);
@@ -275,7 +276,7 @@ export function updateSectorWireframe(ctx: BuildContext, secId: number): SectorH
   return new SectorHelper(ceiling, floor);
 }
 
-function genQuadWireframe(coords: number[], normals: number[], buff: Buffer) {
+function genQuadWireframe(coords: number[], normals: number[], buff: BuildBuffer) {
   buff.allocate(4, 8);
   let [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4] = coords;
   buff.writePos(0, x1, z1, y1);
@@ -300,12 +301,12 @@ export function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelp
   let bot = NULL_RENDERABLE;
   let board = ctx.board;
   let wall = board.walls[wallId];
-  let sectorId = U.sectorOfWall(board, wallId)
+  let sectorId = sectorOfWall(board, wallId)
   let sector = board.sectors[sectorId];
   let wall2 = board.walls[wall.point2];
   let x1 = wall.x; let y1 = wall.y;
   let x2 = wall2.x; let y2 = wall2.y;
-  let slope = U.createSlopeCalculator(board, sectorId);
+  let slope = createSlopeCalculator(board, sectorId);
   let ceilingheinum = sector.ceilingheinum;
   let ceilingz = sector.ceilingz;
   let floorheinum = sector.floorheinum;
@@ -317,7 +318,7 @@ export function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelp
     genQuadWireframe(coords, null, (<Wireframe>mid).buff);
   } else {
     let nextsector = board.sectors[wall.nextsector];
-    let nextslope = U.createSlopeCalculator(board, wall.nextsector);
+    let nextslope = createSlopeCalculator(board, wall.nextsector);
     let nextfloorz = nextsector.floorz;
     let nextceilingz = nextsector.ceilingz;
 
@@ -391,11 +392,11 @@ export function updateSpriteWireframe(ctx: BuildContext, sprId: number): Rendera
     return NULL_RENDERABLE;
 
   let wireframe = new Wireframe();
-  let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
+  let x = spr.x; let y = spr.y; let z = spr.z / ZSCALE;
   let info = ctx.art.getInfo(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
-  let ang = U.spriteAngle(spr.ang);
+  let ang = spriteAngle(spr.ang);
   let xo = (info.attrs.xoff * spr.xrepeat) / 4;
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
 
@@ -429,7 +430,7 @@ function applySectorTextureTransform(sector: Sector, ceiling: boolean, walls: Wa
   }
   if (stats.alignToFirstWall) {
     let w1 = walls[sector.wallptr];
-    GLM.mat4.rotateZ(texMat, texMat, U.getFirstWallAngle(sector, walls));
+    GLM.mat4.rotateZ(texMat, texMat, getFirstWallAngle(sector, walls));
     GLM.mat4.translate(texMat, texMat, [-w1.x, -w1.y, 0, 0])
   }
   GLM.mat4.rotateX(texMat, texMat, -Math.PI / 2);
@@ -457,15 +458,15 @@ function cacheTriangulate(board: Board, sec: Sector): any {
 }
 
 let tc = GLM.vec4.create();
-function fillBuffersForSectorNormal(ceil: boolean, board: Board, s: number, sec: Sector, buff: Buffer, vtxs: number[][], vidxs: number[], normal: GLM.Vec3Array, t: GLM.Mat4Array) {
+function fillBuffersForSectorNormal(ceil: boolean, board: Board, s: number, sec: Sector, buff: BuildBuffer, vtxs: number[][], vidxs: number[], normal: GLM.Vec3Array, t: GLM.Mat4Array) {
   let heinum = ceil ? sec.ceilingheinum : sec.floorheinum;
   let z = ceil ? sec.ceilingz : sec.floorz;
-  let slope = U.createSlopeCalculator(board, s);
+  let slope = createSlopeCalculator(board, s);
 
   for (let i = 0; i < vtxs.length; i++) {
     let vx = vtxs[i][0];
     let vy = vtxs[i][1];
-    let vz = (slope(vx, vy, heinum) + z) / U.ZSCALE;
+    let vz = (slope(vx, vy, heinum) + z) / ZSCALE;
     buff.writePos(i, vx, vz, vy);
     buff.writeNormal(i, normal[0], normal[1], normal[2]);
     GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, vx, vz, vy, 1), t);
@@ -488,7 +489,7 @@ function fillBuffersForSector(ceil: boolean, board: Board, s: number, sec: Secto
   fillBuffersForSectorNormal(ceil, board, s, sec, d.buff, vtxs, vidxs, normal, t);
 }
 
-let sectorNormal = GLM.vec3.create();
+let sectorNormal_ = GLM.vec3.create();
 export function updateSector(ctx: BuildContext, secId: number, renderable: SectorSolid): SectorSolid {
   if (renderable == null) renderable = new SectorSolid();
   let board = ctx.board;
@@ -496,7 +497,7 @@ export function updateSector(ctx: BuildContext, secId: number, renderable: Secto
   let sec = board.sectors[secId];
   let ceilinginfo = art.getInfo(sec.ceilingpicnum);
   applySectorTextureTransform(sec, true, board.walls, ceilinginfo, renderable.ceiling.texMat);
-  fillBuffersForSector(true, board, secId, sec, renderable, U.sectorNormal(sectorNormal, board, secId, true), renderable.ceiling.texMat);
+  fillBuffersForSector(true, board, secId, sec, renderable, sectorNormal(sectorNormal_, board, secId, true), renderable.ceiling.texMat);
   renderable.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
   renderable.ceiling.parallax = sec.ceilingstat.parallaxing;
   renderable.ceiling.pal = sec.ceilingpal;
@@ -504,7 +505,7 @@ export function updateSector(ctx: BuildContext, secId: number, renderable: Secto
 
   let floorinfo = art.getInfo(sec.floorpicnum);
   applySectorTextureTransform(sec, false, board.walls, floorinfo, renderable.floor.texMat);
-  fillBuffersForSector(false, board, secId, sec, renderable, U.sectorNormal(sectorNormal, board, secId, false), renderable.floor.texMat);
+  fillBuffersForSector(false, board, secId, sec, renderable, sectorNormal(sectorNormal_, board, secId, false), renderable.floor.texMat);
   renderable.floor.tex = sec.floorstat.parallaxing ? art.getParallaxTexture(sec.floorpicnum) : art.get(sec.floorpicnum);
   renderable.floor.parallax = sec.floorstat.parallaxing;
   renderable.floor.pal = sec.floorpal;
@@ -515,10 +516,10 @@ export function updateSector(ctx: BuildContext, secId: number, renderable: Secto
 
 function getWallCoords(x1: number, y1: number, x2: number, y2: number,
   slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean, line = false): number[] {
-  let z1 = (slope(x1, y1, heinum) + z) / U.ZSCALE;
-  let z2 = (slope(x2, y2, heinum) + z) / U.ZSCALE;
-  let z3 = (nextslope(x2, y2, nextheinum) + nextz) / U.ZSCALE;
-  let z4 = (nextslope(x1, y1, nextheinum) + nextz) / U.ZSCALE;
+  let z1 = (slope(x1, y1, heinum) + z) / ZSCALE;
+  let z2 = (slope(x2, y2, heinum) + z) / ZSCALE;
+  let z3 = (nextslope(x2, y2, nextheinum) + nextz) / ZSCALE;
+  let z4 = (nextslope(x1, y1, nextheinum) + nextz) / ZSCALE;
   if (check) {
     if (line && z4 > z1 && z3 > z2) return null;
     if (!line && z4 >= z1 && z3 >= z2) return null;
@@ -529,14 +530,14 @@ function getWallCoords(x1: number, y1: number, x2: number, y2: number,
 function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slope: any, nextslope: any,
   ceilheinum: number, ceilnextheinum: number, ceilz: number, ceilnextz: number,
   floorheinum: number, floornextheinum: number, floorz: number, floornextz: number): number[] {
-  let currz1 = (slope(x1, y1, ceilheinum) + ceilz) / U.ZSCALE;
-  let currz2 = (slope(x2, y2, ceilheinum) + ceilz) / U.ZSCALE;
-  let currz3 = (slope(x2, y2, floorheinum) + floorz) / U.ZSCALE;
-  let currz4 = (slope(x1, y1, floorheinum) + floorz) / U.ZSCALE;
-  let nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / U.ZSCALE;
-  let nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / U.ZSCALE;
-  let nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / U.ZSCALE;
-  let nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / U.ZSCALE;
+  let currz1 = (slope(x1, y1, ceilheinum) + ceilz) / ZSCALE;
+  let currz2 = (slope(x2, y2, ceilheinum) + ceilz) / ZSCALE;
+  let currz3 = (slope(x2, y2, floorheinum) + floorz) / ZSCALE;
+  let currz4 = (slope(x1, y1, floorheinum) + floorz) / ZSCALE;
+  let nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / ZSCALE;
+  let nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / ZSCALE;
+  let nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / ZSCALE;
+  let nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / ZSCALE;
   let z1 = Math.min(currz1, nextz1);
   let z2 = Math.min(currz2, nextz2);
   let z3 = Math.max(currz3, nextz3);
@@ -548,14 +549,14 @@ function normals(n: GLM.Vec3Array) {
   return [n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2]];
 }
 
-function writePos(buff: Buffer, c: number[]) {
+function writePos(buff: BuildBuffer, c: number[]) {
   buff.writePos(0, c[0], c[2], c[1]);
   buff.writePos(1, c[3], c[5], c[4]);
   buff.writePos(2, c[6], c[8], c[7]);
   buff.writePos(3, c[9], c[11], c[10]);
 }
 
-function writeTransformTc(buff: Buffer, t: GLM.Mat4Array, c: number[]) {
+function writeTransformTc(buff: BuildBuffer, t: GLM.Mat4Array, c: number[]) {
   GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[0], c[2], c[1], 1), t);
   buff.writeTc(0, tc[0], tc[1]);
   GLM.vec4.transformMat4(tc, GLM.vec4.set(tc, c[3], c[5], c[4], 1), t);
@@ -566,21 +567,21 @@ function writeTransformTc(buff: Buffer, t: GLM.Mat4Array, c: number[]) {
   buff.writeTc(3, tc[0], tc[1]);
 }
 
-function writeTc(buff: Buffer, t: number[]) {
+function writeTc(buff: BuildBuffer, t: number[]) {
   buff.writeTc(0, t[0], t[1]);
   buff.writeTc(1, t[2], t[3]);
   buff.writeTc(2, t[4], t[5]);
   buff.writeTc(3, t[6], t[7]);
 }
 
-function writeNormal(buff: Buffer, n: number[]) {
+function writeNormal(buff: BuildBuffer, n: number[]) {
   buff.writeNormal(0, n[0], n[1], n[2]);
   buff.writeNormal(1, n[3], n[4], n[5]);
   buff.writeNormal(2, n[6], n[7], n[8]);
   buff.writeNormal(3, n[9], n[10], n[11]);
 }
 
-function genQuad(c: number[], n: number[], t: GLM.Mat4Array, buff: Buffer, onesided: number = 1) {
+function genQuad(c: number[], n: number[], t: GLM.Mat4Array, buff: BuildBuffer, onesided: number = 1) {
   buff.allocate(4, onesided ? 6 : 12);
 
   writePos(buff, c);
@@ -592,7 +593,7 @@ function genQuad(c: number[], n: number[], t: GLM.Mat4Array, buff: Buffer, onesi
     buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-function genSpriteQuad(x: number, y: number, z: number, n: number[], t: number[], buff: Buffer) {
+function genSpriteQuad(x: number, y: number, z: number, n: number[], t: number[], buff: BuildBuffer) {
   buff.allocate(4, 12);
 
   writePos(buff, [x, y, z, x, y, z, x, y, z, x, y, z]);
@@ -612,7 +613,7 @@ function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base:
   let th = info.h;
   let dx = wall2.x - wall1.x;
   let dy = wall2.y - wall1.y;
-  let tcscalex = (wall.xrepeat * 8.0) / (flip * MU.len2d(dx, dy) * tw);
+  let tcscalex = (wall.xrepeat * 8.0) / (flip * len2d(dx, dy) * tw);
   let tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0) * (originalWall.cstat.yflip ? -1 : 1);
   let tcxoff = wall.xpanning / tw;
   let tcyoff = wall.ypanning / 256.0;
@@ -621,29 +622,29 @@ function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base:
   GLM.mat4.translate(texMat, texMat, [tcxoff, tcyoff, 0, 0]);
   GLM.mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
   GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
-  GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / U.ZSCALE, -wall1.y, 0]);
+  GLM.mat4.translate(texMat, texMat, [-wall1.x, -base / ZSCALE, -wall1.y, 0]);
 }
 
-let wallNormal = GLM.vec3.create();
+let wallNormal_ = GLM.vec3.create();
 export function updateWall(ctx: BuildContext, wallId: number, renderable: WallSolid): WallSolid {
   if (renderable == null) renderable = new WallSolid();
   let board = ctx.board;
   let art = ctx.art;
   let wall = board.walls[wallId];
-  let sectorId = U.sectorOfWall(board, wallId);
+  let sectorId = sectorOfWall(board, wallId);
   let sector = board.sectors[sectorId];
   let wall2 = board.walls[wall.point2];
   let x1 = wall.x; let y1 = wall.y;
   let x2 = wall2.x; let y2 = wall2.y;
   let tex = art.get(wall.picnum);
   let info = art.getInfo(wall.picnum);
-  let slope = U.createSlopeCalculator(board, sectorId);
+  let slope = createSlopeCalculator(board, sectorId);
   let ceilingheinum = sector.ceilingheinum;
   let ceilingz = sector.ceilingz;
   let floorheinum = sector.floorheinum;
   let floorz = sector.floorz;
   let trans = (wall.cstat.translucent || wall.cstat.translucentReversed) ? 0.6 : 1;
-  let normal = normals(U.wallNormal(wallNormal, board, wallId));
+  let normal = normals(wallNormal(wallNormal_, board, wallId));
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     let coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
@@ -655,7 +656,7 @@ export function updateWall(ctx: BuildContext, wallId: number, renderable: WallSo
     renderable.mid.pal = wall.pal;
   } else {
     let nextsector = board.sectors[wall.nextsector];
-    let nextslope = U.createSlopeCalculator(board, wall.nextsector);
+    let nextslope = createSlopeCalculator(board, wall.nextsector);
     let nextfloorz = nextsector.floorz;
     let nextceilingz = nextsector.ceilingz;
 
@@ -734,7 +735,7 @@ function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, y
     x + dx, y + dy, z - hh + yo,
     x + dx, y + dy, z + hh + yo,
     x - dx, y - dy, z + hh + yo],
-    normals(U.ang2vec(ang)), texMat,
+    normals(ang2vec(ang)), texMat,
     renderable.buff, onesided);
 
 }
@@ -786,12 +787,12 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
   if (spr.picnum == 0 || spr.cstat.invisible)
     return renderable;
 
-  let x = spr.x; let y = spr.y; let z = spr.z / U.ZSCALE;
+  let x = spr.x; let y = spr.y; let z = spr.z / ZSCALE;
   let info = ctx.art.getInfo(spr.picnum);
   let tex = ctx.art.get(spr.picnum);
   let w = (info.w * spr.xrepeat) / 4; let hw = w >> 1;
   let h = (info.h * spr.yrepeat) / 4; let hh = h >> 1;
-  let ang = U.spriteAngle(spr.ang);
+  let ang = spriteAngle(spr.ang);
   let xo = (info.attrs.xoff * spr.xrepeat) / 4;
   let yo = (info.attrs.yoff * spr.yrepeat) / 4 + (spr.cstat.realCenter ? 0 : hh);
   let xf = spr.cstat.xflip; let yf = spr.cstat.yflip;

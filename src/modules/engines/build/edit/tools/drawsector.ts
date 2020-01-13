@@ -98,7 +98,6 @@ class Contour {
 }
 
 export class DrawSector extends MessageHandlerReflective {
-  // private static zintersect: [number, number] = [0, 0];
 
   private points = new Deck<[number, number]>();
   private pointer = vec3.create();
@@ -151,18 +150,6 @@ export class DrawSector extends MessageHandlerReflective {
     }
     return true;
   }
-
-  // private getIntersectionZPlane(ctx: BuildContext): [number, number] {
-  //   let snapped = snap(ctx);
-  //   if (snapped != null) return tuple2(DrawSector.zintersect, snapped[0], snapped[1]);
-  //   let z = this.contour.getZ();
-  //   let dz = hit.ray.start[2] / ZSCALE - z;
-  //   let t = -dz / hit.ray.dir[2];
-  //   if (t < 0) return null;
-  //   const x = ctx.snap(hit.ray.start[0] + hit.ray.dir[0] * t);
-  //   const y = ctx.snap(hit.ray.start[1] + hit.ray.dir[1] * t);
-  //   return tuple2(DrawSector.zintersect, x, y);
-  // }
 
   private isSplitSector(ctx: BuildContext, x: number, y: number) {
     let sectorId = this.findContainingSector(ctx);

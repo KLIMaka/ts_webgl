@@ -1,10 +1,10 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { Deck, cyclicPairs } from '../../../collections';
+import { Deck } from '../../../collections';
 import { InputState } from '../../../input';
 import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { State as StateGl } from '../../../stategl';
-import { ArtProvider, Bindable, BoardManipulator, BuildContext, State, View, BuildReferenceTracker } from '../api';
+import { ArtProvider, Bindable, BoardManipulator, BuildContext, BuildReferenceTracker, State, View } from '../api';
 import { BoardInvalidate, Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';

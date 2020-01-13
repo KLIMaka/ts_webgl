@@ -4,7 +4,7 @@ import { BuildContext } from "../api";
 import { deleteSprite, insertSprite, moveSprite } from "../boardutils";
 import { MessageHandlerReflective, Message } from "../handlerapi";
 import { ZSCALE } from "../utils";
-import { Flip, Highlight, Move, NamedMessage, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, BoardInvalidate } from "./messages";
+import { Flip, Highlight, Move, NamedMessage, Palette, PanRepeat, SetPicnum, Shade, SpriteMode, StartMove, BoardInvalidate, SetSpriteCstat } from "./messages";
 import { MOVE_COPY, MOVE_ROTATE } from "./tools/selection";
 import { Entity, EntityType } from "../hitscan";
 
@@ -115,6 +115,14 @@ export class SpriteEnt extends MessageHandlerReflective {
 
   public BoardInvalidate(msg: BoardInvalidate, ctx: BuildContext) {
     if (msg.ent == null) this.valid = false;
+  }
+
+  public SetSpriteCstat(msg: SetSpriteCstat, ctx: BuildContext) {
+    const spr = ctx.board.sprites[this.spriteId];
+    const stat = spr.cstat[msg.name];
+    spr.cstat[msg.name] = stat ? 0 : 1;
+    ctx.commit();
+    ctx.message(new BoardInvalidate(new Entity(this.spriteId, EntityType.SPRITE)));
   }
 
   public handle(msg: Message, ctx: BuildContext) {

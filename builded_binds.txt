@@ -27,6 +27,7 @@ M               msg wallcstat alignBottom true true
 R               msg sprite_mode
 R               msg sectorcstat alignToFirstWall true true
 E               msg sectorcstat doubleSmooshiness true true
+C               msg spritecstat realCenter true true
 
 T               push_wall
 SHIFT+T         push_wall_copy

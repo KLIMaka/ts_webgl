@@ -1,57 +1,9 @@
 import * as GLM from '../../../../libs_js/glmatrix';
-import { Pointer } from '../../../buffergl';
 import * as DS from '../../../drawstruct';
 import * as PROFILE from '../../../profiler';
 import { State, StateValue } from '../../../stategl';
 import { BuildContext } from '../api';
-import * as BUFF from './buffers';
-
-export class Buffer {
-  private ptr: Pointer;
-
-  public get(): Pointer {
-    return this.ptr;
-  }
-
-  public allocate(vtxCount: number, triIndexCount: number) {
-    if (this.ptr != null) {
-      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount) return;
-      BUFF.remove(this.ptr);
-    }
-    this.ptr = BUFF.allocate(vtxCount, triIndexCount);
-  }
-
-  public deallocate() {
-    if (this.ptr != null) {
-      BUFF.remove(this.ptr);
-      this.ptr = null;
-    }
-  }
-
-  public writePos(off: number, x: number, y: number, z: number): number {
-    return BUFF.writePos(this.ptr, off, x, y, z);
-  }
-
-  public writeNormal(off: number, x: number, y: number, z: number): number {
-    return BUFF.writeNormal(this.ptr, off, x, y, z);
-  }
-
-  public writeTc(off: number, u: number, v: number): number {
-    return BUFF.writeTc(this.ptr, off, u, v);
-  }
-
-  public writeTriangle(off: number, a: number, b: number, c: number): number {
-    return BUFF.writeTriangle(this.ptr, off, a, b, c);
-  }
-
-  public writeQuad(off: number, a: number, b: number, c: number, d: number): number {
-    return BUFF.writeQuad(this.ptr, off, a, b, c, d);
-  }
-
-  public writeLine(off: number, a: number, b: number) {
-    return BUFF.writeLine(this.ptr, off, a, b);
-  }
-}
+import { BuildBuffer } from './buffers';
 
 export enum Type {
   SURFACE,
@@ -114,7 +66,7 @@ export interface BuildRenderableProvider {
 let color = GLM.vec4.create();
 export class Solid implements Renderable {
   public type: Type = Type.SURFACE;
-  public buff: Buffer = new Buffer();
+  public buff: BuildBuffer = new BuildBuffer();
   public tex: DS.Texture;
   public shade: number;
   public trans: number = 1;
@@ -145,11 +97,11 @@ export class Solid implements Renderable {
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
     this.updateUniformLocations(state);
-    let ptr = this.buff.get();
-    state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
-    this.posBuffer.set(BUFF.getPosBuffer(ptr));
-    this.normBuffer.set(BUFF.getNormBuffer(ptr));
-    this.tcBuffer.set(BUFF.getTexCoordBuffer(ptr));
+    const buff = this.buff;
+    state.setIndexBuffer(buff.getIdxBuffer());
+    this.posBuffer.set(buff.getPosBuffer());
+    this.normBuffer.set(buff.getNormBuffer());
+    this.tcBuffer.set(buff.getTexCoordBuffer());
     state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
     this.baseUniform.set(this.tex);
     this.colorUniform.set(GLM.vec4.set(color, 1, 1, 1, this.trans));
@@ -200,11 +152,11 @@ export class GridRenderable implements Renderable {
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
-    let ptr = this.solid.buff.get();
-    state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
-    state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
-    state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
-    state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
+    const buff = this.solid.buff;
+    state.setIndexBuffer(buff.getIdxBuffer());
+    state.setVertexBuffer('aPos', buff.getPosBuffer());
+    state.setVertexBuffer('aNorm', buff.getNormBuffer());
+    state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMatProvider(ctx.gridScale));
     state.setDrawElements(this.solid.buff.get());
@@ -223,17 +175,17 @@ export class GridRenderable implements Renderable {
 
 export class Wireframe implements Renderable {
   public type: Type = Type.SURFACE;
-  public buff: Buffer = new Buffer();
+  public buff: BuildBuffer = new BuildBuffer();
   public mode: number = WebGLRenderingContext.LINES;
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (!this.renderable()) return;
-    let ptr = this.buff.get();
-    state.setIndexBuffer(BUFF.getIdxBuffer(ptr));
-    state.setVertexBuffer('aPos', BUFF.getPosBuffer(ptr));
-    state.setVertexBuffer('aNorm', BUFF.getNormBuffer(ptr));
-    state.setVertexBuffer('aTc', BUFF.getTexCoordBuffer(ptr));
+    const buff = this.buff;
+    state.setIndexBuffer(buff.getIdxBuffer());
+    state.setVertexBuffer('aPos', buff.getPosBuffer());
+    state.setVertexBuffer('aNorm', buff.getNormBuffer());
+    state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
