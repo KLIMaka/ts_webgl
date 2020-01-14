@@ -1,5 +1,5 @@
 import * as PROFILE from "../../profiler";
-import { BuildContext, View } from "./api";
+import { BuildContext } from "./api";
 import { PostFrame } from "./edit/messages";
 import { MessageHandlerReflective } from "./handlerapi";
 

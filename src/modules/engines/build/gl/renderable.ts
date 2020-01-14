@@ -1,9 +1,9 @@
 import * as GLM from '../../../../libs_js/glmatrix';
-import * as DS from '../../../drawstruct';
 import * as PROFILE from '../../../profiler';
 import { State, StateValue } from '../../../stategl';
 import { BuildContext } from '../api';
 import { BuildBuffer } from './buffers';
+import { Texture, VertexBuffer } from '../../../drawstruct';
 
 export enum Type {
   SURFACE,
@@ -67,7 +67,7 @@ let color = GLM.vec4.create();
 export class Solid implements Renderable {
   public type: Type = Type.SURFACE;
   public buff: BuildBuffer = new BuildBuffer();
-  public tex: DS.Texture;
+  public tex: Texture;
   public shade: number;
   public trans: number = 1;
   public pal: number;
@@ -75,13 +75,14 @@ export class Solid implements Renderable {
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
   private uniformsUpdated = false;
-  private baseUniform: StateValue<DS.Texture>;
+  private baseUniform: StateValue<Texture>;
   private colorUniform: StateValue<any>;
   private pluNUniform: StateValue<any>;
   private shadeUniform: StateValue<any>;
-  private posBuffer: StateValue<DS.VertexBuffer>;
-  private normBuffer: StateValue<DS.VertexBuffer>;
-  private tcBuffer: StateValue<DS.VertexBuffer>;
+  private posBuffer: StateValue<VertexBuffer>;
+  private normBuffer: StateValue<VertexBuffer>;
+  private tcBuffer: StateValue<VertexBuffer>;
+
   private updateUniformLocations(state: State) {
     if (this.uniformsUpdated) return;
     this.baseUniform = state.getTextureValue('base');

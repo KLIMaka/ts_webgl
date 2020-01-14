@@ -1,16 +1,16 @@
 import { dot2d } from '../../../../libs/mathutils';
 import { mirrorBasis, normal2d, reflectPoint3d } from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
-import * as PROFILE from '../../../profiler';
 import { Deck } from '../../../collections';
-import { BuildContext, View } from '../api';
+import * as PROFILE from '../../../profiler';
+import { BuildContext } from '../api';
 import { unpackWallId } from '../boardutils';
 import { AllBoardVisitorResult, createSectorCollector, createWallCollector, PvsBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
+import { View3d } from '../view';
 import * as BGL from './buildgl';
 import { BuildRenderableProvider, Renderable } from './renderable';
-import { View3d } from '../view';
 
 export class RorLink {
   constructor(readonly srcSpriteId: number, readonly dstSpriteId: number) { }
@@ -108,7 +108,6 @@ let mstmp = { sec: 0, x: 0, y: 0, z: 0 };
 
 function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link) return;
-  BGL.flush(view.gl);
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   writeStencilOnly(view.gl, stencilValue);
@@ -150,7 +149,6 @@ function drawRor(result: VisResult, view: View3d) {
     drawStack(view, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
     drawStack(view, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
-  BGL.flush(view.gl);
   view.gl.disable(WebGLRenderingContext.STENCIL_TEST);
   writeAll(view.gl);
 }
@@ -165,7 +163,6 @@ let mpos = GLM.vec3.create();
 function drawMirrors(result: VisResult, view: View3d) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
-  BGL.flush(view.gl);
   view.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
     let w = unpackWallId(mirrorWallsCollector.walls.get(i));
@@ -265,22 +262,24 @@ function drawRooms(view: View3d, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.flush(view.gl);
 
   BGL.drawAll(context, view.gl, surfaces);
+  BGL.flush(view.gl);
 
   view.gl.polygonOffset(-1, -8);
   BGL.drawAll(context, view.gl, sprites);
+  BGL.flush(view.gl);
   view.gl.polygonOffset(0, 0);
 
   view.gl.enable(WebGLRenderingContext.BLEND);
   BGL.drawAll(context, view.gl, surfacesTrans);
+  BGL.flush(view.gl);
 
   view.gl.polygonOffset(-1, -8);
   BGL.drawAll(context, view.gl, spritesTrans);
+  BGL.flush(view.gl);
   view.gl.polygonOffset(0, 0);
   view.gl.disable(WebGLRenderingContext.BLEND);
 
-  BGL.flush(view.gl);
   PROFILE.endProfile();
 }

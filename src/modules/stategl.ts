@@ -207,6 +207,7 @@ export class State {
   }
 
   private rebindVertexBuffers(gl: WebGLRenderingContext) {
+    if (this.changedVertexBuffersIds.isEmpty()) return;
     const vertexBufferIdxs = this.changedVertexBuffersIds;
     const len = vertexBufferIdxs.length();
     const shader = this.shader.get();
@@ -232,6 +233,7 @@ export class State {
   }
 
   private rebindTextures(gl: WebGLRenderingContext) {
+    if (this.changedTextures.isEmpty()) return;
     const textures = this.changedTextures;
     const len = textures.length();
     for (let t = 0; t < len; t++) {
@@ -246,6 +248,7 @@ export class State {
   }
 
   private updateUniforms(gl: WebGLRenderingContext) {
+    if (this.changedUniformIdxs.isEmpty()) return;
     const uniformsIdxs = this.changedUniformIdxs;
     const len = uniformsIdxs.length();
     for (let u = 0; u < len; u++) {
