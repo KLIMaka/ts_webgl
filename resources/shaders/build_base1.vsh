@@ -4,6 +4,7 @@ uniform mat4 P;
 uniform mat4 V;
 uniform mat4 IV;
 uniform mat4 GT;
+uniform mat4 sys;
 
 attribute vec3 aNorm;
 attribute vec3 aPos;
@@ -27,7 +28,7 @@ void main() {
   gridtc = (GT * vec4(aNorm.x, aNorm.y, 0.0 , 1.0)).xy;
 #elif defined SPRITE_FACE
   vec4 epos = V * vec4(aPos, 1.0);
-  epos.xy += aNorm.xy;
+  epos.xy += aNorm.xy * sys.yz;
   gl_Position = P * epos;
 
   wnormal = (IV * vec4(0.0, 0.0, 1.0, 0.0)).xyz;

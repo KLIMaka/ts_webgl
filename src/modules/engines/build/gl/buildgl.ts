@@ -81,7 +81,7 @@ export function newFrame(gl: WebGLRenderingContext) {
   gl.clearColor(0.2, 0.2, 0.2, 1.0);
   gl.clearStencil(0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-  state.setUniform('time', performance.now());
+  state.setUniform('sys', [performance.now(), 2 / gl.drawingBufferWidth, 2 / gl.drawingBufferHeight, 0]);
 }
 
 export function flush(gl: WebGLRenderingContext) {
