@@ -8,7 +8,7 @@ import { walllen } from '../boardutils';
 import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
 import { ang2vec, createSlopeCalculator, getFirstWallAngle, sectorNormal, sectorOfWall, slope, spriteAngle, wallNormal, ZSCALE } from '../utils';
 import { BuildBuffer } from './buffers';
-import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe } from './renderable';
+import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, PointSprite } from './renderable';
 
 export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
@@ -222,6 +222,10 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer,
   buff.writePos(1, wall.x + d, z, wall.y - d);
   buff.writePos(2, wall.x + d, z, wall.y + d);
   buff.writePos(3, wall.x - d, z, wall.y + d);
+  buff.writeNormal(0, -1, 1, 0);
+  buff.writeNormal(1, 1, 1, 0);
+  buff.writeNormal(2, 1, -1, 0);
+  buff.writeNormal(3, -1, -1, 0);
   buff.writeQuad(0, 0, 1, 2, 3);
   buff.writeQuad(6, 3, 2, 1, 0);
 }
@@ -229,10 +233,9 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer,
 export function updateWallPointCeiling(ctx: BuildContext, wallId: number) { return updateWallPoint(ctx, true, wallId, 32) }
 export function updateWallPointFloor(ctx: BuildContext, wallId: number) { return updateWallPoint(ctx, false, wallId, 32) }
 
-function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number): Wireframe {
-  let point = new Wireframe();
+function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number): PointSprite {
+  let point = new PointSprite();
   let board = ctx.board;
-  point.mode = WebGLRenderingContext.TRIANGLES;
   let s = sectorOfWall(board, wallId);
   let sec = board.sectors[s];
   let slope = createSlopeCalculator(board, s);
