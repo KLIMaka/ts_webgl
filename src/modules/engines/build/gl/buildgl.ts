@@ -21,7 +21,7 @@ export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture
   SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT', palswapsDef, shadowstepsDef], ab.callback('spriteFlatShader'));
   SHADER.createShader(gl, SHADER_NAME, ['PARALLAX', palswapsDef, shadowstepsDef], ab.callback('parallax'));
   SHADER.createShader(gl, SHADER_NAME, ['GRID', palswapsDef, shadowstepsDef], ab.callback('grid'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE_FACE', palswapsDef, shadowstepsDef], ab.callback('spriteFaceShader'));
+  SHADER.createShader(gl, SHADER_NAME, ['SPRITE_FACE', 'FLAT', palswapsDef, shadowstepsDef], ab.callback('spriteFaceShader'));
 
   ab.wait((res) => {
     state = new State();
@@ -80,6 +80,7 @@ export function drawAll(ctx: BuildContext, gl: WebGLRenderingContext, renderable
 export function newFrame(gl: WebGLRenderingContext) {
   gl.clearColor(0.2, 0.2, 0.2, 1.0);
   gl.clearStencil(0);
+  gl.clearDepth(1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   state.setUniform('sys', [performance.now(), 2 / gl.drawingBufferWidth, 2 / gl.drawingBufferHeight, 0]);
 }

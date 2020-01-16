@@ -53,7 +53,7 @@ export class Controller2D {
   }
 
   public setPosition(x: number, y: number): void {
-    this.camera.setPositionXYZ(x, 16 * 1024, y);
+    this.camera.setPositionXYZ(x, -16 * 1024, y);
   }
 
   public getPointerPosition(pointer: GLM.Vec3Array, x: number, y: number) {
@@ -70,7 +70,7 @@ export class Controller2D {
     var wscale = this.width / 2 * this.scale;
     var hscale = this.height / 2 * this.scale;
     GLM.mat4.identity(projection);
-    GLM.mat4.ortho(projection, -wscale, wscale, hscale, -hscale, -0xFFFF, 0xFFFF);
+    GLM.mat4.ortho(projection, -wscale, wscale, hscale, -hscale, 1, 0xFFFF);
     GLM.mat4.rotateX(projection, projection, -Math.PI / 2);
     return projection;
   }

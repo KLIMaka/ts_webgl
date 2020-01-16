@@ -197,15 +197,15 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     if (renderable == null) renderable = new SectorHelper();
     renderable.reset();
 
-
     let ceiling2d = new Array<Renderable>();
     let floor2d = new Array<Renderable>();
+    const pointTex = this.ctx.art.get(0);
 
     let sec = this.ctx.board.sectors[secId];
     let end = sec.wallptr + sec.wallnum;
     for (let w = sec.wallptr; w < end; w++) {
-      ceiling2d.push(updateWallPointCeiling(this.ctx, w));
-      floor2d.push(updateWallPointFloor(this.ctx, w));
+      ceiling2d.push(updateWallPointCeiling(this.ctx, w, pointTex));
+      floor2d.push(updateWallPointFloor(this.ctx, w, pointTex));
     }
 
     let ceiling = new Array<Renderable>();
@@ -231,10 +231,11 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   }
 
   private addWallPoints(wallId: number, ceiling: boolean): Renderable {
-    let arr = new Array<Renderable>();
-    arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId) : updateWallPointFloor(this.ctx, wallId));
-    let wallId2 = this.ctx.board.walls[wallId].point2;
-    arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId2) : updateWallPointFloor(this.ctx, wallId2));
+    const arr = new Array<Renderable>();
+    const pointTex = this.ctx.art.get(0);
+    arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId, pointTex) : updateWallPointFloor(this.ctx, wallId, pointTex));
+    const wallId2 = this.ctx.board.walls[wallId].point2;
+    arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId2, pointTex) : updateWallPointFloor(this.ctx, wallId2, pointTex));
     return new RenderableList(arr);
   }
 
@@ -271,9 +272,10 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
 
   private updateWallPoint(wallId: number, renderable: Renderable): Renderable {
     if (renderable != null) renderable.reset();
+    const pointTex = this.ctx.art.get(0);
     let list = new Array<Renderable>();
-    list.push(updateWallPointCeiling(this.ctx, wallId));
-    list.push(updateWallPointFloor(this.ctx, wallId));
+    list.push(updateWallPointCeiling(this.ctx, wallId, pointTex));
+    list.push(updateWallPointFloor(this.ctx, wallId, pointTex));
     list.push(updateWallLine(this.ctx, wallId));
     return new RenderableList(list);
   }
