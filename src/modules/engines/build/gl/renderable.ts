@@ -96,7 +96,7 @@ export class Solid implements Renderable {
   }
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    if (!this.renderable()) return;
+    if (!this.buff.isValid()) return;
     this.updateUniformLocations(state);
     const buff = this.buff;
     state.setIndexBuffer(buff.getIdxBuffer());
@@ -122,9 +122,6 @@ export class Solid implements Renderable {
     this.uniformsUpdated = false;
   }
 
-  public renderable(): boolean {
-    return this.buff.get() != null;
-  }
 }
 
 export class WrapRenderable implements Renderable {

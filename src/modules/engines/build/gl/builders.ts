@@ -26,14 +26,17 @@ export class SectorSolid implements Renderable {
 }
 
 export class WallSolid implements Renderable {
-  public top: Solid = new Solid();
-  public mid: Solid = new Solid();
-  public bot: Solid = new Solid();
+  private top_: Solid;
+  private mid_: Solid;
+  private bot_: Solid;
 
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    this.top.draw(ctx, gl, state);
-    this.mid.draw(ctx, gl, state);
-    this.bot.draw(ctx, gl, state);
+    if (this.top_ != null)
+      this.top_.draw(ctx, gl, state);
+    if (this.mid_ != null)
+      this.mid_.draw(ctx, gl, state);
+    if (this.bot_ != null)
+      this.bot_.draw(ctx, gl, state);
   }
 
   reset() {
@@ -41,6 +44,14 @@ export class WallSolid implements Renderable {
     this.mid.reset();
     this.bot.reset();
   }
+
+  private getSolid(last: Solid) {
+    return !last ? new Solid() : last;
+  }
+
+  get top() { return this.top_ = this.getSolid(this.top_) }
+  get mid() { return this.mid_ = this.getSolid(this.mid_) }
+  get bot() { return this.bot_ = this.getSolid(this.bot_) }
 }
 
 export class SectorHelper implements Renderable {
