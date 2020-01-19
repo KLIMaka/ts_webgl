@@ -171,6 +171,32 @@ export class GridRenderable implements Renderable {
   }
 }
 
+const white = GLM.vec4.fromValues(1, 1, 1, 1);
+export class PointSprite implements Renderable {
+  public buff: BuildBuffer = new BuildBuffer();
+  public tex: Texture;
+
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
+    if (this.buff.get() == null) return;
+    const buff = this.buff;
+    state.setIndexBuffer(buff.getIdxBuffer());
+    state.setVertexBuffer('aPos', buff.getPosBuffer());
+    state.setVertexBuffer('aNorm', buff.getNormBuffer());
+    state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
+    state.setShader('spriteFaceShader');
+    state.setTexture('base', this.tex);
+    state.setUniform('color', white);
+    state.setDrawElements(this.buff.get());
+    if (state.draw(gl, gl.TRIANGLES))
+      PROFILE.get(null).inc('skip_draws');
+    PROFILE.get(null).inc('draws');
+  }
+
+  public reset() {
+    this.buff.deallocate();
+  }
+}
+
 export class Wireframe implements Renderable {
   public type: Type = Type.SURFACE;
   public buff: BuildBuffer = new BuildBuffer();

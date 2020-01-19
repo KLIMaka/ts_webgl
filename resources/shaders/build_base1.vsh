@@ -3,8 +3,8 @@ precision mediump float;
 uniform mat4 P;
 uniform mat4 V;
 uniform mat4 IV;
-// uniform mat4 T;
 uniform mat4 GT;
+uniform vec4 sys;
 
 attribute vec3 aNorm;
 attribute vec3 aPos;
@@ -22,16 +22,24 @@ void main() {
   vec3 p = aPos + vec3(0.0, aNorm.y, 0.0);
   vec4 epos = V * vec4(p, 1.0);
   epos.x += aNorm.x;
-  
-  // tc = (T * vec4(aNorm.x, aNorm.y, 0.0 , 1.0)).xy;
-  wnormal = (IV * vec4(0.0, 0.0, 1.0, 0.0)).xyz;
-  tc = aTc;
-  gridtc = (GT * vec4(aNorm.x, aNorm.y, 0.0 , 1.0)).xy;
   gl_Position = P * epos;
+  
+  wnormal = (IV * vec4(0.0, 0.0, 1.0, 0.0)).xyz;
+  gridtc = (GT * vec4(aNorm.x, aNorm.y, 0.0 , 1.0)).xy;
+#elif defined SPRITE_FACE
+  vec4 epos = P * V * vec4(aPos, 1.0);
+  epos.xy += aNorm.xy * sys.yz;
+  gl_Position = epos;
+
+  // vec3 epos = aPos + vec3(0.0, aNorm.y*10.0, 0.0);
+  // vec4 p = V * vec4(epos, 1.0);
+  // p.x += aNorm.x * 10.0;
+  // vec4 p1 = P * p;
+  // p1.xy += -30.0;
+  // gl_Position = p1;
 #else
-  // tc = (T * vec4(aPos, 1.0)).xy;
+  gl_Position = P * V * vec4(aPos, 1.0);
   wnormal = aNorm;
   gridtc = (GT * vec4(aPos, 1.0)).xy;
-  gl_Position = P * V * vec4(aPos, 1.0);
 #endif
 }

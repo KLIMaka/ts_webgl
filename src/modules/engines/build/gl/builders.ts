@@ -8,7 +8,8 @@ import { walllen } from '../boardutils';
 import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
 import { ang2vec, createSlopeCalculator, getFirstWallAngle, sectorNormal, sectorOfWall, slope, spriteAngle, wallNormal, ZSCALE } from '../utils';
 import { BuildBuffer } from './buffers';
-import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe } from './renderable';
+import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, PointSprite } from './renderable';
+import { Texture } from '../../../drawstruct';
 
 export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
@@ -229,29 +230,33 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wirefram
 function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
   buff.allocate(4, 12);
   let wall = board.walls[wallId];
-  buff.writePos(0, wall.x - d, z, wall.y - d);
-  buff.writePos(1, wall.x + d, z, wall.y - d);
-  buff.writePos(2, wall.x + d, z, wall.y + d);
-  buff.writePos(3, wall.x - d, z, wall.y + d);
+  buff.writePos(0, wall.x, z, wall.y);
+  buff.writePos(1, wall.x, z, wall.y);
+  buff.writePos(2, wall.x, z, wall.y);
+  buff.writePos(3, wall.x, z, wall.y);
+  buff.writeNormal(0, -d, d, 0);
+  buff.writeNormal(1, d, d, 0);
+  buff.writeNormal(2, d, -d, 0);
+  buff.writeNormal(3, -d, -d, 0);
   buff.writeQuad(0, 0, 1, 2, 3);
   buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-export function updateWallPointCeiling(ctx: BuildContext, wallId: number) { return updateWallPoint(ctx, true, wallId, 32) }
-export function updateWallPointFloor(ctx: BuildContext, wallId: number) { return updateWallPoint(ctx, false, wallId, 32) }
+export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 4, tex) }
+export function updateWallPointFloor(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, false, wallId, 4, tex) }
 
-function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number): Wireframe {
-  let point = new Wireframe();
-  let board = ctx.board;
-  point.mode = WebGLRenderingContext.TRIANGLES;
-  let s = sectorOfWall(board, wallId);
-  let sec = board.sectors[s];
-  let slope = createSlopeCalculator(board, s);
-  let h = (ceiling ? sec.ceilingheinum : sec.floorheinum);
-  let z = (ceiling ? sec.ceilingz : sec.floorz);
-  let wall = board.walls[wallId];
-  let zz = (slope(wall.x, wall.y, h) + z) / ZSCALE;
+function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, tex: Texture): PointSprite {
+  const point = new PointSprite();
+  const board = ctx.board;
+  const s = sectorOfWall(board, wallId);
+  const sec = board.sectors[s];
+  const slope = createSlopeCalculator(board, s);
+  const h = (ceiling ? sec.ceilingheinum : sec.floorheinum);
+  const z = (ceiling ? sec.ceilingz : sec.floorz);
+  const wall = board.walls[wallId];
+  const zz = (slope(wall.x, wall.y, h) + z) / ZSCALE;
   fillBufferForWallPoint(board, wallId, point.buff, d, zz);
+  point.tex = tex;
   return point;
 }
 

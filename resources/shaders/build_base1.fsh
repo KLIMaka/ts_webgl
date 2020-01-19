@@ -5,13 +5,13 @@ uniform sampler2D pal;
 uniform sampler2D plu;
 uniform sampler2D grid;
 
-uniform int pluN;
 uniform vec4 color;
 uniform vec3 curpos;
+uniform int pluN;
 uniform int shade;
 uniform vec3 eyepos;
 uniform vec4 clipPlane;
-uniform float time;
+uniform vec4 sys;
 
 varying vec2 tc;
 varying vec2 gridtc;
@@ -53,7 +53,7 @@ float specular() {
 float highlight() {
   float dist = distance(wpos.xz, curpos.xz);
   if (dist < 16.0)
-    return 2.0 + (sin(time / 100.0) + 1.0);
+    return 2.0 + (sin(sys.x / 100.0) + 1.0);
   return 1.0;
 }
 
