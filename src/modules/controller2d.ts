@@ -15,7 +15,7 @@ export class Controller2D {
       var dx = (x - this.oldX) * this.scale;
       var dy = (y - this.oldY) * this.scale;
       let pos = this.camera.getPosition();
-      this.camera.setPositionXYZ(pos[0] - dx, 0, pos[2] - dy);
+      this.camera.setPositionXYZ(pos[0] - dx, -16 * 1024, pos[2] - dy);
     }
     this.oldX = x;
     this.oldY = y;

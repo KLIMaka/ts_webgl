@@ -135,7 +135,6 @@ export class WrapRenderable implements Renderable {
   ) { }
 
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    state.flush(gl);
     this.pre(ctx, gl, state);
     this.rend.draw(ctx, gl, state);
     state.flush(gl);

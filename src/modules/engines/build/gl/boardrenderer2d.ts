@@ -84,7 +84,6 @@ export function draw(view: View2d, campos: GLM.Vec3Array, dist: number, controll
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   drawRooms(view, result);
-
 }
 
 let renderables: BuildRenderableProvider;

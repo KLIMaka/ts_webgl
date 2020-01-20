@@ -99,12 +99,12 @@ function getLinkVis(link: RorLink) {
   return vis;
 }
 
-let diff = GLM.vec3.create();
-let stackTransform = GLM.mat4.create();
-let srcPos = GLM.vec3.create();
-let dstPos = GLM.vec3.create();
-let npos = GLM.vec3.create();
-let mstmp = { sec: 0, x: 0, y: 0, z: 0 };
+const diff = GLM.vec3.create();
+const stackTransform = GLM.mat4.create();
+const srcPos = GLM.vec3.create();
+const dstPos = GLM.vec3.create();
+const npos = GLM.vec3.create();
+const mstmp = { sec: 0, x: 0, y: 0, z: 0 };
 
 function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValue: number) {
   if (!link) return;
@@ -114,8 +114,8 @@ function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValu
   BGL.draw(context, view.gl, surface);
   BGL.flush(view.gl);
 
-  let src = context.board.sprites[link.srcSpriteId];
-  let dst = context.board.sprites[link.dstSpriteId];
+  const src = context.board.sprites[link.srcSpriteId];
+  const dst = context.board.sprites[link.dstSpriteId];
   GLM.vec3.set(srcPos, src.x, src.z / ZSCALE, src.y);
   GLM.vec3.set(dstPos, dst.x, dst.z / ZSCALE, dst.y);
   GLM.vec3.sub(diff, srcPos, dstPos);
@@ -136,16 +136,15 @@ function drawStack(view: View3d, link: RorLink, surface: Renderable, stencilValu
   BGL.flush(view.gl);
 }
 
-let rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
-
+const rorSectorCollector = createSectorCollector((board: Board, sectorId: number) => implementation.rorLinks().hasRor(sectorId));
 function drawRor(result: VisResult, view: View3d) {
   result.forSector(context.board, rorSectorCollector.visit());
   PROFILE.get(null).inc('rors', rorSectorCollector.sectors.length());
 
   view.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < rorSectorCollector.sectors.length(); i++) {
-    let s = rorSectorCollector.sectors.get(i);
-    let r = view.renderables.sector(s);
+    const s = rorSectorCollector.sectors.get(i);
+    const r = view.renderables.sector(s);
     drawStack(view, implementation.rorLinks().ceilLinks[s], r.ceiling, i + 1);
     drawStack(view, implementation.rorLinks().floorLinks[s], r.floor, i + 1);
   }
@@ -153,24 +152,23 @@ function drawRor(result: VisResult, view: View3d) {
   writeAll(view.gl);
 }
 
-let mirrorWallsCollector = createWallCollector((board: Board, wallId: number, sectorId: number) => implementation.isMirrorPic(board.walls[wallId].picnum));
-let mirrorVis = new PvsBoardVisitorResult();
-let wallNormal = GLM.vec2.create();
-let mirrorNormal = GLM.vec3.create();
-let mirroredTransform = GLM.mat4.create();
-let mpos = GLM.vec3.create();
-
+const mirrorWallsCollector = createWallCollector((board: Board, wallId: number, sectorId: number) => implementation.isMirrorPic(board.walls[wallId].picnum));
+const mirrorVis = new PvsBoardVisitorResult();
+const wallNormal = GLM.vec2.create();
+const mirrorNormal = GLM.vec3.create();
+const mirroredTransform = GLM.mat4.create();
+const mpos = GLM.vec3.create();
 function drawMirrors(result: VisResult, view: View3d) {
   result.forWall(context.board, mirrorWallsCollector.visit());
   PROFILE.get(null).inc('mirrors', mirrorWallsCollector.walls.length());
   view.gl.enable(WebGLRenderingContext.STENCIL_TEST);
   for (let i = 0; i < mirrorWallsCollector.walls.length(); i++) {
-    let w = unpackWallId(mirrorWallsCollector.walls.get(i));
+    const w = unpackWallId(mirrorWallsCollector.walls.get(i));
     if (!wallVisible(context.board, w, view))
       continue;
 
     // draw mirror surface into stencil
-    let r = view.renderables.wall(w);
+    const r = view.renderables.wall(w);
     BGL.setViewMatrix(view.getTransformMatrix());
     BGL.setPosition(view.getPosition());
     writeStencilOnly(view.gl, i + 127);
@@ -178,23 +176,21 @@ function drawMirrors(result: VisResult, view: View3d) {
     BGL.flush(view.gl);
 
     // draw reflections in stenciled area
-    let w1 = context.board.walls[w]; let w2 = context.board.walls[w1.point2];
+    const w1 = context.board.walls[w]; const w2 = context.board.walls[w1.point2];
     GLM.vec2.set(wallNormal, w2.x - w1.x, w2.y - w1.y);
     normal2d(wallNormal, wallNormal);
     GLM.vec3.set(mirrorNormal, wallNormal[0], 0, wallNormal[1]);
-    let mirrorrD = -dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
+    const mirrorrD = -dot2d(wallNormal[0], wallNormal[1], w1.x, w1.y);
     mirrorBasis(mirroredTransform, view.getTransformMatrix(), view.getPosition(), mirrorNormal, mirrorrD);
 
     BGL.setViewMatrix(mirroredTransform);
     BGL.setClipPlane(mirrorNormal[0], mirrorNormal[1], mirrorNormal[2], mirrorrD);
     view.gl.cullFace(WebGLRenderingContext.FRONT);
-    let [sx, sy, sz] = view.getPosition();
-    GLM.vec3.set(mpos, sx, sy, sz);
+    GLM.vec3.copy(mpos, view.getPosition());
     reflectPoint3d(mpos, mirrorNormal, mirrorrD, mpos);
     mstmp.sec = view.sec; mstmp.x = mpos[0]; mstmp.y = mpos[2]; mstmp.z = mpos[1];
     writeStenciledOnly(view.gl, i + 127);
     drawRooms(view, mirrorVis.visit(context.board, mstmp, view.getForward()));
-    BGL.flush(view.gl);
     view.gl.cullFace(WebGLRenderingContext.BACK);
 
     // seal reflections by writing depth of mirror surface
