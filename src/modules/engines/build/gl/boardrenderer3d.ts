@@ -10,7 +10,8 @@ import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
 import { View3d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable } from './renderable';
+import { BuildRenderableProvider, Renderable, WrapRenderable, RenderableList } from './renderable';
+import { State } from '../../../stategl';
 
 export class RorLink {
   constructor(readonly srcSpriteId: number, readonly dstSpriteId: number) { }
@@ -71,8 +72,8 @@ function writeAll(gl: WebGLRenderingContext, ) {
   gl.colorMask(true, true, true, true);
 }
 
-let visible = new PvsBoardVisitorResult();
-let all = new AllBoardVisitorResult();
+const visible = new PvsBoardVisitorResult();
+const all = new AllBoardVisitorResult();
 function drawGeometry(view: View3d) {
   PROFILE.startProfile('processing');
   let result = view.sec == -1
@@ -89,7 +90,7 @@ function drawGeometry(view: View3d) {
   drawRooms(view, result);
 }
 
-let rorViss = new Map<RorLink, PvsBoardVisitorResult>();
+const rorViss = new Map<RorLink, PvsBoardVisitorResult>();
 function getLinkVis(link: RorLink) {
   let vis = rorViss.get(link);
   if (vis == undefined) {
@@ -205,10 +206,10 @@ function drawMirrors(result: VisResult, view: View3d) {
 }
 
 let renderables: BuildRenderableProvider;
-let surfaces = new Deck<Renderable>();
-let surfacesTrans = new Deck<Renderable>();
-let sprites = new Deck<Renderable>();
-let spritesTrans = new Deck<Renderable>();
+const surfaces = new Deck<Renderable>();
+const surfacesTrans = new Deck<Renderable>();
+const sprites = new Deck<Renderable>();
+const spritesTrans = new Deck<Renderable>();
 
 function clearDrawLists() {
   surfaces.clear();
@@ -248,6 +249,16 @@ function spriteVisitor(board: Board, spriteId: number) {
   PROFILE.incCount('sprites');
 }
 
+const polyOffsetOn = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.polygonOffset(-1, -8) };
+const polyOffsetOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.polygonOffset(0, 0) };
+const blendOn = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.enable(WebGLRenderingContext.BLEND) };
+const blendOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.disable(WebGLRenderingContext.BLEND) };
+
+const spriteSolids = new WrapRenderable(new RenderableList(sprites), polyOffsetOn, polyOffsetOff);
+const spriteTransparent = new WrapRenderable(new RenderableList(spritesTrans), polyOffsetOn, polyOffsetOff);
+const transparent = new WrapRenderable(new RenderableList([new RenderableList(surfacesTrans), spriteTransparent]), blendOn, blendOff);
+const pass = new RenderableList([new RenderableList(surfaces), spriteSolids, transparent]);
+
 function drawRooms(view: View3d, result: VisResult) {
   PROFILE.startProfile('processing');
   renderables = view.renderables;
@@ -258,24 +269,6 @@ function drawRooms(view: View3d, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-
-  BGL.drawAll(context, view.gl, surfaces);
-  BGL.flush(view.gl);
-
-  view.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context, view.gl, sprites);
-  BGL.flush(view.gl);
-  view.gl.polygonOffset(0, 0);
-
-  view.gl.enable(WebGLRenderingContext.BLEND);
-  BGL.drawAll(context, view.gl, surfacesTrans);
-  BGL.flush(view.gl);
-
-  view.gl.polygonOffset(-1, -8);
-  BGL.drawAll(context, view.gl, spritesTrans);
-  BGL.flush(view.gl);
-  view.gl.polygonOffset(0, 0);
-  view.gl.disable(WebGLRenderingContext.BLEND);
-
+  BGL.draw(context, view.gl, pass);
   PROFILE.endProfile();
 }
