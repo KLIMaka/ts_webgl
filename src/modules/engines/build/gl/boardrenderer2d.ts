@@ -6,7 +6,7 @@ import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, GridRenderable, Solid } from './renderable';
+import { BuildRenderableProvider, Renderable, GridRenderable, Solid, RenderableList } from './renderable';
 import { Controller2D } from '../../../controller2d';
 
 let grid: GridRenderable;
@@ -88,6 +88,7 @@ export function draw(view: View2d, campos: GLM.Vec3Array, dist: number, controll
 
 let renderables: BuildRenderableProvider;
 const surfaces = new Deck<Renderable>();
+const pass = new RenderableList(surfaces);
 
 function clearDrawLists() {
   surfaces.clear();
@@ -121,7 +122,7 @@ function drawRooms(view: View2d, result: VisResult) {
   PROFILE.endProfile();
 
   PROFILE.startProfile('draw');
-  BGL.drawAll(context, view.gl, surfaces);
+  BGL.draw(context, view.gl, pass);
   BGL.flush(view.gl);
   PROFILE.endProfile();
 }

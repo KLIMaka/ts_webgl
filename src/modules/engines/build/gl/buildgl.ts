@@ -1,12 +1,11 @@
 import * as AB from '../../../../libs/asyncbarrier';
 import * as GLM from '../../../../libs_js/glmatrix';
-import { Collection } from '../../../collections';
 import * as DS from '../../../drawstruct';
 import * as SHADER from '../../../shaders';
 import { State } from '../../../stategl';
+import { BuildContext } from '../api';
 import * as BUFF from './buffers';
 import { Renderable } from './renderable';
-import { BuildContext } from '../api';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state: State;
@@ -71,10 +70,6 @@ export function setClipPlane(x: number, y: number, z: number, w: number) {
 export function draw(ctx: BuildContext, gl: WebGLRenderingContext, renderable: Renderable) {
   if (renderable == null) return;
   renderable.draw(ctx, gl, state);
-}
-
-export function drawAll(ctx: BuildContext, gl: WebGLRenderingContext, renderables: Collection<Renderable>) {
-  for (let r of renderables) draw(ctx, gl, r);
 }
 
 export function newFrame(gl: WebGLRenderingContext) {

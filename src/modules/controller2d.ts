@@ -1,6 +1,8 @@
 import * as GLM from '../libs_js/glmatrix';
 import { Camera } from "./camera";
 
+const ZPOS = -1;
+
 export class Controller2D {
   private camera = new Camera(0, 0, 0, 0, 0);
   private width = 800;
@@ -15,7 +17,7 @@ export class Controller2D {
       var dx = (x - this.oldX) * this.scale;
       var dy = (y - this.oldY) * this.scale;
       let pos = this.camera.getPosition();
-      this.camera.setPositionXYZ(pos[0] - dx, -16 * 1024, pos[2] - dy);
+      this.camera.setPositionXYZ(pos[0] - dx, ZPOS, pos[2] - dy);
     }
     this.oldX = x;
     this.oldY = y;
@@ -53,7 +55,7 @@ export class Controller2D {
   }
 
   public setPosition(x: number, y: number): void {
-    this.camera.setPositionXYZ(x, -16 * 1024, y);
+    this.camera.setPositionXYZ(x, ZPOS, y);
   }
 
   public getPointerPosition(pointer: GLM.Vec3Array, x: number, y: number) {
