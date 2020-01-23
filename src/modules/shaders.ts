@@ -9,14 +9,15 @@ let defaultProgram: WebGLProgram = null;
 export class ShaderImpl implements Shader {
 
   private program: WebGLProgram;
-  private uniforms: WebGLUniformLocation[] = [];
-  private attribs: number[] = [];
-  private definitions: Definitions = new Definitions();
-  private initCallback: (shader: Shader) => void;
-  private uniformIndex: { [index: string]: number } = {};
-  private attributeIndex: { [index: string]: number } = {};
+  private definitions: Definitions;
 
-  constructor(prog: WebGLProgram, initCallback: (shader: Shader) => void = null) {
+  readonly uniforms: WebGLUniformLocation[] = [];
+  readonly attribs: number[] = [];
+  readonly initCallback: (shader: Shader) => void;
+  readonly uniformIndex: { [index: string]: number } = {};
+  readonly attributeIndex: { [index: string]: number } = {};
+
+  constructor(prog: WebGLProgram, initCallback: (shader: Shader) => void = () => { }) {
     this.program = prog;
     this.initCallback = initCallback;
   }
@@ -26,8 +27,7 @@ export class ShaderImpl implements Shader {
     this.definitions = defs;
     this.initUniformLocations(gl);
     this.initAttributeLocations(gl);
-    if (this.initCallback != null)
-      this.initCallback(this);
+    this.initCallback(this);
   }
 
   private initUniformLocations(gl: WebGLRenderingContext): void {
@@ -62,18 +62,9 @@ export class ShaderImpl implements Shader {
     return this.definitions.uniforms;
   }
 
-  public getUniform(name: string): Definition {
-    return this.definitions.uniforms[this.uniformIndex[name]];
-  }
-
   public getAttributes(): Definition[] {
     return this.definitions.attributes;
   }
-
-  public getAttribute(name: string): Definition {
-    return this.definitions.attributes[this.attributeIndex[name]];
-  }
-
 
   public getSamplers(): Definition[] {
     return this.definitions.samplers;

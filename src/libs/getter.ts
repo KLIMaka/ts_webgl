@@ -1,29 +1,38 @@
-let cache = {};
+const cache: { [index: string]: any } = {};
+const xhrCache: { [index: string]: XMLHttpRequest } = {}
+const cacheString: { [index: string]: any } = {};
+const xhrCacheString: { [index: string]: XMLHttpRequest } = {}
 
-export function preload(fname: string, callback: (b: ArrayBuffer) => void, progressCallback: (percent: number) => void = null): void {
-  let file = cache[fname];
+function getRequest(fname: string, type: XMLHttpRequestResponseType, cache: { [index: string]: XMLHttpRequest }) {
+  let xhr = cache[fname];
+  if (xhr == undefined) {
+    xhr = new XMLHttpRequest();
+    xhr.responseType = type;
+    xhr.addEventListener('load', () => delete cache[fname]);
+    xhr.open('GET', fname, true);
+    xhr.send();
+    cache[fname] = xhr;
+  }
+  return xhr;
+}
+
+export function preload(fname: string, callback: (b: ArrayBuffer) => void, progressCallback: (percent: number) => void = () => { }): void {
+  const file = cache[fname];
   if (file != undefined) {
     callback(file);
     return;
   }
-  let xhr = new XMLHttpRequest();
-  xhr.onload = () => { cache[fname] = xhr.response; callback(xhr.response); }
-  if (progressCallback)
-    xhr.onprogress = (evt) => { progressCallback(evt.loaded / evt.total); }
-  xhr.open('GET', fname, true);
-  xhr.responseType = 'arraybuffer';
-  xhr.send();
+  const xhr = getRequest(fname, 'arraybuffer', xhrCache);
+  xhr.addEventListener('load', () => { cache[fname] = xhr.response; callback(xhr.response) });
+  xhr.addEventListener('progress', (evt) => { progressCallback(evt.loaded / evt.total); });
 }
 
 export function preloadString(fname: string, callback: (s: string) => void): void {
-  let file = cache[fname];
+  const file = cacheString[fname];
   if (file != undefined) {
     callback(file);
     return;
   }
-  let xhr = new XMLHttpRequest();
-  xhr.responseType = "text"
-  xhr.onload = () => { cache[fname] = xhr.response; callback(xhr.response); }
-  xhr.open('GET', fname, true);
-  xhr.send();
+  const xhr = getRequest(fname, 'text', xhrCacheString);
+  xhr.addEventListener('load', () => { cacheString[fname] = xhr.response; callback(xhr.response); });
 }

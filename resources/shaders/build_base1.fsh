@@ -5,13 +5,14 @@ uniform sampler2D pal;
 uniform sampler2D plu;
 uniform sampler2D grid;
 
-uniform vec4 color;
 uniform vec3 curpos;
-uniform int pluN;
-uniform int shade;
 uniform vec3 eyepos;
 uniform vec4 clipPlane;
 uniform vec4 sys;
+
+uniform vec4 color;
+uniform int pluN;
+uniform int shade;
 
 varying vec2 tc;
 varying vec2 gridtc;

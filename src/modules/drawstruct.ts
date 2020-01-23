@@ -26,9 +26,7 @@ export interface Shader {
   getAttributeLocation(name: string, gl: WebGLRenderingContext): number;
   getProgram(): WebGLProgram;
   getUniforms(): Definition[];
-  getUniform(name: string): Definition;
   getAttributes(): Definition[];
-  getAttribute(name: string): Definition;
   getSamplers(): Definition[];
 }
 
