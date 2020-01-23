@@ -28,15 +28,9 @@ void main() {
   gridtc = (GT * vec4(aNorm.x, aNorm.y, 0.0 , 1.0)).xy;
 #elif defined SPRITE_FACE
   vec4 epos = P * V * vec4(aPos, 1.0);
+  epos /= epos.w;
   epos.xy += aNorm.xy * sys.yz;
   gl_Position = epos;
-
-  // vec3 epos = aPos + vec3(0.0, aNorm.y*10.0, 0.0);
-  // vec4 p = V * vec4(epos, 1.0);
-  // p.x += aNorm.x * 10.0;
-  // vec4 p1 = P * p;
-  // p1.xy += -30.0;
-  // gl_Position = p1;
 #else
   gl_Position = P * V * vec4(aPos, 1.0);
   wnormal = aNorm;
