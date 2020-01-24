@@ -15,7 +15,8 @@ class Contour {
   private z = 0;
   private contour = new Wireframe();
   private contourPoints = new PointSprite();
-  private renderable = new RenderableList([this.contour, this.contourPoints]);
+  private length = new Deck<PointSprite>();
+  private renderable = new RenderableList([this.contour, this.contourPoints, new RenderableList(this.length)]);
 
   constructor(firstPoint: boolean = true) {
     if (firstPoint)
@@ -62,6 +63,7 @@ class Contour {
     if (this.size == 0) return;
     this.updateContourPoints(ctx);
     this.updateContour();
+    this.updateLength(ctx);
   }
 
   private updateContourPoints(ctx: BuildContext) {
@@ -101,6 +103,15 @@ class Contour {
       buff.writeLine(i * 2, i, i + 1);
     }
     buff.writePos(size, this.points[size][0], this.z, this.points[size][1]);
+  }
+
+  private updateLength(ctx: BuildContext) {
+    let size = this.size - 1;
+    for (let i = 0; i < size; i++) {
+      const p = this.points[i];
+      const p1 = this.points[i + 1];
+
+    }
   }
 }
 

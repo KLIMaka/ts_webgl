@@ -174,6 +174,7 @@ const white = GLM.vec4.fromValues(1, 1, 1, 1);
 export class PointSprite implements Renderable {
   public buff: BuildBuffer = new BuildBuffer();
   public tex: Texture;
+  public color = white;
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (this.buff.get() == null) return;
@@ -184,7 +185,7 @@ export class PointSprite implements Renderable {
     state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
     state.setShader('spriteFaceShader');
     state.setTexture('base', this.tex);
-    state.setUniform('color', white);
+    state.setUniform('color', this.color);
     state.setDrawElements(this.buff.get());
     if (state.draw(gl, gl.TRIANGLES))
       PROFILE.get(null).inc('skip_draws');

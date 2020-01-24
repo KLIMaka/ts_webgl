@@ -8,7 +8,7 @@ import { walllen } from '../boardutils';
 import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
 import { ang2vec, createSlopeCalculator, getFirstWallAngle, sectorNormal, sectorOfWall, slope, spriteAngle, wallNormal, ZSCALE } from '../utils';
 import { BuildBuffer } from './buffers';
-import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, PointSprite } from './renderable';
+import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, PointSprite, RenderableList } from './renderable';
 import { Texture } from '../../../drawstruct';
 
 export class SectorSolid implements Renderable {
@@ -248,7 +248,7 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer,
 export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 4, tex) }
 export function updateWallPointFloor(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, false, wallId, 4, tex) }
 
-function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, tex: Texture): PointSprite {
+function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, tex: Texture): Renderable {
   const point = new PointSprite();
   const board = ctx.board;
   const s = sectorOfWall(board, wallId);
@@ -834,4 +834,36 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
   }
 
   return renderable;
+}
+
+function char(char: number, font: number, x: number, y: number, z: number, xoff: number, ctx: BuildContext) {
+  const sprite = new PointSprite();
+  sprite.tex = ctx.art.get(font + char);
+  const charInfo = ctx.art.getInfo(font + char);
+  const buff = sprite.buff;
+  buff.allocate(4, 6);
+  buff.writePos(0, x, z, y);
+  buff.writePos(1, x, z, y);
+  buff.writePos(2, x, z, y);
+  buff.writePos(3, x, z, y);
+  buff.writeNormal(0, xoff, 0, 0);
+  buff.writeNormal(1, xoff, charInfo.h, 0);
+  buff.writeNormal(2, xoff + charInfo.w, charInfo.h, 0);
+  buff.writeNormal(3, xoff + charInfo.w, 0, 0);
+  buff.writeTc(0, 0, 1);
+  buff.writeTc(1, 0, 0);
+  buff.writeTc(2, 1, 0);
+  buff.writeTc(3, 1, 1);
+  buff.writeQuad(0, 0, 1, 2, 3);
+  return sprite;
+}
+
+export function text(text: number[], font: number, x: number, y: number, z: number, ctx: BuildContext) {
+  const sprites: PointSprite[] = [];
+  let xoff = 0;
+  for (const c of text) {
+    sprites.push(char(c, font, x, y, z, xoff, ctx));
+    xoff += ctx.art.getInfo(font + c).w;
+  }
+  return new RenderableList(sprites);
 }
