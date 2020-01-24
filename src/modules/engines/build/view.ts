@@ -103,7 +103,7 @@ export class View2d extends MessageHandlerReflective implements View {
   }
 
   private recalcGridSize() {
-    this.gridController.setGridSize(this.control.getUnitsPerPixel() * 64);
+    this.gridController.setGridSize((this.control.getUnitsPerPixel() + 0.5) * 32);
   }
 
   private invalidateTarget() {
@@ -349,12 +349,14 @@ export class SwappableView implements View, MessageHandler {
   private renderables: RenderablesCache;
   private impl: RENDERER3D.Implementation;
   private gridController: GridController;
+  private lastGridScale: number;
 
   constructor(gl: WebGLRenderingContext, renderables: RenderablesCache, impl: RENDERER3D.Implementation, gridController: GridController) {
     this.gl = gl;
     this.renderables = renderables;
     this.impl = impl;
     this.gridController = gridController;
+    this.lastGridScale = gridController.getGridSize();
   }
 
   get sec() { return this.view.sec }
@@ -371,6 +373,9 @@ export class SwappableView implements View, MessageHandler {
   handle(message: Message, ctx: BuildContext) {
     if (message instanceof NamedMessage && message.name == 'view_mode') {
       this.view = this.view == this.view3d ? this.view2d : this.view3d;
+      const gridScale = this.gridController.getGridSize();
+      this.gridController.setGridSize(this.lastGridScale);
+      this.lastGridScale = gridScale;
       this.view.activate();
       return;
     }

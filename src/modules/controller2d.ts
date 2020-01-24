@@ -1,7 +1,8 @@
 import * as GLM from '../libs_js/glmatrix';
 import { Camera } from "./camera";
+import { ZSCALE } from './engines/build/utils';
 
-const ZPOS = -1;
+const ZPOS = 1024 * ZSCALE;
 
 export class Controller2D {
   private camera = new Camera(0, 0, 0, 0, 0);

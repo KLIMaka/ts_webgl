@@ -16,6 +16,7 @@ export class BuildArtProvider implements ArtProvider {
     private arts: ArtFiles,
     private pal: Uint8Array,
     private PLUs: Uint8Array[],
+    private addTextures: { [index: number]: Texture },
     private gl: WebGLRenderingContext) { }
 
   private createTexture(w: number, h: number, arr: Uint8Array): Texture {
@@ -25,6 +26,8 @@ export class BuildArtProvider implements ArtProvider {
   }
 
   public get(picnum: number): Texture {
+    const add = this.addTextures[picnum];
+    if (add != undefined) return add;
     let tex = this.textures[picnum];
     if (tex != undefined) return tex;
 

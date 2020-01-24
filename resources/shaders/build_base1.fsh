@@ -114,6 +114,8 @@ void main() {
 #elif defined GRID
   vec4 grid = texture2D(grid, gridtc);
   writeColor(vec3(1.0), grid);
+#elif defined SPRITE_FACE
+  writeColor(vec3(1.0), texture2D(base, tc));
 #else
   writeColor(palLookup(tc), color);
 #endif

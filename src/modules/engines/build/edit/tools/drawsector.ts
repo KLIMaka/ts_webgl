@@ -1,7 +1,7 @@
 import { Deck } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
-import { Renderable, RenderableList, Wireframe } from "../../gl/renderable";
+import { Renderable, RenderableList, Wireframe, PointSprite } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
@@ -14,7 +14,7 @@ class Contour {
   private size = 0;
   private z = 0;
   private contour = new Wireframe();
-  private contourPoints = new Wireframe();
+  private contourPoints = new PointSprite();
   private renderable = new RenderableList([this.contour, this.contourPoints]);
 
   constructor(firstPoint: boolean = true) {
@@ -53,32 +53,39 @@ class Contour {
     this.size = 0;
   }
 
-  public getRenderable(): Renderable {
-    this.updateRenderable();
+  public getRenderable(ctx: BuildContext): Renderable {
+    this.updateRenderable(ctx);
     return this.renderable;
   }
 
-  private updateRenderable() {
+  private updateRenderable(ctx: BuildContext) {
     if (this.size == 0) return;
-    this.updateContourPoints();
+    this.updateContourPoints(ctx);
     this.updateContour();
   }
 
-  private updateContourPoints() {
-    this.contourPoints.mode = WebGLRenderingContext.TRIANGLES;
+  private updateContourPoints(ctx: BuildContext) {
+    this.contourPoints.tex = ctx.art.get(-1);
     let buff = this.contourPoints.buff;
     buff.deallocate();
-    buff.allocate(this.size * 4, this.size * 12);
-    let d = 16;
+    buff.allocate(this.size * 4, this.size * 6);
+    let d = 4;
     for (let i = 0; i < this.size; i++) {
       let p = this.points[i];
       let off = i * 4;
-      buff.writePos(off + 0, p[0] - d, this.z, p[1] - d);
-      buff.writePos(off + 1, p[0] + d, this.z, p[1] - d);
-      buff.writePos(off + 2, p[0] + d, this.z, p[1] + d);
-      buff.writePos(off + 3, p[0] - d, this.z, p[1] + d);
-      buff.writeQuad(i * 12 + 0, off, off + 1, off + 2, off + 3);
-      buff.writeQuad(i * 12 + 6, off + 3, off + 2, off + 1, off);
+      buff.writePos(off + 0, p[0], this.z, p[1]);
+      buff.writePos(off + 1, p[0], this.z, p[1]);
+      buff.writePos(off + 2, p[0], this.z, p[1]);
+      buff.writePos(off + 3, p[0], this.z, p[1]);
+      buff.writeTc(off + 0, 0, 0);
+      buff.writeTc(off + 1, 1, 0);
+      buff.writeTc(off + 2, 1, 1);
+      buff.writeTc(off + 3, 0, 1);
+      buff.writeNormal(off + 0, -d, d, 0);
+      buff.writeNormal(off + 1, d, d, 0);
+      buff.writeNormal(off + 2, d, -d, 0);
+      buff.writeNormal(off + 3, -d, -d, 0);
+      buff.writeQuad(i * 6, off, off + 1, off + 2, off + 3);
     }
   }
 
@@ -257,6 +264,6 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   public Render(msg: Render, ctx: BuildContext) {
-    msg.list.push(this.contour.getRenderable());
+    msg.list.push(this.contour.getRenderable(ctx));
   }
 }

@@ -89,14 +89,17 @@ function createBoard() {
   return board;
 }
 
-function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }) {
+function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[], gridTex: { w: number, h: number, img: Uint8Array }, pointTex: { w: number, h: number, img: Uint8Array }) {
   let gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
   let artSelector = new Selector(artFiles, pal);
   let stream = new data.Stream(map, true);
   // let board = createBoard();
   let board = loadBloodMap(stream);
-  let art = new BuildArtProvider(artFiles, pal, PLUs, gl);
-  let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.NEAREST_MIPMAP_NEAREST, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
+  let pointTexture = TEX.createTexture(pointTex.w, pointTex.h, gl, { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE }, pointTex.img, gl.RGBA);
+  const addTextures = {};
+  addTextures[-1] = pointTexture;
+  let art = new BuildArtProvider(artFiles, pal, PLUs, addTextures, gl);
+  let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
 
   let rorLinks = loadRorLinks(board);
@@ -143,7 +146,9 @@ for (let a = 0; a < 18; a++) {
 getter.preloadString('builded_binds.txt', ab.callback('binds'));
 getter.preload(rffFile, ab.callback('rff'));
 let gridcb = ab.callback('grid');
+let pointcb = ab.callback('point');
 IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
+IU.loadImage("resources/point.png", (w, h, img) => pointcb({ w, h, img }));
 
 ab.wait((res) => {
 
@@ -172,5 +177,5 @@ ab.wait((res) => {
   ];
 
   let map = rff.get(browser.getQueryVariable('map')).buffer;
-  start(res['binds'], map, artFiles, pal, PLUs, res['grid']);
+  start(res['binds'], map, artFiles, pal, PLUs, res['grid'], res['point']);
 });

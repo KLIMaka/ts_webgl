@@ -228,7 +228,7 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wirefram
 }
 
 function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
-  buff.allocate(4, 12);
+  buff.allocate(4, 6);
   let wall = board.walls[wallId];
   buff.writePos(0, wall.x, z, wall.y);
   buff.writePos(1, wall.x, z, wall.y);
@@ -238,8 +238,11 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer,
   buff.writeNormal(1, d, d, 0);
   buff.writeNormal(2, d, -d, 0);
   buff.writeNormal(3, -d, -d, 0);
+  buff.writeTc(0, 0, 0);
+  buff.writeTc(1, 1, 0);
+  buff.writeTc(2, 1, 1);
+  buff.writeTc(3, 0, 1);
   buff.writeQuad(0, 0, 1, 2, 3);
-  buff.writeQuad(6, 3, 2, 1, 0);
 }
 
 export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 4, tex) }

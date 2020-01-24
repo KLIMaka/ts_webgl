@@ -72,7 +72,7 @@ class BuildReferenceTrackerImpl implements BuildReferenceTracker {
 
 export class GridController {
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
-  private gridSizeIdx = 4;
+  private gridSizeIdx = 3;
 
   public setGridSize(size: number) {
     if (size < this.gridSizes[0]) this.gridSizeIdx = 0;
