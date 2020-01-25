@@ -1,21 +1,23 @@
 import { CachedValue } from "../../../libs/cachedvalue";
 import { int, len2d, tuple2 } from "../../../libs/mathutils";
+import { DelayedValue } from "../../../libs/timed";
 import { vec3 } from "../../../libs_js/glmatrix";
 import { Controller2D } from "../../controller2d";
 import { Controller3D } from "../../controller3d";
+import { NumberInterpolator } from "../../interpolator";
 import { BuildContext, Target, View } from "./api";
-import { closestWallInSector, closestWallSegment, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall, closestWallPoint } from "./boardutils";
-import { Frame, Mouse, NamedMessage, BoardInvalidate } from "./edit/messages";
+import { closestWallInSector, closestWallPoint, closestWallSegment, closestWallSegmentInSector, DEFAULT_REPEAT_RATE, nextwall } from "./boardutils";
+import { BoardInvalidate, Frame, Mouse, NamedMessage } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
 import { RenderablesCache } from "./gl/cache";
+import { GridController } from "./gl/context";
 import { BuildRenderableProvider, Renderable } from "./gl/renderable";
 import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi";
 import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
-import { findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE, build2gl } from "./utils";
-import { GridController } from "./gl/context";
+import { build2gl, findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE } from "./utils";
 
 class TargetImpl implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -53,6 +55,7 @@ export class View2d extends MessageHandlerReflective implements View {
   private snapTargetValue = new CachedValue((t: TargetImpl) => this.updateSnapTarget(t), new TargetImpl());
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
   private gridController: GridController;
+  private upp = new DelayedValue(100, 1, NumberInterpolator);
 
   constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, gridController: GridController) {
     super();
@@ -98,8 +101,11 @@ export class View2d extends MessageHandlerReflective implements View {
     RENDERER2D.draw(this, campos, dist, this.control);
 
     const state = ctx.state;
-    if (state.get('zoom+')) { this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() / 1.1); this.recalcGridSize() }
-    if (state.get('zoom-')) { this.control.setUnitsPerPixel(this.control.getUnitsPerPixel() * 1.1); this.recalcGridSize() }
+    if (state.get('zoom+')) { this.upp.set(this.upp.get() / 1.3) }
+    if (state.get('zoom-')) { this.upp.set(this.upp.get() * 1.3) }
+
+    this.control.setUnitsPerPixel(this.upp.get());
+    this.recalcGridSize();
   }
 
   private recalcGridSize() {
@@ -178,6 +184,8 @@ export class View3d extends MessageHandlerReflective implements View {
   private snapTargetValue = new CachedValue((t: TargetImpl) => this.updateSnapTarget(t), new TargetImpl());
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
   private cursor = vec3.create();
+  private forwardDamper = new DelayedValue(50, 0, NumberInterpolator);
+  private sideDamper = new DelayedValue(50, 0, NumberInterpolator);
 
   constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, impl: RENDERER3D.Implementation) {
     super();
@@ -220,10 +228,14 @@ export class View3d extends MessageHandlerReflective implements View {
     const dt = msg.dt;
     const cameraSpeed = ctx.state.get<number>('camera_speed');
 
-    if (state.get('forward')) this.control.moveForward(dt * cameraSpeed);
-    if (state.get('backward')) this.control.moveForward(-dt * cameraSpeed);
-    if (state.get('strafe_left')) this.control.moveSideway(-dt * cameraSpeed);
-    if (state.get('strafe_right')) this.control.moveSideway(dt * cameraSpeed);
+    this.forwardDamper.set(0);
+    this.sideDamper.set(0);
+    if (state.get('forward')) this.forwardDamper.set(1);
+    if (state.get('backward')) this.forwardDamper.set(-1);
+    if (state.get('strafe_left')) this.sideDamper.set(-1);
+    if (state.get('strafe_right')) this.sideDamper.set(1);
+    this.control.moveForward(dt * cameraSpeed * this.forwardDamper.get());
+    this.control.moveSideway(dt * cameraSpeed * this.sideDamper.get());
 
     const p = this.control.getPosition();
     this.playerstart.x = int(p[0]);

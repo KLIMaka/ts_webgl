@@ -1,11 +1,9 @@
 
 export type Interpolator<T> = (lh: T, rh: T, t: number) => T;
 
-export let NumberInterpolator = (lh: number, rh: number, t: number) => {
-  return lh + (rh - lh) * t;
-}
+export const NumberInterpolator = (lh: number, rh: number, t: number) => { return lh + (rh - lh) * t; }
 
-export let Vec3Interpolator = (lh: number[], rh: number[], t: number) => {
+export const Vec3Interpolator = (lh: number[], rh: number[], t: number) => {
   return [
     lh[0] + (rh[0] - lh[0]) * t,
     lh[1] + (rh[1] - lh[1]) * t,
@@ -13,7 +11,7 @@ export let Vec3Interpolator = (lh: number[], rh: number[], t: number) => {
   ]
 }
 
-export let Vec4Interpolator = (lh: number[], rh: number[], t: number) => {
+export const Vec4Interpolator = (lh: number[], rh: number[], t: number) => {
   return [
     lh[0] + (rh[0] - lh[0]) * t,
     lh[1] + (rh[1] - lh[1]) * t,
@@ -26,9 +24,8 @@ export class Point<T> {
   constructor(public val: T, public pos: number, public interpolator: Interpolator<T>) { }
 }
 
-export function PointComparator<T>(lh: Point<T>, rh: Point<T>) {
-  return lh.pos - rh.pos;
-}
+export type Comparator<T> = (lh: T, rh: T) => number;
+export function PointComparator<T>(lh: Point<T>, rh: Point<T>) { return lh.pos - rh.pos }
 
 export class Range<T> {
   private points: Array<Point<T>> = [];
@@ -44,6 +41,8 @@ export class Range<T> {
   }
 
   public get(t: number): T {
+    if (t < 0) return this.points[0].val;
+    if (t > 1) return this.points[this.points.length - 1].val;
     let idx = binaryIndexOf(this.points, new Point<T>(null, t, null), PointComparator);
     let lh = this.points[idx];
     let rh = this.points[idx + 1];
@@ -52,7 +51,6 @@ export class Range<T> {
   }
 }
 
-export type Comparator<T> = (lh: T, rh: T) => number;
 
 export function binaryIndexOf<T>(arr: Array<T>, searchElement: T, cmp: Comparator<T>, minIndex: number = 0, maxIndex: number = arr.length - 1) {
   let refMinIndex = minIndex;
