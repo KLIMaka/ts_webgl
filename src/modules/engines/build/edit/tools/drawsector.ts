@@ -1,4 +1,4 @@
-import { Deck } from "../../../../collections";
+import { Deck, map, cyclicPairs, range, reduce } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
 import { Renderable, RenderableList, Wireframe, PointSprite } from "../../gl/renderable";
@@ -8,6 +8,8 @@ import { findSector, sectorOfWall, ZSCALE } from "../../utils";
 import { getClosestSectorZ } from "../editutils";
 import { Frame, NamedMessage, Render, BoardInvalidate } from "../messages";
 import { vec3 } from "../../../../../libs_js/glmatrix";
+import { len2d, int } from "../../../../../libs/mathutils";
+import { writeText } from "../../gl/builders";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -15,8 +17,8 @@ class Contour {
   private z = 0;
   private contour = new Wireframe();
   private contourPoints = new PointSprite();
-  private length = new Deck<PointSprite>();
-  private renderable = new RenderableList([this.contour, this.contourPoints, new RenderableList(this.length)]);
+  private length = new PointSprite();
+  private renderable = new RenderableList([this.contour, this.contourPoints, this.length]);
 
   constructor(firstPoint: boolean = true) {
     if (firstPoint)
@@ -71,7 +73,7 @@ class Contour {
     let buff = this.contourPoints.buff;
     buff.deallocate();
     buff.allocate(this.size * 4, this.size * 6);
-    let d = 4;
+    let d = 2.5;
     for (let i = 0; i < this.size; i++) {
       let p = this.points[i];
       let off = i * 4;
@@ -106,11 +108,19 @@ class Contour {
   }
 
   private updateLength(ctx: BuildContext) {
+    if (this.size < 2) return;
+    this.length.tex = ctx.art.get(-2);
+    const buff = this.length.buff;
+    buff.deallocate();
     let size = this.size - 1;
+    buff.allocate(1024 * 4, 1024 * 6);
+    let off = 0;
     for (let i = 0; i < size; i++) {
       const p = this.points[i];
       const p1 = this.points[i + 1];
-
+      const label = int(len2d(p[0] - p1[0], p[1] - p1[1])) + "";
+      writeText(buff, off, label, 8, 8, p[0] + (p1[0] - p[0]) / 2, p[1] + (p1[1] - p[1]) / 2, this.z);
+      off += label.length;
     }
   }
 }

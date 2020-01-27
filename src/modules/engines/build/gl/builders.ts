@@ -1,4 +1,4 @@
-import { len2d } from '../../../../libs/mathutils';
+import { len2d, int } from '../../../../libs/mathutils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
 import { State } from '../../../stategl';
@@ -841,34 +841,40 @@ export function updateSprite2d(ctx: BuildContext, sprId: number, renderable: Wir
   return updateSpriteAngle(ctx, sprId, renderable);
 }
 
-function char(char: number, font: number, x: number, y: number, z: number, xoff: number, ctx: BuildContext) {
-  const sprite = new PointSprite();
-  sprite.tex = ctx.art.get(font + char);
-  const charInfo = ctx.art.getInfo(font + char);
-  const buff = sprite.buff;
-  buff.allocate(4, 6);
-  buff.writePos(0, x, z, y);
-  buff.writePos(1, x, z, y);
-  buff.writePos(2, x, z, y);
-  buff.writePos(3, x, z, y);
-  buff.writeNormal(0, xoff, 0, 0);
-  buff.writeNormal(1, xoff, charInfo.h, 0);
-  buff.writeNormal(2, xoff + charInfo.w, charInfo.h, 0);
-  buff.writeNormal(3, xoff + charInfo.w, 0, 0);
-  buff.writeTc(0, 0, 1);
-  buff.writeTc(1, 0, 0);
-  buff.writeTc(2, 1, 0);
-  buff.writeTc(3, 1, 1);
-  buff.writeQuad(0, 0, 1, 2, 3);
-  return sprite;
+export function text(text: string, font: number, x: number, y: number, z: number, ctx: BuildContext) {
+  const textSprite = new PointSprite();
+  textSprite.buff.allocate(text.length * 4, text.length * 6);
+  textSprite.tex = ctx.art.get(font);
+  const info = ctx.art.getInfo(font);
+  writeText(textSprite.buff, 0, text, info.w / 16, info.h / 16, x, y, z);
+  return textSprite;
 }
 
-export function text(text: number[], font: number, x: number, y: number, z: number, ctx: BuildContext) {
-  const sprites: PointSprite[] = [];
-  let xoff = 0;
-  for (const c of text) {
-    sprites.push(char(c, font, x, y, z, xoff, ctx));
-    xoff += ctx.art.getInfo(font + c).w;
+export function writeText(buff: BuildBuffer, bufferOff: number, text: string, charW: number, charH: number, x: number, y: number, z: number) {
+  const textSize = text.length;
+  const charTexSize = 1 / 16;
+  let xoff = -charW * (textSize / 2);
+  for (let i = 0; i < textSize; i++) {
+    const off = (bufferOff + i) * 4;
+    buff.writePos(off + 0, x, z, y);
+    buff.writePos(off + 1, x, z, y);
+    buff.writePos(off + 2, x, z, y);
+    buff.writePos(off + 3, x, z, y);
+
+    const c = text.charCodeAt(i);
+    const row = int(c / 16) * charTexSize;
+    const column = (c % 16) * charTexSize;
+    buff.writeTc(off + 0, column, row + charTexSize);
+    buff.writeTc(off + 1, column, row);
+    buff.writeTc(off + 2, column + charTexSize, row);
+    buff.writeTc(off + 3, column + charTexSize, row + charTexSize);
+
+    buff.writeNormal(off + 0, xoff, 0, 0);
+    buff.writeNormal(off + 1, xoff, charH, 0);
+    buff.writeNormal(off + 2, xoff + charW, charH, 0);
+    buff.writeNormal(off + 3, xoff + charW, 0, 0);
+    buff.writeQuad((bufferOff + i) * 6, off + 0, off + 1, off + 2, off + 3);
+
+    xoff += charW;
   }
-  return new RenderableList(sprites);
 }

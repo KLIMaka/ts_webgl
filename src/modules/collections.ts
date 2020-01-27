@@ -189,6 +189,11 @@ export function* map<T, V>(i: Iterable<T>, f: (t: T) => V): Generator<V> {
   for (const v of i) yield f(v);
 }
 
+export function reduce<T>(i: Iterable<T>, f: (lh: T, rh: T) => T, start: T): T {
+  for (const v of i) start = f(start, v);
+  return start;
+}
+
 export function* sub<T>(c: Collection<T>, start: number, length: number): Generator<T> {
   for (let i = 0; i < length; i++) yield c.get(start + i);
 }
