@@ -206,10 +206,11 @@ function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean): Wi
   return hinge;
 }
 
-export function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wireframe {
-  let arrow = new Wireframe();
-  arrow.mode = WebGLRenderingContext.TRIANGLES;
-  let buff = arrow.buff;
+export function updateSpriteAngle(ctx: BuildContext, spriteId: number, renderable: Wireframe): Wireframe {
+  if (renderable == null) renderable = new Wireframe();
+  renderable.reset();
+  renderable.mode = WebGLRenderingContext.TRIANGLES;
+  let buff = renderable.buff;
   buff.allocate(3, 6);
   let spr = ctx.board.sprites[spriteId];
   let x = spr.x, y = spr.y, z = spr.z / ZSCALE;
@@ -224,7 +225,7 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number): Wirefram
   buff.writePos(2, x - vec2[0], z, y - vec2[2]);
   buff.writeTriangle(0, 0, 1, 2);
   buff.writeTriangle(3, 2, 1, 0);
-  return arrow;
+  return renderable;
 }
 
 function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
@@ -245,8 +246,8 @@ function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer,
   buff.writeQuad(0, 0, 1, 2, 3);
 }
 
-export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 4, tex) }
-export function updateWallPointFloor(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, false, wallId, 4, tex) }
+export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 2.5, tex) }
+export function updateWallPointFloor(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, false, wallId, 2.5, tex) }
 
 function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, tex: Texture): Renderable {
   const point = new PointSprite();
@@ -834,6 +835,10 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
   }
 
   return renderable;
+}
+
+export function updateSprite2d(ctx: BuildContext, sprId: number, renderable: Wireframe): Renderable {
+  return updateSpriteAngle(ctx, sprId, renderable);
 }
 
 function char(char: number, font: number, x: number, y: number, z: number, xoff: number, ctx: BuildContext) {

@@ -101,11 +101,10 @@ export class View2d extends MessageHandlerReflective implements View {
     RENDERER2D.draw(this, campos, dist, this.control);
 
     const state = ctx.state;
-    if (state.get('zoom+')) { this.upp.set(this.upp.get() / 1.3) }
-    if (state.get('zoom-')) { this.upp.set(this.upp.get() * 1.3) }
+    if (state.get('zoom+')) { this.upp.set(this.upp.get() / 1.3); this.recalcGridSize(); }
+    if (state.get('zoom-')) { this.upp.set(this.upp.get() * 1.3); this.recalcGridSize(); }
 
     this.control.setUnitsPerPixel(this.upp.get());
-    this.recalcGridSize();
   }
 
   private recalcGridSize() {

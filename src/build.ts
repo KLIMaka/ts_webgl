@@ -148,7 +148,7 @@ getter.preload(rffFile, ab.callback('rff'));
 let gridcb = ab.callback('grid');
 let pointcb = ab.callback('point');
 IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
-IU.loadImage("resources/point.png", (w, h, img) => pointcb({ w, h, img }));
+IU.loadImage("resources/point1.png", (w, h, img) => pointcb({ w, h, img }));
 
 ab.wait((res) => {
 

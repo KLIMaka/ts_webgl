@@ -2,7 +2,7 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { BuildContext } from '../api';
 import { BoardInvalidate } from '../edit/messages';
 import { MessageHandlerReflective } from '../handlerapi';
-import { buildCeilingHinge, buildFloorHinge, createGridMatrixProviderWall, gridMatrixProviderSector, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper } from './builders';
+import { buildCeilingHinge, buildFloorHinge, createGridMatrixProviderWall, gridMatrixProviderSector, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSprite2d } from './builders';
 import { BuildRenderableProvider, GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, SectorRenderable, Solid, WallRenderable, wrapStatePred } from './renderable';
 
 class Entry<T> {
@@ -49,7 +49,7 @@ class CacheMap<T extends Renderable> {
 export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider {
   private sectors = new CacheMap(updateSector2d);
   private walls = new CacheMap(updateWall2d);
-  private sprites = new CacheMap(updateSprite);
+  private sprites = new CacheMap(updateSprite2d);
   private ctx: BuildContext;
 
 
@@ -267,7 +267,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     if (renderable != null) renderable.reset();
     let list = new Array<Renderable>();
     list.push(updateSpriteWireframe(this.ctx, sprId));
-    list.push(updateSpriteAngle(this.ctx, sprId));
+    list.push(updateSpriteAngle(this.ctx, sprId, null));
     return new RenderableList(list);
   }
 
