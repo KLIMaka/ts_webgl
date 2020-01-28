@@ -100,7 +100,7 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
   let board = loadBloodMap(stream);
   const addTextures = {};
   addTextures[-1] = TEX.createTexture(pointTex.w, pointTex.h, gl, { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE }, pointTex.img, gl.RGBA);
-  addTextures[-2] = TEX.createTexture(fontTex.w, fontTex.h, gl, { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.CLAMP_TO_EDGE, aniso: true }, fontTex.img, gl.RGBA);
+  addTextures[-2] = TEX.createTexture(fontTex.w, fontTex.h, gl, { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE }, fontTex.img, gl.RGBA);
   let art = new BuildArtProvider(artFiles, pal, PLUs, addTextures, gl);
   let gridTexture = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
   INPUT.bind(<HTMLCanvasElement>gl.canvas);
