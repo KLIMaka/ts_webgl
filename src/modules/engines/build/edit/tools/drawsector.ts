@@ -107,19 +107,33 @@ class Contour {
     buff.writePos(size, this.points[size][0], this.z, this.points[size][1]);
   }
 
+  private prepareLengthLabels(): [number, string[]] {
+    let total = 0;
+    const labels: string[] = [];
+    for (let i = 0; i < this.size - 1; i++) {
+      const p = this.points[i];
+      const p1 = this.points[i + 1];
+      const label = int(len2d(p[0] - p1[0], p[1] - p1[1])) + "";
+      labels.push(label);
+      total += label.length;
+    }
+    return [total, labels];
+  }
+
   private updateLength(ctx: BuildContext) {
-    if (this.size < 2) return;
-    this.length.tex = ctx.art.get(-2);
     const buff = this.length.buff;
     buff.deallocate();
+    if (this.size < 2) return;
+    this.length.tex = ctx.art.get(-2);
     let size = this.size - 1;
-    buff.allocate(1024 * 4, 1024 * 6);
+    const [total, labels] = this.prepareLengthLabels();
+    buff.allocate(total * 4, total * 6);
     let off = 0;
     for (let i = 0; i < size; i++) {
       const p = this.points[i];
       const p1 = this.points[i + 1];
-      const label = int(len2d(p[0] - p1[0], p[1] - p1[1])) + "";
-      writeText(buff, off, label, 8, 8, p[0] + (p1[0] - p[0]) / 2, p[1] + (p1[1] - p[1]) / 2, this.z);
+      const label = labels[i];
+      writeText(buff, off, label, 7, 7, p[0] + (p1[0] - p[0]) / 2, p[1] + (p1[1] - p[1]) / 2, this.z);
       off += label.length;
     }
   }
