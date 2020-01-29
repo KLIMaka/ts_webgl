@@ -1,6 +1,7 @@
-import { len2d, int } from '../../../../libs/mathutils';
+import { int, len2d } from '../../../../libs/mathutils';
 import * as GLM from '../../../../libs_js/glmatrix';
 import { tesselate } from '../../../../libs_js/glutess';
+import { Texture } from '../../../drawstruct';
 import { State } from '../../../stategl';
 import { BuildContext } from '../api';
 import { ArtInfo } from '../art';
@@ -8,8 +9,8 @@ import { walllen } from '../boardutils';
 import { Board, FACE_SPRITE, FLOOR_SPRITE, Sector, Wall, WALL_SPRITE } from '../structs';
 import { ang2vec, createSlopeCalculator, getFirstWallAngle, sectorNormal, sectorOfWall, slope, spriteAngle, wallNormal, ZSCALE } from '../utils';
 import { BuildBuffer } from './buffers';
-import { NULL_RENDERABLE, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, PointSprite, RenderableList } from './renderable';
-import { Texture } from '../../../drawstruct';
+import { NULL_RENDERABLE, PointSprite, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, RenderableList } from './renderable';
+import { Tiler } from './tiler';
 
 export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
@@ -838,43 +839,57 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
 }
 
 export function updateSprite2d(ctx: BuildContext, sprId: number, renderable: Wireframe): Renderable {
+  // if (renderable != null) renderable.reset();
+  // const sprite = ctx.board.sprites[sprId];
+  // const label = text(sprId + "", sprite.x, sprite.y, sprite.z / ZSCALE, 8, 8, ctx.art.get(-2));
+  // return new RenderableList([updateSpriteAngle(ctx, sprId, null), label]);
   return updateSpriteAngle(ctx, sprId, renderable);
 }
 
-export function text(text: string, font: number, x: number, y: number, z: number, ctx: BuildContext) {
-  const textSprite = new PointSprite();
-  textSprite.buff.allocate(text.length * 4, text.length * 6);
-  textSprite.tex = ctx.art.get(font);
-  const info = ctx.art.getInfo(font);
-  writeText(textSprite.buff, 0, text, info.w / 16, info.h / 16, x, y, z);
-  return textSprite;
+export function text(text: string, posx: number, posy: number, posz: number, charW: number, charH: number, tex: Texture) {
+  const sprite = new PointSprite();
+  sprite.tex = tex;
+  const buff = sprite.buff;
+  buff.allocate((text.length * 2 + 3) * 4, (text.length * 2 + 3) * 6);
+  writeText(buff, 0, text, charW, charH, posx, posy, posz);
+  return sprite;
 }
 
-export function writeText(buff: BuildBuffer, bufferOff: number, text: string, charW: number, charH: number, x: number, y: number, z: number) {
-  const textSize = text.length;
-  const charTexSize = 1 / 16;
-  let xoff = -charW * (textSize / 2);
-  for (let i = 0; i < textSize; i++) {
-    const off = (bufferOff + i) * 4;
-    buff.writePos(off + 0, x, z, y);
-    buff.writePos(off + 1, x, z, y);
-    buff.writePos(off + 2, x, z, y);
-    buff.writePos(off + 3, x, z, y);
-
-    const c = text.charCodeAt(i);
-    const row = int(c / 16) * charTexSize;
-    const column = (c % 16) * charTexSize;
-    buff.writeTc(off + 0, column, row + charTexSize);
-    buff.writeTc(off + 1, column, row);
-    buff.writeTc(off + 2, column + charTexSize, row);
-    buff.writeTc(off + 3, column + charTexSize, row + charTexSize);
-
-    buff.writeNormal(off + 0, xoff, 0, 0);
-    buff.writeNormal(off + 1, xoff, charH, 0);
-    buff.writeNormal(off + 2, xoff + charW, charH, 0);
-    buff.writeNormal(off + 3, xoff + charW, 0, 0);
-    buff.writeQuad((bufferOff + i) * 6, off + 0, off + 1, off + 2, off + 3);
-
-    xoff += charW;
+export function writeText(buff: BuildBuffer, bufferOff: number, text: string, charW: number, charH: number, posx: number, posy: number, posz: number) {
+  const tiler = new Tiler();
+  for (let i = 0; i < text.length; i++) {
+    tiler.put(i + 1, 1, text.charCodeAt(i));
+    tiler.put(i + 1, 0, 3);
   }
+  tiler.put(0, 0, 2);
+  tiler.put(0, 1, 0);
+  tiler.put(text.length + 1, 1, 1);
+  let vtxoff = bufferOff * 4;
+  let idxoff = bufferOff * 6;
+  const charTexSize = 1 / 16;
+  const centerXOff = - charW * (text.length / 2 + 1);
+  const centerYOff = charH / 2;
+  tiler.tile((x: number, y: number, tileId: number) => {
+    const row = int(tileId / 16) * charTexSize;
+    const column = (tileId % 16) * charTexSize;
+    const xoff = x * charW + centerXOff;
+    const yoff = -y * charH + centerYOff;
+
+    buff.writePos(vtxoff + 0, posx, posz, posy);
+    buff.writePos(vtxoff + 1, posx, posz, posy);
+    buff.writePos(vtxoff + 2, posx, posz, posy);
+    buff.writePos(vtxoff + 3, posx, posz, posy);
+    buff.writeTc(vtxoff + 0, column, row + charTexSize);
+    buff.writeTc(vtxoff + 1, column, row);
+    buff.writeTc(vtxoff + 2, column + charTexSize, row);
+    buff.writeTc(vtxoff + 3, column + charTexSize, row + charTexSize);
+    buff.writeNormal(vtxoff + 0, xoff, yoff, 0);
+    buff.writeNormal(vtxoff + 1, xoff, yoff + charH, 0);
+    buff.writeNormal(vtxoff + 2, xoff + charW, yoff + charH, 0);
+    buff.writeNormal(vtxoff + 3, xoff + charW, yoff, 0);
+    buff.writeQuad(idxoff, vtxoff + 0, vtxoff + 1, vtxoff + 2, vtxoff + 3);
+
+    vtxoff += 4;
+    idxoff += 6;
+  });
 }

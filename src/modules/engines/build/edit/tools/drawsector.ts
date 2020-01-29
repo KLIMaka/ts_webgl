@@ -115,7 +115,7 @@ class Contour {
       const p1 = this.points[i + 1];
       const label = int(len2d(p[0] - p1[0], p[1] - p1[1])) + "";
       labels.push(label);
-      total += label.length;
+      total += label.length * 2 + 3;
     }
     return [total, labels];
   }
@@ -133,8 +133,8 @@ class Contour {
       const p = this.points[i];
       const p1 = this.points[i + 1];
       const label = labels[i];
-      writeText(buff, off, label, 7, 7, p[0] + (p1[0] - p[0]) / 2, p[1] + (p1[1] - p[1]) / 2, this.z);
-      off += label.length;
+      writeText(buff, off, label, 8, 8, p[0] + (p1[0] - p[0]) / 2, p[1] + (p1[1] - p[1]) / 2, this.z);
+      off += label.length * 2 + 3;
     }
   }
 }

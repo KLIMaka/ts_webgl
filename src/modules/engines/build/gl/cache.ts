@@ -2,8 +2,11 @@ import * as GLM from '../../../../libs_js/glmatrix';
 import { BuildContext } from '../api';
 import { BoardInvalidate } from '../edit/messages';
 import { MessageHandlerReflective } from '../handlerapi';
-import { buildCeilingHinge, buildFloorHinge, createGridMatrixProviderWall, gridMatrixProviderSector, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSprite2d } from './builders';
+import { buildCeilingHinge, buildFloorHinge, createGridMatrixProviderWall, gridMatrixProviderSector, SectorHelper, updateSector, updateSector2d, updateSectorWireframe, updateSprite, updateSpriteAngle, updateSpriteWireframe, updateWall, updateWall2d, updateWallLine, updateWallPointCeiling, updateWallPointFloor, updateWallWireframe, WallHelper, updateSprite2d, writeText, text } from './builders';
 import { BuildRenderableProvider, GridRenderable, NULL_RENDERABLE, Renderable, RenderableList, SectorRenderable, Solid, WallRenderable, wrapStatePred } from './renderable';
+import { walllen } from '../boardutils';
+import { int } from '../../../../libs/mathutils';
+import { slope, sectorOfWall, ZSCALE } from '../utils';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -237,6 +240,16 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId, pointTex) : updateWallPointFloor(this.ctx, wallId, pointTex));
     const wallId2 = this.ctx.board.walls[wallId].point2;
     arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId2, pointTex) : updateWallPointFloor(this.ctx, wallId2, pointTex));
+    const wall = this.ctx.board.walls[wallId];
+    const wall2 = this.ctx.board.walls[wallId2];
+    const cx = int(wall.x + (wall2.x - wall.x) * 0.5);
+    const cy = int(wall.y + (wall2.y - wall.y) * 0.5);
+    const sectorId = sectorOfWall(this.ctx.board, wallId);
+    const sector = this.ctx.board.sectors[sectorId];
+    const fz = slope(this.ctx.board, sectorId, cx, cy, sector.floorheinum) + sector.floorz;
+    const cz = slope(this.ctx.board, sectorId, cx, cy, sector.ceilingheinum) + sector.ceilingz;
+    const length = walllen(this.ctx.board, wallId).toFixed(2).replace(/\.00$/, "");
+    arr.push(text(length, cx, cy, (ceiling ? cz : fz) / ZSCALE, 8, 8, this.ctx.art.get(-2)));
     return new RenderableList(arr);
   }
 
