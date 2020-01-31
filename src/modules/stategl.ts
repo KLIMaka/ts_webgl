@@ -1,5 +1,5 @@
 import * as GLM from '../libs_js/glmatrix';
-import { Pointer } from './buffergl';
+import { Buffer } from './buffergl';
 import { Deck } from './collections';
 import { Definition, IndexBuffer, Shader, Texture, VertexBuffer } from './drawstruct';
 import * as SHADER from './shaders';
@@ -36,8 +36,10 @@ function createStateValue(type: string, changecb: () => void): StateValue<any> {
 
 export class State {
   private shader: StateValue<Shader> = new StateValue<Shader>(() => this.changeShader = true, null);
-  private indexBuffer: StateValue<IndexBuffer> = new StateValue<IndexBuffer>(() => this.changeShader = true, null);
-  private drawElements: Pointer;
+  private indexBuffer: StateValue<IndexBuffer> = new StateValue<IndexBuffer>(() => this.changeIndexBuffer = true, null);
+  private buffer: Buffer;
+  private offset: number;
+  private size: number;
   private shaders: { [index: string]: Shader } = {};
 
   private vertexBuffers: StateValue<VertexBuffer>[] = [];
@@ -49,7 +51,6 @@ export class State {
   private uniformsIndex: { [index: string]: number } = {};
 
   private textures: StateValue<Texture>[] = [];
-  private texturesNames: string[] = [];
   private texturesIndex: { [index: string]: number } = {};
 
   private changeShader = true;
@@ -65,7 +66,7 @@ export class State {
 
   public flush(gl: WebGLRenderingContext) {
     if (this.batchMode == -1) return;
-    this.drawElements.buffer.update(gl);
+    this.buffer.update(gl);
     gl.drawElements(this.batchMode, this.batchSize, gl.UNSIGNED_SHORT, this.batchOffset * 2);
     this.batchMode = -1;
   }
@@ -73,8 +74,8 @@ export class State {
   private tryBatch(gl: WebGLRenderingContext, mode: number): boolean {
     if (this.batchMode == -1) {
       this.batchMode = mode;
-      this.batchOffset = this.drawElements.idx.offset;
-      this.batchSize = this.drawElements.idx.size;
+      this.batchOffset = this.offset;
+      this.batchSize = this.size;
       return false;
     } else if (this.batchMode == mode
       && !this.changeShader
@@ -82,8 +83,8 @@ export class State {
       && this.changedUniformIdxs.isEmpty()
       && this.changedTextures.isEmpty()
       && this.changedVertexBuffersIds.isEmpty()) {
-      const offset = this.drawElements.idx.offset;
-      const size = this.drawElements.idx.size;
+      const offset = this.offset;
+      const size = this.size;
       if (this.batchOffset == offset + size) {
         this.batchOffset = offset;
         this.batchSize += size;
@@ -95,14 +96,7 @@ export class State {
     }
     this.flush(gl);
     return this.tryBatch(gl, mode);
-
-    // this.flush(gl);
-    // this.batchMode = mode;
-    // this.batchOffset = this.drawElements.idx.offset;
-    // this.batchSize = this.drawElements.idx.size;
-    // return false;
   }
-
 
   public registerShader(name: string, shader: Shader) {
     this.shaders[name] = shader;
@@ -121,7 +115,6 @@ export class State {
       if (this.texturesIndex[sampler.name] != undefined) continue;
       const idx = this.textures.length;
       this.textures.push(new StateValue<Texture>(() => this.changedTextures.push([idx, s]), null));
-      this.texturesNames.push(sampler.name);
       this.texturesIndex[sampler.name] = idx;
     }
   }
@@ -175,35 +168,40 @@ export class State {
     return this.vertexBuffers[idx];
   }
 
-  public setDrawElements(ptr: Pointer) {
-    this.drawElements = ptr;
+  public setDrawElements(buffer: Buffer, offset: number, size: number) {
+    this.buffer = buffer;
+    this.offset = offset;
+    this.size = size;
   }
 
   private rebindShader(gl: WebGLRenderingContext) {
-    if (this.changeShader) {
-      const shader = this.shader.get();
-      gl.useProgram(shader.getProgram());
-      const samplers = this.shader.get().getSamplers();
-      this.changedTextures.clear();
-      for (let s = 0; s < samplers.length; s++) {
-        const sampler = samplers[s];
-        this.changedTextures.push([this.texturesIndex[sampler.name], s]);
-        this.setUniform(sampler.name, s);
-      }
-      this.changedUniformIdxs.clear();
-      const uniforms = this.shader.get().getUniforms();
-      for (let u = 0; u < uniforms.length; u++) {
-        const uniform = uniforms[u];
-        this.changedUniformIdxs.push(this.uniformsIndex[uniform.name]);
-      }
-      const attribs = this.shader.get().getAttributes();
-      for (let a = 0; a < attribs.length; a++) {
-        const attrib = attribs[a];
-        this.changedVertexBuffersIds.push(this.vertexBufferIndex[attrib.name]);
-      }
-      this.changeShader = false;
-      this.changeIndexBuffer = true;
+    if (!this.changeShader) return;
+    const shader = this.shader.get();
+    gl.useProgram(shader.getProgram());
+
+    const samplers = this.shader.get().getSamplers();
+    this.changedTextures.clear();
+    for (let s = 0; s < samplers.length; s++) {
+      const sampler = samplers[s];
+      this.changedTextures.push([this.texturesIndex[sampler.name], s]);
+      this.setUniform(sampler.name, s);
     }
+
+    this.changedUniformIdxs.clear();
+    const uniforms = this.shader.get().getUniforms();
+    for (let u = 0; u < uniforms.length; u++) {
+      const uniform = uniforms[u];
+      this.changedUniformIdxs.push(this.uniformsIndex[uniform.name]);
+    }
+
+    this.changedVertexBuffersIds.clear();
+    const attribs = this.shader.get().getAttributes();
+    for (let a = 0; a < attribs.length; a++) {
+      const attrib = attribs[a];
+      this.changedVertexBuffersIds.push(this.vertexBufferIndex[attrib.name]);
+    }
+    this.changeShader = false;
+    this.changeIndexBuffer = true;
   }
 
   private rebindVertexBuffers(gl: WebGLRenderingContext) {
@@ -226,10 +224,9 @@ export class State {
   }
 
   private rebindIndexBuffer(gl: WebGLRenderingContext) {
-    if (this.changeIndexBuffer) {
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer.get().getBuffer());
-      this.changeIndexBuffer = false;
-    }
+    if (!this.changeIndexBuffer) return;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer.get().getBuffer());
+    this.changeIndexBuffer = false;
   }
 
   private rebindTextures(gl: WebGLRenderingContext) {

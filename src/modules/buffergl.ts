@@ -137,7 +137,6 @@ export class Buffer {
   }
 
   public update(gl: WebGLRenderingContext) {
-    PROFILE.get(null).set('buffer', this.vtxBag.freeSpace());
     if (!this.needUpdate) return;
     for (let v in this.vtxRegions) {
       if (this.vtxRegions[v].length == 0)
@@ -150,5 +149,6 @@ export class Buffer {
       this.idxRegions = [];
     }
     this.needUpdate = false;
+    PROFILE.get(null).set('buffer', this.vtxBag.freeSpace());
   }
 }

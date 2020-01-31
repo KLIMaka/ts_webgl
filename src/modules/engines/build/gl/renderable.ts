@@ -96,7 +96,7 @@ export class Solid implements Renderable {
   }
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    if (!this.buff.isValid()) return;
+    if (this.buff.getSize() == 0) return;
     this.updateUniformLocations(state);
     const buff = this.buff;
     state.setIndexBuffer(buff.getIdxBuffer());
@@ -108,7 +108,7 @@ export class Solid implements Renderable {
     this.colorUniform.set(GLM.vec4.set(color, 1, 1, 1, this.trans));
     this.pluNUniform.set(this.pal);
     this.shadeUniform.set(this.shade);
-    state.setDrawElements(this.buff.get());
+    state.setDrawElements(this.buff.get().buffer, this.buff.get().idx.offset, this.buff.getSize());
     if (state.draw(gl))
       PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
@@ -156,28 +156,27 @@ export class GridRenderable implements Renderable {
     state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
     state.setShader('grid');
     state.setUniform('GT', this.gridTexMatProvider(ctx.gridScale));
-    state.setDrawElements(this.solid.buff.get());
+    state.setDrawElements(this.solid.buff.get().buffer, this.solid.buff.get().idx.offset, this.solid.buff.getSize());
     if (state.draw(gl))
       PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
   }
 
   public renderable(): boolean {
-    return this.solid.buff.get() != null;
+    return this.solid.buff.getSize() != 0;
   }
 
   public reset() {
   }
 }
 
-const white = GLM.vec4.fromValues(1, 1, 1, 1);
 export class PointSprite implements Renderable {
   public buff: BuildBuffer = new BuildBuffer();
   public tex: Texture;
-  public color = white;
+  public color = GLM.vec4.fromValues(1, 1, 1, 1);;
 
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    if (this.buff.get() == null) return;
+    if (this.buff.getSize() == 0) return;
     const buff = this.buff;
     state.setIndexBuffer(buff.getIdxBuffer());
     state.setVertexBuffer('aPos', buff.getPosBuffer());
@@ -186,7 +185,7 @@ export class PointSprite implements Renderable {
     state.setShader('spriteFaceShader');
     state.setTexture('base', this.tex);
     state.setUniform('color', this.color);
-    state.setDrawElements(this.buff.get());
+    state.setDrawElements(this.buff.get().buffer, this.buff.get().idx.offset, this.buff.getSize());
     if (state.draw(gl, gl.TRIANGLES))
       PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
@@ -212,7 +211,7 @@ export class Wireframe implements Renderable {
     state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
     state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
     state.setUniform('color', this.color);
-    state.setDrawElements(this.buff.get());
+    state.setDrawElements(this.buff.get().buffer, this.buff.get().idx.offset, this.buff.getSize());
     if (state.draw(gl, this.mode))
       PROFILE.get(null).inc('skip_draws');
     PROFILE.get(null).inc('draws');
@@ -225,6 +224,6 @@ export class Wireframe implements Renderable {
   }
 
   public renderable(): boolean {
-    return this.buff.get() != null;
+    return this.buff.getSize() != 0;
   }
 }

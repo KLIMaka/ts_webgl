@@ -66,30 +66,28 @@ function writeLine(ptr: Pointer, off: number, a: number, b: number): number {
 
 export class BuildBuffer {
   private ptr: Pointer;
-  private valid = false;
+  private size = 0;
 
-  public get(): Pointer {
-    return this.ptr;
-  }
-
-  public isValid() {
-    return this.valid;
-  }
+  public get(): Pointer { return this.ptr }
+  public getSize() { return this.size }
 
   public allocate(vtxCount: number, triIndexCount: number) {
     if (this.ptr != null) {
-      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount) return;
+      if (this.ptr.vtx.size >= vtxCount && this.ptr.idx.size >= triIndexCount) {
+        this.size = triIndexCount;
+        return;
+      }
       remove(this.ptr);
     }
     this.ptr = allocate(vtxCount, triIndexCount);
-    this.valid = true;
+    this.size = this.ptr.idx.size;
   }
 
   public deallocate() {
     if (this.ptr != null) {
       remove(this.ptr);
       this.ptr = null;
-      this.valid = false;
+      this.size = 0;
     }
   }
 
