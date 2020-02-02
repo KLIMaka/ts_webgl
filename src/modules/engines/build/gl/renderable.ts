@@ -3,7 +3,8 @@ import * as PROFILE from '../../../profiler';
 import { State, StateValue } from '../../../stategl';
 import { BuildContext } from '../api';
 import { BuildBuffer } from './buffers';
-import { Texture, VertexBuffer } from '../../../drawstruct';
+import { Texture, VertexBuffer, IndexBuffer } from '../../../drawstruct';
+import { Deck } from '../../../collections';
 
 export enum Type {
   SURFACE,
@@ -63,6 +64,50 @@ export interface BuildRenderableProvider {
   sprite(id: number): Renderable;
 }
 
+class StateSetup {
+  protected values = new Deck<any>();
+
+  public apply(state: State) {
+    state.setup(this.values);
+  }
+
+  protected register(name: string, state: State) {
+    this.values.push(state.getState(name));
+    this.values.push(null);
+  }
+}
+
+class GeneralSetup extends StateSetup {
+  constructor(state: State) {
+    super();
+    this.register('shader', state);
+    this.register('aIndex', state);
+    this.register('aPos', state);
+    this.register('aNorm', state);
+    this.register('aTc', state);
+    this.register('base', state);
+    this.register('color', state);
+    this.register('pluN', state);
+    this.register('shade', state);
+  }
+
+  public shader(shader: string) { this.values.set(1, shader); return this }
+  public index(index: IndexBuffer) { this.values.set(3, index); return this }
+  public position(pos: VertexBuffer) { this.values.set(5, pos); return this }
+  public normal(norm: VertexBuffer) { this.values.set(7, norm); return this }
+  public tc(tc: VertexBuffer) { this.values.set(9, tc); return this }
+  public base(tex: Texture) { this.values.set(11, tex); return this }
+  public color(color: GLM.Vec4Array) { this.values.set(13, color); return this }
+  public pal(pal: number) { this.values.set(15, pal); return this }
+  public shade(shade: number) { this.values.set(17, shade); return this }
+}
+
+let solidSetup: GeneralSetup = null;
+function getSolidSetup(state: State) {
+  if (solidSetup == null) solidSetup = new GeneralSetup(state);
+  return solidSetup;
+}
+
 let color = GLM.vec4.create();
 export class Solid implements Renderable {
   public type: Type = Type.SURFACE;
@@ -74,40 +119,20 @@ export class Solid implements Renderable {
   public parallax: number = 0;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
-  private uniformsUpdated = false;
-  private baseUniform: StateValue<Texture>;
-  private colorUniform: StateValue<any>;
-  private pluNUniform: StateValue<any>;
-  private shadeUniform: StateValue<any>;
-  private posBuffer: StateValue<VertexBuffer>;
-  private normBuffer: StateValue<VertexBuffer>;
-  private tcBuffer: StateValue<VertexBuffer>;
-
-  private updateUniformLocations(state: State) {
-    if (this.uniformsUpdated) return;
-    this.baseUniform = state.getTextureValue('base');
-    this.colorUniform = state.getUniformValue('color');
-    this.pluNUniform = state.getUniformValue('pluN');
-    this.shadeUniform = state.getUniformValue('shade');
-    this.posBuffer = state.getVertexBufferValue('aPos');
-    this.normBuffer = state.getVertexBufferValue('aNorm');
-    this.tcBuffer = state.getVertexBufferValue('aTc');
-    this.uniformsUpdated = true;
-  }
-
   public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
     if (this.buff.getSize() == 0) return;
-    this.updateUniformLocations(state);
     const buff = this.buff;
-    state.setIndexBuffer(buff.getIdxBuffer());
-    this.posBuffer.set(buff.getPosBuffer());
-    this.normBuffer.set(buff.getNormBuffer());
-    this.tcBuffer.set(buff.getTexCoordBuffer());
-    state.setShader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader');
-    this.baseUniform.set(this.tex);
-    this.colorUniform.set(GLM.vec4.set(color, 1, 1, 1, this.trans));
-    this.pluNUniform.set(this.pal);
-    this.shadeUniform.set(this.shade);
+    getSolidSetup(state)
+      .shader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader')
+      .index(buff.getIdxBuffer())
+      .position(buff.getPosBuffer())
+      .normal(buff.getNormBuffer())
+      .tc(buff.getTexCoordBuffer())
+      .base(this.tex)
+      .color(GLM.vec4.set(color, 1, 1, 1, this.trans))
+      .pal(this.pal)
+      .shade(this.shade)
+      .apply(state);
     state.setDrawElements(this.buff.get().buffer, this.buff.get().idx.offset, this.buff.getSize());
     if (state.draw(gl))
       PROFILE.get(null).inc('skip_draws');
@@ -119,9 +144,7 @@ export class Solid implements Renderable {
     this.type = Type.SURFACE;
     this.trans = 1;
     this.parallax = 0;
-    this.uniformsUpdated = false;
   }
-
 }
 
 export class WrapRenderable implements Renderable {
