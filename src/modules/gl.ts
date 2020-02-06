@@ -3,7 +3,7 @@ import * as BATCH from './batcher';
 
 export function createContextFromCanvas(id: string, opts = {}): WebGLRenderingContext {
   let canvas = <HTMLCanvasElement>document.getElementById(id);
-  let gl = <WebGLRenderingContext>canvas.getContext('webgl', opts);
+  let gl = <WebGLRenderingContext>canvas.getContext('webgl2', opts);
   return gl;
 }
 
@@ -12,7 +12,7 @@ export function createContext(w: number, h: number, opts = {}): WebGLRenderingCo
   canvas.width = w;
   canvas.height = h;
   canvas.id = 'gl';
-  let gl = <WebGLRenderingContext>canvas.getContext('webgl', opts);
+  let gl = <WebGLRenderingContext>canvas.getContext('webgl2', opts);
 
   document.body.appendChild(canvas);
   document.body.style.overflow = 'hidden';

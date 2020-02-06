@@ -1,11 +1,10 @@
 import * as GLM from '../../../../libs_js/glmatrix';
-import * as PROFILE from '../../../profiler';
-import { State, StateValue } from '../../../stategl';
+import { vec4 } from '../../../../libs_js/glmatrix';
+import { Texture } from '../../../drawstruct';
+import { State } from '../../../stategl';
 import { BuildContext } from '../api';
 import { BuildBuffer } from './buffers';
-import { Texture, VertexBuffer, IndexBuffer } from '../../../drawstruct';
-import { Deck } from '../../../collections';
-import { Buffer } from '../../../buffergl';
+import { BufferRenderable, GRID, GridSetup, PointSpriteSetup, POINT_SPRITE, SOLID, SolidSetup, WIREFRAME, WireframeSetup } from './setups';
 
 export enum Type {
   SURFACE,
@@ -65,90 +64,10 @@ export interface BuildRenderableProvider {
   sprite(id: number): Renderable;
 }
 
-class StateSetup {
-  protected values = new Deck<any>();
-  protected buff: Buffer;
-  protected offset: number;
-  protected size: number;
-
-  public apply(state: State) {
-    state.setup(this.values);
-    state.setDrawElements(this.buff, this.offset, this.size);
-  }
-
-  protected register(name: string, state: State) {
-    this.values.push(state.getState(name));
-    this.values.push(null);
-  }
-}
-
-class BufferSetup extends StateSetup {
-  constructor(state: State) {
-    super();
-    this.register('shader', state);
-    this.register('aIndex', state);
-    this.register('aPos', state);
-    this.register('aNorm', state);
-    this.register('aTc', state);
-  }
-
-  public shader(shader: string) { this.values.set(1, shader); return this }
-
-  public buffer(buffer: BuildBuffer) {
-    this.values.set(3, buffer.getIdxBuffer());
-    this.values.set(5, buffer.getPosBuffer());
-    this.values.set(7, buffer.getNormBuffer());
-    this.values.set(9, buffer.getTexCoordBuffer());
-    this.buff = buffer.get().buffer;
-    this.offset = buffer.get().idx.offset;
-    this.size = buffer.getSize();
-    return this;
-  }
-}
-
-class SolidSetup extends BufferSetup {
-  constructor(state: State) {
-    super(state);
-    this.register('base', state);
-    this.register('color', state);
-    this.register('pluN', state);
-    this.register('shade', state);
-  }
-
-  public base(tex: Texture) { this.values.set(11, tex); return this }
-  public color(color: GLM.Vec4Array) { this.values.set(13, color); return this }
-  public pal(pal: number) { this.values.set(15, pal); return this }
-  public shade(shade: number) { this.values.set(17, shade); return this }
-}
-
-let solidSetup: SolidSetup = null;
-function getSolidSetup(state: State) {
-  if (solidSetup == null) solidSetup = new SolidSetup(state);
-  return solidSetup;
-}
-
-abstract class BufferRenderable<T extends BufferSetup> implements Renderable {
-  readonly buff: BuildBuffer = new BuildBuffer();
-
-  constructor(private getSetup: (state: State) => T) { }
-
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    if (this.buff.getSize() == 0) return;
-    const setup = this.getSetup(state);
-    setup.buffer(this.buff);
-    this.setup(setup);
-    setup.apply(state);
-    if (state.draw(gl))
-      PROFILE.get(null).inc('skip_draws');
-    PROFILE.get(null).inc('draws');
-  }
-
-  abstract setup(setup: T): void;
-  abstract reset(): void;
-}
 
 let color = GLM.vec4.create();
 export class Solid extends BufferRenderable<SolidSetup> {
+  readonly buff = new BuildBuffer();
   public type: Type = Type.SURFACE;
   public tex: Texture;
   public shade: number;
@@ -157,9 +76,9 @@ export class Solid extends BufferRenderable<SolidSetup> {
   public parallax: number = 0;
   public texMat: GLM.Mat4Array = GLM.mat4.create();
 
-  constructor() { super(getSolidSetup) }
+  constructor() { super(SOLID) }
 
-  public setup(setup: SolidSetup) {
+  public setup(ctx: BuildContext, setup: SolidSetup) {
     setup
       .shader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader')
       .base(this.tex)
@@ -195,87 +114,57 @@ export class WrapRenderable implements Renderable {
   }
 }
 
-export class GridRenderable implements Renderable {
+export class GridRenderable extends BufferRenderable<GridSetup> {
   public solid: Solid;
   public gridTexMatProvider: (scale: number) => GLM.Mat4Array;
 
-  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    if (!this.renderable()) return;
-    const buff = this.solid.buff;
-    state.setIndexBuffer(buff.getIdxBuffer());
-    state.setVertexBuffer('aPos', buff.getPosBuffer());
-    state.setVertexBuffer('aNorm', buff.getNormBuffer());
-    state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
-    state.setShader('grid');
-    state.setUniform('GT', this.gridTexMatProvider(ctx.gridScale));
-    state.setDrawElements(this.solid.buff.get().buffer, this.solid.buff.get().idx.offset, this.solid.buff.getSize());
-    if (state.draw(gl))
-      PROFILE.get(null).inc('skip_draws');
-    PROFILE.get(null).inc('draws');
-  }
+  constructor() { super(GRID) }
 
-  public renderable(): boolean {
-    return this.solid.buff.getSize() != 0;
-  }
+  public get buff() { return this.solid.buff }
+  public reset() { }
 
-  public reset() {
+  public setup(ctx: BuildContext, setup: GridSetup) {
+    setup.shader('grid')
+      .grid(this.gridTexMatProvider(ctx.gridScale));
   }
 }
 
-export class PointSprite implements Renderable {
-  public buff: BuildBuffer = new BuildBuffer();
+export class PointSprite extends BufferRenderable<PointSpriteSetup> {
+  readonly buff: BuildBuffer = new BuildBuffer();
   public tex: Texture;
-  public color = GLM.vec4.fromValues(1, 1, 1, 1);;
+  public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
-  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    if (this.buff.getSize() == 0) return;
-    const buff = this.buff;
-    state.setIndexBuffer(buff.getIdxBuffer());
-    state.setVertexBuffer('aPos', buff.getPosBuffer());
-    state.setVertexBuffer('aNorm', buff.getNormBuffer());
-    state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
-    state.setShader('spriteFaceShader');
-    state.setTexture('base', this.tex);
-    state.setUniform('color', this.color);
-    state.setDrawElements(this.buff.get().buffer, this.buff.get().idx.offset, this.buff.getSize());
-    if (state.draw(gl, gl.TRIANGLES))
-      PROFILE.get(null).inc('skip_draws');
-    PROFILE.get(null).inc('draws');
+  constructor() { super(POINT_SPRITE) }
+
+  public setup(ctx: BuildContext, setup: PointSpriteSetup) {
+    setup.shader('spriteFaceShader')
+      .base(this.tex)
+      .color(this.color);
   }
 
   public reset() {
     this.buff.deallocate();
+    this.tex = null;
+    vec4.set(this.color, 1, 1, 1, 1);
   }
 }
 
-export class Wireframe implements Renderable {
+export class Wireframe extends BufferRenderable<WireframeSetup> {
+  readonly buff: BuildBuffer = new BuildBuffer();
   public type: Type = Type.SURFACE;
-  public buff: BuildBuffer = new BuildBuffer();
-  public mode: number = WebGLRenderingContext.LINES;
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
 
-  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    if (!this.renderable()) return;
-    const buff = this.buff;
-    state.setIndexBuffer(buff.getIdxBuffer());
-    state.setVertexBuffer('aPos', buff.getPosBuffer());
-    state.setVertexBuffer('aNorm', buff.getNormBuffer());
-    state.setVertexBuffer('aTc', buff.getTexCoordBuffer());
-    state.setShader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader');
-    state.setUniform('color', this.color);
-    state.setDrawElements(this.buff.get().buffer, this.buff.get().idx.offset, this.buff.getSize());
-    if (state.draw(gl, this.mode))
-      PROFILE.get(null).inc('skip_draws');
-    PROFILE.get(null).inc('draws');
+  constructor() { super(WIREFRAME) }
+
+  public setup(ctx: BuildContext, setup: WireframeSetup) {
+    setup.shader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader')
+      .color(this.color);
   }
 
   public reset() {
     this.buff.deallocate();
     this.type = Type.SURFACE;
     this.mode = WebGLRenderingContext.LINES;
-  }
-
-  public renderable(): boolean {
-    return this.buff.getSize() != 0;
+    vec4.set(this.color, 1, 1, 1, 1);
   }
 }
