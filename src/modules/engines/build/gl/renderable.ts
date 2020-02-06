@@ -79,8 +79,7 @@ export class Solid extends BufferRenderable<SolidSetup> {
   constructor() { super(SOLID) }
 
   public setup(ctx: BuildContext, setup: SolidSetup) {
-    setup
-      .shader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader')
+    setup.shader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader')
       .base(this.tex)
       .color(GLM.vec4.set(color, 1, 1, 1, this.trans))
       .pal(this.pal)
@@ -92,6 +91,9 @@ export class Solid extends BufferRenderable<SolidSetup> {
     this.type = Type.SURFACE;
     this.trans = 1;
     this.parallax = 0;
+    this.tex = null;
+    this.shade = 0;
+    this.pal = 0;
   }
 }
 
@@ -153,6 +155,7 @@ export class Wireframe extends BufferRenderable<WireframeSetup> {
   readonly buff: BuildBuffer = new BuildBuffer();
   public type: Type = Type.SURFACE;
   public color = GLM.vec4.fromValues(1, 1, 1, 1);
+  public mode = WebGLRenderingContext.LINES;
 
   constructor() { super(WIREFRAME) }
 

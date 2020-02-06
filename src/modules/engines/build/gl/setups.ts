@@ -112,6 +112,14 @@ export abstract class BufferRenderable<T extends BufferSetup> implements Rendera
 
   abstract setup(ctx: BuildContext, setup: T): void;
   abstract reset(): void;
+
+  public quad(q: number[]) {
+    const buff = this.buff;
+    buff.writePos(0, q[0], q[2], q[1]);
+    buff.writePos(1, q[3], q[5], q[4]);
+    buff.writePos(2, q[6], q[8], q[7]);
+    buff.writePos(3, q[9], q[11], q[10]);
+  }
 }
 
 export function lazySingletonTransformer<I, O>(trans: (i: I) => O) {
