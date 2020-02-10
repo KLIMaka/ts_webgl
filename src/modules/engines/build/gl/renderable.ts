@@ -47,14 +47,14 @@ export class RenderableList implements Renderable {
 }
 
 export interface SectorRenderable extends Renderable {
-  ceiling: Renderable;
-  floor: Renderable;
+  readonly ceiling: Renderable;
+  readonly floor: Renderable;
 }
 
 export interface WallRenderable extends Renderable {
-  top: Renderable;
-  mid: Renderable;
-  bot: Renderable;
+  readonly top: Renderable;
+  readonly mid: Renderable;
+  readonly bot: Renderable;
 }
 
 export interface BuildRenderableProvider {

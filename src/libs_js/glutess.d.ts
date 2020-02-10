@@ -1,2 +1,2 @@
 
-export declare function tesselate(contours:number[][]):number[][];
+export declare function tesselate(contours: number[][]): [number[][], number[]];

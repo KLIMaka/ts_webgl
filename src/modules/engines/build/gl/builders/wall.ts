@@ -1,14 +1,138 @@
-import { vec3 } from "../../../../../libs_js/glmatrix";
+import { vec3, Vec3Array, mat4, Mat4Array, vec4 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
-import { createSlopeCalculator, sectorOfWall, wallNormal } from "../../utils";
-import { Solid } from "../renderable";
+import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
+import { Solid, Renderable, WallRenderable } from "../renderable";
+import { Builder } from "./api";
+import { State } from "../../../../stategl";
+import { len2d } from "../../../../../libs/mathutils";
+import { Wall } from "../../structs";
+import { ArtInfo } from "../../art";
+import { BuildBuffer } from "../buffers";
 
-export class WallBuilder extends Solid {
+export class WallBuilder implements Builder, WallRenderable {
+  readonly top = new Solid();
+  readonly mid = new Solid();
+  readonly bot = new Solid();
 
+  reset(): void {
+    this.top.reset();
+    this.mid.reset();
+    this.bot.reset();
+  }
+
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
+    this.top.draw(ctx, gl, state);
+    this.mid.draw(ctx, gl, state);
+    this.bot.draw(ctx, gl, state);
+  }
+
+  get(): Renderable { return this }
+}
+
+function normals(n: Vec3Array) {
+  return [n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2]];
+}
+
+function getWallCoords(x1: number, y1: number, x2: number, y2: number,
+  slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean, line = false): number[] {
+  let z1 = (slope(x1, y1, heinum) + z) / ZSCALE;
+  let z2 = (slope(x2, y2, heinum) + z) / ZSCALE;
+  let z3 = (nextslope(x2, y2, nextheinum) + nextz) / ZSCALE;
+  let z4 = (nextslope(x1, y1, nextheinum) + nextz) / ZSCALE;
+  if (check) {
+    if (line && z4 > z1 && z3 > z2) return null;
+    if (!line && z4 >= z1 && z3 >= z2) return null;
+  }
+  return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
+}
+
+function applyWallTextureTransform(wall: Wall, wall2: Wall, info: ArtInfo, base: number, originalWall: Wall = wall, texMat: Mat4Array) {
+  let wall1 = wall;
+  if (originalWall.cstat.xflip)
+    [wall1, wall2] = [wall2, wall1];
+  let flip = wall == originalWall ? 1 : -1;
+  let tw = info.w;
+  let th = info.h;
+  let dx = wall2.x - wall1.x;
+  let dy = wall2.y - wall1.y;
+  let tcscalex = (wall.xrepeat * 8.0) / (flip * len2d(dx, dy) * tw);
+  let tcscaley = -(wall.yrepeat / 8.0) / (th * 16.0) * (originalWall.cstat.yflip ? -1 : 1);
+  let tcxoff = wall.xpanning / tw;
+  let tcyoff = wall.ypanning / 256.0;
+
+  mat4.identity(texMat);
+  mat4.translate(texMat, texMat, [tcxoff, tcyoff, 0, 0]);
+  mat4.scale(texMat, texMat, [tcscalex, tcscaley, 1, 1]);
+  mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
+  mat4.translate(texMat, texMat, [-wall1.x, -base / ZSCALE, -wall1.y, 0]);
+}
+
+function writePos(buff: BuildBuffer, c: number[]) {
+  buff.writePos(0, c[0], c[2], c[1]);
+  buff.writePos(1, c[3], c[5], c[4]);
+  buff.writePos(2, c[6], c[8], c[7]);
+  buff.writePos(3, c[9], c[11], c[10]);
+}
+
+const tc = vec4.create();
+function writeTransformTc(buff: BuildBuffer, t: Mat4Array, c: number[]) {
+  vec4.transformMat4(tc, vec4.set(tc, c[0], c[2], c[1], 1), t);
+  buff.writeTc(0, tc[0], tc[1]);
+  vec4.transformMat4(tc, vec4.set(tc, c[3], c[5], c[4], 1), t);
+  buff.writeTc(1, tc[0], tc[1]);
+  vec4.transformMat4(tc, vec4.set(tc, c[6], c[8], c[7], 1), t);
+  buff.writeTc(2, tc[0], tc[1]);
+  vec4.transformMat4(tc, vec4.set(tc, c[9], c[11], c[10], 1), t);
+  buff.writeTc(3, tc[0], tc[1]);
+}
+
+function writeTc(buff: BuildBuffer, t: number[]) {
+  buff.writeTc(0, t[0], t[1]);
+  buff.writeTc(1, t[2], t[3]);
+  buff.writeTc(2, t[4], t[5]);
+  buff.writeTc(3, t[6], t[7]);
+}
+
+function writeNormal(buff: BuildBuffer, n: number[]) {
+  buff.writeNormal(0, n[0], n[1], n[2]);
+  buff.writeNormal(1, n[3], n[4], n[5]);
+  buff.writeNormal(2, n[6], n[7], n[8]);
+  buff.writeNormal(3, n[9], n[10], n[11]);
+}
+
+function genQuad(c: number[], n: number[], t: Mat4Array, buff: BuildBuffer, onesided: number = 1) {
+  buff.allocate(4, onesided ? 6 : 12);
+
+  writePos(buff, c);
+  writeTransformTc(buff, t, c);
+  writeNormal(buff, n);
+
+  buff.writeQuad(0, 0, 1, 2, 3);
+  if (!onesided)
+    buff.writeQuad(6, 3, 2, 1, 0);
+}
+
+function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slope: any, nextslope: any,
+  ceilheinum: number, ceilnextheinum: number, ceilz: number, ceilnextz: number,
+  floorheinum: number, floornextheinum: number, floorz: number, floornextz: number): number[] {
+  let currz1 = (slope(x1, y1, ceilheinum) + ceilz) / ZSCALE;
+  let currz2 = (slope(x2, y2, ceilheinum) + ceilz) / ZSCALE;
+  let currz3 = (slope(x2, y2, floorheinum) + floorz) / ZSCALE;
+  let currz4 = (slope(x1, y1, floorheinum) + floorz) / ZSCALE;
+  let nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / ZSCALE;
+  let nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / ZSCALE;
+  let nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / ZSCALE;
+  let nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / ZSCALE;
+  let z1 = Math.min(currz1, nextz1);
+  let z2 = Math.min(currz2, nextz2);
+  let z3 = Math.max(currz3, nextz3);
+  let z4 = Math.max(currz4, nextz4);
+  return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
 }
 
 let wallNormal_ = vec3.create();
-export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuilder) {
+export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuilder): WallBuilder {
+  if (builder == null) builder = new WallBuilder();
   const board = ctx.board;
   const art = ctx.art;
   const wall = board.walls[wallId];
@@ -31,6 +155,7 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
     let coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
     let base = wall.cstat.alignBottom ? floorz : ceilingz;
     applyWallTextureTransform(wall, wall2, info, base, wall, builder.mid.texMat);
+    builder.mid.buff
     genQuad(coords, normal, builder.mid.texMat, builder.mid.buff);
     builder.mid.tex = tex;
     builder.mid.shade = wall.shade;
@@ -95,5 +220,7 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
       builder.mid.pal = wall.pal;
       builder.mid.trans = trans;
     }
+
+    return builder;
   }
 }

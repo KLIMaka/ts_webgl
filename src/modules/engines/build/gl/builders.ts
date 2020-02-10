@@ -11,6 +11,8 @@ import { ang2vec, createSlopeCalculator, getFirstWallAngle, sectorNormal, sector
 import { BuildBuffer } from './buffers';
 import { NULL_RENDERABLE, PointSprite, Renderable, SectorRenderable, Solid, Type, WallRenderable, Wireframe, RenderableList } from './renderable';
 import { Tiler } from './tiler';
+import { SectorBuilder } from './builders/sector';
+import { WallBuilder } from './builders/wall';
 
 export class SectorSolid implements Renderable {
   public ceiling: Solid = new Solid();
@@ -73,45 +75,20 @@ export class SectorHelper implements Renderable {
   }
 }
 
-export class WallHelper implements Renderable {
-  constructor(
-    public top: Renderable = NULL_RENDERABLE,
-    public mid: Renderable = NULL_RENDERABLE,
-    public bot: Renderable = NULL_RENDERABLE
-  ) { }
+const NULL_SECTOR_RENDERABLE = new SectorBuilder();
 
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
-    this.top.draw(ctx, gl, state);
-    this.mid.draw(ctx, gl, state);
-    this.bot.draw(ctx, gl, state);
-  }
-
-  reset() {
-    this.top.reset();
-    this.mid.reset();
-    this.bot.reset();
-  }
-}
-
-const NULL_SECTOR_RENDERABLE: SectorRenderable = {
-  floor: NULL_RENDERABLE,
-  ceiling: NULL_RENDERABLE,
-  draw: () => { },
-  reset: () => { }
-}
-
-export function updateSector2d(ctx: BuildContext, sectorId: number, SectorRenderable: SectorRenderable): SectorRenderable {
+export function updateSector2d(ctx: BuildContext, sectorId: number, builder: SectorBuilder): SectorBuilder {
   return NULL_SECTOR_RENDERABLE;
 }
 
 let white = GLM.vec4.fromValues(1, 1, 1, 1);
 let red = GLM.vec4.fromValues(1, 0, 0, 1);
 let blue = GLM.vec4.fromValues(0, 0, 1, 1);
-export function updateWall2d(ctx: BuildContext, wallId: number, renderable: WallHelper): WallRenderable {
-  renderable = renderable == null ? new WallHelper() : renderable;
-  renderable.mid.reset();
+export function updateWall2d(ctx: BuildContext, wallId: number, builder: WallBuilder): WallBuilder {
+  builder = builder == null ? new WallBuilder() : builder;
+  builder.mid.reset();
   let line = new Wireframe()
-  renderable.mid = line;
+  builder.mid = line;
 
   let board = ctx.board;
   let buff = line.buff;
@@ -122,7 +99,7 @@ export function updateWall2d(ctx: BuildContext, wallId: number, renderable: Wall
   buff.writePos(1, wall2.x, 0, wall2.y);
   buff.writeLine(0, 0, 1);
   GLM.vec4.copy(line.color, wall.cstat.masking ? blue : wall.nextwall == -1 ? white : red);
-  return renderable;
+  return builder;
 }
 
 let tmp = GLM.vec4.create();
