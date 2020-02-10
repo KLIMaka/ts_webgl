@@ -1,9 +1,8 @@
 import { Bindable, BuildContext } from '../api';
 import { BoardInvalidate } from '../edit/messages';
 import { MessageHandlerReflective } from '../handlerapi';
-import { updateSector2d, updateSpriteAngle, updateSpriteWireframe, updateWallLine, updateWallPointCeiling, updateWallPointFloor } from './builders';
 import { Builder } from './builders/api';
-import { updateSector } from './builders/sector';
+import { updateSector, SectorBuilder } from './builders/sector';
 import { SectorHelperBuilder, updateSectorHelper } from './builders/sectorhelper';
 import { updateSprite } from './builders/sprite';
 import { updateSprite2d } from './builders/sprite2d';
@@ -53,23 +52,23 @@ class CacheMap<T extends Builder> {
   }
 }
 
+const NULL_SECTOR_RENDERABLE = new SectorBuilder();
+
 export class CachedTopDownBuildRenderableProvider implements BuildRenderableProvider {
-  private sectors = new CacheMap(updateSector2d);
   private walls = new CacheMap(updateWall2d);
   private sprites = new CacheMap(updateSprite2d);
   private ctx: BuildContext;
 
   bind(ctx: BuildContext): void { this.ctx = ctx }
-  sector(id: number): SectorRenderable { return this.sectors.get(id, this.ctx) }
+  sector(id: number): SectorRenderable { return NULL_SECTOR_RENDERABLE }
   wall(id: number): WallRenderable { return this.walls.get(id, this.ctx) }
   wallPoint(id: number): Renderable { throw new Error('Cant render points') }
   sprite(id: number): Renderable { return this.sprites.get(id, this.ctx) }
-  invalidateSector(id: number) { this.sectors.invalidate(id) }
+  invalidateSector(id: number) { }
   invalidateWall(id: number) { this.walls.invalidate(id) }
   invalidateSprite(id: number) { this.sprites.invalidate(id) }
 
   invalidateAll() {
-    this.sectors.invalidateAll();
     this.walls.invalidateAll();
     this.sprites.invalidateAll();
   }
