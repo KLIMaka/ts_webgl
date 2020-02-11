@@ -2,7 +2,7 @@ import { vec3 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { FACE_SPRITE, FLOOR_SPRITE, WALL_SPRITE } from "../../structs";
 import { ang2vec, spriteAngle, ZSCALE } from "../../utils";
-import { Type, WireframeBuilder } from "../renderable";
+import { Type, WireframeBuilder } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 

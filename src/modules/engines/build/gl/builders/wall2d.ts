@@ -1,6 +1,6 @@
 import { vec4 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
-import { WallRenderable, WireframeBuilder } from "../renderable";
+import { WallRenderable, WireframeBuilder } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 

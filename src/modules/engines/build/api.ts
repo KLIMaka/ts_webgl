@@ -1,6 +1,6 @@
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
-import { Renderable } from "./gl/renderable";
+import { Renderable } from "./gl/builders/renderable";
 import { Context, Message } from "./handlerapi";
 import { Entity, Ray } from "./hitscan";
 import { ReferenceTracker } from "./referencetracker";

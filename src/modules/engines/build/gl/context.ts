@@ -11,7 +11,7 @@ import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
 import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
-import { WrapRenderable } from './renderable';
+import { WrapRenderable } from './builders/renderable';
 
 class History {
   private history: Deck<Board> = new Deck();

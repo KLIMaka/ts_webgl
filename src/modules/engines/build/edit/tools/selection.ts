@@ -4,7 +4,7 @@ import { Deck, Collection } from "../../../../collections";
 import { error, info } from "../../../../logger";
 import { Bindable, BuildContext, Target } from "../../api";
 import { deleteLoop, fillInnerLoop, insertSprite, loopWallsFull, nextwall, setFirstWall, deleteSectorFull, deleteLoopFull, loopWalls } from "../../boardutils";
-import { BuildRenderableProvider } from "../../gl/renderable";
+import { BuildRenderableProvider } from "../../gl/builders/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Entity, EntityType } from "../../hitscan";
 import { Board } from "../../structs";

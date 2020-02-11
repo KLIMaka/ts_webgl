@@ -1,7 +1,7 @@
 import { Deck, map, cyclicPairs, range, reduce, fastIterator } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
-import { Renderable, Renderables, WireframeBuilder, PointSpriteBuilder } from "../../gl/renderable";
+import { Renderable, Renderables, WireframeBuilder, PointSpriteBuilder } from "../../gl/builders/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";

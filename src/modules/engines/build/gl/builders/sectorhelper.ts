@@ -3,7 +3,7 @@ import { Board, Sector } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "./common";
-import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SectorRenderable, SolidBuilder, WireframeBuilder } from "../renderable";
+import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SectorRenderable, SolidBuilder, WireframeBuilder } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 

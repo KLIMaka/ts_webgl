@@ -5,7 +5,7 @@ import { ArtInfo } from "../../art";
 import { Board, Sector, Wall } from "../../structs";
 import { createSlopeCalculator, getFirstWallAngle, sectorNormal, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
-import { SectorRenderable, SolidBuilder } from "../renderable";
+import { SectorRenderable, SolidBuilder } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 

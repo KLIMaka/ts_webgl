@@ -11,7 +11,7 @@ import { updateWall } from './builders/wall';
 import { updateWall2d } from './builders/wall2d';
 import { updateWallHelper, WallHelperBuilder } from './builders/wallhelper';
 import { updateWallPoint } from './builders/wallpointhelper';
-import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable } from './renderable';
+import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable } from './builders/renderable';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }

@@ -10,7 +10,7 @@ import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
 import { View3d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables } from './renderable';
+import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables } from './builders/renderable';
 import { State } from '../../../stategl';
 
 export class RorLink {

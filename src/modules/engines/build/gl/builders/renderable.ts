@@ -1,14 +1,19 @@
-import { vec4, Mat4Array, mat4 } from '../../../../libs_js/glmatrix';
-import { Texture } from '../../../drawstruct';
-import { State } from '../../../stategl';
-import { BuildContext } from '../api';
-import { BuildBuffer } from './buffers';
+import { Mat4Array, vec4 } from '../../../../../libs_js/glmatrix';
+import { FastIterable } from '../../../../collections';
+import { Texture } from '../../../../drawstruct';
+import { State } from '../../../../stategl';
+import { BuildContext } from '../../api';
+import { BuildBuffer } from '../buffers';
 import { BufferRenderable, GRID, GridSetup, PointSpriteSetup, POINT_SPRITE, SOLID, SolidSetup, WIREFRAME, WireframeSetup } from './setups';
-import { FastIterable } from '../../../collections';
 
 
 export interface Renderable {
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void;
+}
+
+export type RenderableConsumer = (r: Renderable) => void;
+export interface RenderableProvider {
+  accept(consumer: RenderableConsumer): void;
 }
 
 export const NULL_RENDERABLE: Renderable = {

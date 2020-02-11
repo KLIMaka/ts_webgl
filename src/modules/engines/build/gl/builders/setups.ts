@@ -1,13 +1,13 @@
-import { Deck } from "../../../collections";
-import { State } from "../../../stategl";
-import { BuildBuffer } from "./buffers";
-import { Texture } from "../../../drawstruct";
-import { Buffer } from "../../../buffergl";
-import * as PROFILE from '../../../profiler';
-import { BuildContext } from "../api";
-import { Vec4Array, Mat4Array } from "../../../../libs_js/glmatrix";
-import { Renderable } from "./renderable";
-import { Builder } from "./builders/api";
+import { Deck } from "../../../../collections";
+import { State } from "../../../../stategl";
+import { BuildBuffer } from "../buffers";
+import { Texture } from "../../../../drawstruct";
+import { Buffer } from "../../../../buffergl";
+import * as PROFILE from '../../../../profiler';
+import { BuildContext } from "../../api";
+import { Vec4Array, Mat4Array } from "../../../../../libs_js/glmatrix";
+import { Renderable, RenderableProvider, RenderableConsumer } from "./renderable";
+import { Builder } from "./api";
 
 export class StateSetup {
   protected values = new Deck<any>();
@@ -94,7 +94,7 @@ export class PointSpriteSetup extends BufferSetup {
   public color(color: Vec4Array) { this.values.set(13, color); return this }
 }
 
-export abstract class BufferRenderable<T extends BufferSetup> implements Builder, Renderable {
+export abstract class BufferRenderable<T extends BufferSetup> implements Builder, Renderable, RenderableProvider {
   abstract readonly buff: BuildBuffer;
   public mode: number = WebGLRenderingContext.TRIANGLES;
 
@@ -115,6 +115,7 @@ export abstract class BufferRenderable<T extends BufferSetup> implements Builder
   abstract reset(): void;
 
   public get() { return this }
+  public accept(consumer: RenderableConsumer) { if (this.buff.getSize() != 0) consumer(this) }
 
   public quad(q: number[]) {
     const buff = this.buff;

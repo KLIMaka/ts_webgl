@@ -13,7 +13,7 @@ import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
 import { RenderablesCache } from "./gl/cache";
 import { GridController } from "./gl/context";
-import { BuildRenderableProvider, Renderable } from "./gl/renderable";
+import { BuildRenderableProvider, Renderable } from "./gl/builders/renderable";
 import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi";
 import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";

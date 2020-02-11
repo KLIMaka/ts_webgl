@@ -1,6 +1,6 @@
 import { BuildContext } from "../../api";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
-import { PointSpriteBuilder, WireframeBuilder } from "../renderable";
+import { PointSpriteBuilder, WireframeBuilder } from "./renderable";
 import { Builders } from "./api";
 import { Board } from "../../structs";
 import { BuildBuffer } from "../buffers";

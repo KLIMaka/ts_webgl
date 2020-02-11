@@ -5,7 +5,7 @@ import { Board } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { createGridMatrixProviderWall, text } from "./common";
-import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SolidBuilder, WallRenderable, WireframeBuilder } from "../renderable";
+import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SolidBuilder, WallRenderable, WireframeBuilder } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 

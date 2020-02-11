@@ -5,7 +5,7 @@ import { walllen } from '../../boardutils';
 import { Board } from '../../structs';
 import { slope, ZSCALE } from '../../utils';
 import { BuildBuffer } from '../buffers';
-import { PointSpriteBuilder, WireframeBuilder } from '../renderable';
+import { PointSpriteBuilder, WireframeBuilder } from './renderable';
 import { Tiler } from '../tiler';
 import { vec4, mat4 } from '../../../../../libs_js/glmatrix';
 

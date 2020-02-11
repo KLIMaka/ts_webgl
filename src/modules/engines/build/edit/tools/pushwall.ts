@@ -3,7 +3,7 @@ import { vec3 } from "../../../../../libs_js/glmatrix";
 import { cyclicPairs } from "../../../../collections";
 import { BuildContext } from "../../api";
 import { pushWall } from "../../boardutils";
-import { WireframeBuilder } from "../../gl/renderable";
+import { WireframeBuilder } from "../../gl/builders/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { build2gl, createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { MovingHandle } from "../handle";

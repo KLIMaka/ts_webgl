@@ -5,7 +5,7 @@ import * as SHADER from '../../../shaders';
 import { State } from '../../../stategl';
 import { BuildContext } from '../api';
 import * as BUFF from './buffers';
-import { Renderable } from './renderable';
+import { Renderable } from './builders/renderable';
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state: State;

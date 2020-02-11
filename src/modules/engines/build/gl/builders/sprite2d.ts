@@ -1,7 +1,7 @@
 import { vec3 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { ang2vec, spriteAngle, ZSCALE } from "../../utils";
-import { WireframeBuilder } from "../renderable";
+import { WireframeBuilder } from "./renderable";
 
 export function updateSpriteAngle(ctx: BuildContext, spriteId: number, builder: WireframeBuilder): WireframeBuilder {
   builder = builder == null ? new WireframeBuilder() : builder;

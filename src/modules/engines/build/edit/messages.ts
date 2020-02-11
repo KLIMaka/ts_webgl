@@ -1,5 +1,5 @@
 import { Deck } from "../../../collections";
-import { Renderable, Renderables } from "../gl/renderable";
+import { Renderable, Renderables } from "../gl/builders/renderable";
 import { Message } from "../handlerapi";
 import { Entity } from "../hitscan";
 

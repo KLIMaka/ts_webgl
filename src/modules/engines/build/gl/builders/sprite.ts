@@ -1,5 +1,5 @@
 import { BuildContext } from "../../api";
-import { SolidBuilder, Type } from "../renderable";
+import { SolidBuilder, Type } from "./renderable";
 import { ZSCALE, spriteAngle, ang2vec } from "../../utils";
 import { FACE_SPRITE, WALL_SPRITE, FLOOR_SPRITE } from "../../structs";
 import { mat4, Vec3Array, Mat4Array, vec4 } from "../../../../../libs_js/glmatrix";

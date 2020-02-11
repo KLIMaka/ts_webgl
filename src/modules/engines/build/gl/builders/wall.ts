@@ -6,7 +6,7 @@ import { ArtInfo } from "../../art";
 import { Wall } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
-import { SolidBuilder, WallRenderable } from "../renderable";
+import { SolidBuilder, WallRenderable } from "./renderable";
 import { Builders } from "./api";
 
 export class WallBuilder extends Builders implements WallRenderable {

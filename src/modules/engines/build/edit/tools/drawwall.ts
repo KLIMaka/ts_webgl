@@ -1,5 +1,5 @@
 import { BuildContext } from "../../api";
-import { WireframeBuilder } from "../../gl/renderable";
+import { WireframeBuilder } from "../../gl/builders/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { MovingHandle } from "../handle";
 import { Frame, NamedMessage, Render } from "../messages";

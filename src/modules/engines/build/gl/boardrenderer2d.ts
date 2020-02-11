@@ -6,7 +6,7 @@ import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, GridBuilder, SolidBuilder, Renderables } from './renderable';
+import { BuildRenderableProvider, Renderable, GridBuilder, SolidBuilder, Renderables } from './builders/renderable';
 import { Controller2D } from '../../../controller2d';
 
 let grid: GridBuilder;
