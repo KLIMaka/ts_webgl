@@ -1,53 +1,45 @@
-import { Texture } from "../../../../drawstruct";
-import { State } from "../../../../stategl";
 import { BuildContext } from "../../api";
-import { Board } from "../../structs";
+import { Board, Sector } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
-import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector, updateSectorWireframe } from "../builders";
-import { BuildRenderableProvider, GridRenderable, PointSprite, Renderable, RenderableList, SectorRenderable, Solid, wrapStatePred } from "../renderable";
-import { Builder } from "./api";
+import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "../builders";
+import { BuildRenderableProvider, GridRenderable, PointSprite, RenderableList, SectorRenderable, SolidBuilder, Wireframe } from "../renderable";
+import { Builders } from "./api";
 
-export class SectorHelperBuilder implements Builder, SectorRenderable {
-  public ceiling: Renderable;
-  public floor: Renderable;
-
-  reset(): void {
-    this.ceiling.reset();
-    this.floor.reset();
-  }
-
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    this.ceiling.draw(ctx, gl, state);
-    this.floor.draw(ctx, gl, state);
-  }
-
-  get(): Renderable { return this }
+export class SectorHelperBuilder extends Builders implements SectorRenderable {
+  constructor(
+    readonly ceilpoints = new PointSprite(),
+    readonly ceilwire = new Wireframe(),
+    readonly ceilhinge = new Wireframe(),
+    readonly ceilgrid = new GridRenderable(),
+    readonly floorpoints = new PointSprite(),
+    readonly floorwire = new Wireframe(),
+    readonly floorhinge = new Wireframe(),
+    readonly floorgrid = new GridRenderable(),
+    readonly ceiling = new RenderableList([ceilpoints, ceilwire, ceilhinge, ceilgrid]),
+    readonly floor = new RenderableList([floorpoints, floorwire, floorhinge, floorgrid]),
+  ) { super([ceilpoints, ceilwire, ceilhinge, ceilgrid, floorpoints, floorwire, floorhinge, floorgrid]) }
 }
 
-function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
-  buff.allocate(4, 6);
+function fillBufferForWallPoint(offset: number, board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
   const wall = board.walls[wallId];
-  buff.writePos(0, wall.x, z, wall.y);
-  buff.writePos(1, wall.x, z, wall.y);
-  buff.writePos(2, wall.x, z, wall.y);
-  buff.writePos(3, wall.x, z, wall.y);
-  buff.writeNormal(0, -d, d, 0);
-  buff.writeNormal(1, d, d, 0);
-  buff.writeNormal(2, d, -d, 0);
-  buff.writeNormal(3, -d, -d, 0);
-  buff.writeTc(0, 0, 0);
-  buff.writeTc(1, 1, 0);
-  buff.writeTc(2, 1, 1);
-  buff.writeTc(3, 0, 1);
-  buff.writeQuad(0, 0, 1, 2, 3);
+  const vtxOff = offset * 4;
+  buff.writePos(vtxOff + 0, wall.x, z, wall.y);
+  buff.writePos(vtxOff + 1, wall.x, z, wall.y);
+  buff.writePos(vtxOff + 2, wall.x, z, wall.y);
+  buff.writePos(vtxOff + 3, wall.x, z, wall.y);
+  buff.writeNormal(vtxOff + 0, -d, d, 0);
+  buff.writeNormal(vtxOff + 1, d, d, 0);
+  buff.writeNormal(vtxOff + 2, d, -d, 0);
+  buff.writeNormal(vtxOff + 3, -d, -d, 0);
+  buff.writeTc(vtxOff + 0, 0, 0);
+  buff.writeTc(vtxOff + 1, 1, 0);
+  buff.writeTc(vtxOff + 2, 1, 1);
+  buff.writeTc(vtxOff + 3, 0, 1);
+  buff.writeQuad(offset * 6, vtxOff, vtxOff + 1, vtxOff + 2, vtxOff + 3);
 }
 
-export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 2.5, tex) }
-export function updateWallPointFloor(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, false, wallId, 2.5, tex) }
-
-function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, tex: Texture): Renderable {
-  const point = new PointSprite();
+function addWallPoint(offset: number, builder: PointSprite, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
   const board = ctx.board;
   const s = sectorOfWall(board, wallId);
   const sec = board.sectors[s];
@@ -56,45 +48,61 @@ function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d:
   const z = (ceiling ? sec.ceilingz : sec.floorz);
   const wall = board.walls[wallId];
   const zz = (slope(wall.x, wall.y, h) + z) / ZSCALE;
-  fillBufferForWallPoint(board, wallId, point.buff, d, zz);
-  point.tex = tex;
-  return point;
+  fillBufferForWallPoint(offset, board, wallId, builder.buff, d, zz);
+}
+
+function fillBuffersForSectorWireframe(s: number, sec: Sector, heinum: number, z: number, board: Board, builder: Wireframe) {
+  let slope = createSlopeCalculator(board, s);
+  const buff = builder.buff;
+  buff.allocate(sec.wallnum, sec.wallnum * 2);
+
+  let fw = sec.wallptr;
+  let off = 0;
+  for (let w = 0; w < sec.wallnum; w++) {
+    let wid = sec.wallptr + w;
+    let wall = board.walls[wid];
+    let vx = wall.x;
+    let vy = wall.y;
+    let vz = (slope(vx, vy, heinum) + z) / ZSCALE;
+    buff.writePos(w, vx, vz, vy);
+    if (fw != wid) {
+      off = buff.writeLine(off, w - 1, w);
+    }
+    if (wall.point2 == fw) {
+      off = buff.writeLine(off, w, fw - sec.wallptr);
+      fw = wid + 1;
+    }
+  }
 }
 
 export function updateSectorHelper(cache: BuildRenderableProvider, ctx: BuildContext, secId: number, builder: SectorHelperBuilder): SectorHelperBuilder {
-  if (builder == null) builder = new SectorHelperBuilder();
-  builder.reset();
-
-  const ceiling2d = new Array<Renderable>();
-  const floor2d = new Array<Renderable>();
+  builder = builder == null ? new SectorHelperBuilder() : builder;
   const pointTex = ctx.art.get(-1);
+  builder.ceilpoints.tex = pointTex;
+  builder.floorpoints.tex = pointTex;
 
   const sec = ctx.board.sectors[secId];
-  const end = sec.wallptr + sec.wallnum;
-  for (let w = sec.wallptr; w < end; w++) {
-    ceiling2d.push(updateWallPointCeiling(ctx, w, pointTex));
-    floor2d.push(updateWallPointFloor(ctx, w, pointTex));
+  const wallnum = sec.wallnum;
+  builder.ceilpoints.buff.allocate(wallnum * 4, wallnum * 6);
+  builder.floorpoints.buff.allocate(wallnum * 4, wallnum * 6);
+  for (let i = 0; i < wallnum; i++) {
+    const w = sec.wallptr + i;
+    addWallPoint(i, builder.ceilpoints, ctx, true, w, 2.5);
+    addWallPoint(i, builder.floorpoints, ctx, false, w, 2.5);
   }
 
-  const ceiling = new Array<Renderable>();
-  const floor = new Array<Renderable>();
-  const sectorWireframe = updateSectorWireframe(ctx, secId);
-  ceiling.push(sectorWireframe.ceiling);
-  floor.push(sectorWireframe.floor);
-  ceiling.push(buildCeilingHinge(ctx, secId));
-  floor.push(buildFloorHinge(ctx, secId));
-  const sectorRenderable = cache.sector(secId);
-  const ceilingGrid = new GridRenderable();
-  ceilingGrid.gridTexMatProvider = gridMatrixProviderSector;
-  ceilingGrid.solid = <Solid>sectorRenderable.ceiling;
-  ceiling.push(ceilingGrid);
-  const floorGrid = new GridRenderable();
-  floorGrid.gridTexMatProvider = gridMatrixProviderSector;
-  floorGrid.solid = <Solid>sectorRenderable.floor;
-  floor.push(floorGrid);
+  fillBuffersForSectorWireframe(secId, sec, sec.ceilingheinum, sec.ceilingz, ctx.board, builder.ceilwire);
+  fillBuffersForSectorWireframe(secId, sec, sec.floorheinum, sec.floorz, ctx.board, builder.floorwire);
 
-  const pred = (ctx: BuildContext) => !ctx.view.isWireframe();
-  builder.ceiling = new RenderableList([wrapStatePred(pred, new RenderableList(ceiling)), ...ceiling2d]);
-  builder.floor = new RenderableList([wrapStatePred(pred, new RenderableList(floor)), ...floor2d]);
+  buildCeilingHinge(ctx, secId, builder.ceilhinge);
+  buildFloorHinge(ctx, secId, builder.floorhinge);
+
+  const sectorRenderable = cache.sector(secId);
+  builder.ceilgrid.gridTexMatProvider = gridMatrixProviderSector;
+  builder.ceilgrid.solid = <SolidBuilder>sectorRenderable.ceiling;
+
+  builder.floorgrid.gridTexMatProvider = gridMatrixProviderSector;
+  builder.floorgrid.solid = <SolidBuilder>sectorRenderable.floor;
+
   return builder;
 }

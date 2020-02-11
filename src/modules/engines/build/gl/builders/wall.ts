@@ -1,32 +1,20 @@
 import { vec3, Vec3Array, mat4, Mat4Array, vec4 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
-import { Solid, Renderable, WallRenderable } from "../renderable";
-import { Builder } from "./api";
+import { SolidBuilder, Renderable, WallRenderable } from "../renderable";
+import { Builder, Builders } from "./api";
 import { State } from "../../../../stategl";
 import { len2d } from "../../../../../libs/mathutils";
 import { Wall } from "../../structs";
 import { ArtInfo } from "../../art";
 import { BuildBuffer } from "../buffers";
 
-export class WallBuilder implements Builder, WallRenderable {
-  readonly top = new Solid();
-  readonly mid = new Solid();
-  readonly bot = new Solid();
-
-  reset(): void {
-    this.top.reset();
-    this.mid.reset();
-    this.bot.reset();
-  }
-
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    this.top.draw(ctx, gl, state);
-    this.mid.draw(ctx, gl, state);
-    this.bot.draw(ctx, gl, state);
-  }
-
-  get(): Renderable { return this }
+export class WallBuilder extends Builders implements WallRenderable {
+  constructor(
+    readonly top = new SolidBuilder(),
+    readonly mid = new SolidBuilder(),
+    readonly bot = new SolidBuilder()
+  ) { super([top, mid, bot]) }
 }
 
 function normals(n: Vec3Array) {
@@ -86,13 +74,6 @@ function writeTransformTc(buff: BuildBuffer, t: Mat4Array, c: number[]) {
   buff.writeTc(3, tc[0], tc[1]);
 }
 
-function writeTc(buff: BuildBuffer, t: number[]) {
-  buff.writeTc(0, t[0], t[1]);
-  buff.writeTc(1, t[2], t[3]);
-  buff.writeTc(2, t[4], t[5]);
-  buff.writeTc(3, t[6], t[7]);
-}
-
 function writeNormal(buff: BuildBuffer, n: number[]) {
   buff.writeNormal(0, n[0], n[1], n[2]);
   buff.writeNormal(1, n[3], n[4], n[5]);
@@ -132,7 +113,7 @@ function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slo
 
 let wallNormal_ = vec3.create();
 export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuilder): WallBuilder {
-  if (builder == null) builder = new WallBuilder();
+  builder = builder == null ? new WallBuilder() : builder;
   const board = ctx.board;
   const art = ctx.art;
   const wall = board.walls[wallId];
@@ -220,7 +201,7 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
       builder.mid.pal = wall.pal;
       builder.mid.trans = trans;
     }
-
-    return builder;
   }
+
+  return builder;
 }

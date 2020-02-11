@@ -66,7 +66,7 @@ export interface BuildRenderableProvider {
 
 
 let color = GLM.vec4.create();
-export class Solid extends BufferRenderable<SolidSetup> {
+export class SolidBuilder extends BufferRenderable<SolidSetup> {
   readonly buff = new BuildBuffer();
   public type: Type = Type.SURFACE;
   public tex: Texture;
@@ -117,7 +117,7 @@ export class WrapRenderable implements Renderable {
 }
 
 export class GridRenderable extends BufferRenderable<GridSetup> {
-  public solid: Solid;
+  public solid: SolidBuilder;
   public gridTexMatProvider: (scale: number) => GLM.Mat4Array;
 
   constructor() { super(GRID) }

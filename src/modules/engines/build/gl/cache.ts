@@ -2,14 +2,16 @@ import { Bindable, BuildContext } from '../api';
 import { BoardInvalidate } from '../edit/messages';
 import { MessageHandlerReflective } from '../handlerapi';
 import { Builder } from './builders/api';
-import { updateSector, SectorBuilder } from './builders/sector';
+import { SectorBuilder, updateSector } from './builders/sector';
 import { SectorHelperBuilder, updateSectorHelper } from './builders/sectorhelper';
 import { updateSprite } from './builders/sprite';
 import { updateSprite2d } from './builders/sprite2d';
+import { updateSpriteHelper } from './builders/spritehelper';
 import { updateWall } from './builders/wall';
 import { updateWall2d } from './builders/wall2d';
 import { updateWallHelper, WallHelperBuilder } from './builders/wallhelper';
-import { BuildRenderableProvider, Renderable, RenderableList, SectorRenderable, WallRenderable } from './renderable';
+import { updateWallPoint } from './builders/wallpointhelper';
+import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable } from './renderable';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -100,14 +102,11 @@ export class CachedBuildRenderableProvider implements BuildRenderableProvider {
 export class CachedHelperBuildRenderableProvider implements BuildRenderableProvider {
   private sectors = new CacheMap((ctx: BuildContext, id: number, value: SectorHelperBuilder) => updateSectorHelper(this.cache, ctx, id, value));
   private walls = new CacheMap((ctx: BuildContext, id: number, value: WallHelperBuilder) => updateWallHelper(this.cache, ctx, id, value));
-  private sprites: CacheMap<Renderable>;
-  private wallPoints: CacheMap<Renderable>;
+  private sprites = new CacheMap(updateSpriteHelper);
+  private wallPoints = new CacheMap(updateWallPoint);
   private ctx: BuildContext;
 
-  constructor(readonly cache: CachedBuildRenderableProvider) {
-    this.sprites = new CacheMap((ctx: BuildContext, id: number, value: Renderable) => { return this.updateSpriteHelper(id, value) });
-    this.wallPoints = new CacheMap((ctx: BuildContext, id: number, value: Renderable) => { return this.updateWallPoint(id, value) });
-  }
+  constructor(readonly cache: CachedBuildRenderableProvider) { }
 
   bind(ctx: BuildContext): void { this.ctx = ctx }
   sector(id: number): SectorRenderable { return this.sectors.get(id, this.ctx) }
@@ -127,24 +126,6 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
     this.walls.invalidateAll();
     this.sprites.invalidateAll();
     this.wallPoints.invalidateAll();
-  }
-
-  private updateSpriteHelper(sprId: number, renderable: Renderable): Renderable {
-    if (renderable != null) renderable.reset();
-    let list = new Array<Renderable>();
-    list.push(updateSpriteWireframe(this.ctx, sprId));
-    list.push(updateSpriteAngle(this.ctx, sprId, null));
-    return new RenderableList(list);
-  }
-
-  private updateWallPoint(wallId: number, renderable: Renderable): Renderable {
-    if (renderable != null) renderable.reset();
-    const pointTex = this.ctx.art.get(-1);
-    let list = new Array<Renderable>();
-    list.push(updateWallPointCeiling(this.ctx, wallId, pointTex));
-    list.push(updateWallPointFloor(this.ctx, wallId, pointTex));
-    list.push(updateWallLine(this.ctx, wallId));
-    return new RenderableList(list);
   }
 }
 

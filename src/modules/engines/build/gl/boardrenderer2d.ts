@@ -6,7 +6,7 @@ import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, GridRenderable, Solid, RenderableList } from './renderable';
+import { BuildRenderableProvider, Renderable, GridRenderable, SolidBuilder, RenderableList } from './renderable';
 import { Controller2D } from '../../../controller2d';
 
 let grid: GridRenderable;
@@ -35,7 +35,7 @@ function getGrid(controller: Controller2D) {
     GLM.mat4.translate(gridMatrix, gridMatrix, offset);
     return grid;
   }
-  const gridSolid = new Solid();
+  const gridSolid = new SolidBuilder();
   gridSolid.trans = 0.5;
   const buff = gridSolid.buff;
   buff.allocate(4, 6);

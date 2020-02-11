@@ -1,19 +1,18 @@
-import { SectorRenderable, Solid, Renderable } from "../renderable";
-import { Builder } from "./api";
-import { BuildContext } from "../../api";
-import { State } from "../../../../stategl";
-import { vec3, mat4, vec4, Vec3Array, Mat4Array } from "../../../../../libs_js/glmatrix";
-import { getFirstWallAngle, createSlopeCalculator, ZSCALE, sectorNormal } from "../../utils";
-import { Sector, Wall, Board } from "../../structs";
-import { ArtInfo } from "../../art";
-import { BuildBuffer } from "../buffers";
-import { SectorSolid } from "../builders";
+import { mat4, Mat4Array, vec3, Vec3Array, vec4 } from "../../../../../libs_js/glmatrix";
 import { tesselate } from "../../../../../libs_js/glutess";
+import { State } from "../../../../stategl";
+import { BuildContext } from "../../api";
+import { ArtInfo } from "../../art";
+import { Board, Sector, Wall } from "../../structs";
+import { createSlopeCalculator, getFirstWallAngle, sectorNormal, ZSCALE } from "../../utils";
+import { BuildBuffer } from "../buffers";
+import { Renderable, SectorRenderable, SolidBuilder } from "../renderable";
+import { Builder } from "./api";
 
 
 export class SectorBuilder implements Builder, SectorRenderable {
-  readonly ceiling = new Solid();
-  readonly floor = new Solid();
+  readonly ceiling = new SolidBuilder();
+  readonly floor = new SolidBuilder();
 
   reset(): void {
     this.ceiling.reset();
@@ -96,16 +95,16 @@ function cacheTriangulate(board: Board, sec: Sector): [number[][], number[]] {
   return triangulate(sec, board.walls);
 }
 
-function fillBuffersForSector(ceil: boolean, board: Board, s: number, sec: Sector, renderable: SectorSolid, normal: Vec3Array, t: Mat4Array) {
+function fillBuffersForSector(ceil: boolean, board: Board, s: number, sec: Sector, builder: SectorBuilder, normal: Vec3Array, t: Mat4Array) {
   const [vtxs, vidxs] = cacheTriangulate(board, sec);
-  const d = ceil ? renderable.ceiling : renderable.floor;
+  const d = ceil ? builder.ceiling : builder.floor;
   d.buff.allocate(vtxs.length, vidxs.length);
   fillBuffersForSectorNormal(ceil, board, s, sec, d.buff, vtxs, vidxs, normal, t);
 }
 
 let sectorNormal_ = vec3.create();
 export function updateSector(ctx: BuildContext, secId: number, builder: SectorBuilder): SectorBuilder {
-  if (builder == null) builder = new SectorBuilder();
+  builder = builder == null ? new SectorBuilder() : builder;
   const board = ctx.board;
   const art = ctx.art;
   const sec = board.sectors[secId];

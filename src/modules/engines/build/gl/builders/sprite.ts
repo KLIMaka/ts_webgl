@@ -1,5 +1,5 @@
 import { BuildContext } from "../../api";
-import { Solid, Type } from "../renderable";
+import { SolidBuilder, Type } from "../renderable";
 import { ZSCALE, spriteAngle, ang2vec } from "../../utils";
 import { FACE_SPRITE, WALL_SPRITE, FLOOR_SPRITE } from "../../structs";
 import { mat4, Vec3Array, Mat4Array, vec4 } from "../../../../../libs_js/glmatrix";
@@ -54,7 +54,7 @@ function genQuad(c: number[], n: number[], t: Mat4Array, buff: BuildBuffer, ones
     buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: Solid) {
+function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SolidBuilder) {
   let dx = Math.sin(ang) * hw;
   let dy = Math.cos(ang) * hw;
 
@@ -76,7 +76,7 @@ function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, y
 
 }
 
-function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: Solid) {
+function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SolidBuilder) {
   let dwx = Math.sin(ang) * hw;
   let dwy = Math.cos(ang) * hw;
   let dhx = Math.sin(ang + Math.PI / 2) * hh;
@@ -114,7 +114,7 @@ function genSpriteQuad(x: number, y: number, z: number, n: number[], t: number[]
   buff.writeQuad(6, 3, 2, 1, 0);
 }
 
-function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, xf: number, yf: number, renderable: Solid) {
+function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, xf: number, yf: number, renderable: SolidBuilder) {
   let texMat = renderable.texMat;
   mat4.identity(texMat);
   mat4.scale(texMat, texMat, [1 / (hw * 2), -1 / (hh * 2), 1, 1]);
@@ -128,11 +128,11 @@ function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, y
   ], [0, 0, 1, 0, 1, 1, 0, 1], renderable.buff);
 }
 
-export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid): Solid {
-  if (renderable == null) renderable = new Solid();
+export function updateSprite(ctx: BuildContext, sprId: number, builder: SolidBuilder): SolidBuilder {
+  builder = builder == null ? new SolidBuilder() : builder;
   let spr = ctx.board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible)
-    return renderable;
+    return builder;
 
   let x = spr.x; let y = spr.y; let z = spr.z / ZSCALE;
   let info = ctx.art.getInfo(spr.picnum);
@@ -147,19 +147,19 @@ export function updateSprite(ctx: BuildContext, sprId: number, renderable: Solid
   let sectorShade = sec ? sec.floorshade : spr.shade;
   let shade = spr.shade == -8 ? sectorShade : spr.shade;
   let trans = (spr.cstat.translucent || spr.cstat.tranclucentReversed) ? 0.6 : 1;
-  renderable.tex = tex;
-  renderable.shade = shade;
-  renderable.pal = spr.pal;
-  renderable.trans = trans;
+  builder.tex = tex;
+  builder.shade = shade;
+  builder.pal = spr.pal;
+  builder.trans = trans;
 
   if (spr.cstat.type == FACE_SPRITE) {
-    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, renderable);
-    renderable.type = Type.FACE;
+    fillBuffersForFaceSprite(x, y, z, xo, yo, hw, hh, xf, yf, builder);
+    builder.type = Type.FACE;
   } else if (spr.cstat.type == WALL_SPRITE) {
-    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
+    fillbuffersForWallSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, builder);
   } else if (spr.cstat.type == FLOOR_SPRITE) {
-    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, renderable);
+    fillbuffersForFloorSprite(x, y, z, xo, yo, hw, hh, ang, xf, yf, spr.cstat.onesided, builder);
   }
 
-  return renderable;
+  return builder;
 }

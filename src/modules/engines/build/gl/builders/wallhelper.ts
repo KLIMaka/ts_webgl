@@ -5,7 +5,7 @@ import { Board } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { createGridMatrixProviderWall, text } from "../builders";
-import { BuildRenderableProvider, GridRenderable, PointSprite, RenderableList, Solid, WallRenderable, Wireframe } from "../renderable";
+import { BuildRenderableProvider, GridRenderable, PointSprite, RenderableList, SolidBuilder, WallRenderable, Wireframe } from "../renderable";
 import { Builders } from "./api";
 
 export class WallHelperBuilder extends Builders implements WallRenderable {
@@ -79,7 +79,6 @@ function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slo
 }
 
 export function updateWallWireframe(ctx: BuildContext, wallId: number, builder: WallHelperBuilder): WallHelperBuilder {
-  builder = builder == null ? new WallHelperBuilder() : builder;
   const board = ctx.board;
   const wall = board.walls[wallId];
   const sectorId = sectorOfWall(board, wallId)
@@ -150,46 +149,48 @@ function updateWallPoint(offset: number, builder: PointSprite, ctx: BuildContext
   fillBufferForWallPoint(offset, board, wallId, builder.buff, d, zz);
 }
 
-function addWallPoints(builder: PointSprite, wallId: number, ceiling: boolean): void {
-  const pointTex = this.ctx.art.get(-1);
+function addWallPoints(ctx: BuildContext, builder: PointSprite, wallId: number, ceiling: boolean): void {
+  const pointTex = ctx.art.get(-1);
   builder.tex = pointTex;
   builder.buff.allocate(8, 12);
-  updateWallPoint(0, builder, this.ctx, ceiling, wallId, 2.5);
-  const wallId2 = this.ctx.board.walls[wallId].point2;
-  updateWallPoint(1, builder, this.ctx, ceiling, wallId2, 2.5);
+  updateWallPoint(0, builder, ctx, ceiling, wallId, 2.5);
+  const wallId2 = ctx.board.walls[wallId].point2;
+  updateWallPoint(1, builder, ctx, ceiling, wallId2, 2.5);
 }
 
-function addLength(builder: PointSprite, wallId: number, ceiling: boolean) {
-  const wallId2 = this.ctx.board.walls[wallId].point2;
-  const wall = this.ctx.board.walls[wallId];
-  const wall2 = this.ctx.board.walls[wallId2];
+function addLength(ctx: BuildContext, builder: PointSprite, wallId: number, ceiling: boolean) {
+  const wallId2 = ctx.board.walls[wallId].point2;
+  const wall = ctx.board.walls[wallId];
+  const wall2 = ctx.board.walls[wallId2];
   const cx = int(wall.x + (wall2.x - wall.x) * 0.5);
   const cy = int(wall.y + (wall2.y - wall.y) * 0.5);
-  const sectorId = sectorOfWall(this.ctx.board, wallId);
-  const sector = this.ctx.board.sectors[sectorId];
-  const fz = slope(this.ctx.board, sectorId, cx, cy, sector.floorheinum) + sector.floorz;
-  const cz = slope(this.ctx.board, sectorId, cx, cy, sector.ceilingheinum) + sector.ceilingz;
-  const length = walllen(this.ctx.board, wallId).toFixed(2).replace(/\.00$/, "");
-  text(builder, length, cx, cy, (ceiling ? cz : fz) / ZSCALE, 8, 8, this.ctx.art.get(-2));
+  const sectorId = sectorOfWall(ctx.board, wallId);
+  const sector = ctx.board.sectors[sectorId];
+  const fz = slope(ctx.board, sectorId, cx, cy, sector.floorheinum) + sector.floorz;
+  const cz = slope(ctx.board, sectorId, cx, cy, sector.ceilingheinum) + sector.ceilingz;
+  const length = walllen(ctx.board, wallId).toFixed(2).replace(/\.00$/, "");
+  text(builder, length, cx, cy, (ceiling ? cz : fz) / ZSCALE, 8, 8, ctx.art.get(-2));
 }
 
 export function updateWallHelper(cache: BuildRenderableProvider, ctx: BuildContext, wallId: number, builder: WallHelperBuilder): WallHelperBuilder {
+  builder = builder == null ? new WallHelperBuilder() : builder;
+
   updateWallWireframe(ctx, wallId, builder);
   const wallRenderable = cache.wall(wallId);
   const gridMatrix = createGridMatrixProviderWall(ctx.board, wallId);
 
   builder.topGrid.gridTexMatProvider = gridMatrix;
-  builder.topGrid.solid = <Solid>wallRenderable.top;
-  addWallPoints(builder.topPoints, wallId, true);
-  addLength(builder.topLength, wallId, true);
+  builder.topGrid.solid = <SolidBuilder>wallRenderable.top;
+  addWallPoints(ctx, builder.topPoints, wallId, true);
+  addLength(ctx, builder.topLength, wallId, true);
 
   builder.midGrid.gridTexMatProvider = gridMatrix;
-  builder.midGrid.solid = <Solid>wallRenderable.mid;
+  builder.midGrid.solid = <SolidBuilder>wallRenderable.mid;
 
   builder.botGrid.gridTexMatProvider = gridMatrix;
-  builder.botGrid.solid = <Solid>wallRenderable.bot;
-  addWallPoints(builder.botPoints, wallId, false);
-  addLength(builder.botLength, wallId, true);
+  builder.botGrid.solid = <SolidBuilder>wallRenderable.bot;
+  addWallPoints(ctx, builder.botPoints, wallId, false);
+  addLength(ctx, builder.botLength, wallId, false);
 
   return builder;
 }
