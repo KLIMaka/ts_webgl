@@ -12,6 +12,7 @@ export interface Renderable {
 }
 
 export type RenderableConsumer<T extends Renderable> = (r: T) => void;
+
 export interface RenderableProvider<T extends Renderable> extends Renderable {
   accept(consumer: RenderableConsumer<T>): void;
 }

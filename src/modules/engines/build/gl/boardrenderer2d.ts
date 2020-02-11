@@ -1,13 +1,13 @@
 import * as GLM from '../../../../libs_js/glmatrix';
 import { Deck } from '../../../collections';
+import { Controller2D } from '../../../controller2d';
 import * as PROFILE from '../../../profiler';
 import { BuildContext } from '../api';
 import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
+import { BuildRenderableProvider, GridBuilder, LayeredRenderable, LayeredRenderables, RenderableProvider, SolidBuilder, SortingRenderable } from './builders/renderable';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, GridBuilder, SolidBuilder, Renderables, RenderableProvider, LayeredRenderable, SortingRenderable, LayeredRenderables } from './builders/renderable';
-import { Controller2D } from '../../../controller2d';
 
 let grid: GridBuilder;
 const scale = GLM.vec3.create();
