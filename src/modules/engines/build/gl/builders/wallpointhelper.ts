@@ -4,12 +4,13 @@ import { PointSprite, Wireframe } from "../renderable";
 import { Builders } from "./api";
 import { Board } from "../../structs";
 import { BuildBuffer } from "../buffers";
+import { fastIterator } from "../../../../collections";
 
 export class WallPointHelperBuilder extends Builders {
   constructor(
     readonly points = new PointSprite(),
     readonly line = new Wireframe()
-  ) { super([points, line]) }
+  ) { super(fastIterator([points, line])) }
 }
 
 function updateWallLine(ctx: BuildContext, wallId: number, builder: Wireframe): Wireframe {

@@ -1,30 +1,20 @@
 import { mat4, Mat4Array, vec3, Vec3Array, vec4 } from "../../../../../libs_js/glmatrix";
 import { tesselate } from "../../../../../libs_js/glutess";
-import { State } from "../../../../stategl";
 import { BuildContext } from "../../api";
 import { ArtInfo } from "../../art";
 import { Board, Sector, Wall } from "../../structs";
 import { createSlopeCalculator, getFirstWallAngle, sectorNormal, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
-import { Renderable, SectorRenderable, SolidBuilder } from "../renderable";
-import { Builder } from "./api";
+import { SectorRenderable, SolidBuilder } from "../renderable";
+import { Builders } from "./api";
+import { fastIterator } from "../../../../collections";
 
 
-export class SectorBuilder implements Builder, SectorRenderable {
-  readonly ceiling = new SolidBuilder();
-  readonly floor = new SolidBuilder();
-
-  reset(): void {
-    this.ceiling.reset();
-    this.floor.reset();
-  }
-
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    this.ceiling.draw(ctx, gl, state);
-    this.floor.draw(ctx, gl, state);
-  }
-
-  get(): Renderable { return this }
+export class SectorBuilder extends Builders implements SectorRenderable {
+  constructor(
+    readonly ceiling = new SolidBuilder(),
+    readonly floor = new SolidBuilder()
+  ) { super(fastIterator([ceiling, floor])) }
 }
 
 function applySectorTextureTransform(sector: Sector, ceiling: boolean, walls: Wall[], info: ArtInfo, texMat: Mat4Array) {

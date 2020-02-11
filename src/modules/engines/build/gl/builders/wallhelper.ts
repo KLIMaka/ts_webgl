@@ -7,6 +7,7 @@ import { BuildBuffer } from "../buffers";
 import { createGridMatrixProviderWall, text } from "../builders";
 import { BuildRenderableProvider, GridRenderable, PointSprite, Renderables, SolidBuilder, WallRenderable, Wireframe } from "../renderable";
 import { Builders } from "./api";
+import { fastIterator } from "../../../../collections";
 
 export class WallHelperBuilder extends Builders implements WallRenderable {
   constructor(
@@ -20,11 +21,11 @@ export class WallHelperBuilder extends Builders implements WallRenderable {
     readonly botGrid = new GridRenderable(),
     readonly botPoints = new PointSprite(),
     readonly botLength = new PointSprite(),
-    readonly top = new Renderables([topWire, topGrid, topPoints, topLength]),
-    readonly mid = new Renderables([midWire, midGrid]),
-    readonly bot = new Renderables([botWire, botGrid, botPoints, botLength]),
+    readonly top = new Renderables(fastIterator([topWire, topGrid, topPoints, topLength])),
+    readonly mid = new Renderables(fastIterator([midWire, midGrid])),
+    readonly bot = new Renderables(fastIterator([botWire, botGrid, botPoints, botLength])),
   ) {
-    super([topWire, topGrid, topPoints, topLength, midWire, midGrid, botWire, botGrid, botPoints, botLength]);
+    super(fastIterator([topWire, midWire, topGrid, midGrid, botGrid, topPoints, botPoints, topLength, botLength]));
   }
 }
 

@@ -1,20 +1,20 @@
-import { vec3, Vec3Array, mat4, Mat4Array, vec4 } from "../../../../../libs_js/glmatrix";
-import { BuildContext } from "../../api";
-import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
-import { SolidBuilder, Renderable, WallRenderable } from "../renderable";
-import { Builder, Builders } from "./api";
-import { State } from "../../../../stategl";
 import { len2d } from "../../../../../libs/mathutils";
-import { Wall } from "../../structs";
+import { mat4, Mat4Array, vec3, Vec3Array, vec4 } from "../../../../../libs_js/glmatrix";
+import { fastIterator } from "../../../../collections";
+import { BuildContext } from "../../api";
 import { ArtInfo } from "../../art";
+import { Wall } from "../../structs";
+import { createSlopeCalculator, sectorOfWall, wallNormal, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
+import { SolidBuilder, WallRenderable } from "../renderable";
+import { Builders } from "./api";
 
 export class WallBuilder extends Builders implements WallRenderable {
   constructor(
     readonly top = new SolidBuilder(),
     readonly mid = new SolidBuilder(),
     readonly bot = new SolidBuilder()
-  ) { super([top, mid, bot]) }
+  ) { super(fastIterator([top, mid, bot])) }
 }
 
 function normals(n: Vec3Array) {

@@ -1,6 +1,7 @@
 import { Renderable } from "../renderable";
 import { BuildContext } from "../../api";
 import { State } from "../../../../stategl";
+import { FastIterable } from "../../../../collections";
 
 export interface Builder {
   reset(): void;
@@ -8,8 +9,18 @@ export interface Builder {
 }
 
 export class Builders implements Builder, Renderable {
-  constructor(private builders: Iterable<Builder>) { }
-  reset() { for (const b of this.builders) b.reset() }
+  constructor(private builders: FastIterable<Builder>) { }
   get() { return this }
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) { for (const b of this.builders) b.get().draw(ctx, gl, state) }
+
+  reset() {
+    const size = this.builders.size;
+    const array = this.builders.array;
+    for (let i = 0; i < size; i++) array[i].reset()
+  }
+
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State) {
+    const size = this.builders.size;
+    const array = this.builders.array;
+    for (let i = 0; i < size; i++) array[i].get().draw(ctx, gl, state)
+  }
 }

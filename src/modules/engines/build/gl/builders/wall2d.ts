@@ -2,13 +2,14 @@ import { vec4 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { WallRenderable, Wireframe } from "../renderable";
 import { Builders } from "./api";
+import { fastIterator } from "../../../../collections";
 
 export class Wall2dBuilder extends Builders implements WallRenderable {
   constructor(
     readonly top = new Wireframe(),
     readonly mid = new Wireframe(),
     readonly bot = new Wireframe()
-  ) { super([top, mid, bot]) }
+  ) { super(fastIterator([top, mid, bot])) }
 }
 
 let white = vec4.fromValues(1, 1, 1, 1);

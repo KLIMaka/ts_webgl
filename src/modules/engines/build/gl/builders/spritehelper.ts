@@ -4,12 +4,13 @@ import { FACE_SPRITE, FLOOR_SPRITE, WALL_SPRITE } from "../../structs";
 import { ang2vec, spriteAngle, ZSCALE } from "../../utils";
 import { Type, Wireframe } from "../renderable";
 import { Builders } from "./api";
+import { fastIterator } from "../../../../collections";
 
 export class SpriteHelperBuillder extends Builders {
   constructor(
     readonly wire = new Wireframe(),
     readonly angle = new Wireframe()
-  ) { super([wire, angle]) }
+  ) { super(fastIterator([wire, angle])) }
 }
 
 function genQuadWireframe(coords: number[], normals: number[], builder: Wireframe) {

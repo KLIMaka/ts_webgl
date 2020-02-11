@@ -1,7 +1,7 @@
 import { dot2d } from '../../../../libs/mathutils';
 import { mirrorBasis, normal2d, reflectPoint3d } from '../../../../libs/vecmath';
 import * as GLM from '../../../../libs_js/glmatrix';
-import { Deck } from '../../../collections';
+import { Deck, fastIterator } from '../../../collections';
 import * as PROFILE from '../../../profiler';
 import { BuildContext } from '../api';
 import { unpackWallId } from '../boardutils';
@@ -256,8 +256,8 @@ const blendOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) =>
 
 const spriteSolids = new WrapRenderable(new Renderables(sprites), polyOffsetOn, polyOffsetOff);
 const spriteTransparent = new WrapRenderable(new Renderables(spritesTrans), polyOffsetOn, polyOffsetOff);
-const transparent = new WrapRenderable(new Renderables([new Renderables(surfacesTrans), spriteTransparent]), blendOn, blendOff);
-const pass = new Renderables([new Renderables(surfaces), spriteSolids, transparent]);
+const transparent = new WrapRenderable(new Renderables(fastIterator([new Renderables(surfacesTrans), spriteTransparent])), blendOn, blendOff);
+const pass = new Renderables(fastIterator([new Renderables(surfaces), spriteSolids, transparent]));
 
 function drawRooms(view: View3d, result: VisResult) {
   PROFILE.startProfile('processing');

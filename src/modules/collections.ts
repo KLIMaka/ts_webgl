@@ -1,6 +1,11 @@
 import { cyclic } from "../libs/mathutils";
 
-export interface Collection<T> extends Iterable<T> {
+export interface FastIterable<T> {
+  readonly array: T[],
+  readonly size: number
+}
+
+export interface Collection<T> extends Iterable<T>, FastIterable<T> {
   get(i: number): T;
   length(): number;
   isEmpty(): boolean;
@@ -13,6 +18,8 @@ export interface MutableCollection<T> extends Collection<T> {
 export const TERMINAL_ITERATOR_RESULT: IteratorResult<any> = { value: null, done: true };
 export const EMPTY_ITERATOR = { next: () => TERMINAL_ITERATOR_RESULT };
 export const EMPTY_COLLECTION: MutableCollection<any> = {
+  array: undefined,
+  size: 0,
   get: (i: number) => undefined,
   length: () => 0,
   [Symbol.iterator]: () => EMPTY_ITERATOR,
@@ -25,61 +32,30 @@ export function iteratorResult<T>(isDone: boolean, val: T): IteratorResult<T> {
 }
 
 export class ArrayWrapper<T> implements MutableCollection<T> {
-  constructor(private array: T[], private len: number = array.length) { };
+  constructor(readonly array: T[], readonly size: number = array.length) { };
   get(i: number) { return this.array[i] }
-  length() { return this.len }
+  length() { return this.size }
   [Symbol.iterator]() { return this.array.values(); }
-  isEmpty() { return this.len == 0 }
+  isEmpty() { return this.size == 0 }
   set(i: number, value: T) { this.array[i] = value }
 }
 export function wrap<T>(array: T[], len: number = array.length) { return new ArrayWrapper(array, len) }
 
-export class DecoratedCollection<T, U> implements Collection<T> {
-  constructor(
-    protected values: Collection<U>,
-    private getter: (o: U) => T
-  ) { }
-  get(i: number) { return this.getter(this.values.get(i)) }
-  length() { return this.values.length() }
-  isEmpty() { return this.values.isEmpty() }
-  [Symbol.iterator]() {
-    let i = 0;
-    return this.length() == 0
-      ? EMPTY_ITERATOR
-      : { next: () => { return iteratorResult(i == this.length(), this.get(i++)) } }
-  }
-}
-export function decorate<T, U>(values: Collection<U>, getter: (o: U) => T): DecoratedCollection<T, U> {
-  return new DecoratedCollection(values, getter);
-}
-
-export class DecoratedMutableCollection<T, U> extends DecoratedCollection<T, U> implements MutableCollection<T> {
-  constructor(values: Collection<U>, getter: (o: U) => T, private setter: (o: U, v: T) => void) { super(values, getter) }
-  set(i: number, value: T) { this.setter(this.values.get(i), value) }
-}
-export function decorateMutable<T, U>(values: Collection<U>, getter: (o: U) => T, setter: (o: U, v: T) => void): DecoratedMutableCollection<T, U> {
-  return new DecoratedMutableCollection(values, getter, setter);
-}
-
 export class Deck<T> implements MutableCollection<T>{
-  protected pointer = 0;
-  protected array: T[];
+  public array: T[];
+  public size = 0;
 
-  constructor(size: number = 10) {
-    this.array = new Array<T>(size);
-  }
+  constructor(size: number = 10) { this.array = new Array<T>(size) }
 
-  public get(i: number) {
-    return this.array[i];
-  }
+  public get(i: number) { return this.array[i] }
 
   public set(i: number, value: T) {
-    if (i >= this.pointer) throw new Error(`Invalid set position: ${i} >= ${this.pointer}`);
+    if (i >= this.size) throw new Error(`Invalid set position: ${i} >= ${this.size}`);
     this.array[i] = value;
   }
 
   public push(value: T): Deck<T> {
-    this.array[this.pointer++] = value;
+    this.array[this.size++] = value;
     return this;
   }
 
@@ -89,39 +65,39 @@ export class Deck<T> implements MutableCollection<T>{
   }
 
   public pop(): Deck<T> {
-    this.pointer--;
+    this.size--;
     return this;
   }
 
   public top(): T {
-    return this.array[this.pointer - 1];
+    return this.array[this.size - 1];
   }
 
   public clear(): Deck<T> {
-    this.pointer = 0;
+    this.size = 0;
     return this;
   }
 
   public length() {
-    return this.pointer;
+    return this.size;
   }
 
   public isEmpty() {
-    return this.pointer == 0;
+    return this.size == 0;
   }
 
   public clone() {
     let copy = new Deck<T>();
     copy.array = [...this.array];
-    copy.pointer = this.pointer;
+    copy.size = this.size;
     return copy;
   }
 
   public [Symbol.iterator]() {
     let i = 0;
-    return this.pointer == 0
+    return this.size == 0
       ? EMPTY_ITERATOR
-      : { next: () => { return iteratorResult(i == this.pointer, this.array[i++]) } }
+      : { next: () => { return iteratorResult(i == this.size, this.array[i++]) } }
   }
 }
 
@@ -131,7 +107,7 @@ export class IndexedDeck<T> extends Deck<T>{
   public push(value: T): IndexedDeck<T> {
     if (this.index.has(value)) return this;
     super.push(value);
-    this.index.set(value, this.pointer);
+    this.index.set(value, this.size);
     return this;
   }
 
@@ -163,6 +139,8 @@ export function reverse<T>(c: Collection<T>): Collection<T> {
   return c.isEmpty()
     ? EMPTY_COLLECTION
     : {
+      array: c.array,
+      size: c.size,
       get: (i: number) => c.get(c.length() - 1 - i),
       length: () => c.length(),
       isEmpty: () => false,
@@ -174,6 +152,8 @@ export function subCollection<T>(c: Collection<T>, start: number, length: number
   return length == 0
     ? EMPTY_COLLECTION
     : {
+      array: c.array,
+      size: c.size,
       get: (i: number) => c.get(start + i),
       length: () => length,
       isEmpty: () => false,
@@ -216,4 +196,11 @@ export function* cyclicRange(start: number, length: number) {
 
 export function* cyclicPairs(length: number): Generator<[number, number]> {
   for (let i = 0; i < length; i++) yield [i, cyclic(i + 1, length)];
+}
+
+export function fastIterator<T>(arr: T[]): FastIterable<T> {
+  return {
+    array: arr,
+    size: arr.length
+  }
 }

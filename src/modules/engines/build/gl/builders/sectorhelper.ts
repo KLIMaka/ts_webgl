@@ -5,6 +5,7 @@ import { BuildBuffer } from "../buffers";
 import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "../builders";
 import { BuildRenderableProvider, GridRenderable, PointSprite, Renderables, SectorRenderable, SolidBuilder, Wireframe } from "../renderable";
 import { Builders } from "./api";
+import { fastIterator } from "../../../../collections";
 
 export class SectorHelperBuilder extends Builders implements SectorRenderable {
   constructor(
@@ -16,9 +17,9 @@ export class SectorHelperBuilder extends Builders implements SectorRenderable {
     readonly floorwire = new Wireframe(),
     readonly floorhinge = new Wireframe(),
     readonly floorgrid = new GridRenderable(),
-    readonly ceiling = new Renderables([ceilpoints, ceilwire, ceilhinge, ceilgrid]),
-    readonly floor = new Renderables([floorpoints, floorwire, floorhinge, floorgrid]),
-  ) { super([ceilpoints, ceilwire, ceilhinge, ceilgrid, floorpoints, floorwire, floorhinge, floorgrid]) }
+    readonly ceiling = new Renderables(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid])),
+    readonly floor = new Renderables(fastIterator([floorpoints, floorwire, floorhinge, floorgrid])),
+  ) { super(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid, floorpoints, floorwire, floorhinge, floorgrid])) }
 }
 
 function fillBufferForWallPoint(offset: number, board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
