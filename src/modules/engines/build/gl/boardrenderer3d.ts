@@ -10,7 +10,7 @@ import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
 import { View3d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, WrapRenderable, RenderableList } from './renderable';
+import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables } from './renderable';
 import { State } from '../../../stategl';
 
 export class RorLink {
@@ -254,10 +254,10 @@ const polyOffsetOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: Stat
 const blendOn = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.enable(WebGLRenderingContext.BLEND) };
 const blendOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.disable(WebGLRenderingContext.BLEND) };
 
-const spriteSolids = new WrapRenderable(new RenderableList(sprites), polyOffsetOn, polyOffsetOff);
-const spriteTransparent = new WrapRenderable(new RenderableList(spritesTrans), polyOffsetOn, polyOffsetOff);
-const transparent = new WrapRenderable(new RenderableList([new RenderableList(surfacesTrans), spriteTransparent]), blendOn, blendOff);
-const pass = new RenderableList([new RenderableList(surfaces), spriteSolids, transparent]);
+const spriteSolids = new WrapRenderable(new Renderables(sprites), polyOffsetOn, polyOffsetOff);
+const spriteTransparent = new WrapRenderable(new Renderables(spritesTrans), polyOffsetOn, polyOffsetOff);
+const transparent = new WrapRenderable(new Renderables([new Renderables(surfacesTrans), spriteTransparent]), blendOn, blendOff);
+const pass = new Renderables([new Renderables(surfaces), spriteSolids, transparent]);
 
 function drawRooms(view: View3d, result: VisResult) {
   PROFILE.startProfile('processing');

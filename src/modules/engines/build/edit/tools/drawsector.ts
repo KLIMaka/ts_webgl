@@ -1,7 +1,7 @@
 import { Deck, map, cyclicPairs, range, reduce } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
-import { Renderable, RenderableList, Wireframe, PointSprite } from "../../gl/renderable";
+import { Renderable, Renderables, Wireframe, PointSprite } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
@@ -18,7 +18,7 @@ class Contour {
   private contour = new Wireframe();
   private contourPoints = new PointSprite();
   private length = new PointSprite();
-  private renderable = new RenderableList([this.contour, this.contourPoints, this.length]);
+  private renderable = new Renderables([this.contour, this.contourPoints, this.length]);
 
   constructor(firstPoint: boolean = true) {
     if (firstPoint)

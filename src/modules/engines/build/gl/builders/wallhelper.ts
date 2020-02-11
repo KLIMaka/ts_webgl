@@ -5,7 +5,7 @@ import { Board } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { createGridMatrixProviderWall, text } from "../builders";
-import { BuildRenderableProvider, GridRenderable, PointSprite, RenderableList, SolidBuilder, WallRenderable, Wireframe } from "../renderable";
+import { BuildRenderableProvider, GridRenderable, PointSprite, Renderables, SolidBuilder, WallRenderable, Wireframe } from "../renderable";
 import { Builders } from "./api";
 
 export class WallHelperBuilder extends Builders implements WallRenderable {
@@ -20,9 +20,9 @@ export class WallHelperBuilder extends Builders implements WallRenderable {
     readonly botGrid = new GridRenderable(),
     readonly botPoints = new PointSprite(),
     readonly botLength = new PointSprite(),
-    readonly top = new RenderableList([topWire, topGrid, topPoints, topLength]),
-    readonly mid = new RenderableList([midWire, midGrid]),
-    readonly bot = new RenderableList([botWire, botGrid, botPoints, botLength]),
+    readonly top = new Renderables([topWire, topGrid, topPoints, topLength]),
+    readonly mid = new Renderables([midWire, midGrid]),
+    readonly bot = new Renderables([botWire, botGrid, botPoints, botLength]),
   ) {
     super([topWire, topGrid, topPoints, topLength, midWire, midGrid, botWire, botGrid, botPoints, botLength]);
   }

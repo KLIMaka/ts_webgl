@@ -3,7 +3,7 @@ import { Board, Sector } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "../builders";
-import { BuildRenderableProvider, GridRenderable, PointSprite, RenderableList, SectorRenderable, SolidBuilder, Wireframe } from "../renderable";
+import { BuildRenderableProvider, GridRenderable, PointSprite, Renderables, SectorRenderable, SolidBuilder, Wireframe } from "../renderable";
 import { Builders } from "./api";
 
 export class SectorHelperBuilder extends Builders implements SectorRenderable {
@@ -16,8 +16,8 @@ export class SectorHelperBuilder extends Builders implements SectorRenderable {
     readonly floorwire = new Wireframe(),
     readonly floorhinge = new Wireframe(),
     readonly floorgrid = new GridRenderable(),
-    readonly ceiling = new RenderableList([ceilpoints, ceilwire, ceilhinge, ceilgrid]),
-    readonly floor = new RenderableList([floorpoints, floorwire, floorhinge, floorgrid]),
+    readonly ceiling = new Renderables([ceilpoints, ceilwire, ceilhinge, ceilgrid]),
+    readonly floor = new Renderables([floorpoints, floorwire, floorhinge, floorgrid]),
   ) { super([ceilpoints, ceilwire, ceilhinge, ceilgrid, floorpoints, floorwire, floorhinge, floorgrid]) }
 }
 

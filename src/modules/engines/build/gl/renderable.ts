@@ -38,11 +38,9 @@ export function wrapStatePred(pred: (cts: BuildContext) => boolean, rend: Render
 export function statePred(name: string): (cts: BuildContext) => boolean { return (ctx: BuildContext) => ctx.state.get(name) };
 export function notStatePred(name: string): (cts: BuildContext) => boolean { return (ctx: BuildContext) => !ctx.state.get(name) };
 
-export class RenderableList implements Renderable {
-  constructor(
-    private renderables: Iterable<Renderable>
-  ) { }
-  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void { for (let r of this.renderables) r.draw(ctx, gl, state) }
+export class Renderables implements Renderable {
+  constructor(private renderables: Iterable<Renderable>) { }
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void { for (const r of this.renderables) r.draw(ctx, gl, state) }
   public reset() { for (let r of this.renderables) r.reset() }
 }
 
