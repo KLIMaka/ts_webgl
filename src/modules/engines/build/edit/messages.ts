@@ -1,5 +1,5 @@
 import { Deck } from "../../../collections";
-import { Renderable, Renderables } from "../gl/builders/renderable";
+import { LayeredRenderable, LayeredRenderables, RenderableProvider } from "../gl/builders/renderable";
 import { Message } from "../handlerapi";
 import { Entity } from "../hitscan";
 
@@ -10,7 +10,7 @@ export class StartMove implements Message { }
 export class Move implements Message { constructor(public dx: number, public dy: number, public dz: number) { } }
 export class EndMove implements Message { }
 export class Highlight implements Message { constructor(public set: Set<number> = new Set()) { } }
-export class Render implements Message { constructor(public list = new Deck<Renderable>(), public renderable: Renderables = new Renderables(list)) { } }
+export class Render implements Message { constructor(public list = new Deck<RenderableProvider<LayeredRenderable>>(), public renderable: LayeredRenderables = new LayeredRenderables(list)) { } }
 export class SetPicnum implements Message { constructor(public picnum: number) { } }
 export class Shade implements Message { constructor(public value: number, public absolute = false) { } }
 export class PanRepeat implements Message { constructor(public xpan: number, public ypan: number, public xrepeat: number, public yrepeat: number, public absolute = false) { } }

@@ -96,6 +96,7 @@ void clip() {
 }
 
 void writeColor(vec3 c, vec4 m) {
+  if (m.a == 0.0) discard;
   gl_FragColor = vec4(vec3(m.rgb * c), m.a);
 }
 

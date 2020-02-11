@@ -1,15 +1,15 @@
-import { Deck, map, cyclicPairs, range, reduce, fastIterator } from "../../../../collections";
+import { int, len2d } from "../../../../../libs/mathutils";
+import { vec3 } from "../../../../../libs_js/glmatrix";
+import { Deck, fastIterator } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
-import { Renderable, Renderables, WireframeBuilder, PointSpriteBuilder } from "../../gl/builders/renderable";
+import { writeText } from "../../gl/builders/common";
+import { LayeredRenderables, PointSpriteBuilder, WireframeBuilder } from "../../gl/builders/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
 import { getClosestSectorZ } from "../editutils";
-import { Frame, NamedMessage, Render, BoardInvalidate } from "../messages";
-import { vec3 } from "../../../../../libs_js/glmatrix";
-import { len2d, int } from "../../../../../libs/mathutils";
-import { writeText } from "../../gl/builders/common";
+import { BoardInvalidate, Frame, NamedMessage, Render } from "../messages";
 
 class Contour {
   private points: Array<[number, number]> = [];
@@ -18,7 +18,7 @@ class Contour {
   private contour = new WireframeBuilder();
   private contourPoints = new PointSpriteBuilder();
   private length = new PointSpriteBuilder();
-  private renderable = new Renderables(fastIterator([this.contour, this.contourPoints, this.length]));
+  private renderable = new LayeredRenderables(fastIterator([this.contour, this.contourPoints, this.length]));
 
   constructor(firstPoint: boolean = true) {
     if (firstPoint)
@@ -56,7 +56,7 @@ class Contour {
     this.size = 0;
   }
 
-  public getRenderable(ctx: BuildContext): Renderable {
+  public getRenderable(ctx: BuildContext) {
     this.updateRenderable(ctx);
     return this.renderable;
   }

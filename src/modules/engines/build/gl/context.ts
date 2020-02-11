@@ -11,7 +11,7 @@ import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
 import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
-import { WrapRenderable } from './builders/renderable';
+import { WrapRenderable, LayeredRenderables, SortingRenderable } from './builders/renderable';
 
 class History {
   private history: Deck<Board> = new Deck();
@@ -54,7 +54,7 @@ const MOUSE = new Mouse(0, 0);
 const RENDER = new Render();
 const INVALIDATE_ALL = new BoardInvalidate(null);
 
-const onTopRenderable = new WrapRenderable(RENDER.renderable,
+const onTopRenderable = new WrapRenderable(new SortingRenderable(RENDER.renderable),
   (ctx: BuildContext, gl: WebGLRenderingContext, state: StateGl) => {
     gl.disable(WebGLRenderingContext.DEPTH_TEST);
     gl.enable(WebGLRenderingContext.BLEND);

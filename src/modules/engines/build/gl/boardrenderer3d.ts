@@ -10,7 +10,7 @@ import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
 import { View3d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables } from './builders/renderable';
+import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables, RenderableProvider, LayeredRenderable, RenderableConsumer } from './builders/renderable';
 import { State } from '../../../stategl';
 
 export class RorLink {
@@ -206,10 +206,21 @@ function drawMirrors(result: VisResult, view: View3d) {
 }
 
 let renderables: BuildRenderableProvider;
-const surfaces = new Deck<Renderable>();
-const surfacesTrans = new Deck<Renderable>();
-const sprites = new Deck<Renderable>();
-const spritesTrans = new Deck<Renderable>();
+
+function list() {
+  const list = new Deck<Renderable>();
+  const renderable = new Renderables(list);
+  return {
+    consumer: (r: LayeredRenderable) => { list.push(r) },
+    clear: () => list.clear(),
+    draw: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { renderable.draw(ctx, gl, state) }
+  }
+}
+
+const surfaces = list();
+const surfacesTrans = list();
+const sprites = list();
+const spritesTrans = list();
 
 function clearDrawLists() {
   surfaces.clear();
@@ -221,9 +232,9 @@ function clearDrawLists() {
 function sectorVisitor(board: Board, sectorId: number) {
   let sector = renderables.sector(sectorId);
   if (implementation.rorLinks().floorLinks[sectorId] == undefined)
-    surfaces.push(sector.floor);
+    sector.floor.accept(surfaces.consumer);
   if (implementation.rorLinks().ceilLinks[sectorId] == undefined)
-    surfaces.push(sector.ceiling);
+    sector.ceiling.accept(surfaces.consumer);
   PROFILE.incCount('sectors');
 }
 
@@ -232,11 +243,11 @@ function wallVisitor(board: Board, wallId: number, sectorId: number) {
   let wall = board.walls[wallId];
   let wallr = renderables.wall(wallId);
   if (wall.cstat.translucent || wall.cstat.translucentReversed) {
-    surfacesTrans.push(wallr.mid);
-    surfaces.push(wallr.bot);
-    surfaces.push(wallr.top);
+    wallr.mid.accept(surfacesTrans.consumer);
+    wallr.bot.accept(surfaces.consumer);
+    wallr.top.accept(surfaces.consumer);
   } else {
-    surfaces.push(wallr);
+    wallr.accept(surfaces.consumer);
   }
   PROFILE.incCount('walls');
 }
@@ -245,7 +256,7 @@ function spriteVisitor(board: Board, spriteId: number) {
   let spriter = renderables.sprite(spriteId);
   let sprite = board.sprites[spriteId];
   let trans = sprite.cstat.tranclucentReversed == 1 || sprite.cstat.translucent == 1;
-  (trans ? spritesTrans : sprites).push(spriter);
+  spriter.accept((trans ? spritesTrans : sprites).consumer);
   PROFILE.incCount('sprites');
 }
 
@@ -254,10 +265,10 @@ const polyOffsetOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: Stat
 const blendOn = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.enable(WebGLRenderingContext.BLEND) };
 const blendOff = (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => { (<View3d>ctx.view).gl.disable(WebGLRenderingContext.BLEND) };
 
-const spriteSolids = new WrapRenderable(new Renderables(sprites), polyOffsetOn, polyOffsetOff);
-const spriteTransparent = new WrapRenderable(new Renderables(spritesTrans), polyOffsetOn, polyOffsetOff);
-const transparent = new WrapRenderable(new Renderables(fastIterator([new Renderables(surfacesTrans), spriteTransparent])), blendOn, blendOff);
-const pass = new Renderables(fastIterator([new Renderables(surfaces), spriteSolids, transparent]));
+const spriteSolids = new WrapRenderable(sprites, polyOffsetOn, polyOffsetOff);
+const spriteTransparent = new WrapRenderable(spritesTrans, polyOffsetOn, polyOffsetOff);
+const transparent = new WrapRenderable(new Renderables(fastIterator([surfacesTrans, spriteTransparent])), blendOn, blendOff);
+const pass = new Renderables(fastIterator([surfaces, spriteSolids, transparent]));
 
 function drawRooms(view: View3d, result: VisResult) {
   PROFILE.startProfile('processing');

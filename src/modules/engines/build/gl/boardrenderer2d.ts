@@ -6,7 +6,7 @@ import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, GridBuilder, SolidBuilder, Renderables } from './builders/renderable';
+import { BuildRenderableProvider, Renderable, GridBuilder, SolidBuilder, Renderables, RenderableProvider, LayeredRenderable, SortingRenderable, LayeredRenderables } from './builders/renderable';
 import { Controller2D } from '../../../controller2d';
 
 let grid: GridBuilder;
@@ -70,45 +70,41 @@ export function draw(view: View2d, campos: GLM.Vec3Array, dist: number, controll
   PROFILE.startProfile('processing');
   const result = visible.visit(context.board);
   PROFILE.endProfile();
-
   BGL.setProjectionMatrix(idMat4);
   BGL.setViewMatrix(idMat4);
-  view.gl.depthMask(false);
+  view.gl.disable(WebGLRenderingContext.DEPTH_TEST);
   view.gl.enable(WebGLRenderingContext.BLEND);
   BGL.draw(context, view.gl, getGrid(controller));
   BGL.flush(view.gl);
-  view.gl.depthMask(true);
   view.gl.disable(WebGLRenderingContext.BLEND);
 
   BGL.setProjectionMatrix(view.getProjectionMatrix());
   BGL.setViewMatrix(view.getTransformMatrix());
   BGL.setPosition(view.getPosition());
   drawRooms(view, result);
+  view.gl.enable(WebGLRenderingContext.DEPTH_TEST);
 }
 
 let renderables: BuildRenderableProvider;
-const surfaces = new Deck<Renderable>();
-const pass = new Renderables(surfaces);
+const surfaces = new Deck<RenderableProvider<LayeredRenderable>>();
+const pass = new SortingRenderable(new LayeredRenderables(surfaces));
 
 function clearDrawLists() {
   surfaces.clear();
 }
 
 function sectorVisitor(board: Board, sectorId: number) {
-  const sector = renderables.sector(sectorId);
-  surfaces.push(sector);
+  surfaces.push(renderables.sector(sectorId));
   PROFILE.incCount('sectors');
 }
 
 function wallVisitor(board: Board, wallId: number, sectorId: number) {
-  const wall = renderables.wall(wallId);
-  surfaces.push(wall);
+  surfaces.push(renderables.wall(wallId));
   PROFILE.incCount('walls');
 }
 
 function spriteVisitor(board: Board, spriteId: number) {
-  const sprite = renderables.sprite(spriteId);
-  surfaces.push(sprite);
+  surfaces.push(renderables.sprite(spriteId));
   PROFILE.incCount('sprites');
 }
 

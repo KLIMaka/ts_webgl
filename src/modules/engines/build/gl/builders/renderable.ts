@@ -1,5 +1,5 @@
 import { Mat4Array, vec4 } from '../../../../../libs_js/glmatrix';
-import { FastIterable } from '../../../../collections';
+import { FastIterable, Deck } from '../../../../collections';
 import { Texture } from '../../../../drawstruct';
 import { State } from '../../../../stategl';
 import { BuildContext } from '../../api';
@@ -11,9 +11,41 @@ export interface Renderable {
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void;
 }
 
-export type RenderableConsumer = (r: Renderable) => void;
-export interface RenderableProvider {
-  accept(consumer: RenderableConsumer): void;
+export type RenderableConsumer<T extends Renderable> = (r: T) => void;
+export interface RenderableProvider<T extends Renderable> extends Renderable {
+  accept(consumer: RenderableConsumer<T>): void;
+}
+
+const BASE = 0;
+const SPRITE = 1;
+const PARALLAX = 2;
+const GRID1 = 3;
+const SCREEN = 4;
+
+export interface LayeredRenderable extends Renderable {
+  readonly layer: number;
+}
+
+export class SortingRenderable implements Renderable {
+  private drawLists = [
+    new Deck<Renderable>(),
+    new Deck<Renderable>(),
+    new Deck<Renderable>(),
+    new Deck<Renderable>(),
+    new Deck<Renderable>()
+  ];
+
+  constructor(private provider: RenderableProvider<LayeredRenderable>) { }
+
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
+    for (const list of this.drawLists) list.clear();
+    this.provider.accept((r) => this.consume(r));
+    for (const list of this.drawLists) for (const r of list) r.draw(ctx, gl, state);
+  }
+
+  private consume(r: LayeredRenderable) {
+    this.drawLists[r.layer].push(r);
+  }
 }
 
 export const NULL_RENDERABLE: Renderable = {
@@ -26,6 +58,25 @@ export class Renderables implements Renderable {
     const size = this.renderables.size;
     const array = this.renderables.array;
     for (let i = 0; i < size; i++) array[i].draw(ctx, gl, state)
+  }
+}
+
+export class LayeredRenderables implements RenderableProvider<LayeredRenderable> {
+  private list = new Deck<Renderable>();
+
+  constructor(private providers: FastIterable<RenderableProvider<LayeredRenderable>>) { }
+  accept(consumer: RenderableConsumer<LayeredRenderable>): void {
+    const size = this.providers.size;
+    const array = this.providers.array;
+    for (let i = 0; i < size; i++) array[i].accept(consumer);
+  }
+
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
+    this.list.clear();
+    const size = this.providers.size;
+    const array = this.providers.array;
+    for (let i = 0; i < size; i++) array[i].accept((r) => this.list.push(r));
+    for (const r of this.list) r.draw(ctx, gl, state);
   }
 }
 
@@ -44,22 +95,22 @@ export class WrapRenderable implements Renderable {
   }
 }
 
-export interface SectorRenderable extends Renderable {
-  readonly ceiling: Renderable;
-  readonly floor: Renderable;
+export interface SectorRenderable extends RenderableProvider<LayeredRenderable> {
+  readonly ceiling: RenderableProvider<LayeredRenderable>;
+  readonly floor: RenderableProvider<LayeredRenderable>;
 }
 
-export interface WallRenderable extends Renderable {
-  readonly top: Renderable;
-  readonly mid: Renderable;
-  readonly bot: Renderable;
+export interface WallRenderable extends RenderableProvider<LayeredRenderable> {
+  readonly top: RenderableProvider<LayeredRenderable>;
+  readonly mid: RenderableProvider<LayeredRenderable>;
+  readonly bot: RenderableProvider<LayeredRenderable>;
 }
 
 export interface BuildRenderableProvider {
   sector(id: number): SectorRenderable;
   wall(id: number): WallRenderable;
-  wallPoint(id: number): Renderable;
-  sprite(id: number): Renderable;
+  wallPoint(id: number): RenderableProvider<LayeredRenderable>;
+  sprite(id: number): RenderableProvider<LayeredRenderable>;
 }
 
 
@@ -79,6 +130,7 @@ export class SolidBuilder extends BufferRenderable<SolidSetup> {
   public parallax: number = 0;
 
   constructor() { super(SOLID) }
+  get layer() { return this.type == Type.SURFACE ? (this.parallax ? PARALLAX : BASE) : SPRITE }
 
   public setup(ctx: BuildContext, setup: SolidSetup) {
     setup.shader(this.type == Type.SURFACE ? (this.parallax ? 'parallax' : 'baseShader') : 'spriteShader')
@@ -100,6 +152,7 @@ export class SolidBuilder extends BufferRenderable<SolidSetup> {
 }
 
 export class GridBuilder extends BufferRenderable<GridSetup> {
+  readonly layer = GRID1;
   public solid: SolidBuilder;
   public gridTexMatProvider: (scale: number) => Mat4Array;
 
@@ -116,6 +169,7 @@ export class GridBuilder extends BufferRenderable<GridSetup> {
 
 export class PointSpriteBuilder extends BufferRenderable<PointSpriteSetup> {
   readonly buff: BuildBuffer = new BuildBuffer();
+  readonly layer = SCREEN;
   public tex: Texture;
   public color = vec4.fromValues(1, 1, 1, 1);
 
@@ -141,6 +195,7 @@ export class WireframeBuilder extends BufferRenderable<WireframeSetup> {
   public mode = WebGLRenderingContext.LINES;
 
   constructor() { super(WIREFRAME) }
+  get layer() { return this.type == Type.SURFACE ? BASE : SPRITE }
 
   public setup(ctx: BuildContext, setup: WireframeSetup) {
     setup.shader(this.type == Type.SURFACE ? 'baseFlatShader' : 'spriteFlatShader')

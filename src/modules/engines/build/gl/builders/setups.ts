@@ -6,7 +6,7 @@ import { Buffer } from "../../../../buffergl";
 import * as PROFILE from '../../../../profiler';
 import { BuildContext } from "../../api";
 import { Vec4Array, Mat4Array } from "../../../../../libs_js/glmatrix";
-import { Renderable, RenderableProvider, RenderableConsumer } from "./renderable";
+import { Renderable, RenderableProvider, RenderableConsumer, LayeredRenderable } from "./renderable";
 import { Builder } from "./api";
 
 export class StateSetup {
@@ -94,14 +94,14 @@ export class PointSpriteSetup extends BufferSetup {
   public color(color: Vec4Array) { this.values.set(13, color); return this }
 }
 
-export abstract class BufferRenderable<T extends BufferSetup> implements Builder, Renderable, RenderableProvider {
+export abstract class BufferRenderable<T extends BufferSetup> implements Builder, LayeredRenderable {
   abstract readonly buff: BuildBuffer;
+  abstract readonly layer: number;
   public mode: number = WebGLRenderingContext.TRIANGLES;
 
   constructor(private getSetup: (state: State) => T) { }
 
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    if (this.buff.getSize() == 0) return;
     const setup = this.getSetup(state);
     setup.buffer(this.buff);
     this.setup(ctx, setup);
@@ -115,15 +115,7 @@ export abstract class BufferRenderable<T extends BufferSetup> implements Builder
   abstract reset(): void;
 
   public get() { return this }
-  public accept(consumer: RenderableConsumer) { if (this.buff.getSize() != 0) consumer(this) }
-
-  public quad(q: number[]) {
-    const buff = this.buff;
-    buff.writePos(0, q[0], q[2], q[1]);
-    buff.writePos(1, q[3], q[5], q[4]);
-    buff.writePos(2, q[6], q[8], q[7]);
-    buff.writePos(3, q[9], q[11], q[10]);
-  }
+  public accept(consumer: RenderableConsumer<LayeredRenderable>) { if (this.buff.getSize() != 0) consumer(this) }
 }
 
 export function lazySingletonTransformer<I, O>(trans: (i: I) => O) {

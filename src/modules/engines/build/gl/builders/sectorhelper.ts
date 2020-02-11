@@ -3,7 +3,7 @@ import { Board, Sector } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "./common";
-import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SectorRenderable, SolidBuilder, WireframeBuilder } from "./renderable";
+import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SectorRenderable, SolidBuilder, WireframeBuilder, LayeredRenderables } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 
@@ -17,8 +17,8 @@ export class SectorHelperBuilder extends Builders implements SectorRenderable {
     readonly floorwire = new WireframeBuilder(),
     readonly floorhinge = new WireframeBuilder(),
     readonly floorgrid = new GridBuilder(),
-    readonly ceiling = new Renderables(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid])),
-    readonly floor = new Renderables(fastIterator([floorpoints, floorwire, floorhinge, floorgrid])),
+    readonly ceiling = new LayeredRenderables(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid])),
+    readonly floor = new LayeredRenderables(fastIterator([floorpoints, floorwire, floorhinge, floorgrid])),
   ) { super(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid, floorpoints, floorwire, floorhinge, floorgrid])) }
 }
 

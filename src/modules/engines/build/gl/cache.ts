@@ -11,7 +11,7 @@ import { updateWall } from './builders/wall';
 import { updateWall2d } from './builders/wall2d';
 import { updateWallHelper, WallHelperBuilder } from './builders/wallhelper';
 import { updateWallPoint } from './builders/wallpointhelper';
-import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable } from './builders/renderable';
+import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable, RenderableProvider, LayeredRenderable } from './builders/renderable';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -64,8 +64,8 @@ export class CachedTopDownBuildRenderableProvider implements BuildRenderableProv
   bind(ctx: BuildContext): void { this.ctx = ctx }
   sector(id: number): SectorRenderable { return NULL_SECTOR_RENDERABLE }
   wall(id: number): WallRenderable { return this.walls.get(id, this.ctx) }
-  wallPoint(id: number): Renderable { throw new Error('Cant render points') }
-  sprite(id: number): Renderable { return this.sprites.get(id, this.ctx) }
+  wallPoint(id: number): RenderableProvider<LayeredRenderable> { throw new Error('Cant render points') }
+  sprite(id: number): RenderableProvider<LayeredRenderable> { return this.sprites.get(id, this.ctx) }
   invalidateSector(id: number) { }
   invalidateWall(id: number) { this.walls.invalidate(id) }
   invalidateSprite(id: number) { this.sprites.invalidate(id) }
@@ -85,8 +85,8 @@ export class CachedBuildRenderableProvider implements BuildRenderableProvider {
   bind(ctx: BuildContext): void { this.ctx = ctx }
   sector(id: number): SectorRenderable { return this.sectors.get(id, this.ctx) }
   wall(id: number): WallRenderable { return this.walls.get(id, this.ctx) }
-  wallPoint(id: number): Renderable { throw new Error('Cant render points') }
-  sprite(id: number): Renderable { return this.sprites.get(id, this.ctx) }
+  wallPoint(id: number): RenderableProvider<LayeredRenderable> { throw new Error('Cant render points') }
+  sprite(id: number): RenderableProvider<LayeredRenderable> { return this.sprites.get(id, this.ctx) }
   invalidateSector(id: number) { this.sectors.invalidate(id) }
   invalidateWall(id: number) { this.walls.invalidate(id) }
   invalidateSprite(id: number) { this.sprites.invalidate(id) }
@@ -111,8 +111,8 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   bind(ctx: BuildContext): void { this.ctx = ctx }
   sector(id: number): SectorRenderable { return this.sectors.get(id, this.ctx) }
   wall(id: number): WallRenderable { return this.walls.get(id, this.ctx) }
-  wallPoint(id: number): Renderable { return this.wallPoints.get(id, this.ctx) }
-  sprite(id: number): Renderable { return this.sprites.get(id, this.ctx) }
+  wallPoint(id: number): RenderableProvider<LayeredRenderable> { return this.wallPoints.get(id, this.ctx) }
+  sprite(id: number): RenderableProvider<LayeredRenderable> { return this.sprites.get(id, this.ctx) }
   invalidateSector(id: number) { this.sectors.invalidate(id) }
   invalidateSprite(id: number) { this.sprites.invalidate(id) }
 

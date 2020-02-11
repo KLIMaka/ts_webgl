@@ -1,7 +1,17 @@
 import { vec3 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { ang2vec, spriteAngle, ZSCALE } from "../../utils";
-import { WireframeBuilder } from "./renderable";
+import { WireframeBuilder, PointSpriteBuilder } from "./renderable";
+import { Builders } from "./api";
+import { fastIterator } from "../../../../collections";
+import { text } from "./common";
+
+export class Sprite2dBuilder extends Builders {
+  constructor(
+    readonly ang = new WireframeBuilder(),
+    readonly label = new PointSpriteBuilder()
+  ) { super(fastIterator([ang, label])) }
+}
 
 export function updateSpriteAngle(ctx: BuildContext, spriteId: number, builder: WireframeBuilder): WireframeBuilder {
   builder = builder == null ? new WireframeBuilder() : builder;
@@ -24,10 +34,10 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number, builder: 
   return builder;
 }
 
-export function updateSprite2d(ctx: BuildContext, sprId: number, builder: WireframeBuilder): WireframeBuilder {
-  // if (renderable != null) renderable.reset();
-  // const sprite = ctx.board.sprites[sprId];
-  // const label = text(sprId + "", sprite.x, sprite.y, sprite.z / ZSCALE, 8, 8, ctx.art.get(-2));
-  // return new RenderableList([updateSpriteAngle(ctx, sprId, null), label]);
-  return updateSpriteAngle(ctx, sprId, builder);
+export function updateSprite2d(ctx: BuildContext, sprId: number, builder: Sprite2dBuilder): Sprite2dBuilder {
+  builder = builder == null ? new Sprite2dBuilder() : builder;
+  const sprite = ctx.board.sprites[sprId];
+  text(builder.label, sprId + "", sprite.x, sprite.y, sprite.z / ZSCALE - 1024, 8, 8, ctx.art.get(-2));
+  updateSpriteAngle(ctx, sprId, builder.ang);
+  return builder;
 }

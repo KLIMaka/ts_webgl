@@ -5,7 +5,7 @@ import { Board } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { createGridMatrixProviderWall, text } from "./common";
-import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SolidBuilder, WallRenderable, WireframeBuilder } from "./renderable";
+import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SolidBuilder, WallRenderable, WireframeBuilder, LayeredRenderables } from "./renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 
@@ -21,9 +21,9 @@ export class WallHelperBuilder extends Builders implements WallRenderable {
     readonly botGrid = new GridBuilder(),
     readonly botPoints = new PointSpriteBuilder(),
     readonly botLength = new PointSpriteBuilder(),
-    readonly top = new Renderables(fastIterator([topWire, topGrid, topPoints, topLength])),
-    readonly mid = new Renderables(fastIterator([midWire, midGrid])),
-    readonly bot = new Renderables(fastIterator([botWire, botGrid, botPoints, botLength])),
+    readonly top = new LayeredRenderables(fastIterator([topWire, topGrid, topPoints, topLength])),
+    readonly mid = new LayeredRenderables(fastIterator([midWire, midGrid])),
+    readonly bot = new LayeredRenderables(fastIterator([botWire, botGrid, botPoints, botLength])),
   ) {
     super(fastIterator([topWire, midWire, topGrid, midGrid, botGrid, topPoints, botPoints, topLength, botLength]));
   }
