@@ -1,34 +1,31 @@
 import { int } from "../../../../../libs/mathutils";
-import { Texture } from "../../../../drawstruct";
-import { State } from "../../../../stategl";
 import { BuildContext } from "../../api";
 import { walllen } from "../../boardutils";
 import { Board } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
 import { createGridMatrixProviderWall, text } from "../builders";
-import { BuildRenderableProvider, GridRenderable, NULL_RENDERABLE, PointSprite, Renderable, RenderableList, Solid, WallRenderable, Wireframe } from "../renderable";
-import { Builder } from "./api";
-import { Mat4Array } from "../../../../../libs_js/glmatrix";
+import { BuildRenderableProvider, GridRenderable, PointSprite, RenderableList, Solid, WallRenderable, Wireframe } from "../renderable";
+import { Builders } from "./api";
 
-export class WallHelperBuilder implements Builder, WallRenderable {
-  public top: Renderable;
-  public mid: Renderable;
-  public bot: Renderable;
-
-  reset(): void {
-    this.top.reset();
-    this.mid.reset();
-    this.bot.reset();
+export class WallHelperBuilder extends Builders implements WallRenderable {
+  constructor(
+    readonly topWire = new Wireframe(),
+    readonly topGrid = new GridRenderable(),
+    readonly topPoints = new PointSprite(),
+    readonly topLength = new PointSprite(),
+    readonly midWire = new Wireframe(),
+    readonly midGrid = new GridRenderable(),
+    readonly botWire = new Wireframe(),
+    readonly botGrid = new GridRenderable(),
+    readonly botPoints = new PointSprite(),
+    readonly botLength = new PointSprite(),
+    readonly top = new RenderableList([topWire, topGrid, topPoints, topLength]),
+    readonly mid = new RenderableList([midWire, midGrid]),
+    readonly bot = new RenderableList([botWire, botGrid, botPoints, botLength]),
+  ) {
+    super([topWire, topGrid, topPoints, topLength, midWire, midGrid, botWire, botGrid, botPoints, botLength]);
   }
-
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    this.top.draw(ctx, gl, state);
-    this.mid.draw(ctx, gl, state);
-    this.bot.draw(ctx, gl, state);
-  }
-
-  get(): Renderable { return this }
 }
 
 function genQuadWireframe(coords: number[], normals: number[], buff: BuildBuffer) {
@@ -50,10 +47,39 @@ function genQuadWireframe(coords: number[], normals: number[], buff: BuildBuffer
   buff.writeLine(6, 3, 0);
 }
 
-export function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelperBuilder {
-  let top = NULL_RENDERABLE;
-  let mid = NULL_RENDERABLE;
-  let bot = NULL_RENDERABLE;
+function getWallCoords(x1: number, y1: number, x2: number, y2: number,
+  slope: any, nextslope: any, heinum: number, nextheinum: number, z: number, nextz: number, check: boolean, line = false): number[] {
+  let z1 = (slope(x1, y1, heinum) + z) / ZSCALE;
+  let z2 = (slope(x2, y2, heinum) + z) / ZSCALE;
+  let z3 = (nextslope(x2, y2, nextheinum) + nextz) / ZSCALE;
+  let z4 = (nextslope(x1, y1, nextheinum) + nextz) / ZSCALE;
+  if (check) {
+    if (line && z4 > z1 && z3 > z2) return null;
+    if (!line && z4 >= z1 && z3 >= z2) return null;
+  }
+  return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
+}
+
+function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slope: any, nextslope: any,
+  ceilheinum: number, ceilnextheinum: number, ceilz: number, ceilnextz: number,
+  floorheinum: number, floornextheinum: number, floorz: number, floornextz: number): number[] {
+  let currz1 = (slope(x1, y1, ceilheinum) + ceilz) / ZSCALE;
+  let currz2 = (slope(x2, y2, ceilheinum) + ceilz) / ZSCALE;
+  let currz3 = (slope(x2, y2, floorheinum) + floorz) / ZSCALE;
+  let currz4 = (slope(x1, y1, floorheinum) + floorz) / ZSCALE;
+  let nextz1 = (nextslope(x1, y1, ceilnextheinum) + ceilnextz) / ZSCALE;
+  let nextz2 = (nextslope(x2, y2, ceilnextheinum) + ceilnextz) / ZSCALE;
+  let nextz3 = (nextslope(x2, y2, floornextheinum) + floornextz) / ZSCALE;
+  let nextz4 = (nextslope(x1, y1, floornextheinum) + floornextz) / ZSCALE;
+  let z1 = Math.min(currz1, nextz1);
+  let z2 = Math.min(currz2, nextz2);
+  let z3 = Math.max(currz3, nextz3);
+  let z4 = Math.max(currz4, nextz4);
+  return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
+}
+
+export function updateWallWireframe(ctx: BuildContext, wallId: number, builder: WallHelperBuilder): WallHelperBuilder {
+  builder = builder == null ? new WallHelperBuilder() : builder;
   const board = ctx.board;
   const wall = board.walls[wallId];
   const sectorId = sectorOfWall(board, wallId)
@@ -69,8 +95,7 @@ export function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelp
 
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     const coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
-    mid = new Wireframe();
-    genQuadWireframe(coords, null, (<Wireframe>mid).buff);
+    genQuadWireframe(coords, null, builder.midWire.buff);
   } else {
     const nextsector = board.sectors[wall.nextsector];
     const nextslope = createSlopeCalculator(board, wall.nextsector);
@@ -79,52 +104,41 @@ export function updateWallWireframe(ctx: BuildContext, wallId: number): WallHelp
 
     const nextfloorheinum = nextsector.floorheinum;
     const botcoords = getWallCoords(x1, y1, x2, y2, nextslope, slope, nextfloorheinum, floorheinum, nextfloorz, floorz, true, true);
-    if (botcoords != null) {
-      bot = new Wireframe();
-      genQuadWireframe(botcoords, null, (<Wireframe>bot).buff);
-    }
+    if (botcoords != null) genQuadWireframe(botcoords, null, builder.botWire.buff);
 
     const nextceilingheinum = nextsector.ceilingheinum;
     const topcoords = getWallCoords(x1, y1, x2, y2, slope, nextslope, ceilingheinum, nextceilingheinum, ceilingz, nextceilingz, true, true);
-    if (topcoords != null) {
-      top = new Wireframe();
-      genQuadWireframe(topcoords, null, (<Wireframe>top).buff);
-    }
+    if (topcoords != null) genQuadWireframe(topcoords, null, builder.topWire.buff);
 
     if (wall.cstat.masking) {
       const coords = getMaskedWallCoords(x1, y1, x2, y2, slope, nextslope,
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
         floorheinum, nextfloorheinum, floorz, nextfloorz);
-      mid = new Wireframe();
-      genQuadWireframe(coords, null, (<Wireframe>mid).buff);
+      genQuadWireframe(coords, null, builder.midWire.buff);
     }
   }
-  return new WallHelperBuilder(top, mid, bot);
+  return builder;
 }
 
-function fillBufferForWallPoint(board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
-  buff.allocate(4, 6);
-  let wall = board.walls[wallId];
-  buff.writePos(0, wall.x, z, wall.y);
-  buff.writePos(1, wall.x, z, wall.y);
-  buff.writePos(2, wall.x, z, wall.y);
-  buff.writePos(3, wall.x, z, wall.y);
-  buff.writeNormal(0, -d, d, 0);
-  buff.writeNormal(1, d, d, 0);
-  buff.writeNormal(2, d, -d, 0);
-  buff.writeNormal(3, -d, -d, 0);
-  buff.writeTc(0, 0, 0);
-  buff.writeTc(1, 1, 0);
-  buff.writeTc(2, 1, 1);
-  buff.writeTc(3, 0, 1);
-  buff.writeQuad(0, 0, 1, 2, 3);
+function fillBufferForWallPoint(offset: number, board: Board, wallId: number, buff: BuildBuffer, d: number, z: number) {
+  const wall = board.walls[wallId];
+  const vtxOff = offset * 4;
+  buff.writePos(vtxOff + 0, wall.x, z, wall.y);
+  buff.writePos(vtxOff + 1, wall.x, z, wall.y);
+  buff.writePos(vtxOff + 2, wall.x, z, wall.y);
+  buff.writePos(vtxOff + 3, wall.x, z, wall.y);
+  buff.writeNormal(vtxOff + 0, -d, d, 0);
+  buff.writeNormal(vtxOff + 1, d, d, 0);
+  buff.writeNormal(vtxOff + 2, d, -d, 0);
+  buff.writeNormal(vtxOff + 3, -d, -d, 0);
+  buff.writeTc(vtxOff + 0, 0, 0);
+  buff.writeTc(vtxOff + 1, 1, 0);
+  buff.writeTc(vtxOff + 2, 1, 1);
+  buff.writeTc(vtxOff + 3, 0, 1);
+  buff.writeQuad(offset * 6, vtxOff, vtxOff + 1, vtxOff + 2, vtxOff + 3);
 }
 
-export function updateWallPointCeiling(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, true, wallId, 2.5, tex) }
-export function updateWallPointFloor(ctx: BuildContext, wallId: number, tex: Texture) { return updateWallPoint(ctx, false, wallId, 2.5, tex) }
-
-function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d: number, tex: Texture): Renderable {
-  const point = new PointSprite();
+function updateWallPoint(offset: number, builder: PointSprite, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
   const board = ctx.board;
   const s = sectorOfWall(board, wallId);
   const sec = board.sectors[s];
@@ -133,17 +147,20 @@ function updateWallPoint(ctx: BuildContext, ceiling: boolean, wallId: number, d:
   const z = (ceiling ? sec.ceilingz : sec.floorz);
   const wall = board.walls[wallId];
   const zz = (slope(wall.x, wall.y, h) + z) / ZSCALE;
-  fillBufferForWallPoint(board, wallId, point.buff, d, zz);
-  point.tex = tex;
-  return point;
+  fillBufferForWallPoint(offset, board, wallId, builder.buff, d, zz);
 }
 
-function addWallPoints(wallId: number, ceiling: boolean): Renderable {
-  const arr = new Array<Renderable>();
+function addWallPoints(builder: PointSprite, wallId: number, ceiling: boolean): void {
   const pointTex = this.ctx.art.get(-1);
-  arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId, pointTex) : updateWallPointFloor(this.ctx, wallId, pointTex));
+  builder.tex = pointTex;
+  builder.buff.allocate(8, 12);
+  updateWallPoint(0, builder, this.ctx, ceiling, wallId, 2.5);
   const wallId2 = this.ctx.board.walls[wallId].point2;
-  arr.push(ceiling ? updateWallPointCeiling(this.ctx, wallId2, pointTex) : updateWallPointFloor(this.ctx, wallId2, pointTex));
+  updateWallPoint(1, builder, this.ctx, ceiling, wallId2, 2.5);
+}
+
+function addLength(builder: PointSprite, wallId: number, ceiling: boolean) {
+  const wallId2 = this.ctx.board.walls[wallId].point2;
   const wall = this.ctx.board.walls[wallId];
   const wall2 = this.ctx.board.walls[wallId2];
   const cx = int(wall.x + (wall2.x - wall.x) * 0.5);
@@ -153,29 +170,26 @@ function addWallPoints(wallId: number, ceiling: boolean): Renderable {
   const fz = slope(this.ctx.board, sectorId, cx, cy, sector.floorheinum) + sector.floorz;
   const cz = slope(this.ctx.board, sectorId, cx, cy, sector.ceilingheinum) + sector.ceilingz;
   const length = walllen(this.ctx.board, wallId).toFixed(2).replace(/\.00$/, "");
-  arr.push(text(length, cx, cy, (ceiling ? cz : fz) / ZSCALE, 8, 8, this.ctx.art.get(-2)));
-  return new RenderableList(arr);
+  text(builder, length, cx, cy, (ceiling ? cz : fz) / ZSCALE, 8, 8, this.ctx.art.get(-2));
 }
 
-function addWallPart(solid: Solid, matProvider: (scale: number) => Mat4Array, wire: Renderable, points: Renderable): Renderable {
-  let arr = new Array<Renderable>();
-  arr.push(wire);
-  let wallGrid = new GridRenderable();
-  wallGrid.gridTexMatProvider = matProvider;
-  wallGrid.solid = solid;
-  arr.push(wallGrid);
-  arr.push(points);
-  return new RenderableList(arr);
-}
+export function updateWallHelper(cache: BuildRenderableProvider, ctx: BuildContext, wallId: number, builder: WallHelperBuilder): WallHelperBuilder {
+  updateWallWireframe(ctx, wallId, builder);
+  const wallRenderable = cache.wall(wallId);
+  const gridMatrix = createGridMatrixProviderWall(ctx.board, wallId);
 
-export function updateWallHelper(cache: BuildRenderableProvider, ctx: BuildContext, wallId: number, renderable: WallHelperBuilder): WallHelperBuilder {
-  if (renderable == null) renderable = new WallHelperBuilder();
-  renderable.reset();
-  let wallWireframe = updateWallWireframe(ctx, wallId);
-  let wallRenderable = cache.wall(wallId);
-  let gridMatrix = createGridMatrixProviderWall(ctx.board, wallId);
-  renderable.top = addWallPart(<Solid>wallRenderable.top, gridMatrix, wallWireframe.top, addWallPoints(wallId, true));
-  renderable.mid = addWallPart(<Solid>wallRenderable.mid, gridMatrix, wallWireframe.mid, NULL_RENDERABLE);
-  renderable.bot = addWallPart(<Solid>wallRenderable.bot, gridMatrix, wallWireframe.bot, addWallPoints(wallId, false));
-  return renderable;
+  builder.topGrid.gridTexMatProvider = gridMatrix;
+  builder.topGrid.solid = <Solid>wallRenderable.top;
+  addWallPoints(builder.topPoints, wallId, true);
+  addLength(builder.topLength, wallId, true);
+
+  builder.midGrid.gridTexMatProvider = gridMatrix;
+  builder.midGrid.solid = <Solid>wallRenderable.mid;
+
+  builder.botGrid.gridTexMatProvider = gridMatrix;
+  builder.botGrid.solid = <Solid>wallRenderable.bot;
+  addWallPoints(builder.botPoints, wallId, false);
+  addLength(builder.botLength, wallId, true);
+
+  return builder;
 }

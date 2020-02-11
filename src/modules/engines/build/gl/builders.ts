@@ -823,13 +823,12 @@ export function updateSprite2d(ctx: BuildContext, sprId: number, renderable: Wir
   return updateSpriteAngle(ctx, sprId, renderable);
 }
 
-export function text(text: string, posx: number, posy: number, posz: number, charW: number, charH: number, tex: Texture) {
-  const sprite = new PointSprite();
-  sprite.tex = tex;
-  const buff = sprite.buff;
+export function text(builder: PointSprite, text: string, posx: number, posy: number, posz: number, charW: number, charH: number, tex: Texture) {
+  builder.tex = tex;
+  const buff = builder.buff;
   buff.allocate((text.length * 2 + 3) * 4, (text.length * 2 + 3) * 6);
   writeText(buff, 0, text, charW, charH, posx, posy, posz);
-  return sprite;
+  return builder;
 }
 
 export function writeText(buff: BuildBuffer, bufferOff: number, text: string, charW: number, charH: number, posx: number, posy: number, posz: number) {
