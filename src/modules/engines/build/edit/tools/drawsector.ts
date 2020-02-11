@@ -1,7 +1,7 @@
 import { Deck, map, cyclicPairs, range, reduce, fastIterator } from "../../../../collections";
 import { BuildContext, Target } from "../../api";
 import { createInnerLoop, createNewSector, splitSector, wallInSector } from "../../boardutils";
-import { Renderable, Renderables, Wireframe, PointSprite } from "../../gl/renderable";
+import { Renderable, Renderables, WireframeBuilder, PointSpriteBuilder } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { Board } from "../../structs";
 import { findSector, sectorOfWall, ZSCALE } from "../../utils";
@@ -9,15 +9,15 @@ import { getClosestSectorZ } from "../editutils";
 import { Frame, NamedMessage, Render, BoardInvalidate } from "../messages";
 import { vec3 } from "../../../../../libs_js/glmatrix";
 import { len2d, int } from "../../../../../libs/mathutils";
-import { writeText } from "../../gl/builders";
+import { writeText } from "../../gl/builders/common";
 
 class Contour {
   private points: Array<[number, number]> = [];
   private size = 0;
   private z = 0;
-  private contour = new Wireframe();
-  private contourPoints = new PointSprite();
-  private length = new PointSprite();
+  private contour = new WireframeBuilder();
+  private contourPoints = new PointSpriteBuilder();
+  private length = new PointSpriteBuilder();
   private renderable = new Renderables(fastIterator([this.contour, this.contourPoints, this.length]));
 
   constructor(firstPoint: boolean = true) {

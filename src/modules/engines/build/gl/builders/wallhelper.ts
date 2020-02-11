@@ -4,23 +4,23 @@ import { walllen } from "../../boardutils";
 import { Board } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
-import { createGridMatrixProviderWall, text } from "../builders";
-import { BuildRenderableProvider, GridRenderable, PointSprite, Renderables, SolidBuilder, WallRenderable, Wireframe } from "../renderable";
+import { createGridMatrixProviderWall, text } from "./common";
+import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SolidBuilder, WallRenderable, WireframeBuilder } from "../renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 
 export class WallHelperBuilder extends Builders implements WallRenderable {
   constructor(
-    readonly topWire = new Wireframe(),
-    readonly topGrid = new GridRenderable(),
-    readonly topPoints = new PointSprite(),
-    readonly topLength = new PointSprite(),
-    readonly midWire = new Wireframe(),
-    readonly midGrid = new GridRenderable(),
-    readonly botWire = new Wireframe(),
-    readonly botGrid = new GridRenderable(),
-    readonly botPoints = new PointSprite(),
-    readonly botLength = new PointSprite(),
+    readonly topWire = new WireframeBuilder(),
+    readonly topGrid = new GridBuilder(),
+    readonly topPoints = new PointSpriteBuilder(),
+    readonly topLength = new PointSpriteBuilder(),
+    readonly midWire = new WireframeBuilder(),
+    readonly midGrid = new GridBuilder(),
+    readonly botWire = new WireframeBuilder(),
+    readonly botGrid = new GridBuilder(),
+    readonly botPoints = new PointSpriteBuilder(),
+    readonly botLength = new PointSpriteBuilder(),
     readonly top = new Renderables(fastIterator([topWire, topGrid, topPoints, topLength])),
     readonly mid = new Renderables(fastIterator([midWire, midGrid])),
     readonly bot = new Renderables(fastIterator([botWire, botGrid, botPoints, botLength])),
@@ -138,7 +138,7 @@ function fillBufferForWallPoint(offset: number, board: Board, wallId: number, bu
   buff.writeQuad(offset * 6, vtxOff, vtxOff + 1, vtxOff + 2, vtxOff + 3);
 }
 
-function updateWallPoint(offset: number, builder: PointSprite, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
+function updateWallPoint(offset: number, builder: PointSpriteBuilder, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
   const board = ctx.board;
   const s = sectorOfWall(board, wallId);
   const sec = board.sectors[s];
@@ -150,7 +150,7 @@ function updateWallPoint(offset: number, builder: PointSprite, ctx: BuildContext
   fillBufferForWallPoint(offset, board, wallId, builder.buff, d, zz);
 }
 
-function addWallPoints(ctx: BuildContext, builder: PointSprite, wallId: number, ceiling: boolean): void {
+function addWallPoints(ctx: BuildContext, builder: PointSpriteBuilder, wallId: number, ceiling: boolean): void {
   const pointTex = ctx.art.get(-1);
   builder.tex = pointTex;
   builder.buff.allocate(8, 12);
@@ -159,7 +159,7 @@ function addWallPoints(ctx: BuildContext, builder: PointSprite, wallId: number, 
   updateWallPoint(1, builder, ctx, ceiling, wallId2, 2.5);
 }
 
-function addLength(ctx: BuildContext, builder: PointSprite, wallId: number, ceiling: boolean) {
+function addLength(ctx: BuildContext, builder: PointSpriteBuilder, wallId: number, ceiling: boolean) {
   const wallId2 = ctx.board.walls[wallId].point2;
   const wall = ctx.board.walls[wallId];
   const wall2 = ctx.board.walls[wallId2];

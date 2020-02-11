@@ -54,13 +54,14 @@ function genQuad(c: number[], n: number[], t: Mat4Array, buff: BuildBuffer, ones
     buff.writeQuad(6, 3, 2, 1, 0);
 }
 
+const texMat_ = mat4.create();
 function fillbuffersForWallSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, xf: number, yf: number, onesided: number, renderable: SolidBuilder) {
   let dx = Math.sin(ang) * hw;
   let dy = Math.cos(ang) * hw;
 
   let xs = xf ? -1.0 : 1.0;
   let ys = yf ? -1.0 : 1.0;
-  let texMat = renderable.texMat;
+  let texMat = texMat_;
   mat4.identity(texMat);
   mat4.scale(texMat, texMat, [xs / (hw * 2), -ys / (hh * 2), 1, 1]);
   mat4.rotateY(texMat, texMat, -ang - Math.PI / 2);
@@ -85,7 +86,7 @@ function fillbuffersForFloorSprite(x: number, y: number, z: number, xo: number, 
 
   let xs = xf ? -1.0 : 1.0;
   let ys = yf ? -1.0 : 1.0;
-  let texMat = renderable.texMat;
+  let texMat = texMat_;
   mat4.identity(texMat);
   mat4.scale(texMat, texMat, [xs / (hw * 2), ys / (hh * 2), 1, 1]);
   mat4.translate(texMat, texMat, [hw, hh, 0, 0]);
@@ -115,7 +116,7 @@ function genSpriteQuad(x: number, y: number, z: number, n: number[], t: number[]
 }
 
 function fillBuffersForFaceSprite(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, xf: number, yf: number, renderable: SolidBuilder) {
-  let texMat = renderable.texMat;
+  const texMat = texMat_;
   mat4.identity(texMat);
   mat4.scale(texMat, texMat, [1 / (hw * 2), -1 / (hh * 2), 1, 1]);
   mat4.translate(texMat, texMat, [hw - xo, -hh - yo, 0, 0]);

@@ -1,23 +1,21 @@
-import { int, len2d } from '../../../../libs/mathutils';
-import * as GLM from '../../../../libs_js/glmatrix';
-import { Texture } from '../../../drawstruct';
-import { BuildContext } from '../api';
-import { walllen } from '../boardutils';
-import { Board } from '../structs';
-import { slope, ZSCALE } from '../utils';
-import { BuildBuffer } from './buffers';
-import { PointSprite, Wireframe } from './renderable';
-import { Tiler } from './tiler';
+import { int, len2d } from '../../../../../libs/mathutils';
+import { Texture } from '../../../../drawstruct';
+import { BuildContext } from '../../api';
+import { walllen } from '../../boardutils';
+import { Board } from '../../structs';
+import { slope, ZSCALE } from '../../utils';
+import { BuildBuffer } from '../buffers';
+import { PointSpriteBuilder, WireframeBuilder } from '../renderable';
+import { Tiler } from '../tiler';
+import { vec4, mat4 } from '../../../../../libs_js/glmatrix';
 
-
-
-let tmp = GLM.vec4.create();
-let texMat = GLM.mat4.create();
+let tmp = vec4.create();
+let texMat = mat4.create();
 export const gridMatrixProviderSector = (scale: number) => {
-  GLM.mat4.identity(texMat);
-  GLM.vec4.set(tmp, 1 / scale, 1 / scale, 1, 1);
-  GLM.mat4.scale(texMat, texMat, tmp);
-  GLM.mat4.rotateX(texMat, texMat, Math.PI / 2);
+  mat4.identity(texMat);
+  vec4.set(tmp, 1 / scale, 1 / scale, 1, 1);
+  mat4.scale(texMat, texMat, tmp);
+  mat4.rotateX(texMat, texMat, Math.PI / 2);
   return texMat;
 }
 
@@ -29,23 +27,22 @@ export function createGridMatrixProviderWall(board: Board, id: number) {
   const wlen = walllen(board, id);
   return (scale: number) => {
     const d = scale / (wlen / wall1.xrepeat);
-    GLM.mat4.identity(texMat);
-    GLM.vec4.set(tmp, d / scale, 1 / scale, 1, 1);
-    GLM.mat4.scale(texMat, texMat, tmp);
-    GLM.mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
-    GLM.vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
-    return GLM.mat4.translate(texMat, texMat, tmp);
+    mat4.identity(texMat);
+    vec4.set(tmp, d / scale, 1 / scale, 1, 1);
+    mat4.scale(texMat, texMat, tmp);
+    mat4.rotateY(texMat, texMat, -Math.atan2(-dy, dx));
+    vec4.set(tmp, -wall1.x, 0, -wall1.y, 0);
+    return mat4.translate(texMat, texMat, tmp);
   }
 }
 
+export function buildCeilingHinge(ctx: BuildContext, sectorId: number, builder: WireframeBuilder): WireframeBuilder { return prepareHinge(ctx, sectorId, true, builder) }
+export function buildFloorHinge(ctx: BuildContext, sectorId: number, builder: WireframeBuilder): WireframeBuilder { return prepareHinge(ctx, sectorId, false, builder) }
 
-export function buildCeilingHinge(ctx: BuildContext, sectorId: number, builder: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, true, builder) }
-export function buildFloorHinge(ctx: BuildContext, sectorId: number, builder: Wireframe): Wireframe { return prepareHinge(ctx, sectorId, false, builder) }
-
-function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, builder: Wireframe): Wireframe {
+function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, builder: WireframeBuilder): WireframeBuilder {
   let board = ctx.board;
   builder.mode = WebGLRenderingContext.TRIANGLES;
-  GLM.vec4.set(builder.color, 0.7, 0.7, 0.7, 0.7);
+  vec4.set(builder.color, 0.7, 0.7, 0.7, 0.7);
   let size = 128;
   let buff = builder.buff;
   buff.allocate(6, 24);
@@ -77,7 +74,7 @@ function prepareHinge(ctx: BuildContext, sectorId: number, ceiling: boolean, bui
   return builder;
 }
 
-export function text(builder: PointSprite, text: string, posx: number, posy: number, posz: number, charW: number, charH: number, tex: Texture) {
+export function text(builder: PointSpriteBuilder, text: string, posx: number, posy: number, posz: number, charW: number, charH: number, tex: Texture) {
   builder.tex = tex;
   const buff = builder.buff;
   buff.allocate((text.length * 2 + 3) * 4, (text.length * 2 + 3) * 6);

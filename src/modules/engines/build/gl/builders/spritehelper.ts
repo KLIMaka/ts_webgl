@@ -2,18 +2,18 @@ import { vec3 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { FACE_SPRITE, FLOOR_SPRITE, WALL_SPRITE } from "../../structs";
 import { ang2vec, spriteAngle, ZSCALE } from "../../utils";
-import { Type, Wireframe } from "../renderable";
+import { Type, WireframeBuilder } from "../renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 
 export class SpriteHelperBuillder extends Builders {
   constructor(
-    readonly wire = new Wireframe(),
-    readonly angle = new Wireframe()
+    readonly wire = new WireframeBuilder(),
+    readonly angle = new WireframeBuilder()
   ) { super(fastIterator([wire, angle])) }
 }
 
-function genQuadWireframe(coords: number[], normals: number[], builder: Wireframe) {
+function genQuadWireframe(coords: number[], normals: number[], builder: WireframeBuilder) {
   const buff = builder.buff;
   buff.allocate(4, 8);
   const [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4] = coords;
@@ -33,7 +33,7 @@ function genQuadWireframe(coords: number[], normals: number[], builder: Wirefram
   buff.writeLine(6, 3, 0);
 }
 
-function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, builder: Wireframe) {
+function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, builder: WireframeBuilder) {
   let dx = Math.sin(ang) * hw;
   let dy = Math.cos(ang) * hw;
   genQuadWireframe([
@@ -44,7 +44,7 @@ function fillbuffersForWallSpriteWireframe(x: number, y: number, z: number, xo: 
     null, builder);
 }
 
-function fillbuffersForFloorSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, builder: Wireframe) {
+function fillbuffersForFloorSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, ang: number, builder: WireframeBuilder) {
   let dwx = Math.sin(ang) * hw;
   let dwy = Math.cos(ang) * hw;
   let dhx = Math.sin(ang + Math.PI / 2) * hh;
@@ -57,7 +57,7 @@ function fillbuffersForFloorSpriteWireframe(x: number, y: number, z: number, xo:
     null, builder);
 }
 
-function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, builder: Wireframe) {
+function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: number, yo: number, hw: number, hh: number, builder: WireframeBuilder) {
   genQuadWireframe([
     x, y, z,
     x, y, z,
@@ -71,7 +71,7 @@ function fillBuffersForFaceSpriteWireframe(x: number, y: number, z: number, xo: 
     builder);
 }
 
-function updateSpriteWireframe(ctx: BuildContext, sprId: number, builder: Wireframe): Wireframe {
+function updateSpriteWireframe(ctx: BuildContext, sprId: number, builder: WireframeBuilder): WireframeBuilder {
   let spr = ctx.board.sprites[sprId];
   if (spr.picnum == 0 || spr.cstat.invisible)
     return builder;
@@ -97,7 +97,7 @@ function updateSpriteWireframe(ctx: BuildContext, sprId: number, builder: Wirefr
   return builder;
 }
 
-function updateSpriteAngle(ctx: BuildContext, spriteId: number, renderable: Wireframe): Wireframe {
+function updateSpriteAngle(ctx: BuildContext, spriteId: number, renderable: WireframeBuilder): WireframeBuilder {
   renderable.mode = WebGLRenderingContext.TRIANGLES;
   let buff = renderable.buff;
   buff.allocate(3, 6);

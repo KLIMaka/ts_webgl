@@ -6,10 +6,6 @@ import { BuildBuffer } from './buffers';
 import { BufferRenderable, GRID, GridSetup, PointSpriteSetup, POINT_SPRITE, SOLID, SolidSetup, WIREFRAME, WireframeSetup } from './setups';
 import { FastIterable } from '../../../collections';
 
-export enum Type {
-  SURFACE,
-  FACE
-}
 
 export interface Renderable {
   draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void;
@@ -25,6 +21,21 @@ export class Renderables implements Renderable {
     const size = this.renderables.size;
     const array = this.renderables.array;
     for (let i = 0; i < size; i++) array[i].draw(ctx, gl, state)
+  }
+}
+
+export class WrapRenderable implements Renderable {
+  constructor(
+    private rend: Renderable,
+    private pre: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void,
+    private post: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void = () => { }
+  ) { }
+
+  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
+    this.pre(ctx, gl, state);
+    this.rend.draw(ctx, gl, state);
+    state.flush(gl);
+    this.post(ctx, gl, state);
   }
 }
 
@@ -47,6 +58,11 @@ export interface BuildRenderableProvider {
 }
 
 
+export enum Type {
+  SURFACE,
+  FACE
+}
+
 let color = vec4.create();
 export class SolidBuilder extends BufferRenderable<SolidSetup> {
   readonly buff = new BuildBuffer();
@@ -56,7 +72,6 @@ export class SolidBuilder extends BufferRenderable<SolidSetup> {
   public trans: number = 1;
   public pal: number;
   public parallax: number = 0;
-  public texMat: Mat4Array = mat4.create();
 
   constructor() { super(SOLID) }
 
@@ -79,22 +94,7 @@ export class SolidBuilder extends BufferRenderable<SolidSetup> {
   }
 }
 
-export class WrapRenderable implements Renderable {
-  constructor(
-    private rend: Renderable,
-    private pre: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void,
-    private post: (ctx: BuildContext, gl: WebGLRenderingContext, state: State) => void = () => { }
-  ) { }
-
-  draw(ctx: BuildContext, gl: WebGLRenderingContext, state: State): void {
-    this.pre(ctx, gl, state);
-    this.rend.draw(ctx, gl, state);
-    state.flush(gl);
-    this.post(ctx, gl, state);
-  }
-}
-
-export class GridRenderable extends BufferRenderable<GridSetup> {
+export class GridBuilder extends BufferRenderable<GridSetup> {
   public solid: SolidBuilder;
   public gridTexMatProvider: (scale: number) => Mat4Array;
 
@@ -109,7 +109,7 @@ export class GridRenderable extends BufferRenderable<GridSetup> {
   }
 }
 
-export class PointSprite extends BufferRenderable<PointSpriteSetup> {
+export class PointSpriteBuilder extends BufferRenderable<PointSpriteSetup> {
   readonly buff: BuildBuffer = new BuildBuffer();
   public tex: Texture;
   public color = vec4.fromValues(1, 1, 1, 1);
@@ -129,7 +129,7 @@ export class PointSprite extends BufferRenderable<PointSpriteSetup> {
   }
 }
 
-export class Wireframe extends BufferRenderable<WireframeSetup> {
+export class WireframeBuilder extends BufferRenderable<WireframeSetup> {
   readonly buff: BuildBuffer = new BuildBuffer();
   public type: Type = Type.SURFACE;
   public color = vec4.fromValues(1, 1, 1, 1);

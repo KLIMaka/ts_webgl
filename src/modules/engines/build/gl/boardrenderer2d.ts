@@ -6,10 +6,10 @@ import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import * as BGL from './buildgl';
-import { BuildRenderableProvider, Renderable, GridRenderable, SolidBuilder, Renderables } from './renderable';
+import { BuildRenderableProvider, Renderable, GridBuilder, SolidBuilder, Renderables } from './renderable';
 import { Controller2D } from '../../../controller2d';
 
-let grid: GridRenderable;
+let grid: GridBuilder;
 const scale = GLM.vec3.create();
 const offset = GLM.vec3.create();
 const gridMatrix = GLM.mat4.create();
@@ -48,7 +48,7 @@ function getGrid(controller: Controller2D) {
   buff.writeTc(2, 1, -1);
   buff.writeTc(3, -1, 1);
   buff.writeQuad(0, 0, 1, 2, 3);
-  grid = new GridRenderable();
+  grid = new GridBuilder();
   grid.gridTexMatProvider = (scale: number) => gridMatrix;
   grid.solid = gridSolid;
   return grid;

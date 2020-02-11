@@ -111,7 +111,8 @@ function getMaskedWallCoords(x1: number, y1: number, x2: number, y2: number, slo
   return [x1, y1, z1, x2, y2, z2, x2, y2, z3, x1, y1, z4];
 }
 
-let wallNormal_ = vec3.create();
+const wallNormal_ = vec3.create();
+const texMat_ = mat4.create();
 export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuilder): WallBuilder {
   builder = builder == null ? new WallBuilder() : builder;
   const board = ctx.board;
@@ -135,9 +136,8 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
   if (wall.nextwall == -1 || wall.cstat.oneWay) {
     const coords = getWallCoords(x1, y1, x2, y2, slope, slope, ceilingheinum, floorheinum, ceilingz, floorz, false);
     const base = wall.cstat.alignBottom ? floorz : ceilingz;
-    applyWallTextureTransform(wall, wall2, info, base, wall, builder.mid.texMat);
-    builder.mid.buff
-    genQuad(coords, normal, builder.mid.texMat, builder.mid.buff);
+    applyWallTextureTransform(wall, wall2, info, base, wall, texMat_);
+    genQuad(coords, normal, texMat_, builder.mid.buff);
     builder.mid.tex = tex;
     builder.mid.shade = wall.shade;
     builder.mid.pal = wall.pal;
@@ -161,12 +161,12 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
         const tex_ = wall.cstat.swapBottoms ? art.get(wall_.picnum) : tex;
         const info_ = wall.cstat.swapBottoms ? art.getInfo(wall_.picnum) : info;
         const base = wall.cstat.alignBottom ? ceilingz : nextfloorz;
-        applyWallTextureTransform(wall_, wall2_, info_, base, wall, builder.bot.texMat);
+        applyWallTextureTransform(wall_, wall2_, info_, base, wall, texMat_);
         builder.bot.tex = tex_;
         builder.bot.shade = wall_.shade;
         builder.bot.pal = wall_.pal;
       }
-      genQuad(floorcoords, normal, builder.bot.texMat, builder.bot.buff);
+      genQuad(floorcoords, normal, texMat_, builder.bot.buff);
     }
 
     const nextceilingheinum = nextsector.ceilingheinum;
@@ -179,12 +179,12 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
         builder.top.parallax = 1;
       } else {
         const base = wall.cstat.alignBottom ? ceilingz : nextceilingz;
-        applyWallTextureTransform(wall, wall2, info, base, wall, builder.top.texMat);
+        applyWallTextureTransform(wall, wall2, info, base, wall, texMat_);
         builder.top.tex = tex;
         builder.top.shade = wall.shade;
         builder.top.pal = wall.pal;
       }
-      genQuad(ceilcoords, normal, builder.top.texMat, builder.top.buff);
+      genQuad(ceilcoords, normal, texMat_, builder.top.buff);
     }
 
     if (wall.cstat.masking) {
@@ -194,8 +194,8 @@ export function updateWall(ctx: BuildContext, wallId: number, builder: WallBuild
         ceilingheinum, nextceilingheinum, ceilingz, nextceilingz,
         floorheinum, nextfloorheinum, floorz, nextfloorz);
       const base = wall.cstat.alignBottom ? Math.min(floorz, nextfloorz) : Math.max(ceilingz, nextceilingz);
-      applyWallTextureTransform(wall, wall2, info1, base, wall, builder.mid.texMat);
-      genQuad(coords, normal, builder.mid.texMat, builder.mid.buff);
+      applyWallTextureTransform(wall, wall2, info1, base, wall, texMat_);
+      genQuad(coords, normal, texMat_, builder.mid.buff);
       builder.mid.tex = tex1;
       builder.mid.shade = wall.shade;
       builder.mid.pal = wall.pal;

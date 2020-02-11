@@ -1,6 +1,6 @@
 import { BuildContext } from "../../api";
 import { createSlopeCalculator, sectorOfWall, slope, ZSCALE } from "../../utils";
-import { PointSprite, Wireframe } from "../renderable";
+import { PointSpriteBuilder, WireframeBuilder } from "../renderable";
 import { Builders } from "./api";
 import { Board } from "../../structs";
 import { BuildBuffer } from "../buffers";
@@ -8,12 +8,12 @@ import { fastIterator } from "../../../../collections";
 
 export class WallPointHelperBuilder extends Builders {
   constructor(
-    readonly points = new PointSprite(),
-    readonly line = new Wireframe()
+    readonly points = new PointSpriteBuilder(),
+    readonly line = new WireframeBuilder()
   ) { super(fastIterator([points, line])) }
 }
 
-function updateWallLine(ctx: BuildContext, wallId: number, builder: Wireframe): Wireframe {
+function updateWallLine(ctx: BuildContext, wallId: number, builder: WireframeBuilder): WireframeBuilder {
   const board = ctx.board;
   const buff = builder.buff;
   buff.allocate(2, 2);
@@ -46,7 +46,7 @@ function fillBufferForWallPoint(offset: number, board: Board, wallId: number, bu
   buff.writeQuad(offset * 6, vtxOff, vtxOff + 1, vtxOff + 2, vtxOff + 3);
 }
 
-function addWallPoint(offset: number, builder: PointSprite, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
+function addWallPoint(offset: number, builder: PointSpriteBuilder, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
   const board = ctx.board;
   const s = sectorOfWall(board, wallId);
   const sec = board.sectors[s];

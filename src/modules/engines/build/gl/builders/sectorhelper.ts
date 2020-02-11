@@ -2,21 +2,21 @@ import { BuildContext } from "../../api";
 import { Board, Sector } from "../../structs";
 import { createSlopeCalculator, sectorOfWall, ZSCALE } from "../../utils";
 import { BuildBuffer } from "../buffers";
-import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "../builders";
-import { BuildRenderableProvider, GridRenderable, PointSprite, Renderables, SectorRenderable, SolidBuilder, Wireframe } from "../renderable";
+import { buildCeilingHinge, buildFloorHinge, gridMatrixProviderSector } from "./common";
+import { BuildRenderableProvider, GridBuilder, PointSpriteBuilder, Renderables, SectorRenderable, SolidBuilder, WireframeBuilder } from "../renderable";
 import { Builders } from "./api";
 import { fastIterator } from "../../../../collections";
 
 export class SectorHelperBuilder extends Builders implements SectorRenderable {
   constructor(
-    readonly ceilpoints = new PointSprite(),
-    readonly ceilwire = new Wireframe(),
-    readonly ceilhinge = new Wireframe(),
-    readonly ceilgrid = new GridRenderable(),
-    readonly floorpoints = new PointSprite(),
-    readonly floorwire = new Wireframe(),
-    readonly floorhinge = new Wireframe(),
-    readonly floorgrid = new GridRenderable(),
+    readonly ceilpoints = new PointSpriteBuilder(),
+    readonly ceilwire = new WireframeBuilder(),
+    readonly ceilhinge = new WireframeBuilder(),
+    readonly ceilgrid = new GridBuilder(),
+    readonly floorpoints = new PointSpriteBuilder(),
+    readonly floorwire = new WireframeBuilder(),
+    readonly floorhinge = new WireframeBuilder(),
+    readonly floorgrid = new GridBuilder(),
     readonly ceiling = new Renderables(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid])),
     readonly floor = new Renderables(fastIterator([floorpoints, floorwire, floorhinge, floorgrid])),
   ) { super(fastIterator([ceilpoints, ceilwire, ceilhinge, ceilgrid, floorpoints, floorwire, floorhinge, floorgrid])) }
@@ -40,7 +40,7 @@ function fillBufferForWallPoint(offset: number, board: Board, wallId: number, bu
   buff.writeQuad(offset * 6, vtxOff, vtxOff + 1, vtxOff + 2, vtxOff + 3);
 }
 
-function addWallPoint(offset: number, builder: PointSprite, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
+function addWallPoint(offset: number, builder: PointSpriteBuilder, ctx: BuildContext, ceiling: boolean, wallId: number, d: number): void {
   const board = ctx.board;
   const s = sectorOfWall(board, wallId);
   const sec = board.sectors[s];
@@ -52,7 +52,7 @@ function addWallPoint(offset: number, builder: PointSprite, ctx: BuildContext, c
   fillBufferForWallPoint(offset, board, wallId, builder.buff, d, zz);
 }
 
-function fillBuffersForSectorWireframe(s: number, sec: Sector, heinum: number, z: number, board: Board, builder: Wireframe) {
+function fillBuffersForSectorWireframe(s: number, sec: Sector, heinum: number, z: number, board: Board, builder: WireframeBuilder) {
   let slope = createSlopeCalculator(board, s);
   const buff = builder.buff;
   buff.allocate(sec.wallnum, sec.wallnum * 2);

@@ -1,10 +1,10 @@
 import { vec3 } from "../../../../../libs_js/glmatrix";
 import { BuildContext } from "../../api";
 import { ang2vec, spriteAngle, ZSCALE } from "../../utils";
-import { Wireframe } from "../renderable";
+import { WireframeBuilder } from "../renderable";
 
-export function updateSpriteAngle(ctx: BuildContext, spriteId: number, builder: Wireframe): Wireframe {
-  builder = builder == null ? new Wireframe() : builder;
+export function updateSpriteAngle(ctx: BuildContext, spriteId: number, builder: WireframeBuilder): WireframeBuilder {
+  builder = builder == null ? new WireframeBuilder() : builder;
   builder.mode = WebGLRenderingContext.TRIANGLES;
   const buff = builder.buff;
   buff.allocate(3, 6);
@@ -24,7 +24,7 @@ export function updateSpriteAngle(ctx: BuildContext, spriteId: number, builder: 
   return builder;
 }
 
-export function updateSprite2d(ctx: BuildContext, sprId: number, builder: Wireframe): Wireframe {
+export function updateSprite2d(ctx: BuildContext, sprId: number, builder: WireframeBuilder): WireframeBuilder {
   // if (renderable != null) renderable.reset();
   // const sprite = ctx.board.sprites[sprId];
   // const label = text(sprId + "", sprite.x, sprite.y, sprite.z / ZSCALE, 8, 8, ctx.art.get(-2));

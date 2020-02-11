@@ -92,7 +92,8 @@ function fillBuffersForSector(ceil: boolean, board: Board, s: number, sec: Secto
   fillBuffersForSectorNormal(ceil, board, s, sec, d.buff, vtxs, vidxs, normal, t);
 }
 
-let sectorNormal_ = vec3.create();
+const sectorNormal_ = vec3.create();
+const texMat_ = mat4.create();
 export function updateSector(ctx: BuildContext, secId: number, builder: SectorBuilder): SectorBuilder {
   builder = builder == null ? new SectorBuilder() : builder;
   const board = ctx.board;
@@ -100,16 +101,16 @@ export function updateSector(ctx: BuildContext, secId: number, builder: SectorBu
   const sec = board.sectors[secId];
 
   const ceilinginfo = art.getInfo(sec.ceilingpicnum);
-  applySectorTextureTransform(sec, true, board.walls, ceilinginfo, builder.ceiling.texMat);
-  fillBuffersForSector(true, board, secId, sec, builder, sectorNormal(sectorNormal_, board, secId, true), builder.ceiling.texMat);
+  applySectorTextureTransform(sec, true, board.walls, ceilinginfo, texMat_);
+  fillBuffersForSector(true, board, secId, sec, builder, sectorNormal(sectorNormal_, board, secId, true), texMat_);
   builder.ceiling.tex = sec.ceilingstat.parallaxing ? art.getParallaxTexture(sec.ceilingpicnum) : art.get(sec.ceilingpicnum);
   builder.ceiling.parallax = sec.ceilingstat.parallaxing;
   builder.ceiling.pal = sec.ceilingpal;
   builder.ceiling.shade = sec.ceilingshade;
 
   const floorinfo = art.getInfo(sec.floorpicnum);
-  applySectorTextureTransform(sec, false, board.walls, floorinfo, builder.floor.texMat);
-  fillBuffersForSector(false, board, secId, sec, builder, sectorNormal(sectorNormal_, board, secId, false), builder.floor.texMat);
+  applySectorTextureTransform(sec, false, board.walls, floorinfo, texMat_);
+  fillBuffersForSector(false, board, secId, sec, builder, sectorNormal(sectorNormal_, board, secId, false), texMat_);
   builder.floor.tex = sec.floorstat.parallaxing ? art.getParallaxTexture(sec.floorpicnum) : art.get(sec.floorpicnum);
   builder.floor.parallax = sec.floorstat.parallaxing;
   builder.floor.pal = sec.floorpal;

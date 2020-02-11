@@ -1,5 +1,5 @@
 import { BuildContext } from "../../api";
-import { Wireframe } from "../../gl/renderable";
+import { WireframeBuilder } from "../../gl/renderable";
 import { MessageHandlerReflective } from "../../handlerapi";
 import { MovingHandle } from "../handle";
 import { Frame, NamedMessage, Render } from "../messages";
@@ -14,7 +14,7 @@ const dir_ = vec3.create();
 export class DrawWall extends MessageHandlerReflective {
   private wallId = -1;
   private movingHandle = new MovingHandle();
-  private wireframe = new Wireframe();
+  private wireframe = new WireframeBuilder();
   private upper = new Deck<number>();
   private lower = new Deck<number>();
   private points = new Deck<[number, number]>();
