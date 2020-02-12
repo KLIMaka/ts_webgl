@@ -13,8 +13,23 @@ export interface Renderable {
 
 export type RenderableConsumer<T extends Renderable> = (r: T) => void;
 
-export interface RenderableProvider<T extends Renderable> extends Renderable {
+export interface RenderableProvider<T extends Renderable> {
   accept(consumer: RenderableConsumer<T>): void;
+}
+
+export class RenderablesProvider<T extends Renderable> implements RenderableProvider<T> {
+  constructor(private renderables: Iterable<T>) { }
+  accept(consumer: RenderableConsumer<T>) { for (const p of this.renderables) consumer(p) }
+}
+
+export function consumerProvider<T extends Renderable>() {
+  const list = new Deck<T>();
+  const provider = new RenderablesProvider<T>(list);
+  return {
+    consumer: (r: T) => list.push(r),
+    provider: provider,
+    clear: () => list.clear()
+  }
 }
 
 const BASE = 0;
@@ -96,15 +111,15 @@ export class WrapRenderable implements Renderable {
   }
 }
 
-export interface SectorRenderable extends RenderableProvider<LayeredRenderable> {
-  readonly ceiling: RenderableProvider<LayeredRenderable>;
-  readonly floor: RenderableProvider<LayeredRenderable>;
+export interface SectorRenderable extends RenderableProvider<LayeredRenderable>, Renderable {
+  readonly ceiling: RenderableProvider<LayeredRenderable> & Renderable;
+  readonly floor: RenderableProvider<LayeredRenderable> & Renderable;
 }
 
-export interface WallRenderable extends RenderableProvider<LayeredRenderable> {
-  readonly top: RenderableProvider<LayeredRenderable>;
-  readonly mid: RenderableProvider<LayeredRenderable>;
-  readonly bot: RenderableProvider<LayeredRenderable>;
+export interface WallRenderable extends RenderableProvider<LayeredRenderable>, Renderable {
+  readonly top: RenderableProvider<LayeredRenderable> & Renderable;
+  readonly mid: RenderableProvider<LayeredRenderable> & Renderable;
+  readonly bot: RenderableProvider<LayeredRenderable> & Renderable;
 }
 
 export interface BuildRenderableProvider {

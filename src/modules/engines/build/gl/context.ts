@@ -11,7 +11,7 @@ import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
 import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
-import { WrapRenderable, LayeredRenderables, SortingRenderable } from './builders/renderable';
+import { LayeredRenderable, RenderablesProvider, SortingRenderable, WrapRenderable, consumerProvider } from './builders/renderable';
 
 class History {
   private history: Deck<Board> = new Deck();
@@ -48,13 +48,15 @@ class StateImpl implements State {
   }
 }
 
+const tools = consumerProvider<LayeredRenderable>();
+
 const FRAME = new Frame(0);
 const POSTFRAME = new PostFrame();
 const MOUSE = new Mouse(0, 0);
-const RENDER = new Render();
+const RENDER = new Render(tools.consumer);
 const INVALIDATE_ALL = new BoardInvalidate(null);
 
-const onTopRenderable = new WrapRenderable(new SortingRenderable(RENDER.renderable),
+const onTopRenderable = new WrapRenderable(new SortingRenderable(tools.provider),
   (ctx: BuildContext, gl: WebGLRenderingContext, state: StateGl) => {
     gl.disable(WebGLRenderingContext.DEPTH_TEST);
     gl.enable(WebGLRenderingContext.BLEND);
@@ -169,7 +171,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   }
 
   private drawTools() {
-    RENDER.list.clear();
+    tools.clear();
     this.handle(RENDER, this);
     this.view.draw(onTopRenderable);
   }

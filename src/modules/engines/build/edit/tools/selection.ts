@@ -283,11 +283,11 @@ export class Selection extends MessageHandlerReflective implements Bindable {
       const type = detuple0(v);
       const id = detuple1(v);
       switch (type) {
-        case 0: msg.list.push(this.renderables.sector(id).ceiling); break;
-        case 1: msg.list.push(this.renderables.sector(id).floor); break;
-        case 2: msg.list.push(this.renderables.wall(id)); break;
-        case 3: msg.list.push(this.renderables.wallPoint(id)); break;
-        case 4: msg.list.push(this.renderables.sprite(id)); break;
+        case 0: this.renderables.sector(id).ceiling.accept(msg.consumer); break;
+        case 1: this.renderables.sector(id).floor.accept(msg.consumer); break;
+        case 2: this.renderables.wall(id).accept(msg.consumer); break;
+        case 3: this.renderables.wallPoint(id).accept(msg.consumer); break;
+        case 4: this.renderables.sprite(id).accept(msg.consumer); break;
       }
     }
   }

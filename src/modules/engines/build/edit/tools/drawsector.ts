@@ -20,40 +20,20 @@ class Contour {
   private length = new PointSpriteBuilder();
   private renderable = new LayeredRenderables(fastIterator([this.contour, this.contourPoints, this.length]));
 
-  constructor(firstPoint: boolean = true) {
-    if (firstPoint)
-      this.pushPoint(0, 0);
-  }
+  constructor(firstPoint: boolean = true) { if (firstPoint) this.pushPoint(0, 0) }
 
-  public setZ(z: number) {
-    this.z = z;
-  }
-
-  public getZ() {
-    return this.z;
-  }
-
-  public pushPoint(x: number, y: number) {
-    this.points[this.size++] = [x, y];
-  }
+  public setZ(z: number) { this.z = z }
+  public getZ() { return this.z }
+  public pushPoint(x: number, y: number) { this.points[this.size++] = [x, y] }
+  public updateLastPoint(x: number, y: number) { this.updatePoint(this.size - 1, x, y) }
+  public popPoint() { this.size-- }
+  public clear() { this.size = 0 }
 
   public updatePoint(idx: number, x: number, y: number) {
     if (idx >= this.size) throw new Error('Invalid point id: ' + idx);
     let p = this.points[idx];
     p[0] = x;
     p[1] = y;
-  }
-
-  public updateLastPoint(x: number, y: number) {
-    this.updatePoint(this.size - 1, x, y);
-  }
-
-  public popPoint() {
-    this.size--;
-  }
-
-  public clear() {
-    this.size = 0;
   }
 
   public getRenderable(ctx: BuildContext) {
@@ -71,7 +51,6 @@ class Contour {
   private updateContourPoints(ctx: BuildContext) {
     this.contourPoints.tex = ctx.art.get(-1);
     let buff = this.contourPoints.buff;
-    buff.deallocate();
     buff.allocate(this.size * 4, this.size * 6);
     let d = 2.5;
     for (let i = 0; i < this.size; i++) {
@@ -299,6 +278,6 @@ export class DrawSector extends MessageHandlerReflective {
   }
 
   public Render(msg: Render, ctx: BuildContext) {
-    msg.list.push(this.contour.getRenderable(ctx));
+    this.contour.getRenderable(ctx).accept(msg.consumer);
   }
 }
