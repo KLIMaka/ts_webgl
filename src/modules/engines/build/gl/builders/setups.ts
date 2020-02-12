@@ -1,13 +1,13 @@
-import { Deck } from "../../../../collections";
-import { State } from "../../../../stategl";
-import { BuildBuffer } from "../buffers";
-import { Texture } from "../../../../drawstruct";
+import { Mat4Array, Vec4Array } from "../../../../../libs_js/glmatrix";
 import { Buffer } from "../../../../buffergl";
+import { Deck } from "../../../../collections";
+import { Texture } from "../../../../drawstruct";
 import * as PROFILE from '../../../../profiler';
+import { State } from "../../../../stategl";
 import { BuildContext } from "../../api";
-import { Vec4Array, Mat4Array } from "../../../../../libs_js/glmatrix";
-import { Renderable, RenderableProvider, RenderableConsumer, LayeredRenderable } from "./renderable";
+import { BuildBuffer } from "../buffers";
 import { Builder } from "./api";
+import { LayeredRenderable, RenderableConsumer } from "./renderable";
 
 export class StateSetup {
   protected values = new Deck<any>();
@@ -43,8 +43,9 @@ export class BufferSetup extends StateSetup {
     this.values.set(5, buffer.getPosBuffer());
     this.values.set(7, buffer.getNormBuffer());
     this.values.set(9, buffer.getTexCoordBuffer());
-    this.buff = buffer.get().buffer;
-    this.offset = buffer.get().idx.offset;
+    const pointer = buffer.get();
+    this.buff = pointer.buffer;
+    this.offset = pointer.idx.offset;
     this.size = buffer.getSize();
     return this;
   }

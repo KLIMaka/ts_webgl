@@ -4,15 +4,15 @@ import { VertexBuffer, IndexBuffer } from '../../../drawstruct';
 const buffers: Buffer[] = [];
 let ctx: WebGLRenderingContext;
 
-const POSITION = 'aPos';
-const NORMAL = 'aNorm';
-const TEXCOORDS = 'aTc';
+const POSITION = 0;
+const NORMAL = 1;
+const TEXCOORDS = 2;
 
 function createNewBuffer() {
   let buffer = new Buffer(ctx, new BufferBuilder()
-    .addVertexBuffer(ctx, POSITION, ctx.FLOAT, 3)
-    .addVertexBuffer(ctx, NORMAL, ctx.FLOAT, 3)
-    .addVertexBuffer(ctx, TEXCOORDS, ctx.FLOAT, 2));
+    .addVertexBuffer(ctx, ctx.FLOAT, 3)
+    .addVertexBuffer(ctx, ctx.FLOAT, 3)
+    .addVertexBuffer(ctx, ctx.FLOAT, 2));
   buffers.push(buffer);
   return buffer;
 }

@@ -8,13 +8,21 @@ export interface Pointer {
   readonly idx: Place
 }
 
+class Pointerimpl implements Pointer {
+  constructor(
+    readonly buffer: Buffer,
+    readonly vtx: Place,
+    readonly idx: Place
+  ) { }
+}
+
 export class BufferBuilder {
-  public vtxBuffers: { [index: string]: VertexBufferDynamic } = {};
+  public vtxBuffers: VertexBufferDynamic[] = [];
 
   constructor(public size: number = 64 * 1024) { }
 
-  public addVertexBuffer(gl: WebGLRenderingContext, name: string, type: number, spacing: number): BufferBuilder {
-    this.vtxBuffers[name] = createVertexBuffer(gl, type, this.size, spacing);
+  public addVertexBuffer(gl: WebGLRenderingContext, type: number, spacing: number): BufferBuilder {
+    this.vtxBuffers.push(createVertexBuffer(gl, type, this.size, spacing));
     return this;
   }
 }
@@ -24,9 +32,9 @@ type Region = [number, number];
 export class Buffer {
   private vtxBag: BagController;
   private idxBag: BagController;
-  private vtxBuffers: { [index: string]: VertexBufferDynamic };
+  public vtxBuffers: VertexBufferDynamic[];
   private idxBuffer: DynamicIndexBuffer;
-  private vtxRegions: { [index: string]: Region[] } = {};
+  private vtxRegions: Region[][] = [];
   private idxRegions: Region[] = [];
   private needUpdate = true;
 
@@ -37,9 +45,9 @@ export class Buffer {
     this.idxBuffer = createIndexBuffer(gl, gl.UNSIGNED_SHORT, idxSize);
 
     this.vtxBag = createController(vtxSize, (place: Place, noffset: number) => {
-      for (let v in this.vtxBuffers) {
-        let buff = <any>this.vtxBuffers[v].getData();
-        let spacing = this.vtxBuffers[v].getSpacing();
+      for (const v of this.vtxBuffers) {
+        let buff = <any>v.getData();
+        let spacing = v.getSpacing();
         buff.set(buff.subarray(place.offset * spacing, (place.offset + place.size) * spacing), noffset * spacing);
       }
       let ptr = <Place>place.data;
@@ -55,12 +63,11 @@ export class Buffer {
       idxData.set(idxData.subarray(place.offset, place.offset + place.size), noffset);
     });
 
-    for (let v in this.vtxBuffers)
-      this.vtxRegions[v] = [];
+    for (let i = 0; i < this.vtxBuffers.length; i++) this.vtxRegions.push([]);
   }
 
-  public getVertexBuffer(name: string): VertexBufferDynamic {
-    return this.vtxBuffers[name];
+  public getVertexBuffer(idx: number): VertexBufferDynamic {
+    return this.vtxBuffers[idx];
   }
 
   public getIndexBuffer(): DynamicIndexBuffer {
@@ -76,7 +83,7 @@ export class Buffer {
       return null;
     }
     vtx.data = idx;
-    return { buffer: this, vtx, idx };
+    return new Pointerimpl(this, vtx, idx);
   }
 
   public deallocate(ptr: Pointer): void {
@@ -86,14 +93,14 @@ export class Buffer {
     this.idxBag.put(ptr.idx);
   }
 
-  public writeVertex(ptr: Pointer, name: string, off: number, vdata: number[]) {
-    let buff = this.vtxBuffers[name];
+  public writeVertex(ptr: Pointer, idx: number, off: number, vdata: number[]) {
+    let buff = this.vtxBuffers[idx];
     let offset = (ptr.vtx.offset + off) * buff.getSpacing();
     let data = <any>buff.getData();
     for (let i = 0; i < vdata.length; i++) {
       data[offset + i] = vdata[i];
     }
-    this.vtxRegions[name].push([offset / buff.getSpacing(), Math.ceil(vdata.length / buff.getSpacing())]);
+    this.vtxRegions[idx].push([offset / buff.getSpacing(), Math.ceil(vdata.length / buff.getSpacing())]);
     this.needUpdate = true;
   }
 
@@ -138,7 +145,7 @@ export class Buffer {
 
   public update(gl: WebGLRenderingContext) {
     if (!this.needUpdate) return;
-    for (let v in this.vtxRegions) {
+    for (let v = 0; v < this.vtxBuffers.length; v++) {
       if (this.vtxRegions[v].length == 0)
         continue;
       this.updateBuffer(gl, this.vtxBuffers[v], this.vtxRegions[v]);
