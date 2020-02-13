@@ -44,44 +44,69 @@ export class Stream {
     return this.view.getInt8(this.offset++);
   }
 
+  public writeByte(byte: number): void {
+    this.checkBitAlignment();
+    this.view.setInt8(this.offset++, byte);
+  }
+
   public readUByte(): number {
     this.checkBitAlignment();
     return this.view.getUint8(this.offset++);
   }
 
+  public writeUByte(byte: number): void {
+    this.checkBitAlignment();
+    this.view.setUint8(this.offset++, byte);
+  }
+
   public readShort(): number {
     this.checkBitAlignment();
-    let ret = this.view.getInt16(this.offset, this.littleEndian);
-    this.offset += 2;
-    return ret;
+    return this.view.getInt16(this.offset += 2, this.littleEndian);
+  }
+
+  public writeShort(short: number): void {
+    this.checkBitAlignment();
+    this.view.setInt16(this.offset += 2, short, this.littleEndian);
   }
 
   public readUShort(): number {
     this.checkBitAlignment();
-    let ret = this.view.getUint16(this.offset, this.littleEndian);
-    this.offset += 2;
-    return ret;
+    return this.view.getUint16(this.offset += 2, this.littleEndian);
+  }
+
+  public writeUShort(short: number): void {
+    this.checkBitAlignment();
+    this.view.setUint16(this.offset += 2, short, this.littleEndian);
   }
 
   public readInt(): number {
     this.checkBitAlignment();
-    let ret = this.view.getInt32(this.offset, this.littleEndian);
-    this.offset += 4;
-    return ret;
+    return this.view.getInt32(this.offset += 4, this.littleEndian);
+  }
+
+  public writeInt(int: number): void {
+    this.checkBitAlignment();
+    this.view.setInt32(this.offset += 4, int, this.littleEndian);
   }
 
   public readUInt(): number {
     this.checkBitAlignment();
-    let ret = this.view.getUint32(this.offset, this.littleEndian);
-    this.offset += 4;
-    return ret;
+    return this.view.getUint32(this.offset += 4, this.littleEndian);
+  }
+
+  public writeUInt(int: number): void {
+    this.checkBitAlignment();
+    this.view.setUint32(this.offset += 4, int, this.littleEndian);
   }
 
   public readFloat(): number {
     this.checkBitAlignment();
-    let ret = this.view.getFloat32(this.offset, this.littleEndian);
-    this.offset += 4;
-    return ret;
+    return this.view.getFloat32(this.offset += 4, this.littleEndian);
+  }
+
+  public writeFloat(float: number): void {
+    this.checkBitAlignment();
+    this.view.setFloat32(this.offset += 4, float, this.littleEndian);
   }
 
   public readByteString(len: number): string {
@@ -93,26 +118,38 @@ export class Stream {
         this.skip(len - i - 1);
         break;
       }
-      str[i] = String.fromCharCode(c);
+      str.push(String.fromCharCode(c));
     }
     return str.join('');
   }
 
+  public writeByteString(len: number, str: string): void {
+    this.checkBitAlignment();
+    for (const c of str) this.writeByte(c.charCodeAt(0));
+    for (let i = 0; i < len - str.length; i++) this.writeByte(0);
+  }
+
   public subView(): Stream {
     this.checkBitAlignment();
-    let ret = new Stream(this.view.buffer, this.littleEndian);
+    const ret = new Stream(this.view.buffer, this.littleEndian);
     ret.setOffset(this.offset);
     return ret;
   }
 
-  public array(bytes: number): ArrayBuffer {
+  public readArrayBuffer(bytes: number): ArrayBuffer {
     this.checkBitAlignment();
-    let slice = this.view.buffer.slice(this.offset, this.offset + bytes);
+    const slice = this.view.buffer.slice(this.offset, this.offset + bytes);
     this.offset += bytes;
     return slice;
   }
 
-  public readBit(reverse: boolean = true): number {
+  public writeArrayBuffer(buffer: ArrayBuffer): void {
+    const dst = new Uint8Array(this.view.buffer, this.offset);
+    dst.set(new Uint8Array(buffer));
+    this.offset += buffer.byteLength;
+  }
+
+  public readBit(): number {
     if (this.currentBit > 6) {
       this.currentByte = this.readUByte();
       this.currentBit = 0;
@@ -120,22 +157,35 @@ export class Stream {
       this.currentBit++;
     }
 
-    if (reverse) {
-      return ((this.currentByte >> (this.currentBit)) & 1);
-    } else {
-      return ((this.currentByte >> (7 - this.currentBit)) & 1);
-    }
+    return ((this.currentByte >> (this.currentBit)) & 1);
   }
 
-  public readBits(bits: number, reverse: boolean = true): number {
+  public writeBit(bit: boolean): void {
+    if (this.currentBit == 0) {
+      this.writeUByte(this.currentByte);
+      this.currentByte = 0;
+      this.currentBit = 7;
+    } else {
+      this.currentBit--;
+    }
+
+    if (bit) this.currentByte |= (1 << this.currentByte)
+    else this.currentByte &= (~(1 << this.currentByte) & 0xff);
+  }
+
+  public readBits(bits: number): number {
     let value = 0;
-    let signed = bits < 0;
+    const signed = bits < 0;
     bits = signed ? -bits : bits;
     for (let i = 0; i < bits; i++) {
-      let b = this.readBit(reverse);
-      value = reverse ? value | (b << i) : (value << 1) | b;
+      let b = this.readBit();
+      value = value | (b << i);
     }
     return signed ? toSigned(value, bits) : value;
+  }
+
+  public writeBits(count: number, value: number): void {
+
   }
 }
 
@@ -146,12 +196,14 @@ function toSigned(value: number, bits: number) {
 }
 
 type ScalarReader<T> = (s: Stream) => T;
+
 export interface Reader<T> {
   readonly read: ScalarReader<T>;
   readonly size: number;
 }
 
 type AtomicArrayConstructor<T> = { new(buffer: ArrayBuffer, byteOffset: number, length: number): T };
+
 export interface AtomicReader<T, AT> extends Reader<T> {
   readonly atomicArrayConstructor: AtomicArrayConstructor<AT>;
 }
@@ -177,25 +229,25 @@ export const array = <T>(type: Reader<T>, len: number) => reader(s => readArray(
 export const atomic_array = <T>(type: AtomicReader<any, T>, len: number) => reader(s => readAtomicArray(s, type, len), type.size * len);
 export const struct = <T>(type: Constructor<T>) => new StructBuilder(type);
 
-let readArray = <T>(s: Stream, type: Reader<T>, len: number): Array<T> => {
-  let arr = new Array<T>();
+const readArray = <T>(s: Stream, type: Reader<T>, len: number): Array<T> => {
+  const arr = new Array<T>();
   for (let i = 0; i < len; i++)
     arr[i] = type.read(s);
   return arr;
 }
 
-let readAtomicArray = <T>(s: Stream, type: AtomicReader<any, T>, len: number) => {
-  let ctr = type.atomicArrayConstructor;
-  let array = s.array(len * type.size);
-  return new ctr(array, 0, len * type.size);
+const readAtomicArray = <T>(s: Stream, type: AtomicReader<any, T>, len: number) => {
+  const ctr = type.atomicArrayConstructor;
+  const buffer = s.readArrayBuffer(len * type.size);
+  return new ctr(buffer, 0, len * type.size);
 }
 
 type Constructor<T> = { new(): T };
 type Field<T> = [T, Reader<any>];
+
 class StructBuilder<T, K extends keyof T> implements Reader<T> {
   private fields: Field<K>[] = [];
   public size = 0;
-  public atomicArrayFactory = null;
   constructor(private ctr: Constructor<T>) { }
 
   field(f: K, r: Reader<any>) {
@@ -205,11 +257,11 @@ class StructBuilder<T, K extends keyof T> implements Reader<T> {
   }
 
   read(s: Stream) {
-    let struct = new this.ctr();
+    const struct = new this.ctr();
     for (let i = 0; i < this.fields.length; i++) {
-      let [name, reader] = this.fields[i];
+      const [name, reader] = this.fields[i];
       struct[name] = reader.read(s);
-    };
+    }
     return struct;
   }
 }

@@ -33,7 +33,7 @@ export class Statusbar extends MessageHandlerReflective {
     this.fps.textContent = (1000 / PROFILE.get(null).time).toFixed(0);
     const draws = PROFILE.get(null).counts['draws'] | 0;
     const skips = PROFILE.get(null).counts['skip_draws'] | 0;
-    this.draws.textContent = '' + draws + ' / ' + (100 * (skips / draws)).toFixed(2) + '%';
+    this.draws.textContent = '' + draws + ' / ' + (draws - skips);
     this.bufferPixelProvider.buffer = PROFILE.get(null).counts['buffer'];
     drawToCanvas(this.bufferPixelProvider, this.buffer);
 
