@@ -93,11 +93,11 @@ export class List<T> implements Iterable<T>{
       : {
         next: () => {
           if (pointer == this.terminator())
-            return TERMINAL_ITERATOR_RESULT;
+            return <IteratorResult<T>>TERMINAL_ITERATOR_RESULT;
           else {
             let obj = pointer.obj;
             pointer = pointer.next;
-            return { done: false, value: obj }
+            return <IteratorResult<T>>{ done: false, value: obj }
           }
         }
       }

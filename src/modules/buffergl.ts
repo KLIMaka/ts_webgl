@@ -156,6 +156,6 @@ export class Buffer {
       this.idxRegions = [];
     }
     this.needUpdate = false;
-    PROFILE.get(null).set('buffer', this.vtxBag.freeSpace());
+    PROFILE.get(null).set('buffer', this.vtxBag.freeSpace(64));
   }
 }

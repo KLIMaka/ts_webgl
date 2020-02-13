@@ -12,10 +12,8 @@ export class Bag {
   }
 
   private getSuitablePlace(size: number): Node<Place> {
-    for (let hole = this.holes.first(); hole != this.holes.terminator(); hole = hole.next) {
-      if (hole.obj.size >= size)
-        return hole;
-    }
+    for (let hole = this.holes.first(); hole != this.holes.terminator(); hole = hole.next)
+      if (hole.obj.size >= size) return hole;
     return null;
   }
 
@@ -36,35 +34,33 @@ export class Bag {
       return;
     }
     while (hole.next != this.holes.terminator()) {
-      let next = hole.next;
-      if (next.obj.offset >= size + offset)
-        break;
+      const next = hole.next;
+      if (next.obj.offset >= size + offset) break;
       hole = next;
     }
-    let end = hole.obj.offset + hole.obj.size;
+    const end = hole.obj.offset + hole.obj.size;
     if (hole.obj.offset > offset) {
-      let newHole = this.holes.insertBefore(new Place(offset, size), hole);
+      const newHole = this.holes.insertBefore(new Place(offset, size), hole);
       this.tryMerge(newHole);
     } else if (end == offset) {
       hole.obj.size += size;
       this.tryMerge(hole);
     } else {
-      let newHole = this.holes.insertAfter(new Place(offset, size), hole);
+      const newHole = this.holes.insertAfter(new Place(offset, size), hole);
       this.tryMerge(newHole);
     }
   }
 
   public get(size: number): number {
-    let hole = this.getSuitablePlace(size);
-    if (hole == null)
-      return null;
+    const hole = this.getSuitablePlace(size);
+    if (hole == null) return null;
     if (hole.obj.size == size) {
-      let prev = hole.prev;
+      const prev = hole.prev;
       this.holes.remove(hole);
       this.tryMerge(prev);
       return hole.obj.offset;
     } else {
-      let off = hole.obj.offset;
+      const off = hole.obj.offset;
       hole.obj.offset += size;
       hole.obj.size -= size;
       return off;
@@ -76,12 +72,21 @@ export class Bag {
     this.holes.insertAfter(new Place(0, this.size));
   }
 
-  public freeSpace() {
-    let freeSpace = 0;
-    for (let hole = this.holes.first(); hole != this.holes.terminator(); hole = hole.next) {
-      freeSpace += hole.obj.size;
+  public freeSpace(segments: number) {
+    const results = new Array<number>(segments).fill(1);
+    const ds = this.size / segments;
+    for (const hole of this.holes) {
+      const hstart = hole.offset;
+      const hend = hstart + hole.size;
+      for (let i = (hstart / ds | 0); i <= (hend / ds | 0) && i < segments; i++) {
+        const start = i * ds;
+        const end = start + ds;
+        const dl = Math.max(0, hstart - start);
+        const dr = Math.max(0, end - hend);
+        results[i] -= 1 - (dl + dr) / ds;
+      }
     }
-    return freeSpace;
+    return results;
   }
 }
 
@@ -131,8 +136,8 @@ export class BagController {
     this.bag.get(offset);
   }
 
-  public freeSpace() {
-    return this.bag.freeSpace() / this.bag.size;
+  public freeSpace(segments: number) {
+    return this.bag.freeSpace(segments);
   }
 }
 
