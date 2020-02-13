@@ -9,11 +9,23 @@ import { BuildBuffer } from "../buffers";
 import { Builder } from "./api";
 import { LayeredRenderable, RenderableConsumer } from "./renderable";
 
-export class StateSetup {
+export interface StateSetup {
+  apply(state: State): void;
+}
+
+export class BufferSetup implements StateSetup {
   protected values = new Deck<any>();
   protected buff: Buffer;
   protected offset: number;
   protected size: number;
+
+  constructor(state: State) {
+    this.register('shader', state);
+    this.register('aIndex', state);
+    this.register('aPos', state);
+    this.register('aNorm', state);
+    this.register('aTc', state);
+  }
 
   public apply(state: State) {
     state.setup(this.values);
@@ -23,17 +35,6 @@ export class StateSetup {
   protected register(name: string, state: State) {
     this.values.push(state.getState(name));
     this.values.push(null);
-  }
-}
-
-export class BufferSetup extends StateSetup {
-  constructor(state: State) {
-    super();
-    this.register('shader', state);
-    this.register('aIndex', state);
-    this.register('aPos', state);
-    this.register('aNorm', state);
-    this.register('aTc', state);
   }
 
   public shader(shader: string) { this.values.set(1, shader); return this }
@@ -47,7 +48,6 @@ export class BufferSetup extends StateSetup {
     this.buff = pointer.buffer;
     this.offset = pointer.idx.offset;
     this.size = buffer.getSize();
-    return this;
   }
 }
 
