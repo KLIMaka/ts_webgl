@@ -54,7 +54,8 @@ export class AbstractPixelProvider implements PixelProvider {
     var off = 0;
     for (var y = 0; y < this.h; y++) {
       for (var x = 0; x < this.w; x++) {
-        this.putToDst(x, y, dst, off += 4, blend);
+        this.putToDst(x, y, dst, off, blend);
+        off += 4;
       }
     }
   }

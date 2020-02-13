@@ -1,4 +1,4 @@
-import { array, atomic_array, byte, Stream, int, short, struct, ubyte, bits } from '../../../libs/stream';
+import { array, atomic_array, bits, int, short, Stream, struct, ubyte } from '../../../libs/stream';
 import { BloodBoard, BloodSector, BloodSprite, BloodWall, SectorExtra, SpriteExtra, WallExtra } from './bloodstructs';
 import * as LOADER from './loader';
 import { Header1 } from './structs';

@@ -61,52 +61,67 @@ export class Stream {
 
   public readShort(): number {
     this.checkBitAlignment();
-    return this.view.getInt16(this.offset += 2, this.littleEndian);
+    const ret = this.view.getInt16(this.offset, this.littleEndian);
+    this.offset += 2;
+    return ret;
   }
 
   public writeShort(short: number): void {
     this.checkBitAlignment();
-    this.view.setInt16(this.offset += 2, short, this.littleEndian);
+    this.view.setInt16(this.offset, short, this.littleEndian);
+    this.offset += 2;
   }
 
   public readUShort(): number {
     this.checkBitAlignment();
-    return this.view.getUint16(this.offset += 2, this.littleEndian);
+    const ret = this.view.getUint16(this.offset, this.littleEndian);
+    this.offset += 2;
+    return ret;
   }
 
   public writeUShort(short: number): void {
     this.checkBitAlignment();
-    this.view.setUint16(this.offset += 2, short, this.littleEndian);
+    this.view.setUint16(this.offset, short, this.littleEndian);
+    this.offset += 2;
   }
 
   public readInt(): number {
     this.checkBitAlignment();
-    return this.view.getInt32(this.offset += 4, this.littleEndian);
+    const ret = this.view.getInt32(this.offset, this.littleEndian);
+    this.offset += 4;
+    return ret;
   }
 
   public writeInt(int: number): void {
     this.checkBitAlignment();
-    this.view.setInt32(this.offset += 4, int, this.littleEndian);
+    this.view.setInt32(this.offset, int, this.littleEndian);
+    this.offset += 4;
   }
 
   public readUInt(): number {
     this.checkBitAlignment();
-    return this.view.getUint32(this.offset += 4, this.littleEndian);
+    const ret = this.view.getUint32(this.offset, this.littleEndian);
+    this.offset += 4;
+    return ret;
   }
 
   public writeUInt(int: number): void {
     this.checkBitAlignment();
-    this.view.setUint32(this.offset += 4, int, this.littleEndian);
+    this.view.setUint32(this.offset, int, this.littleEndian);
+    this.offset += 4;
   }
 
   public readFloat(): number {
     this.checkBitAlignment();
-    return this.view.getFloat32(this.offset += 4, this.littleEndian);
+    const ret = this.view.getFloat32(this.offset += 4, this.littleEndian);
+    this.offset += 4;
+    return ret;
   }
 
   public writeFloat(float: number): void {
     this.checkBitAlignment();
-    this.view.setFloat32(this.offset += 4, float, this.littleEndian);
+    this.view.setFloat32(this.offset, float, this.littleEndian);
+    this.offset += 4;
   }
 
   public readByteString(len: number): string {
@@ -208,11 +223,11 @@ export interface AtomicReader<T, AT> extends Reader<T> {
   readonly atomicArrayConstructor: AtomicArrayConstructor<AT>;
 }
 
-function reader<T>(read: ScalarReader<T>, size: number) {
+function reader<T>(read: ScalarReader<T>, size: number): Reader<T> {
   return { read, size };
 }
 
-function atomicReader<T, AT>(read: ScalarReader<T>, size: number, atomicArrayConstructor: AtomicArrayConstructor<AT>) {
+function atomicReader<T, AT>(read: ScalarReader<T>, size: number, atomicArrayConstructor: AtomicArrayConstructor<AT>): AtomicReader<T, AT> {
   return { read, size, atomicArrayConstructor };
 }
 
