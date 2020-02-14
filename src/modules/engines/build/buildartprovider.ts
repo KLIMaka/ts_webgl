@@ -1,8 +1,25 @@
-import { ArtProvider } from "./api";
+import { Type, Injector } from "../../../libs/module";
 import { Texture } from "../../drawstruct";
-import { ArtInfo, ArtFiles } from "./art";
-import { createTexture } from "../../textures";
 import { warning } from "../../logger";
+import { createTexture } from "../../textures";
+import { ArtProvider } from "./api";
+import { ArtFiles, ArtInfo } from "./art";
+
+export const GL_ = new Type<WebGLRenderingContext>('GL');
+export const ArtFiles_ = new Type<ArtFiles>('ArtFiles');
+export const PAL_ = new Type<Uint8Array>('PAL');
+export const PLUs_ = new Type<Uint8Array[]>('PLUs');
+export const UtilityTextures_ = new Type<{ [index: number]: Texture }>('UtilityTextures');
+
+export function BuildArtProviderConstructor(injector: Injector) {
+  return new BuildArtProvider(
+    injector.getInstance(ArtFiles_),
+    injector.getInstance(PAL_),
+    injector.getInstance(PLUs_),
+    injector.getInstance(UtilityTextures_),
+    injector.getInstance(GL_),
+  );
+}
 
 export class BuildArtProvider implements ArtProvider {
   private textures: Texture[] = [];

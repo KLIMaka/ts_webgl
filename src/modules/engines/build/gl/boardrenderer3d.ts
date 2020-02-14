@@ -12,6 +12,7 @@ import { View3d } from '../view';
 import * as BGL from './buildgl';
 import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables, RenderableProvider, LayeredRenderable, RenderableConsumer } from './builders/renderable';
 import { State } from '../../../stategl';
+import { Type } from '../../../../libs/module';
 
 export class RorLink {
   constructor(readonly srcSpriteId: number, readonly dstSpriteId: number) { }
@@ -30,6 +31,8 @@ export interface Implementation {
   rorLinks(): RorLinks;
   isMirrorPic(picnum: number): boolean;
 }
+export const Implementation_ = new Type<Implementation>('Implementation');
+
 
 let implementation: Implementation;
 let context: BuildContext;

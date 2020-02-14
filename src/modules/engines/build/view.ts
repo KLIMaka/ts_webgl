@@ -12,12 +12,14 @@ import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
 import { RenderablesCache } from "./gl/cache";
-import { GridController } from "./gl/context";
+import { GridController, GridController_ } from "./gl/context";
 import { BuildRenderableProvider, Renderable } from "./gl/builders/renderable";
 import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi";
 import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
 import { build2gl, findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE } from "./utils";
+import { Injector } from "../../../libs/module";
+import { GL_ } from "./buildartprovider";
 
 class TargetImpl implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -350,6 +352,15 @@ export class View3d extends MessageHandlerReflective implements View {
     gl2build(r.dir, this.control.getForwardUnprojected(this.aspect, x, y));
     return r;
   }
+}
+
+export function SwappableViewConstructor(injector: Injector) {
+  return new SwappableView(
+    injector.getInstance(GL_),
+    injector.getInstance(GL_),
+    injector.getInstance(RENDERER3D.Implementation_),
+    injector.getInstance(GridController_),
+  )
 }
 
 export class SwappableView implements View, MessageHandler {

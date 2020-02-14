@@ -1,16 +1,18 @@
 import { Texture } from "../../drawstruct";
 import { ArtInfoProvider } from "./art";
 import { Renderable } from "./gl/builders/renderable";
-import { Context, Message } from "./handlerapi";
+import { Context, Message, MessageHandler } from "./handlerapi";
 import { Entity, Ray } from "./hitscan";
 import { ReferenceTracker } from "./referencetracker";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
+import { Type } from "../../../libs/module";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
   getParallaxTexture(picnum: number): Texture
 }
+export const ArtProvider_ = new Type<ArtProvider>('ArtProvider');
 
 export interface Bindable {
   bind(ctx: BuildContext): void;
@@ -28,16 +30,20 @@ export interface View extends MoveStruct, Bindable {
   dir(): Ray;
   isWireframe(): boolean;
 }
+export const View_ = new Type<View>('View');
 
 export interface BoardManipulator {
   cloneBoard(board: Board): Board;
 }
+export const BoardManipulator_ = new Type<BoardManipulator>('BoardManipulator');
+export const Board_ = new Type<Board>('Borad');
 
 export interface State {
   register<T>(name: string, defaultValue: T): void;
   set<T>(name: string, value: T): void;
   get<T>(name: string): T;
 }
+export const State_ = new Type<State>('State');
 
 export type ContextedValue<T> = (ctx: BuildContext) => T;
 export const constCtxValue = <T>(value: T) => (ctx: BuildContext): T => value
@@ -48,6 +54,7 @@ export interface BuildReferenceTracker {
   readonly sectors: ReferenceTracker<number, number>;
   readonly sprites: ReferenceTracker<number, number>;
 }
+export const BuildReferenceTracker_ = new Type<BuildReferenceTracker>('BuildReferenceTracker');
 
 export interface BuildContext extends Context {
   readonly art: ArtProvider;
@@ -60,4 +67,6 @@ export interface BuildContext extends Context {
   snap(x: number): number;
   commit(): void;
   message(msg: Message): void;
+  addHandler(handler: MessageHandler);
 }
+export const BuildContext_ = new Type<BuildContext>('BuildContext');

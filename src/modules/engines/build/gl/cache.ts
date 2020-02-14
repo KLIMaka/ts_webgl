@@ -12,6 +12,7 @@ import { updateWall2d } from './builders/wall2d';
 import { updateWallHelper, WallHelperBuilder } from './builders/wallhelper';
 import { updateWallPoint } from './builders/wallpointhelper';
 import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable, RenderableProvider, LayeredRenderable } from './builders/renderable';
+import { Type } from '../../../../libs/module';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -129,7 +130,14 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   }
 }
 
-export class RenderablesCache extends MessageHandlerReflective implements Bindable {
+export interface RenderablesCache {
+  readonly geometry: CachedBuildRenderableProvider;
+  readonly helpers: CachedHelperBuildRenderableProvider;
+  readonly topdown: CachedTopDownBuildRenderableProvider;
+}
+export const RenderablesCache_ = new Type<RenderablesCache>('RenderablesCache');
+
+export class RenderablesCacheImpl extends MessageHandlerReflective implements RenderablesCache {
   readonly geometry: CachedBuildRenderableProvider;
   readonly helpers: CachedHelperBuildRenderableProvider;
   readonly topdown: CachedTopDownBuildRenderableProvider;

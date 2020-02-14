@@ -2,9 +2,9 @@ import { detuple0, detuple1 } from "../../../../../libs/mathutils";
 import { vec3 } from "../../../../../libs_js/glmatrix";
 import { Deck, Collection } from "../../../../collections";
 import { error, info } from "../../../../logger";
-import { Bindable, BuildContext, Target } from "../../api";
+import { Bindable, BuildContext, Target, BuildReferenceTracker_ } from "../../api";
 import { deleteLoop, fillInnerLoop, insertSprite, loopWallsFull, nextwall, setFirstWall, deleteSectorFull, deleteLoopFull, loopWalls } from "../../boardutils";
-import { BuildRenderableProvider } from "../../gl/builders/renderable";
+import { BuildRenderableProvider, RenderablesProvider } from "../../gl/builders/renderable";
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from "../../handlerapi";
 import { Entity, EntityType } from "../../hitscan";
 import { Board } from "../../structs";
@@ -15,9 +15,12 @@ import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
 import { WallSegmentsEnt } from "../wallsegment";
+import { Type, Injector } from "../../../../../libs/module";
+import { RenderablesCache_, RenderablesCache } from "../../gl/cache";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
+export const PicNumSelector_ = new Type<PicNumSelector>('PicNumSelector');
 
 const handle = new MovingHandle();
 const MOVE = new Move(0, 0, 0);
@@ -92,13 +95,20 @@ const target_ = vec3.create();
 const start_ = vec3.create();
 const dir_ = vec3.create();
 
+export function SelectionConstructor(injector: Injector) {
+  return new Selection(
+    injector.getInstance(PicNumSelector_),
+    injector.getInstance(RenderablesCache_),
+  )
+}
+
 export class Selection extends MessageHandlerReflective implements Bindable {
   private selection = new MessageHandlerList();
   private valid = true;
 
   constructor(
     private picnumSelector: PicNumSelector,
-    private renderables: BuildRenderableProvider
+    private renderables: RenderablesCache
   ) { super() }
 
   public bind(ctx: BuildContext) {
@@ -282,12 +292,13 @@ export class Selection extends MessageHandlerReflective implements Bindable {
     for (const v of HIGHLIGHT.set.keys()) {
       const type = detuple0(v);
       const id = detuple1(v);
+      const rs = this.renderables.helpers;
       switch (type) {
-        case 0: this.renderables.sector(id).ceiling.accept(msg.consumer); break;
-        case 1: this.renderables.sector(id).floor.accept(msg.consumer); break;
-        case 2: this.renderables.wall(id).accept(msg.consumer); break;
-        case 3: this.renderables.wallPoint(id).accept(msg.consumer); break;
-        case 4: this.renderables.sprite(id).accept(msg.consumer); break;
+        case 0: rs.sector(id).ceiling.accept(msg.consumer); break;
+        case 1: rs.sector(id).floor.accept(msg.consumer); break;
+        case 2: rs.wall(id).accept(msg.consumer); break;
+        case 3: rs.wallPoint(id).accept(msg.consumer); break;
+        case 4: rs.sprite(id).accept(msg.consumer); break;
       }
     }
   }

@@ -1,17 +1,19 @@
 import { cyclic } from '../../../../libs/mathutils';
+import { Type, Injector } from '../../../../libs/module';
 import { Deck } from '../../../collections';
 import { InputState } from '../../../input';
 import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { State as StateGl } from '../../../stategl';
-import { ArtProvider, Bindable, BoardManipulator, BuildContext, BuildReferenceTracker, State, View } from '../api';
+import { ArtProvider, Bindable, BoardManipulator, BuildContext, BuildReferenceTracker, State, View, BuildReferenceTracker_, State_, ArtProvider_, View_, BoardManipulator_, Board_ } from '../api';
 import { BoardInvalidate, Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
 import { messageParser } from '../messageparser';
 import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
-import { LayeredRenderable, RenderablesProvider, SortingRenderable, WrapRenderable, consumerProvider } from './builders/renderable';
+import { consumerProvider, LayeredRenderable, SortingRenderable, WrapRenderable } from './builders/renderable';
+import { inflate } from 'zlib';
 
 class History {
   private history: Deck<Board> = new Deck();
@@ -27,8 +29,6 @@ function snapGrid(coord: number, gridSize: number): number {
 
 class StateImpl implements State {
   private state: { [index: string]: any } = {};
-
-  constructor(readonly ctx: Context) { }
 
   register<T>(name: string, defaultValue: T): void {
     let prevState = this.state[name];
@@ -72,7 +72,15 @@ class BuildReferenceTrackerImpl implements BuildReferenceTracker {
   readonly sprites = new ReferenceTrackerImpl<number>(-1);
 }
 
-export class GridController {
+export interface GridController {
+  setGridSize(size: number): void;
+  getGridSize(): number;
+  incGridSize(): void;
+  decGridSize(): void;
+}
+export const GridController_ = new Type<GridController>('GridController');
+
+export class GridControllerImpl {
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
   private gridSizeIdx = 3;
 
@@ -94,9 +102,25 @@ export class GridController {
   public decGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length) }
 }
 
+export function ContextModule(injector: Injector) {
+  injector.bindInstance(GridController_, new GridControllerImpl());
+  injector.bindInstance(BuildReferenceTracker_, new BuildReferenceTrackerImpl());
+  injector.bindInstance(State_, new StateImpl());
+}
+
+export function ContextConstructor(injector: Injector) {
+  return new Context(
+    injector.getInstance(ArtProvider_),
+    injector.getInstance(Board_),
+    injector.getInstance(View_),
+    injector.getInstance(BoardManipulator_),
+    injector.getInstance(GridController_),
+  );
+}
+
 export class Context extends MessageHandlerReflective implements BuildContext {
   readonly art: ArtProvider;
-  readonly state = new StateImpl(this);
+  readonly state = new StateImpl();
   readonly view: View;
   readonly refs = new BuildReferenceTrackerImpl();
 
@@ -108,7 +132,7 @@ export class Context extends MessageHandlerReflective implements BuildContext {
   private boundObjects = new Set();
   private gridController: GridController;
 
-  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator, gridController: GridController = new GridController()) {
+  constructor(art: ArtProvider, board: Board, view: View, manipulator: BoardManipulator, gridController: GridController) {
     super();
     this.art = art;
     this.boardManipulator = manipulator;

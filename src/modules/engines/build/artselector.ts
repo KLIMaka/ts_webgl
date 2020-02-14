@@ -2,8 +2,12 @@ import { axisSwap, RGBPalPixelProvider } from "../../pixelprovider";
 import { DrawPanel, PixelDataProvider } from "../../ui/drawpanel";
 import { dragElement } from "../../ui/ui";
 import { ArtInfoProvider } from "./art";
+import { Injector } from "../../../libs/module";
+import { ArtProvider_ } from "./api";
+import { PAL_ } from "./buildartprovider";
+import { PicNumCallback } from "./edit/tools/selection";
 
-function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: SelectionCallback) {
+function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: PicNumCallback) {
   let provider = new PixelDataProvider(1024 * 10, (i: number) => {
     let info = arts.getInfo(i);
     if (info == null) return null;
@@ -12,12 +16,18 @@ function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCan
   return new DrawPanel(canvas, provider, cb);
 }
 
-export type SelectionCallback = (id: number) => void;
+export function SelectorConstructor(injector: Injector) {
+  const selector = new Selector(
+    injector.getInstance(ArtProvider_),
+    injector.getInstance(PAL_)
+  )
+  return (cb: PicNumCallback) => selector.modal(cb);
+}
 
 export class Selector {
   private panel: HTMLElement;
   private drawPanel: DrawPanel;
-  private cb: SelectionCallback;
+  private cb: PicNumCallback;
 
   constructor(arts: ArtInfoProvider, pal: Uint8Array) {
     this.panel = document.getElementById('select_tile');
@@ -42,7 +52,7 @@ export class Selector {
     this.panel.style.setProperty('display', 'none');
   }
 
-  public modal(cb: SelectionCallback) {
+  public modal(cb: PicNumCallback) {
     this.cb = cb;
     this.show();
   }
