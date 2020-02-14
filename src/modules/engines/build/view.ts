@@ -11,7 +11,7 @@ import { BoardInvalidate, Frame, Mouse, NamedMessage } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
 import * as BGL from './gl/buildgl';
-import { RenderablesCache } from "./gl/cache";
+import { RenderablesCache, RenderablesCache_ } from "./gl/cache";
 import { GridController, GridController_ } from "./gl/context";
 import { BuildRenderableProvider, Renderable } from "./gl/builders/renderable";
 import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi";
@@ -357,7 +357,7 @@ export class View3d extends MessageHandlerReflective implements View {
 export function SwappableViewConstructor(injector: Injector) {
   return new SwappableView(
     injector.getInstance(GL_),
-    injector.getInstance(GL_),
+    injector.getInstance(RenderablesCache_),
     injector.getInstance(RENDERER3D.Implementation_),
     injector.getInstance(GridController_),
   )

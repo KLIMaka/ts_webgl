@@ -7,27 +7,21 @@ import * as data from './libs/stream';
 import { Stream } from './libs/stream';
 import { Deck } from './modules/collections';
 import { Texture } from './modules/drawstruct';
-import { ArtProvider_, BuildReferenceTracker, View_, BuildContext_ } from './modules/engines/build/api';
+import { ArtProvider_, Board_, BuildContext_, BuildReferenceTracker, View_, BoardManipulator_ } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';
-import { SelectorConstructor } from './modules/engines/build/artselector';
-import { cloneBoard, loadBloodMap } from './modules/engines/build/bloodloader';
+import { SelectorConstructor, RAW_PAL_ } from './modules/engines/build/artselector';
+import { loadBloodMap, cloneBoard } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
-import { loadRorLinks, MIRROR_PIC } from './modules/engines/build/bloodutils';
+import { BloodImplementationConstructor } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
-import { ArtFiles_, BuildArtProviderConstructor, GL_, PAL_, PLUs_, UtilityTextures_ } from './modules/engines/build/buildartprovider';
-import { DrawSector } from './modules/engines/build/edit/tools/drawsector';
-import { JoinSectors } from './modules/engines/build/edit/tools/joinsectors';
-import { PushWall } from './modules/engines/build/edit/tools/pushwall';
-import { PicNumSelector_, Selection, SelectionConstructor } from './modules/engines/build/edit/tools/selection';
-import { SplitWall } from './modules/engines/build/edit/tools/splitwall';
+import { ArtFiles_, BuildArtProviderConstructor, GL_, UtilityTextures_ } from './modules/engines/build/buildartprovider';
+import { PicNumSelector_ } from './modules/engines/build/edit/tools/selection';
 import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
 import * as BGL from './modules/engines/build/gl/buildgl';
 import { RenderablesCacheImpl, RenderablesCache_ } from './modules/engines/build/gl/cache';
-import { Context, ContextConstructor } from './modules/engines/build/gl/context';
-import { Info } from './modules/engines/build/info';
+import { ContextConstructor, ContextModule, KeymapConfig_ } from './modules/engines/build/gl/context';
 import { ReferenceTrackerImpl } from './modules/engines/build/referencetracker';
 import * as RFF from './modules/engines/build/rff';
-import { Statusbar as StatusBar } from './modules/engines/build/statusbar';
 import * as BS from './modules/engines/build/structs';
 import { SwappableViewConstructor } from './modules/engines/build/view';
 import * as GL from './modules/gl';
@@ -102,6 +96,17 @@ function createUtilityTextures(gl: WebGLRenderingContext,
   return textures;
 }
 
+function getPalTexture(gl: WebGLRenderingContext, pal: Uint8Array): Texture {
+  return TEX.createTexture(256, 1, gl, { filter: gl.NEAREST }, pal, gl.RGB, 3);
+}
+
+function getPluTexture(gl: WebGLRenderingContext, PLUs: Uint8Array[], shadowsteps: number): Texture {
+  const tex = new Uint8Array(256 * shadowsteps * PLUs.length);
+  let i = 0;
+  for (const plu of PLUs) tex.set(plu, 256 * shadowsteps * i++);
+  return TEX.createTexture(256, shadowsteps * PLUs.length, gl, { filter: gl.NEAREST }, tex, gl.LUMINANCE);
+}
+
 function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[],
   gridTex: { w: number, h: number, img: Uint8Array },
   pointTex: { w: number, h: number, img: Uint8Array },
@@ -112,42 +117,32 @@ function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uin
 
   INJECTOR.bindInstance(GL_, gl);
   INJECTOR.bindInstance(ArtFiles_, artFiles);
-  INJECTOR.bindInstance(PAL_, pal);
-  INJECTOR.bindInstance(PLUs_, PLUs);
+  INJECTOR.bindInstance(RAW_PAL_, pal);
+  INJECTOR.bindInstance(BGL.PAL_, getPalTexture(gl, pal));
+  INJECTOR.bindInstance(BGL.PLUs_, getPluTexture(gl, PLUs, 64));
+  INJECTOR.bindInstance(BGL.Shadowsteps_, 64);
+  INJECTOR.bindInstance(BGL.Palswaps_, PLUs.length);
   INJECTOR.bindInstance(UtilityTextures_, createUtilityTextures(gl, gridTex, pointTex, fontTex));
   INJECTOR.bindInstance(RenderablesCache_, new RenderablesCacheImpl());
+  INJECTOR.bindInstance(KeymapConfig_, binds);
+  INJECTOR.bindInstance(BoardManipulator_, { cloneBoard });
   INJECTOR.bind(ArtProvider_, BuildArtProviderConstructor);
   INJECTOR.bind(PicNumSelector_, SelectorConstructor);
   INJECTOR.bind(View_, SwappableViewConstructor);
   INJECTOR.bind(BuildContext_, ContextConstructor);
-
-  const stream = new data.Stream(map, true);
-  // const board = createBoard();
-  const board = loadBloodMap(stream);
-
-  INJECTOR.bindInstance(RENDERER3D.Implementation_, {
-    rorLinks: () => loadRorLinks(board),
-    isMirrorPic(picnum: number) { return picnum == MIRROR_PIC },
-  });
+  INJECTOR.bind(RENDERER3D.Implementation_, BloodImplementationConstructor);
+  INJECTOR.bindInstance(Board_, loadBloodMap(new data.Stream(map, true)));
+  INJECTOR.install(ContextModule);
+  // INJECTOR.bindInstance(Board_, createBoard());
 
   const context = INJECTOR.getInstance(BuildContext_);
-  context.loadBinds(binds);
-  context.addHandler(SelectionConstructor(INJECTOR));
-  context.addHandler(new SplitWall());
-  context.addHandler(new JoinSectors());
-  context.addHandler(new DrawSector());
-  context.addHandler(new PushWall());
-  context.addHandler(new Info());
-  context.addHandler(new StatusBar());
-  context.addHandler(view);
-  context.addHandler(cache);
 
-  BGL.init(gl, art.getPalTexture(), art.getPluTexture(), art.getPalswaps(), art.getShadowSteps(), gridTexture, () => {
+  INJECTOR.install(BGL.BuildGlModule(() => {
     GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
       context.frame(INPUT.get(), time);
       INPUT.postFrame();
     });
-  });
+  }));
 }
 
 document.body.oncontextmenu = () => false;

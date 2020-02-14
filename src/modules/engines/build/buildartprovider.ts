@@ -7,15 +7,11 @@ import { ArtFiles, ArtInfo } from "./art";
 
 export const GL_ = new Type<WebGLRenderingContext>('GL');
 export const ArtFiles_ = new Type<ArtFiles>('ArtFiles');
-export const PAL_ = new Type<Uint8Array>('PAL');
-export const PLUs_ = new Type<Uint8Array[]>('PLUs');
 export const UtilityTextures_ = new Type<{ [index: number]: Texture }>('UtilityTextures');
 
 export function BuildArtProviderConstructor(injector: Injector) {
   return new BuildArtProvider(
     injector.getInstance(ArtFiles_),
-    injector.getInstance(PAL_),
-    injector.getInstance(PLUs_),
     injector.getInstance(UtilityTextures_),
     injector.getInstance(GL_),
   );
@@ -25,14 +21,10 @@ export class BuildArtProvider implements ArtProvider {
   private textures: Texture[] = [];
   private parallaxTextures: Texture[] = [];
   private infos: ArtInfo[] = [];
-  private palTexture: Texture = null;
-  private pluTexture: Texture = null;
   private parallaxPics = 16;
 
   constructor(
     private arts: ArtFiles,
-    private pal: Uint8Array,
-    private PLUs: Uint8Array[],
     private addTextures: { [index: number]: Texture },
     private gl: WebGLRenderingContext) { }
 
@@ -111,24 +103,4 @@ export class BuildArtProvider implements ArtProvider {
     this.infos[picnum] = info;
     return info;
   }
-
-  public getPalTexture(): Texture {
-    if (this.palTexture == null)
-      this.palTexture = createTexture(256, 1, this.gl, { filter: this.gl.NEAREST }, this.pal, this.gl.RGB, 3);
-    return this.palTexture;
-  }
-
-  public getPluTexture(): Texture {
-    if (this.pluTexture == null) {
-      let tex = new Uint8Array(256 * this.getShadowSteps() * this.getPalswaps());
-      for (let i = 0; i < this.getPalswaps(); i++) {
-        tex.set(this.PLUs[i], 256 * this.getShadowSteps() * i);
-      }
-      this.pluTexture = createTexture(256, this.getShadowSteps() * this.getPalswaps(), this.gl, { filter: this.gl.NEAREST }, tex, this.gl.LUMINANCE);
-    }
-    return this.pluTexture;
-  }
-
-  public getPalswaps() { return this.PLUs.length }
-  public getShadowSteps() { return 64 }
 }

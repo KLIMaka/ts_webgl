@@ -7,6 +7,7 @@ import { ReferenceTracker } from "./referencetracker";
 import { Board } from "./structs";
 import { MoveStruct } from "./utils";
 import { Type } from "../../../libs/module";
+import { InputState } from "../../input";
 
 export interface ArtProvider extends ArtInfoProvider {
   get(picnum: number): Texture;
@@ -23,7 +24,7 @@ export interface Target {
   readonly entity: Entity;
 }
 
-export interface View extends MoveStruct, Bindable {
+export interface View extends MoveStruct, Bindable, MessageHandler {
   draw(renderable: Renderable): void;
   target(): Target;
   snapTarget(): Target;
@@ -67,6 +68,7 @@ export interface BuildContext extends Context {
   snap(x: number): number;
   commit(): void;
   message(msg: Message): void;
-  addHandler(handler: MessageHandler);
+  addHandler(handler: MessageHandler): void;
+  frame(input: InputState, dt: number): void;
 }
 export const BuildContext_ = new Type<BuildContext>('BuildContext');

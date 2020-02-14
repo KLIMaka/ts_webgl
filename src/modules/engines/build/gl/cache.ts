@@ -1,6 +1,6 @@
 import { Bindable, BuildContext } from '../api';
 import { BoardInvalidate } from '../edit/messages';
-import { MessageHandlerReflective } from '../handlerapi';
+import { MessageHandlerReflective, MessageHandler } from '../handlerapi';
 import { Builder } from './builders/api';
 import { SectorBuilder, updateSector } from './builders/sector';
 import { SectorHelperBuilder, updateSectorHelper } from './builders/sectorhelper';
@@ -130,7 +130,7 @@ export class CachedHelperBuildRenderableProvider implements BuildRenderableProvi
   }
 }
 
-export interface RenderablesCache {
+export interface RenderablesCache extends MessageHandler {
   readonly geometry: CachedBuildRenderableProvider;
   readonly helpers: CachedHelperBuildRenderableProvider;
   readonly topdown: CachedTopDownBuildRenderableProvider;

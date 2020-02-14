@@ -2,9 +2,8 @@ import { axisSwap, RGBPalPixelProvider } from "../../pixelprovider";
 import { DrawPanel, PixelDataProvider } from "../../ui/drawpanel";
 import { dragElement } from "../../ui/ui";
 import { ArtInfoProvider } from "./art";
-import { Injector } from "../../../libs/module";
+import { Injector, Type } from "../../../libs/module";
 import { ArtProvider_ } from "./api";
-import { PAL_ } from "./buildartprovider";
 import { PicNumCallback } from "./edit/tools/selection";
 
 function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCanvasElement, cb: PicNumCallback) {
@@ -16,10 +15,12 @@ function createDrawPanel(arts: ArtInfoProvider, pal: Uint8Array, canvas: HTMLCan
   return new DrawPanel(canvas, provider, cb);
 }
 
+export const RAW_PAL_ = new Type<Uint8Array>('RawPal');
+
 export function SelectorConstructor(injector: Injector) {
   const selector = new Selector(
     injector.getInstance(ArtProvider_),
-    injector.getInstance(PAL_)
+    injector.getInstance(RAW_PAL_)
   )
   return (cb: PicNumCallback) => selector.modal(cb);
 }

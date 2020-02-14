@@ -6,6 +6,25 @@ import { State } from '../../../stategl';
 import { BuildContext } from '../api';
 import * as BUFF from './buffers';
 import { Renderable } from './builders/renderable';
+import { Type, Injector } from '../../../../libs/module';
+import { GL_, UtilityTextures_ } from '../buildartprovider';
+
+export const PAL_ = new Type<DS.Texture>('PAL');
+export const PLUs_ = new Type<DS.Texture>('PLUs');
+export const Shadowsteps_ = new Type<number>('Shadowsteps');
+export const Palswaps_ = new Type<number>('Palswaps');
+
+export function BuildGlModule(cb: () => void) {
+  return (injector: Injector) => init(
+    injector.getInstance(GL_),
+    injector.getInstance(PAL_),
+    injector.getInstance(PLUs_),
+    injector.getInstance(Palswaps_),
+    injector.getInstance(Shadowsteps_),
+    injector.getInstance(UtilityTextures_)[-3],
+    cb
+  )
+}
 
 const SHADER_NAME = 'resources/shaders/build_base1';
 var state: State;

@@ -13,7 +13,14 @@ import { messageParser } from '../messageparser';
 import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
 import { consumerProvider, LayeredRenderable, SortingRenderable, WrapRenderable } from './builders/renderable';
-import { inflate } from 'zlib';
+import { SelectionConstructor } from '../edit/tools/selection';
+import { SplitWall } from '../edit/tools/splitwall';
+import { JoinSectors } from '../edit/tools/joinsectors';
+import { DrawSector } from '../edit/tools/drawsector';
+import { PushWall } from '../edit/tools/pushwall';
+import { Info } from '../info';
+import { RenderablesCache_ } from './cache';
+import { Statusbar } from '../statusbar';
 
 class History {
   private history: Deck<Board> = new Deck();
@@ -102,6 +109,8 @@ export class GridControllerImpl {
   public decGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length) }
 }
 
+export const KeymapConfig_ = new Type<string>('KeymapConfig');
+
 export function ContextModule(injector: Injector) {
   injector.bindInstance(GridController_, new GridControllerImpl());
   injector.bindInstance(BuildReferenceTracker_, new BuildReferenceTrackerImpl());
@@ -109,13 +118,24 @@ export function ContextModule(injector: Injector) {
 }
 
 export function ContextConstructor(injector: Injector) {
-  return new Context(
+  const ctx = new Context(
     injector.getInstance(ArtProvider_),
     injector.getInstance(Board_),
     injector.getInstance(View_),
     injector.getInstance(BoardManipulator_),
     injector.getInstance(GridController_),
   );
+  ctx.loadBinds(injector.getInstance(KeymapConfig_));
+  ctx.addHandler(SelectionConstructor(injector));
+  ctx.addHandler(new SplitWall());
+  ctx.addHandler(new JoinSectors());
+  ctx.addHandler(new DrawSector());
+  ctx.addHandler(new PushWall());
+  ctx.addHandler(new Info());
+  ctx.addHandler(new Statusbar());
+  ctx.addHandler(injector.getInstance(View_));
+  ctx.addHandler(injector.getInstance(RenderablesCache_));
+  return ctx;
 }
 
 export class Context extends MessageHandlerReflective implements BuildContext {
