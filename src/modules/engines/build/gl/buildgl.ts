@@ -1,106 +1,91 @@
-import * as AB from '../../../../libs/asyncbarrier';
+import { Dependency, Injector } from '../../../../libs/injector';
 import * as GLM from '../../../../libs_js/glmatrix';
 import * as DS from '../../../drawstruct';
-import * as SHADER from '../../../shaders';
+import { createShader } from '../../../shaders';
 import { State } from '../../../stategl';
 import { BuildContext } from '../api';
+import { GL_, UtilityTextures_ } from '../buildartprovider';
 import * as BUFF from './buffers';
 import { Renderable } from './builders/renderable';
-import { Type, Injector } from '../../../../libs/module';
-import { GL_, UtilityTextures_ } from '../buildartprovider';
 
-export const PAL_ = new Type<DS.Texture>('PAL');
-export const PLUs_ = new Type<DS.Texture>('PLUs');
-export const Shadowsteps_ = new Type<number>('Shadowsteps');
-export const Palswaps_ = new Type<number>('Palswaps');
+export const PAL_ = new Dependency<DS.Texture>('PAL');
+export const PLUs_ = new Dependency<DS.Texture>('PLUs');
+export const Shadowsteps_ = new Dependency<number>('Shadowsteps');
+export const Palswaps_ = new Dependency<number>('Palswaps');
+export const BuildGl_ = new Dependency<BuildGl>('BuildGL');
 
-export function BuildGlModule(cb: () => void) {
-  return (injector: Injector) => init(
+export function BuildGlConstructor(injector: Injector): Promise<BuildGl> {
+  return new Promise(resolve => Promise.all([
     injector.getInstance(GL_),
     injector.getInstance(PAL_),
     injector.getInstance(PLUs_),
     injector.getInstance(Palswaps_),
     injector.getInstance(Shadowsteps_),
-    injector.getInstance(UtilityTextures_)[-3],
-    cb
-  )
+    injector.getInstance(UtilityTextures_),
+  ]).then(([gl, pal, plus, plaswaps, shadowsteps, util]) => {
+    const buildgl = new BuildGl(plaswaps, shadowsteps, gl, pal, plus, util[-3], () => resolve(buildgl))
+  }));
 }
 
 const SHADER_NAME = 'resources/shaders/build_base1';
-var state: State;
-export function init(gl: WebGLRenderingContext, pal: DS.Texture, plu: DS.Texture, palswaps: number, shadowsteps: number, grid: DS.Texture, cb: () => void) {
-  let palswapsDef = 'PALSWAPS (' + palswaps + '.0)';
-  let shadowstepsDef = 'SHADOWSTEPS (' + shadowsteps + '.0)';
+const inv = GLM.mat4.create();
+const pos = GLM.vec3.create();
+const clipPlane = GLM.vec4.create();
 
-  var ab = AB.create();
-  SHADER.createShader(gl, SHADER_NAME, ['PAL_LIGHTING', palswapsDef, shadowstepsDef], ab.callback('baseShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'PAL_LIGHTING', palswapsDef, shadowstepsDef], ab.callback('spriteShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['FLAT', palswapsDef, shadowstepsDef], ab.callback('baseFlatShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE', 'FLAT', palswapsDef, shadowstepsDef], ab.callback('spriteFlatShader'));
-  SHADER.createShader(gl, SHADER_NAME, ['PARALLAX', palswapsDef, shadowstepsDef], ab.callback('parallax'));
-  SHADER.createShader(gl, SHADER_NAME, ['GRID', palswapsDef, shadowstepsDef], ab.callback('grid'));
-  SHADER.createShader(gl, SHADER_NAME, ['SPRITE_FACE', palswapsDef, shadowstepsDef], ab.callback('spriteFaceShader'));
+export class BuildGl {
+  private state = new State();
 
-  ab.wait((res) => {
-    state = new State();
-    state.registerShader('baseShader', res['baseShader']);
-    state.registerShader('spriteShader', res['spriteShader']);
-    state.registerShader('baseFlatShader', res['baseFlatShader']);
-    state.registerShader('spriteFlatShader', res['spriteFlatShader']);
-    state.registerShader('parallax', res['parallax']);
-    state.registerShader('grid', res['grid']);
-    state.registerShader('spriteFaceShader', res['spriteFaceShader']);
+  constructor(palswaps: number, shadowsteps: number, gl: WebGLRenderingContext, pal: DS.Texture, plus: DS.Texture, grid: DS.Texture, cb: () => void) {
+    const defs = ['PALSWAPS (' + palswaps + '.0)', 'SHADOWSTEPS (' + shadowsteps + '.0)']
+    Promise.all([
+      createShader(gl, SHADER_NAME, [...defs, 'PAL_LIGHTING']).then(shader => this.state.registerShader('baseShader', shader)),
+      createShader(gl, SHADER_NAME, [...defs, 'SPRITE', 'PAL_LIGHTING']).then(shader => this.state.registerShader('spriteShader', shader)),
+      createShader(gl, SHADER_NAME, [...defs, 'FLAT']).then(shader => this.state.registerShader('baseFlatShader', shader)),
+      createShader(gl, SHADER_NAME, [...defs, 'SPRITE', 'FLAT']).then(shader => this.state.registerShader('spriteFlatShader', shader)),
+      createShader(gl, SHADER_NAME, [...defs, 'PARALLAX']).then(shader => this.state.registerShader('parallax', shader)),
+      createShader(gl, SHADER_NAME, [...defs, 'GRID']).then(shader => this.state.registerShader('grid', shader)),
+      createShader(gl, SHADER_NAME, [...defs, 'SPRITE_FACE']).then(shader => this.state.registerShader('spriteFaceShader', shader))
+    ]).then(r => {
+      BUFF.init(gl);
+      this.state.setTexture('pal', pal);
+      this.state.setTexture('plu', plus);
+      this.state.setTexture('grid', grid);
+      cb()
+    });
+  }
 
-    BUFF.init(gl);
-    state.setTexture('pal', pal);
-    state.setTexture('plu', plu);
-    state.setTexture('grid', grid);
+  public setProjectionMatrix(proj: GLM.Mat4Array) { this.state.setUniform('P', proj) }
+  public setPosition(pos: GLM.Vec3Array) { this.state.setUniform('eyepos', pos) }
 
-    cb();
-  });
+  public setViewMatrix(view: GLM.Mat4Array) {
+    this.state.setUniform('V', view);
+    if (this.state.isUniformEnabled('IV')) this.state.setUniform('IV', GLM.mat4.invert(inv, view));
+  }
+
+  public setCursorPosiotion(x: number, y: number, z: number) {
+    GLM.vec3.set(pos, x, y, z);
+    this.state.setUniform('curpos', pos);
+  }
+
+  public setClipPlane(x: number, y: number, z: number, w: number) {
+    GLM.vec4.set(clipPlane, x, y, z, w);
+    this.state.setUniform('clipPlane', clipPlane);
+  }
+
+  public draw(ctx: BuildContext, gl: WebGLRenderingContext, renderable: Renderable) {
+    if (renderable == null) return;
+    renderable.draw(ctx, gl, this.state);
+  }
+
+  public newFrame(gl: WebGLRenderingContext) {
+    gl.clearColor(0.2, 0.2, 0.2, 1.0);
+    gl.clearStencil(0);
+    gl.clearDepth(1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+    this.state.setUniform('sys', [performance.now(), 2 / gl.drawingBufferWidth, 2 / gl.drawingBufferHeight, 0]);
+  }
+
+  public flush(gl: WebGLRenderingContext) {
+    this.state.flush(gl);
+  }
 }
-
-export function setProjectionMatrix(proj: GLM.Mat4Array) {
-  state.setUniform('P', proj);
-}
-
-let inv = GLM.mat4.create();
-export function setViewMatrix(view: GLM.Mat4Array) {
-  state.setUniform('V', view);
-  if (state.isUniformEnabled('IV')) state.setUniform('IV', GLM.mat4.invert(inv, view));
-}
-
-export function setPosition(pos: GLM.Vec3Array) {
-  state.setUniform('eyepos', pos);
-}
-
-let pos = GLM.vec3.create();
-export function setCursorPosiotion(x: number, y: number, z: number) {
-  GLM.vec3.set(pos, x, y, z);
-  state.setUniform('curpos', pos);
-}
-
-let clipPlane = GLM.vec4.create();
-export function setClipPlane(x: number, y: number, z: number, w: number) {
-  GLM.vec4.set(clipPlane, x, y, z, w);
-  state.setUniform('clipPlane', clipPlane);
-}
-
-export function draw(ctx: BuildContext, gl: WebGLRenderingContext, renderable: Renderable) {
-  if (renderable == null) return;
-  renderable.draw(ctx, gl, state);
-}
-
-export function newFrame(gl: WebGLRenderingContext) {
-  gl.clearColor(0.2, 0.2, 0.2, 1.0);
-  gl.clearStencil(0);
-  gl.clearDepth(1);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-  state.setUniform('sys', [performance.now(), 2 / gl.drawingBufferWidth, 2 / gl.drawingBufferHeight, 0]);
-}
-
-export function flush(gl: WebGLRenderingContext) {
-  state.flush(gl);
-}
-
-

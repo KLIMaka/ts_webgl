@@ -1,11 +1,11 @@
 import { cyclic } from '../../../../libs/mathutils';
-import { Type, Injector } from '../../../../libs/module';
+import { Dependency, Injector } from '../../../../libs/injector';
 import { Deck } from '../../../collections';
 import { InputState } from '../../../input';
 import { error, warning } from '../../../logger';
 import * as PROFILE from '../../../profiler';
 import { State as StateGl } from '../../../stategl';
-import { ArtProvider, Bindable, BoardManipulator, BuildContext, BuildReferenceTracker, State, View, BuildReferenceTracker_, State_, ArtProvider_, View_, BoardManipulator_, Board_ } from '../api';
+import { ArtProvider, Bindable, BoardManipulator, BuildContext, BuildReferenceTracker, State, View, BuildReferenceTracker_, State_, ArtProvider_, View_, BoardManipulator_, Board_, BuildContext_ } from '../api';
 import { BoardInvalidate, Frame, Mouse, NamedMessage, PostFrame, Render } from '../edit/messages';
 import { Message, MessageHandler, MessageHandlerList, MessageHandlerReflective } from '../handlerapi';
 import { Binder, loadBinds } from '../keymap';
@@ -13,7 +13,7 @@ import { messageParser } from '../messageparser';
 import { ReferenceTrackerImpl } from '../referencetracker';
 import { Board } from '../structs';
 import { consumerProvider, LayeredRenderable, SortingRenderable, WrapRenderable } from './builders/renderable';
-import { SelectionConstructor } from '../edit/tools/selection';
+import { SelectionConstructor, Selection_ } from '../edit/tools/selection';
 import { SplitWall } from '../edit/tools/splitwall';
 import { JoinSectors } from '../edit/tools/joinsectors';
 import { DrawSector } from '../edit/tools/drawsector';
@@ -85,7 +85,7 @@ export interface GridController {
   incGridSize(): void;
   decGridSize(): void;
 }
-export const GridController_ = new Type<GridController>('GridController');
+export const GridController_ = new Dependency<GridController>('GridController');
 
 export class GridControllerImpl {
   private gridSizes = [16, 32, 64, 128, 256, 512, 1024];
@@ -109,33 +109,40 @@ export class GridControllerImpl {
   public decGridSize() { this.gridSizeIdx = cyclic(this.gridSizeIdx - 1, this.gridSizes.length) }
 }
 
-export const KeymapConfig_ = new Type<string>('KeymapConfig');
+export const KeymapConfig_ = new Dependency<string>('KeymapConfig');
 
 export function ContextModule(injector: Injector) {
-  injector.bindInstance(GridController_, new GridControllerImpl());
-  injector.bindInstance(BuildReferenceTracker_, new BuildReferenceTrackerImpl());
-  injector.bindInstance(State_, new StateImpl());
+  injector.bindInstance(GridController_, Promise.resolve(new GridControllerImpl()));
+  injector.bindInstance(BuildReferenceTracker_, Promise.resolve(new BuildReferenceTrackerImpl()));
+  injector.bindInstance(State_, Promise.resolve(new StateImpl()));
+  injector.bind(Selection_, SelectionConstructor);
+  injector.bind(BuildContext_, ContextConstructor);
 }
 
-export function ContextConstructor(injector: Injector) {
-  const ctx = new Context(
+export async function ContextConstructor(injector: Injector) {
+  return Promise.all([
     injector.getInstance(ArtProvider_),
     injector.getInstance(Board_),
     injector.getInstance(View_),
     injector.getInstance(BoardManipulator_),
     injector.getInstance(GridController_),
-  );
-  ctx.loadBinds(injector.getInstance(KeymapConfig_));
-  ctx.addHandler(SelectionConstructor(injector));
-  ctx.addHandler(new SplitWall());
-  ctx.addHandler(new JoinSectors());
-  ctx.addHandler(new DrawSector());
-  ctx.addHandler(new PushWall());
-  ctx.addHandler(new Info());
-  ctx.addHandler(new Statusbar());
-  ctx.addHandler(injector.getInstance(View_));
-  ctx.addHandler(injector.getInstance(RenderablesCache_));
-  return ctx;
+    injector.getInstance(RenderablesCache_),
+    injector.getInstance(KeymapConfig_),
+    injector.getInstance(Selection_),
+  ]).then(([art, board, view, manipulator, ctrl, cache, binds, selection]) => {
+    const ctx = new Context(art, board, view, manipulator, ctrl);
+    ctx.loadBinds(binds);
+    ctx.addHandler(selection);
+    ctx.addHandler(new SplitWall());
+    ctx.addHandler(new JoinSectors());
+    ctx.addHandler(new DrawSector());
+    ctx.addHandler(new PushWall());
+    ctx.addHandler(new Info());
+    ctx.addHandler(new Statusbar());
+    ctx.addHandler(view);
+    ctx.addHandler(cache);
+    return ctx;
+  })
 }
 
 export class Context extends MessageHandlerReflective implements BuildContext {

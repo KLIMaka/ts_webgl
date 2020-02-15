@@ -7,7 +7,7 @@ import { AllBoardVisitorResult, VisResult } from '../boardvisitor';
 import { Board } from '../structs';
 import { View2d } from '../view';
 import { BuildRenderableProvider, GridBuilder, LayeredRenderable, LayeredRenderables, RenderableProvider, SolidBuilder, SortingRenderable } from './builders/renderable';
-import * as BGL from './buildgl';
+import { BuildGl } from './buildgl';
 
 let grid: GridBuilder;
 const scale = GLM.vec3.create();
@@ -56,8 +56,10 @@ function getGrid(controller: Controller2D) {
 
 const idMat4 = GLM.mat4.create();
 let context: BuildContext;
-export function init(gl: WebGLRenderingContext, ctx: BuildContext) {
+let BGL: BuildGl;
+export function init(gl: WebGLRenderingContext, ctx: BuildContext, bgl: BuildGl) {
   context = ctx;
+  BGL = bgl;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);

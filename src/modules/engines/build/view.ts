@@ -10,7 +10,6 @@ import { closestWallInSector, closestWallPoint, closestWallSegment, closestWallS
 import { BoardInvalidate, Frame, Mouse, NamedMessage } from "./edit/messages";
 import * as RENDERER2D from './gl/boardrenderer2d';
 import * as RENDERER3D from './gl/boardrenderer3d';
-import * as BGL from './gl/buildgl';
 import { RenderablesCache, RenderablesCache_ } from "./gl/cache";
 import { GridController, GridController_ } from "./gl/context";
 import { BuildRenderableProvider, Renderable } from "./gl/builders/renderable";
@@ -18,8 +17,9 @@ import { Message, MessageHandler, MessageHandlerReflective } from "./handlerapi"
 import { Entity, EntityType, Hitscan, hitscan, Ray } from "./hitscan";
 import { Sprite } from "./structs";
 import { build2gl, findSector, getPlayerStart, gl2build, inSector, sectorOfWall, ZSCALE } from "./utils";
-import { Injector } from "../../../libs/module";
+import { Injector } from "../../../libs/injector";
 import { GL_ } from "./buildartprovider";
+import { BuildGl_, BuildGl } from "./gl/buildgl";
 
 class TargetImpl implements Target {
   public coords_: [number, number, number] = [0, 0, 0];
@@ -58,12 +58,14 @@ export class View2d extends MessageHandlerReflective implements View {
   private direction = new CachedValue((r: Ray) => this.updateDir(r), new Ray());
   private gridController: GridController;
   private upp = new DelayedValue(100, 1, NumberInterpolator);
+  private buildgl: BuildGl;
 
-  constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, gridController: GridController) {
+  constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, gridController: GridController, buildgl: BuildGl) {
     super();
     this.gl = gl;
     this.renderables = renderables;
     this.gridController = gridController;
+    this.buildgl = buildgl;
   }
 
   get sec() { return this.playerstart.sectnum }
@@ -75,7 +77,7 @@ export class View2d extends MessageHandlerReflective implements View {
   getTransformMatrix() { return this.control.getTransformMatrix() }
   getPosition() { return this.pointer }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.y) }
-  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
+  draw(renderable: Renderable) { this.buildgl.draw(this.ctx, this.gl, renderable) }
   target(): Target { return this.hit.get() }
   snapTarget(): Target { return this.snapTargetValue.get() }
   dir(): Ray { return this.direction.get() }
@@ -99,7 +101,7 @@ export class View2d extends MessageHandlerReflective implements View {
     const max = this.control.getPointerPosition(this.pointer, 1, 1);
     const campos = this.control.getPosition();
     const dist = len2d(max[0] - campos[0], max[2] - campos[2]);
-    BGL.newFrame(this.gl);
+    this.buildgl.newFrame(this.gl);
     RENDERER2D.draw(this, campos, dist, this.control);
 
     const state = ctx.state;
@@ -130,7 +132,7 @@ export class View2d extends MessageHandlerReflective implements View {
     this.control.setPosition(this.playerstart.x, this.playerstart.y);
     ctx.state.register('zoom+', false);
     ctx.state.register('zoom-', false);
-    RENDERER2D.init(this.gl, ctx);
+    RENDERER2D.init(this.gl, ctx, this.buildgl);
   }
 
   private updateHitscan(hit: Hitscan) {
@@ -187,12 +189,14 @@ export class View3d extends MessageHandlerReflective implements View {
   private cursor = vec3.create();
   private forwardDamper = new DelayedValue(50, 0, NumberInterpolator);
   private sideDamper = new DelayedValue(50, 0, NumberInterpolator);
+  private buildgl: BuildGl;
 
-  constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, impl: RENDERER3D.Implementation) {
+  constructor(gl: WebGLRenderingContext, renderables: BuildRenderableProvider, impl: RENDERER3D.Implementation, buildgl: BuildGl) {
     super();
     this.gl = gl;
     this.renderables = renderables;
     this.impl = impl;
+    this.buildgl = buildgl;
   }
 
   get sec() { return this.playerstart.sectnum }
@@ -205,7 +209,7 @@ export class View3d extends MessageHandlerReflective implements View {
   getPosition() { return this.control.getPosition() }
   getForward() { return this.control.getForward() }
   activate() { this.control.setPosition(this.playerstart.x, this.playerstart.z / ZSCALE + 1024, this.playerstart.y) }
-  draw(renderable: Renderable) { BGL.draw(this.ctx, this.gl, renderable) }
+  draw(renderable: Renderable) { this.buildgl.draw(this.ctx, this.gl, renderable) }
   target(): Target { return this.hit.get() }
   snapTarget(): Target { return this.snapTargetValue.get() }
   dir(): Ray { return this.direction.get() }
@@ -220,9 +224,9 @@ export class View3d extends MessageHandlerReflective implements View {
   Frame(msg: Frame, ctx: BuildContext) {
     this.invalidateTarget();
     build2gl(this.cursor, this.snapTarget().coords);
-    BGL.setCursorPosiotion(this.cursor[0], this.cursor[1], this.cursor[2]);
+    this.buildgl.setCursorPosiotion(this.cursor[0], this.cursor[1], this.cursor[2]);
     this.aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
-    BGL.newFrame(this.gl);
+    this.buildgl.newFrame(this.gl);
     RENDERER3D.draw(this);
 
     const state = ctx.state;
@@ -267,7 +271,7 @@ export class View3d extends MessageHandlerReflective implements View {
     ctx.state.register('strafe_left', false);
     ctx.state.register('strafe_right', false);
     ctx.state.register('camera_speed', 8000);
-    RENDERER3D.init(this.gl, ctx, this.impl);
+    RENDERER3D.init(this.gl, ctx, this.impl, this.buildgl);
   }
 
   private updateHitscan(hit: Hitscan): Target {
@@ -354,13 +358,14 @@ export class View3d extends MessageHandlerReflective implements View {
   }
 }
 
-export function SwappableViewConstructor(injector: Injector) {
-  return new SwappableView(
+export async function SwappableViewConstructor(injector: Injector) {
+  return Promise.all([
     injector.getInstance(GL_),
     injector.getInstance(RenderablesCache_),
     injector.getInstance(RENDERER3D.Implementation_),
     injector.getInstance(GridController_),
-  )
+    injector.getInstance(BuildGl_)
+  ]).then(([gl, cache, impl, ctr, buildgl]) => new SwappableView(gl, cache, impl, ctr, buildgl));
 }
 
 export class SwappableView implements View, MessageHandler {
@@ -372,13 +377,15 @@ export class SwappableView implements View, MessageHandler {
   private impl: RENDERER3D.Implementation;
   private gridController: GridController;
   private lastGridScale: number;
+  private buildgl: BuildGl;
 
-  constructor(gl: WebGLRenderingContext, renderables: RenderablesCache, impl: RENDERER3D.Implementation, gridController: GridController) {
+  constructor(gl: WebGLRenderingContext, renderables: RenderablesCache, impl: RENDERER3D.Implementation, gridController: GridController, buildgl: BuildGl) {
     this.gl = gl;
     this.renderables = renderables;
     this.impl = impl;
     this.gridController = gridController;
     this.lastGridScale = gridController.getGridSize();
+    this.buildgl = buildgl;
   }
 
   get sec() { return this.view.sec }
@@ -406,9 +413,9 @@ export class SwappableView implements View, MessageHandler {
 
   bind(ctx: BuildContext) {
     ctx.state.register('lookaim', false);
-    this.view2d = new View2d(this.gl, this.renderables.topdown, this.gridController);
+    this.view2d = new View2d(this.gl, this.renderables.topdown, this.gridController, this.buildgl);
     this.view2d.bind(ctx);
-    this.view3d = new View3d(this.gl, this.renderables.geometry, this.impl);
+    this.view3d = new View3d(this.gl, this.renderables.geometry, this.impl, this.buildgl);
     this.view3d.bind(ctx);
     this.view = this.view3d;
   }

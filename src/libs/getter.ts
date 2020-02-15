@@ -16,23 +16,21 @@ function getRequest(fname: string, type: XMLHttpRequestResponseType, cache: { [i
   return xhr;
 }
 
-export function preload(fname: string, callback: (b: ArrayBuffer) => void, progressCallback: (percent: number) => void = () => { }): void {
+export function preload(fname: string, progressCallback: (percent: number) => void = () => { }): Promise<ArrayBuffer> {
   const file = cache[fname];
-  if (file != undefined) {
-    callback(file);
-    return;
-  }
-  const xhr = getRequest(fname, 'arraybuffer', xhrCache);
-  xhr.addEventListener('load', () => { cache[fname] = xhr.response; callback(xhr.response) });
-  xhr.addEventListener('progress', (evt) => { progressCallback(evt.loaded / evt.total); });
+  if (file != undefined) return Promise.resolve(file);
+  return new Promise((resolve) => {
+    const xhr = getRequest(fname, 'arraybuffer', xhrCache);
+    xhr.addEventListener('load', () => { cache[fname] = xhr.response; resolve(xhr.response) });
+    xhr.addEventListener('progress', (evt) => { progressCallback(evt.loaded / evt.total); });
+  });
 }
 
-export function preloadString(fname: string, callback: (s: string) => void): void {
-  const file = cacheString[fname];
-  if (file != undefined) {
-    callback(file);
-    return;
-  }
-  const xhr = getRequest(fname, 'text', xhrCacheString);
-  xhr.addEventListener('load', () => { cacheString[fname] = xhr.response; callback(xhr.response); });
+export function preloadString(fname: string): Promise<string> {
+  const str = cacheString[fname];
+  if (str != undefined) return Promise.resolve(str);
+  return new Promise((resolve) => {
+    const xhr = getRequest(fname, 'text', xhrCacheString);
+    xhr.addEventListener('load', () => { cacheString[fname] = xhr.response; resolve(xhr.response); });
+  })
 }

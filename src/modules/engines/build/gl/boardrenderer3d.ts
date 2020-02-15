@@ -9,10 +9,10 @@ import { AllBoardVisitorResult, createSectorCollector, createWallCollector, PvsB
 import { Board } from '../structs';
 import { wallVisible, ZSCALE } from '../utils';
 import { View3d } from '../view';
-import * as BGL from './buildgl';
 import { BuildRenderableProvider, Renderable, WrapRenderable, Renderables, RenderableProvider, LayeredRenderable, RenderableConsumer } from './builders/renderable';
 import { State } from '../../../stategl';
-import { Type } from '../../../../libs/module';
+import { Dependency } from '../../../../libs/injector';
+import { BuildGl } from './buildgl';
 
 export class RorLink {
   constructor(readonly srcSpriteId: number, readonly dstSpriteId: number) { }
@@ -31,15 +31,17 @@ export interface Implementation {
   rorLinks(): RorLinks;
   isMirrorPic(picnum: number): boolean;
 }
-export const Implementation_ = new Type<Implementation>('Implementation');
+export const Implementation_ = new Dependency<Implementation>('Implementation');
 
 
 let implementation: Implementation;
 let context: BuildContext;
+let BGL: BuildGl;
 
-export function init(gl: WebGLRenderingContext, ctx: BuildContext, impl: Implementation) {
+export function init(gl: WebGLRenderingContext, ctx: BuildContext, impl: Implementation, bgl: BuildGl) {
   context = ctx;
   implementation = impl;
+  BGL = bgl;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);

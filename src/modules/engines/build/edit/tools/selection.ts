@@ -15,12 +15,12 @@ import { SectorEnt } from "../sector";
 import { SpriteEnt } from "../sprite";
 import { WallEnt } from "../wall";
 import { WallSegmentsEnt } from "../wallsegment";
-import { Type, Injector } from "../../../../../libs/module";
+import { Dependency, Injector } from "../../../../../libs/injector";
 import { RenderablesCache_, RenderablesCache } from "../../gl/cache";
 
 export type PicNumCallback = (picnum: number) => void;
 export type PicNumSelector = (cb: PicNumCallback) => void;
-export const PicNumSelector_ = new Type<PicNumSelector>('PicNumSelector');
+export const PicNumSelector_ = new Dependency<PicNumSelector>('PicNumSelector');
 
 const handle = new MovingHandle();
 const MOVE = new Move(0, 0, 0);
@@ -95,11 +95,11 @@ const target_ = vec3.create();
 const start_ = vec3.create();
 const dir_ = vec3.create();
 
-export function SelectionConstructor(injector: Injector) {
-  return new Selection(
-    injector.getInstance(PicNumSelector_),
-    injector.getInstance(RenderablesCache_),
-  )
+export const Selection_ = new Dependency<Selection>('Selection');
+
+export async function SelectionConstructor(injector: Injector) {
+  const promise = Promise.all([injector.getInstance(PicNumSelector_), injector.getInstance(RenderablesCache_)]);
+  return promise.then(([picselector, cache]) => new Selection(picselector, cache));
 }
 
 export class Selection extends MessageHandlerReflective implements Bindable {

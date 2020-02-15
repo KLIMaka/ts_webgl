@@ -12,7 +12,7 @@ import { updateWall2d } from './builders/wall2d';
 import { updateWallHelper, WallHelperBuilder } from './builders/wallhelper';
 import { updateWallPoint } from './builders/wallpointhelper';
 import { BuildRenderableProvider, Renderable, SectorRenderable, WallRenderable, RenderableProvider, LayeredRenderable } from './builders/renderable';
-import { Type } from '../../../../libs/module';
+import { Dependency } from '../../../../libs/injector';
 
 class Entry<T> {
   constructor(public value: T, public valid: boolean = false) { }
@@ -135,7 +135,7 @@ export interface RenderablesCache extends MessageHandler {
   readonly helpers: CachedHelperBuildRenderableProvider;
   readonly topdown: CachedTopDownBuildRenderableProvider;
 }
-export const RenderablesCache_ = new Type<RenderablesCache>('RenderablesCache');
+export const RenderablesCache_ = new Dependency<RenderablesCache>('RenderablesCache');
 
 export class RenderablesCacheImpl extends MessageHandlerReflective implements RenderablesCache {
   readonly geometry: CachedBuildRenderableProvider;

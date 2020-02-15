@@ -1,33 +1,22 @@
 import { Definition, Shader } from "./drawstruct";
 import { AsyncBarrier } from "../libs/asyncbarrier";
 import { preloadString } from "../libs/getter";
-
-let defaultFSH = 'void main(){gl_FragColor = vec4(0.0);}';
-let defaultVSH = 'void main(){gl_Position = vec4(0.0);}';
-let defaultProgram: WebGLProgram = null;
+import { InvalidCapture } from "./lex/parser";
 
 export class ShaderImpl implements Shader {
-
   private program: WebGLProgram;
   private definitions: Definitions;
 
   readonly uniforms: WebGLUniformLocation[] = [];
   readonly attribs: number[] = [];
-  readonly initCallback: (shader: Shader) => void;
   readonly uniformIndex: { [index: string]: number } = {};
   readonly attributeIndex: { [index: string]: number } = {};
 
-  constructor(prog: WebGLProgram, initCallback: (shader: Shader) => void = () => { }) {
-    this.program = prog;
-    this.initCallback = initCallback;
-  }
-
-  public init(gl: WebGLRenderingContext, prog: WebGLProgram, defs: Definitions): void {
+  public constructor(gl: WebGLRenderingContext, prog: WebGLProgram, defs: Definitions) {
     this.program = prog;
     this.definitions = defs;
     this.initUniformLocations(gl);
     this.initAttributeLocations(gl);
-    this.initCallback(this);
   }
 
   private initUniformLocations(gl: WebGLRenderingContext): void {
@@ -71,34 +60,16 @@ export class ShaderImpl implements Shader {
   }
 }
 
-export function createShader(gl: WebGLRenderingContext, name: string, defines: string[] = [], initCallback: (shader: Shader) => void = null): Shader {
-  if (defaultProgram == null) {
-    defaultProgram = compileProgram(gl, defaultVSH, defaultFSH);
-  }
-
-  let shader = new ShaderImpl(defaultProgram, initCallback);
-  let barrier = new AsyncBarrier();
-  let deftext = prepareDefines(defines);
-  preloadString(name + '.vsh', barrier.callback('vsh'));
-  preloadString(name + '.fsh', barrier.callback('fsh'));
-  barrier.wait((res) => { initShader(gl, shader, deftext + res.vsh, deftext + res.fsh) });
-  return shader;
-}
-
-export function createShaderFromSrc(gl: WebGLRenderingContext, vsh: string, fsh: string): Shader {
-  let shader = new ShaderImpl(compileProgram(gl, vsh, fsh));
-  initShader(gl, shader, vsh, fsh);
-  return shader;
-}
-
-function initShader(gl: WebGLRenderingContext, shader: ShaderImpl, vsh: string, fsh: string) {
-  let barrier = new AsyncBarrier();
-  preprocess(vsh, barrier.callback('vsh'));
-  preprocess(fsh, barrier.callback('fsh'));
-  barrier.wait((res) => {
-    let program = compileProgram(gl, res.vsh, res.fsh);
-    let defs = processShaders(gl, program);
-    shader.init(gl, program, defs);
+export function createShader(gl: WebGLRenderingContext, name: string, defines: string[] = []): Promise<Shader> {
+  return new Promise(resolve => {
+    const deftext = prepareDefines(defines);
+    Promise.all([preloadString(name + '.vsh'), preloadString(name + '.fsh')]).then(([vsh, fsh]) => {
+      Promise.all([preprocess(vsh), preprocess(fsh)]).then(([pvhs, pfsh]) => {
+        let program = compileProgram(gl, deftext + pvhs, deftext + pfsh);
+        let defs = processShaders(gl, program);
+        resolve(new ShaderImpl(gl, program, defs))
+      })
+    })
   });
 }
 
@@ -184,24 +155,17 @@ function type2String(type: number): string {
   }
 }
 
-function preprocess(shader: string, cb: (sh: string) => void): void {
-  let lines = shader.split("\n");
-  let barrier = new AsyncBarrier();
-  for (let i = 0; i < lines.length; i++) {
-    let l = lines[i];
-    let m = l.match(/^#include +"([^"]+)"/);
-    if (m != null) {
-      preloadString(m[1], barrier.callback(i + ''));
-    }
-  }
-  barrier.wait((incs) => {
-    let res = [];
+function preprocess(shader: string): Promise<string> {
+  return new Promise(resolve => {
+    const lines = shader.split("\n");
+    const includes: Promise<string>[] = [];
     for (let i = 0; i < lines.length; i++) {
-      let inc = incs[i + ''];
-      res.push(inc == undefined ? lines[i] : inc);
+      let l = lines[i];
+      const m = l.match(/^#include +"([^"]+)"/);
+      includes.push(m != null ? preloadString(m[1]) : Promise.resolve(l));
     }
-    cb(res.join("\n"));
-  });
+    Promise.all(includes).then(lines => resolve(lines.join('\n')));
+  })
 }
 
 const setters = {

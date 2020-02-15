@@ -1,33 +1,32 @@
-import { AsyncBarrier } from './libs/asyncbarrier';
-import * as browser from './libs/browser';
-import * as getter from './libs/getter';
-import * as IU from './libs/imgutils';
-import { INJECTOR } from './libs/module';
-import * as data from './libs/stream';
+import { getQueryVariable } from './libs/browser';
+import { preload, preloadString } from './libs/getter';
+import { loadImage } from './libs/imgutils';
+import { Dependency, Injector } from './libs/injector';
 import { Stream } from './libs/stream';
-import { Deck } from './modules/collections';
+import { Deck, map } from './modules/collections';
 import { Texture } from './modules/drawstruct';
-import { ArtProvider_, Board_, BuildContext_, BuildReferenceTracker, View_, BoardManipulator_ } from './modules/engines/build/api';
+import { ArtProvider_, BoardManipulator_, Board_, BuildContext_, BuildReferenceTracker, View_ } from './modules/engines/build/api';
 import * as ART from './modules/engines/build/art';
-import { SelectorConstructor, RAW_PAL_ } from './modules/engines/build/artselector';
-import { loadBloodMap, cloneBoard } from './modules/engines/build/bloodloader';
+import { ArtFiles } from './modules/engines/build/art';
+import { RAW_PAL_, SelectorConstructor } from './modules/engines/build/artselector';
+import { cloneBoard, loadBloodMap } from './modules/engines/build/bloodloader';
 import { BloodBoard, BloodSprite } from './modules/engines/build/bloodstructs';
 import { BloodImplementationConstructor } from './modules/engines/build/bloodutils';
 import { createNewSector } from './modules/engines/build/boardutils';
 import { ArtFiles_, BuildArtProviderConstructor, GL_, UtilityTextures_ } from './modules/engines/build/buildartprovider';
 import { PicNumSelector_ } from './modules/engines/build/edit/tools/selection';
-import * as RENDERER3D from './modules/engines/build/gl/boardrenderer3d';
-import * as BGL from './modules/engines/build/gl/buildgl';
+import { Implementation_ } from './modules/engines/build/gl/boardrenderer3d';
+import { BuildGlConstructor, BuildGl_, Palswaps_, PAL_, PLUs_, Shadowsteps_ } from './modules/engines/build/gl/buildgl';
 import { RenderablesCacheImpl, RenderablesCache_ } from './modules/engines/build/gl/cache';
-import { ContextConstructor, ContextModule, KeymapConfig_ } from './modules/engines/build/gl/context';
+import { ContextModule, KeymapConfig_ } from './modules/engines/build/gl/context';
 import { ReferenceTrackerImpl } from './modules/engines/build/referencetracker';
 import * as RFF from './modules/engines/build/rff';
-import * as BS from './modules/engines/build/structs';
+import { SpriteStats } from './modules/engines/build/structs';
 import { SwappableViewConstructor } from './modules/engines/build/view';
-import * as GL from './modules/gl';
+import { animate, createContextFromCanvas } from './modules/gl';
 import * as INPUT from './modules/input';
 import { addLogAppender, CONSOLE } from './modules/logger';
-import * as TEX from './modules/textures';
+import { createTexture } from './modules/textures';
 
 
 function createBoard() {
@@ -79,102 +78,64 @@ function createBoard() {
   sprite.picnum = 0;
   sprite.lotag = 1;
   sprite.sectnum = 0;
-  sprite.cstat = new BS.SpriteStats();
+  sprite.cstat = new SpriteStats();
   sprite.extra = 65535;
   board.sprites.push(sprite);
   return board;
 }
 
-function createUtilityTextures(gl: WebGLRenderingContext,
-  gridTex: { w: number, h: number, img: Uint8Array },
-  pointTex: { w: number, h: number, img: Uint8Array },
-  fontTex: { w: number, h: number, img: Uint8Array }) {
-  const textures: { [index: number]: Texture } = {};
-  textures[-1] = TEX.createTexture(pointTex.w, pointTex.h, gl, { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE }, pointTex.img, gl.RGBA);
-  textures[-2] = TEX.createTexture(fontTex.w, fontTex.h, gl, { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE }, fontTex.img, gl.RGBA);
-  textures[-3] = TEX.createTexture(gridTex.w, gridTex.h, gl, { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.REPEAT, aniso: true }, gridTex.img, gl.RGBA);
-  return textures;
+async function loadTexture(gl: WebGLRenderingContext, name: string, options: any = {}, format = gl.RGBA, bpp = 4) {
+  return loadImage(name).then(img => createTexture(img[0], img[1], gl, options, img[2], format, bpp))
 }
 
-function getPalTexture(gl: WebGLRenderingContext, pal: Uint8Array): Texture {
-  return TEX.createTexture(256, 1, gl, { filter: gl.NEAREST }, pal, gl.RGB, 3);
+async function loadUtilityTextures(textures: [number, Promise<Texture>][]) {
+  return Promise.all(map(textures, t => t[1])).then(
+    _ => {
+      const result: { [index: number]: Texture } = {};
+      for (const t of textures) t[1].then(tex => result[t[0]] = tex);
+      return result;
+    }
+  )
 }
 
-function getPluTexture(gl: WebGLRenderingContext, PLUs: Uint8Array[], shadowsteps: number): Texture {
-  const tex = new Uint8Array(256 * shadowsteps * PLUs.length);
-  let i = 0;
-  for (const plu of PLUs) tex.set(plu, 256 * shadowsteps * i++);
-  return TEX.createTexture(256, shadowsteps * PLUs.length, gl, { filter: gl.NEAREST }, tex, gl.LUMINANCE);
+async function loadArtFiles(): Promise<ArtFiles> {
+  const path = 'resources/engines/blood/';
+  const artPromises: Promise<ART.ArtFile>[] = [];
+  for (let a = 0; a < 18; a++)     artPromises.push(preload(path + 'TILES0' + ("00" + a).slice(-2) + '.ART').then(file => ART.create(new Stream(file, true))))
+  return Promise.all(artPromises).then(artFiles => ART.createArts(artFiles))
 }
 
-function start(binds: string, map: ArrayBuffer, artFiles: ART.ArtFiles, pal: Uint8Array, PLUs: Uint8Array[],
-  gridTex: { w: number, h: number, img: Uint8Array },
-  pointTex: { w: number, h: number, img: Uint8Array },
-  fontTex: { w: number, h: number, img: Uint8Array }) {
+const RFF_ = new Dependency<RFF.RffFile>('RFF File');
+const RAW_PLUs_ = new Dependency<Uint8Array[]>('Raw PLUs');
 
-  const gl = GL.createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
-  INPUT.bind(<HTMLCanvasElement>gl.canvas);
-
-  INJECTOR.bindInstance(GL_, gl);
-  INJECTOR.bindInstance(ArtFiles_, artFiles);
-  INJECTOR.bindInstance(RAW_PAL_, pal);
-  INJECTOR.bindInstance(BGL.PAL_, getPalTexture(gl, pal));
-  INJECTOR.bindInstance(BGL.PLUs_, getPluTexture(gl, PLUs, 64));
-  INJECTOR.bindInstance(BGL.Shadowsteps_, 64);
-  INJECTOR.bindInstance(BGL.Palswaps_, PLUs.length);
-  INJECTOR.bindInstance(UtilityTextures_, createUtilityTextures(gl, gridTex, pointTex, fontTex));
-  INJECTOR.bindInstance(RenderablesCache_, new RenderablesCacheImpl());
-  INJECTOR.bindInstance(KeymapConfig_, binds);
-  INJECTOR.bindInstance(BoardManipulator_, { cloneBoard });
-  INJECTOR.bind(ArtProvider_, BuildArtProviderConstructor);
-  INJECTOR.bind(PicNumSelector_, SelectorConstructor);
-  INJECTOR.bind(View_, SwappableViewConstructor);
-  INJECTOR.bind(BuildContext_, ContextConstructor);
-  INJECTOR.bind(RENDERER3D.Implementation_, BloodImplementationConstructor);
-  INJECTOR.bindInstance(Board_, loadBloodMap(new data.Stream(map, true)));
-  INJECTOR.install(ContextModule);
-  // INJECTOR.bindInstance(Board_, createBoard());
-
-  const context = INJECTOR.getInstance(BuildContext_);
-
-  INJECTOR.install(BGL.BuildGlModule(() => {
-    GL.animate(gl, (gl: WebGLRenderingContext, time: number) => {
-      context.frame(INPUT.get(), time);
-      INPUT.postFrame();
-    });
-  }));
+function loadRffFile(name: string): (injector: Injector) => Promise<Uint8Array> {
+  return (injector: Injector) => new Promise<Uint8Array>(resolve => injector.getInstance(RFF_).then(rff => resolve(rff.get(name))))
 }
 
-document.body.oncontextmenu = () => false;
-addLogAppender(CONSOLE);
-
-const rffFile = 'resources/engines/blood/BLOOD.RFF';
-const path = 'resources/engines/blood/';
-const ab = new AsyncBarrier();
-const artNames = [];
-for (let a = 0; a < 18; a++) {
-  artNames[a] = path + 'TILES0' + ("00" + a).slice(-2) + '.ART';
-  getter.preload(artNames[a], ab.callback(artNames[a]));
+async function loadPLUs(injector: Injector) {
+  return injector.getInstance(RAW_PLUs_).then(plus => plus.length)
 }
 
-getter.preloadString('builded_binds.txt', ab.callback('binds'));
-getter.preload(rffFile, ab.callback('rff'));
-const gridcb = ab.callback('grid');
-const pointcb = ab.callback('point');
-const fontcb = ab.callback('font');
-IU.loadImage("resources/grid.png", (w, h, img) => gridcb({ w, h, img }));
-IU.loadImage("resources/point1.png", (w, h, img) => pointcb({ w, h, img }));
-IU.loadImage("resources/img/font.png", (w, h, img) => fontcb({ w, h, img }));
+async function loadPalTexture(injector: Injector) {
+  return Promise.all([injector.getInstance(RAW_PAL_), injector.getInstance(GL_)]).then(([pal, gl]) => createTexture(256, 1, gl, { filter: gl.NEAREST }, pal, gl.RGB, 3))
+}
 
-ab.wait((res) => {
+async function loadPluTexture(injector: Injector) {
+  return Promise.all([
+    injector.getInstance(RAW_PLUs_),
+    injector.getInstance(GL_),
+    injector.getInstance(Shadowsteps_)])
+    .then(([plus, gl, shadowsteps]) => {
+      const tex = new Uint8Array(256 * shadowsteps * plus.length);
+      let i = 0;
+      for (const plu of plus) tex.set(plu, 256 * shadowsteps * i++);
+      return createTexture(256, shadowsteps * plus.length, gl, { filter: gl.NEAREST }, tex, gl.LUMINANCE)
+    })
+}
 
-  const rff = RFF.create(res['rff']);
-  const pal = rff.get('BLOOD.PAL');
-  const arts = [];
-  for (let a = 0; a < 18; a++) arts.push(ART.create(new Stream(res[artNames[a]], true)));
-  const artFiles = ART.createArts(arts);
 
-  const PLUs = [
+async function loarRawPlus(injector: Injector) {
+  return injector.getInstance(RFF_).then(rff => [
     rff.get('NORMAL.PLU'),
     rff.get('SATURATE.PLU'),
     rff.get('BEAST.PLU'),
@@ -190,8 +151,48 @@ ab.wait((res) => {
     rff.get('P2.PLU'),
     rff.get('P3.PLU'),
     rff.get('P4.PLU'),
-  ];
+  ])
+}
 
-  const map = rff.get(browser.getQueryVariable('map')).buffer;
-  start(res['binds'], map, artFiles, pal, PLUs, res['grid'], res['point'], res['font']);
+function loadMap(name: string) { return async (injector: Injector) => injector.getInstance(RFF_).then(rff => loadBloodMap(new Stream(rff.get(name).buffer, true))) }
+
+document.body.oncontextmenu = () => false;
+addLogAppender(CONSOLE);
+
+const gl = createContextFromCanvas("display", { alpha: false, antialias: false, stencil: true });
+INPUT.bind(<HTMLCanvasElement>gl.canvas);
+
+const injector = new Injector();
+injector.bindInstance(RFF_, preload('/resources/engines/blood/BLOOD.RFF').then(rff => RFF.create(rff)))
+injector.bindInstance(GL_, Promise.resolve(gl));
+injector.bindInstance(ArtFiles_, loadArtFiles());
+injector.bindInstance(Shadowsteps_, Promise.resolve(64));
+injector.bindInstance(RenderablesCache_, Promise.resolve(new RenderablesCacheImpl()));
+injector.bindInstance(KeymapConfig_, preloadString('builded_binds.txt'));
+injector.bindInstance(BoardManipulator_, Promise.resolve({ cloneBoard }));
+injector.bindInstance(UtilityTextures_, loadUtilityTextures([
+  [-1, loadTexture(gl, 'resources/point1.png', { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE })],
+  [-2, loadTexture(gl, 'resources/img/font.png', { filter: gl.NEAREST, repeat: gl.CLAMP_TO_EDGE })],
+  [-3, loadTexture(gl, 'resources/grid.png', { filter: gl.LINEAR_MIPMAP_LINEAR, repeat: gl.REPEAT, aniso: true })],
+]));
+injector.bind(RAW_PAL_, loadRffFile('BLOOD.PAL'));
+injector.bind(RAW_PLUs_, loarRawPlus);
+injector.bind(Palswaps_, loadPLUs);
+injector.bind(PAL_, loadPalTexture);
+injector.bind(PLUs_, loadPluTexture);
+injector.bind(ArtProvider_, BuildArtProviderConstructor);
+injector.bind(PicNumSelector_, SelectorConstructor);
+injector.bind(View_, SwappableViewConstructor);
+injector.bind(Implementation_, BloodImplementationConstructor);
+injector.bind(BuildGl_, BuildGlConstructor);
+injector.bind(Board_, loadMap(getQueryVariable('map')));
+// injector.bindInstance(Board_, createBoard());
+injector.install(ContextModule);
+
+injector.getInstance(BuildContext_).then(context => {
+  animate(gl, (gl: WebGLRenderingContext, time: number) => {
+    context.frame(INPUT.get(), time);
+    INPUT.postFrame();
+  });
 });
+

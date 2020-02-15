@@ -1,20 +1,20 @@
-import { Type, Injector } from "../../../libs/module";
+import { Dependency, Injector } from "../../../libs/injector";
 import { Texture } from "../../drawstruct";
 import { warning } from "../../logger";
 import { createTexture } from "../../textures";
 import { ArtProvider } from "./api";
 import { ArtFiles, ArtInfo } from "./art";
 
-export const GL_ = new Type<WebGLRenderingContext>('GL');
-export const ArtFiles_ = new Type<ArtFiles>('ArtFiles');
-export const UtilityTextures_ = new Type<{ [index: number]: Texture }>('UtilityTextures');
+export const GL_ = new Dependency<WebGLRenderingContext>('GL');
+export const ArtFiles_ = new Dependency<ArtFiles>('ArtFiles');
+export const UtilityTextures_ = new Dependency<{ [index: number]: Texture }>('UtilityTextures');
 
-export function BuildArtProviderConstructor(injector: Injector) {
-  return new BuildArtProvider(
+export async function BuildArtProviderConstructor(injector: Injector) {
+  const promise = Promise.all([
     injector.getInstance(ArtFiles_),
     injector.getInstance(UtilityTextures_),
-    injector.getInstance(GL_),
-  );
+    injector.getInstance(GL_)]);
+  return promise.then(([art, util, gl]) => new BuildArtProvider(art, util, gl));
 }
 
 export class BuildArtProvider implements ArtProvider {

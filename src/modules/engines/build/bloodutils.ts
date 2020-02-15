@@ -1,7 +1,7 @@
 import { BloodBoard } from "./bloodstructs";
 import { RorLink, RorLinks, Implementation } from "./gl/boardrenderer3d";
 import { Sprite } from "./structs";
-import { Injector } from "../../../libs/module";
+import { Injector } from "../../../libs/injector";
 import { Board_ } from "./api";
 
 export const MIRROR_PIC = 504;
@@ -14,12 +14,14 @@ function isLowerLink(spr: Sprite) {
   return spr.lotag == 12 || spr.lotag == 6 || spr.lotag == 10 || spr.lotag == 14;
 }
 
-export function BloodImplementationConstructor(injector: Injector): Implementation {
-  const rorLinks = loadRorLinks(<BloodBoard>injector.getInstance(Board_));
-  return {
-    rorLinks: () => rorLinks,
-    isMirrorPic(picnum: number) { return picnum == MIRROR_PIC },
-  }
+export async function BloodImplementationConstructor(injector: Injector) {
+  return injector.getInstance(Board_).then(board => {
+    const rorLinks = loadRorLinks(<BloodBoard>board);
+    return Promise.resolve({
+      rorLinks: () => rorLinks,
+      isMirrorPic(picnum: number) { return picnum == MIRROR_PIC },
+    })
+  })
 }
 
 export function loadRorLinks(board: BloodBoard): RorLinks {
